@@ -157,7 +157,8 @@ export const NicheCard = memo(function NicheCard({
           <h3 className="text-lg font-bold text-white leading-tight font-mono-tech">
             {title}
           </h3>
-          <p className="text-zinc-500 text-xs font-mono-tech">{venue}</p>
+          {/* LCL 2.0: Improved contrast for dark background */}
+          <p className="text-zinc-400 text-xs font-mono-tech">{venue}</p>
         </div>
 
         {/* LCL 2.0: Touch target now exceeds 44px minimum */}

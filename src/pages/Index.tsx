@@ -160,7 +160,7 @@ const Index = () => {
           </div>
 
           {loading ? (
-            <div className="text-center py-8 text-zinc-500">Loading events...</div>
+            <div className="text-center py-8 text-zinc-600">Loading events...</div>
           ) : localLifeEvents.length > 0 ? (
             <>
               {localLifeEvents.slice(0, 1).map(event => {
@@ -217,7 +217,7 @@ const Index = () => {
                     <h3 className="font-bold text-zinc-900">
                       {event.title}
                     </h3>
-                    <p className="text-xs text-zinc-500">{event.venue_name} • {formatEventTime(event.event_date, event.event_time)}</p>
+                    <p className="text-xs text-zinc-600">{event.venue_name} • {formatEventTime(event.event_date, event.event_time)}</p>
                   </div>
                   <button
                     onClick={() => handleJoinEvent(event.id)}
@@ -230,7 +230,7 @@ const Index = () => {
               ))}
             </>
           ) : (
-            <div className="text-center py-8 text-zinc-500">No local events available. Please seed the database.</div>
+            <div className="text-center py-8 text-zinc-600">No local events available. Please seed the database.</div>
           )}
         </section>
 
@@ -262,7 +262,7 @@ const Index = () => {
 
           <div className="grid grid-cols-2 gap-4">
             {loading ? (
-              <div className="col-span-2 text-center py-8 text-zinc-500">Loading tribe events...</div>
+              <div className="col-span-2 text-center py-8 text-zinc-600">Loading tribe events...</div>
             ) : tribeEvents.length > 0 ? (
               <>
                 {tribeEvents.map((event, index) => {
@@ -314,7 +314,7 @@ const Index = () => {
                 </div>
               </>
             ) : (
-              <div className="col-span-2 text-center py-8 text-zinc-500">No tribe events available. Please seed the database.</div>
+              <div className="col-span-2 text-center py-8 text-zinc-600">No tribe events available. Please seed the database.</div>
             )}
           </div>
         </section>
