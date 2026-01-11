@@ -7,24 +7,30 @@ interface CategoryBadgeProps {
   className?: string;
 }
 
+/**
+ * Subtle tint badge with color-coded styling.
+ * No icons - uses color as the primary identifier.
+ * Typography: Uppercase, smaller tracking.
+ */
 export const CategoryBadge = memo(function CategoryBadge({ 
   category, 
   className 
 }: CategoryBadgeProps) {
   const config = getCategoryConfig(category);
-  const Icon = config.icon;
 
   return (
-    <div 
+    <span 
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
+        'inline-flex items-center px-2.5 py-1 rounded-full',
+        'text-xs font-semibold uppercase tracking-wide',
+        'border',
         config.bgClass,
         config.textClass,
+        config.borderClass,
         className
       )}
     >
-      <Icon size={12} />
-      <span>{config.label}</span>
-    </div>
+      {config.label}
+    </span>
   );
 });
