@@ -87,6 +87,7 @@ const Feed = () => {
           <EventFeed
             events={allEvents}
             onEventClick={handleEventClick}
+            userPreferences={preferences}
           />
         )}
       </main>

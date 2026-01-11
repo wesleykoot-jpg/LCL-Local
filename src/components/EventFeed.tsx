@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EventCard } from './EventCard';
 import { CATEGORY_MAP } from '@/lib/categories';
+import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 
 // Fallback images by category - ensures every card has an image
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
@@ -148,6 +149,7 @@ interface EventData {
 interface EventFeedProps {
   events: EventData[];
   onEventClick?: (eventId: string) => void;
+  userPreferences?: UserPreferences | null;
 }
 
 // Get image for event - always returns an image URL
@@ -160,6 +162,7 @@ const getEventImage = (event: EventData): string => {
 export const EventFeed = memo(function EventFeed({
   events,
   onEventClick,
+  userPreferences,
 }: EventFeedProps) {
   // Combine real events with mock data
   const allEvents = useMemo(() => {
@@ -169,9 +172,16 @@ export const EventFeed = memo(function EventFeed({
     return [...events, ...MOCK_MEPPEL_EVENTS.slice(0, Math.max(0, 8 - events.length))];
   }, [events]);
 
-  // Add mock attendees for demo
+  // Apply smart ranking algorithm and add mock attendees
   const processedEvents = useMemo(() => {
-    return allEvents.map(event => ({
+    // First, apply the feed algorithm to rank events
+    const rankedEvents = rankEvents(allEvents, userPreferences, {
+      ensureDiversity: true,
+      debug: import.meta.env.DEV, // Enable debug logging in development
+    });
+    
+    // Then add mock attendees and ensure images
+    return rankedEvents.map(event => ({
       ...event,
       // Ensure every event has an image
       image_url: getEventImage(event),
@@ -181,7 +191,7 @@ export const EventFeed = memo(function EventFeed({
         { id: '3', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', name: 'Emma', isFriend: Math.random() > 0.7 },
       ],
     }));
-  }, [allEvents]);
+  }, [allEvents, userPreferences]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);

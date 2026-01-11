@@ -7,6 +7,7 @@ Original design by [Magic Patterns](https://www.magicpatterns.com/c/8f2shdlz13fz
 ## Features
 
 - 🎉 **Event Discovery** - Browse local events and tribe gatherings
+- 🤖 **Smart Feed Algorithm** - Personalized ranking based on preferences, time, and popularity
 - ➕ **Create Events** - Host your own events with image uploads
 - 📱 **iOS-Optimized** - Native haptics, gestures, and smooth animations
 - ⚡ **Real-time Updates** - Live event changes via Supabase Realtime
@@ -69,6 +70,7 @@ src/
 ├── components/        # React components
 ├── contexts/         # React Context providers
 ├── lib/             # Utilities and services
+│   ├── feedAlgorithm.ts  # Smart feed ranking algorithm
 │   ├── eventService.ts
 │   ├── storageService.ts
 │   ├── haptics.ts
@@ -78,6 +80,12 @@ src/
 ```
 
 ## Key Services
+
+### Feed Algorithm (`src/lib/feedAlgorithm.ts`)
+- Smart event ranking based on user preferences
+- Multi-factor scoring (category match, time, social proof, compatibility)
+- Diversity enforcement to prevent monotonous feeds
+- See [FEED_ALGORITHM.md](./FEED_ALGORITHM.md) for detailed documentation
 
 ### Event Service (`src/lib/eventService.ts`)
 - Create, update, delete events
@@ -97,6 +105,7 @@ src/
 
 ## Documentation
 
+- [Feed Algorithm](./FEED_ALGORITHM.md) - Smart ranking algorithm documentation
 - [Deployment Guide](./DEPLOYMENT_GUIDE.md) - Complete iOS App Store deployment guide
 - [Implementation Summary](./IMPLEMENTATION_SUMMARY.md) - Detailed feature list
 - [Backend Setup](./BACKEND_SETUP.md) - Database configuration
