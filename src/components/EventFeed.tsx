@@ -3,7 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { EventCard } from './EventCard';
 import { CATEGORY_MAP } from '@/lib/categories';
 
-// Mock events data for Meppel, Netherlands
+// Fallback images by category - ensures every card has an image
+const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
+  active: 'https://images.unsplash.com/photo-1461896836934- voices-in-the-static?w=800&auto=format&fit=crop&q=60',
+  gaming: 'https://images.unsplash.com/photo-1493711662062-fa541f7f3d24?w=800&auto=format&fit=crop&q=60',
+  family: 'https://images.unsplash.com/photo-1536640712-4d4c36ff0e4e?w=800&auto=format&fit=crop&q=60',
+  social: 'https://images.unsplash.com/photo-1529543544277-750ee95576e6?w=800&auto=format&fit=crop&q=60',
+  outdoors: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop&q=60',
+  music: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800&auto=format&fit=crop&q=60',
+  workshops: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&auto=format&fit=crop&q=60',
+  foodie: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=60',
+  community: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&auto=format&fit=crop&q=60',
+  entertainment: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&auto=format&fit=crop&q=60',
+  default: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&auto=format&fit=crop&q=60',
+};
+
+// Mock events data for Meppel, Netherlands - all with images
 const MOCK_MEPPEL_EVENTS = [
   {
     id: 'mock-1',
@@ -34,7 +49,7 @@ const MOCK_MEPPEL_EVENTS = [
     venue_name: 'Wilhelminapark Meppel',
     event_date: '2026-01-18',
     event_time: '10:00',
-    image_url: 'https://images.unsplash.com/photo-1544776193-352d25ca82cd?w=800&auto=format&fit=crop&q=60',
+    image_url: 'https://images.unsplash.com/photo-1596463989850-dce5a4d6ff2a?w=800&auto=format&fit=crop&q=60',
     match_percentage: 78,
     attendee_count: 8,
   },
@@ -51,12 +66,12 @@ const MOCK_MEPPEL_EVENTS = [
   },
   {
     id: 'mock-5',
-    title: 'Morning Yoga in the Park',
+    title: 'Canal Walk Through Meppel',
     category: 'outdoors',
     venue_name: 'Stadspark Meppel',
     event_date: '2026-01-19',
     event_time: '08:00',
-    image_url: 'https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=800&auto=format&fit=crop&q=60',
+    image_url: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800&auto=format&fit=crop&q=60',
     match_percentage: 72,
     attendee_count: 15,
   },
@@ -73,29 +88,29 @@ const MOCK_MEPPEL_EVENTS = [
   },
   {
     id: 'mock-7',
-    title: 'Dutch Cooking Workshop',
+    title: 'Dutch Stroopwafel Workshop',
     category: 'workshops',
     venue_name: 'Kulturhus De Plataan',
     event_date: '2026-01-20',
     event_time: '18:00',
-    image_url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&auto=format&fit=crop&q=60',
+    image_url: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=800&auto=format&fit=crop&q=60',
     match_percentage: 75,
     attendee_count: 10,
   },
   {
     id: 'mock-8',
-    title: 'Food Truck Festival Meppel',
+    title: 'Food Market at Hoofdstraat',
     category: 'foodie',
     venue_name: 'Hoofdstraat Meppel',
     event_date: '2026-01-19',
     event_time: '12:00',
-    image_url: 'https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=800&auto=format&fit=crop&q=60',
+    image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&auto=format&fit=crop&q=60',
     match_percentage: 95,
     attendee_count: 120,
   },
   {
     id: 'mock-9',
-    title: 'Neighborhood Cleanup Day',
+    title: 'Neighborhood Cleanup at Haveltermade',
     category: 'community',
     venue_name: 'Haveltermade',
     event_date: '2026-01-21',
@@ -106,7 +121,7 @@ const MOCK_MEPPEL_EVENTS = [
   },
   {
     id: 'mock-10',
-    title: 'Open Mic Night',
+    title: 'Open Mic at Grand Café',
     category: 'entertainment',
     venue_name: 'Grand Café Markt',
     event_date: '2026-01-17',
@@ -135,6 +150,13 @@ interface EventFeedProps {
   onEventClick?: (eventId: string) => void;
 }
 
+// Get image for event - always returns an image URL
+const getEventImage = (event: EventData): string => {
+  if (event.image_url) return event.image_url;
+  const category = CATEGORY_MAP[event.category] || event.category;
+  return CATEGORY_FALLBACK_IMAGES[category] || CATEGORY_FALLBACK_IMAGES.default;
+};
+
 export const EventFeed = memo(function EventFeed({
   events,
   onEventClick,
@@ -151,6 +173,8 @@ export const EventFeed = memo(function EventFeed({
   const processedEvents = useMemo(() => {
     return allEvents.map(event => ({
       ...event,
+      // Ensure every event has an image
+      image_url: getEventImage(event),
       attendees: [
         { id: '1', image: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100', name: 'Jan', isFriend: Math.random() > 0.5 },
         { id: '2', image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100', name: 'Pieter', isFriend: Math.random() > 0.6 },
@@ -186,7 +210,7 @@ export const EventFeed = memo(function EventFeed({
             category={CATEGORY_MAP[event.category] || event.category}
             venue={event.venue_name}
             date={formatDate(event.event_date)}
-            imageUrl={event.image_url || undefined}
+            imageUrl={event.image_url}
             attendees={event.attendees}
             totalAttendees={event.attendee_count || event.attendees?.length || 0}
             onClick={() => onEventClick?.(event.id)}
