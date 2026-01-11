@@ -4,6 +4,79 @@
 
 The LCL Local app uses a sophisticated ranking algorithm to personalize the event feed for each user. The algorithm ensures that users see the most relevant events at the top of their feed while maintaining diversity and variety.
 
+## Visual Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Feed Algorithm Flow                         │
+└─────────────────────────────────────────────────────────────────┘
+
+INPUT: Raw Events + User Preferences
+   │
+   ├─► Event 1 (Social, Tomorrow, 50 attendees, 88% match)
+   ├─► Event 2 (Gaming, Tonight, 5 attendees, 75% match)
+   ├─► Event 3 (Music, 2 months, 500 attendees, 92% match)
+   └─► Event N...
+   │
+   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 1: Multi-Factor Scoring                                   │
+│                                                                  │
+│  For each event, calculate:                                     │
+│    ┌─────────────────────────────────────────────────────┐    │
+│    │ Category Score (40%)                                │    │
+│    │   ├─ Matches preferences? → 1.0                     │    │
+│    │   └─ Not in preferences? → 0.3                      │    │
+│    ├─────────────────────────────────────────────────────┤    │
+│    │ Time Score (25%)                                    │    │
+│    │   ├─ <24 hours away → 1.0                           │    │
+│    │   └─ Further away → exponential decay               │    │
+│    ├─────────────────────────────────────────────────────┤    │
+│    │ Social Score (20%)                                  │    │
+│    │   └─ log₁₀(attendees) / log₁₀(1000)                │    │
+│    ├─────────────────────────────────────────────────────┤    │
+│    │ Match Score (15%)                                   │    │
+│    │   └─ match_percentage / 100                         │    │
+│    └─────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  Total Score = (Category×0.40 + Time×0.25 + Social×0.20        │
+│                 + Match×0.15)                                   │
+└─────────────────────────────────────────────────────────────────┘
+   │
+   ▼
+SCORED EVENTS (sorted by score)
+   │
+   ├─► Event 1: Score 0.87
+   ├─► Event 2: Score 0.54
+   ├─► Event 3: Score 0.45
+   └─► Event N...
+   │
+   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 2: Diversity Filter                                       │
+│                                                                  │
+│  Reorder to prevent category clustering:                        │
+│    1. Track last 2 categories shown                             │
+│    2. Penalize repeated categories                              │
+│    3. Boost underrepresented categories                         │
+│                                                                  │
+│  Example:                                                        │
+│    ✓ Social  (0.87) → Selected                                  │
+│    ✓ Gaming  (0.54) → Selected (different category)             │
+│    ✗ Social  (0.85) → Skipped (too soon after Social)           │
+│    ✓ Music   (0.45) → Selected (provides variety)               │
+│    ✓ Social  (0.85) → Now selectable                            │
+└─────────────────────────────────────────────────────────────────┘
+   │
+   ▼
+OUTPUT: Ranked Feed (personalized & diverse)
+   │
+   ├─► Social Event (high score, great timing)
+   ├─► Gaming Event (good timing, variety)
+   ├─► Music Event (variety boost)
+   └─► More events...
+```
+
 ## Algorithm Components
 
 ### 1. Multi-Factor Scoring System
@@ -138,15 +211,65 @@ Potential improvements to consider:
 - **Incremental updates**: Only re-rank when events or preferences change
 - **Client-side**: All ranking happens in the browser (no API calls)
 
-## Testing
+## Testing & Verification
 
-To verify the algorithm:
+### Quick Test in Browser Console
 
-1. Set different category preferences in onboarding
-2. Check console debug output to see score breakdowns
-3. Verify that preferred categories appear near the top
-4. Ensure diversity (no more than 2-3 consecutive same-category events)
-5. Confirm upcoming events rank higher than distant ones
+1. Open the app in development mode (`npm run dev`)
+2. Navigate to the Feed page
+3. Open browser console (F12)
+4. Look for "🎯 Feed Algorithm Results" debug output
+5. The table shows each event's score breakdown
+
+### Test with Different Preferences
+
+1. Click the Settings icon in the Feed header
+2. Select different category preferences in onboarding
+3. Observe how the feed reorders based on your selections
+4. Expected behaviors:
+   - Events in selected categories move to top
+   - Events happening soon are prioritized
+   - Popular events (high attendance) rank higher
+   - Categories are mixed (not clustered)
+
+### Verification Checklist
+
+- [ ] **Category Preference Works**: Select "Social" + "Music" categories, verify those events appear first
+- [ ] **Time Relevance Works**: Events happening tomorrow rank higher than events next month
+- [ ] **Social Proof Works**: Events with 100 attendees rank higher than events with 5 attendees (all else equal)
+- [ ] **Diversity Works**: No more than 2-3 consecutive events of the same category
+- [ ] **Discovery Works**: Categories NOT in preferences still appear (with penalty)
+- [ ] **No Preferences Works**: Without preferences, events ranked by time + social + match
+
+### Running the Demo Script
+
+```bash
+node scripts/test-feed-algorithm.js
+```
+
+This shows scoring examples and explains how different user types see different rankings.
+
+### Manual Testing Scenarios
+
+**Scenario 1: The Socialite**
+- Set preferences: Social, Entertainment, Music
+- Expected: Bars, concerts, parties appear first
+- Why: 40% weight on category match makes these score highest
+
+**Scenario 2: The Athlete** 
+- Set preferences: Active, Outdoors
+- Expected: Sports, hiking, fitness events appear first
+- Why: Category match outweighs other factors
+
+**Scenario 3: The Newcomer**
+- Set preferences: None (skip onboarding or clear preferences)
+- Expected: Mix of categories, prioritized by timing and popularity
+- Why: Without preferences, all categories get 0.5 score, so time and social proof dominate
+
+**Scenario 4: Diversity Check**
+- Look at feed with many social events
+- Expected: Social events are interspersed with other categories
+- Why: Diversity mechanism prevents clustering
 
 ## Related Files
 
