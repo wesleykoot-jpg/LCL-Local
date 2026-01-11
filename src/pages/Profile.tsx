@@ -5,7 +5,7 @@ const Profile = () => {
   return (
     <>
       <ProfileView />
-      <FloatingNav activeView="profile" onNavigate={handleNavigate} />
+      <FloatingNav activeView="profile" />
     </>
   );
 };
