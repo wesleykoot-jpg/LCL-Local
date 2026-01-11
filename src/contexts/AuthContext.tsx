@@ -72,16 +72,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Set a timeout to ensure loading state is always resolved
+    // This prevents infinite loading if Supabase connection hangs
     let loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
       console.warn('[Auth] Session check timeout - continuing without authentication');
       setLoading(false);
-      loadingTimeout = null; // Mark as fired
+      loadingTimeout = null; // Clear reference to prevent double-clear on cleanup
     }, 10000); // 10 second timeout
+
+    // Helper to safely clear timeout if it hasn't fired yet
+    const clearLoadingTimeout = () => {
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = null;
+      }
+    };
 
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        if (loadingTimeout) clearTimeout(loadingTimeout);
-        loadingTimeout = null;
+        clearLoadingTimeout();
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -96,8 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch((error) => {
-        if (loadingTimeout) clearTimeout(loadingTimeout);
-        loadingTimeout = null;
+        clearLoadingTimeout();
         console.error('[Auth] Failed to get session:', error);
         setSession(null);
         setUser(null);
@@ -146,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      if (loadingTimeout) clearTimeout(loadingTimeout);
+      clearLoadingTimeout();
       subscription.unsubscribe();
     };
   }, []);
