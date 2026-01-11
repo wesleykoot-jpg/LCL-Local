@@ -1,9 +1,7 @@
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { BentoGrid } from '@/components/BentoGrid';
-import { CategoryFilter } from '@/components/CategoryFilter';
-import { PulseTribeToggle } from '@/components/PulseTribeToggle';
 import { FloatingNav } from '@/components/FloatingNav';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -12,11 +10,8 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
 import { MapPin, Plus, Settings } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
-import { CATEGORY_MAP } from '@/lib/categories';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
-
-type ViewMode = 'pulse' | 'tribe';
 
 const Feed = () => {
   const navigate = useNavigate();
@@ -24,8 +19,6 @@ const Feed = () => {
   const { events: allEvents, loading, refetch: refetchEvents } = useEvents();
   const { handleJoinEvent, joiningEvents } = useJoinEvent(profile?.id, refetchEvents);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>('pulse');
   
   const {
     showOnboarding,
@@ -34,28 +27,6 @@ const Feed = () => {
     completeOnboarding,
     isLoaded,
   } = useOnboarding();
-
-  const handleToggleFilter = useCallback((categoryId: string) => {
-    setActiveFilters(prev => {
-      if (prev.includes(categoryId)) {
-        return prev.filter(id => id !== categoryId);
-      }
-      return [...prev, categoryId];
-    });
-  }, []);
-
-  const filteredEvents = useMemo(() => {
-    const categoriesToFilter = activeFilters.length > 0 
-      ? activeFilters 
-      : preferences?.selectedCategories || [];
-    
-    if (!categoriesToFilter.length) return allEvents;
-    
-    return allEvents.filter(event => {
-      const mappedCategory = CATEGORY_MAP[event.category] || event.category;
-      return categoriesToFilter.includes(mappedCategory);
-    });
-  }, [allEvents, activeFilters, preferences?.selectedCategories]);
 
   const handleNavigate = (view: 'feed' | 'map' | 'profile') => {
     if (view === 'feed') navigate('/feed');
@@ -82,7 +53,7 @@ const Feed = () => {
             </h1>
             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-1">
               <MapPin size={12} />
-              <span>{preferences?.zone || profile?.location_city || 'Amsterdam'}</span>
+              <span>{preferences?.zone || profile?.location_city || 'Meppel, NL'}</span>
             </div>
           </div>
           
@@ -92,19 +63,6 @@ const Feed = () => {
           >
             <Settings size={20} />
           </button>
-        </div>
-        
-        {/* Biphasic Toggle */}
-        <div className="px-5 pb-4 flex justify-center">
-          <PulseTribeToggle activeMode={viewMode} onChange={setViewMode} />
-        </div>
-        
-        {/* Category Filter Bar */}
-        <div className="px-4 pb-4">
-          <CategoryFilter
-            selectedCategories={activeFilters}
-            onToggle={handleToggleFilter}
-          />
         </div>
       </header>
 
@@ -121,29 +79,12 @@ const Feed = () => {
               />
             ))}
           </div>
-        ) : filteredEvents.length > 0 ? (
+        ) : (
           <BentoGrid
-            events={filteredEvents}
-            viewMode={viewMode}
+            events={allEvents}
             onJoin={handleJoinEvent}
             joiningEvents={joiningEvents}
           />
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-20 text-center"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <MapPin size={28} className="text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">No events found</h3>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              {viewMode === 'tribe' 
-                ? "None of your friends are attending events yet. Check Local Pulse for discovery!"
-                : "Try adjusting your filters or check back later for new events."}
-            </p>
-          </motion.div>
         )}
       </main>
 
