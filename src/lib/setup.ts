@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 export async function setupDatabase() {
   console.log('🚀 Setting up LCL database schema...');
