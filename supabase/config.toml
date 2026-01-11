@@ -1,1 +1,99 @@
-project_id = "mlpefjsbriqgxcaqxhic"
+# LCL Local Development - Supabase Configuration
+# This file configures local Supabase development environment
+
+[project]
+id = "lcl-local-dev"
+
+[api]
+# Port to use for the local Supabase API server
+port = 54321
+# Disable SSL for local development
+enabled = true
+# Additional schemas to expose in the API
+schemas = ["public", "graphql_public"]
+# Extra schemas to add for GraphQL
+extra_search_path = ["public", "extensions"]
+# Maximum rows returned by a query
+max_rows = 1000
+
+[db]
+# Port to use for the local Postgres database
+port = 54322
+# Database name
+name = "lcl_local"
+# Enable PostGIS extension for geospatial features
+major_version = 15
+
+[studio]
+# Port for Supabase Studio (local dashboard)
+port = 54323
+enabled = true
+# Enable API documentation
+api_docs_enabled = true
+
+[inbucket]
+# Port for email testing (captures outgoing emails locally)
+port = 54324
+enabled = true
+
+[storage]
+# Port for Storage API
+port = 54325
+enabled = true
+# Maximum file size for uploads (10MB for dev)
+file_size_limit = "10MiB"
+
+[auth]
+# Port for GoTrue (auth server)
+port = 54326
+# Auth configuration for local development
+site_url = "http://localhost:8080"
+# Disable email confirmation for easier testing
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+[auth.email]
+# Auto-confirm emails for faster development
+enable_confirmations = false
+# Double-confirm email changes
+double_confirm_changes = false
+# Secure password hash cost
+secure_password_change = false
+
+[auth.sms]
+# Disable SMS for local development
+enable_signup = false
+enable_confirmations = false
+
+# OAuth providers (disabled for local development)
+[auth.external.google]
+enabled = false
+
+[auth.external.github]
+enabled = false
+
+[analytics]
+# Disable analytics for local development
+enabled = false
+
+[experimental]
+# Enable oriole database for faster local development (if available)
+orioledb_version = ""
+# S3 configuration (disabled)
+s3_host = ""
+
+[realtime]
+# Enable realtime subscriptions
+enabled = true
+# IP version
+ip_version = "IPv4"
+
+[edge_runtime]
+# Enable edge functions for local development
+enabled = true
+# Use latest version
+version = "1.30.3"
+
+[db.seed]
+# Seed file to run on startup - automatically seeds dev data
+sql_paths = ["./seed.sql"]

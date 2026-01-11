@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getSupabaseConfig, isLocalSupabase } from '@/integrations/supabase/client';
 
 interface ConnectionStatus {
   success: boolean;
   message: string;
   data?: unknown;
   error?: unknown;
+  config?: {
+    url: string;
+    isLocal: boolean;
+    isDev: boolean;
+    isDebugEnabled: boolean;
+  };
 }
 
 export function DebugConnection() {
@@ -18,8 +24,11 @@ export function DebugConnection() {
 
   async function testConnection() {
     setLoading(true);
+    const config = getSupabaseConfig();
+    
     try {
       console.log('[DebugConnection] Testing database connection...');
+      console.log('[DebugConnection] Config:', config);
 
       const { data, error } = await supabase
         .from('events')
@@ -31,14 +40,16 @@ export function DebugConnection() {
         setStatus({
           success: false,
           message: 'Database connection failed',
-          error: error
+          error: error,
+          config
         });
       } else {
         console.log('[DebugConnection] Success:', data);
         setStatus({
           success: true,
-          message: 'Database Connected',
-          data: data
+          message: isLocalSupabase() ? 'Local Database Connected' : 'Database Connected',
+          data: data,
+          config
         });
       }
     } catch (err: unknown) {
@@ -46,7 +57,8 @@ export function DebugConnection() {
       setStatus({
         success: false,
         message: 'Connection exception',
-        error: err
+        error: err,
+        config
       });
     } finally {
       setLoading(false);
@@ -85,9 +97,15 @@ export function DebugConnection() {
               {status.message}
             </div>
 
+            {status.config && (
+              <div className="text-xs text-white/50 mb-2">
+                {status.config.isLocal ? '🏠 Local' : '☁️ Cloud'} • {status.config.isDev ? 'Dev' : 'Prod'}
+              </div>
+            )}
+
             {status.success && status.data && (
               <div className="text-green-300/80 text-sm">
-                <div className="mb-1">✓ Successfully fetched {status.data.length} record(s)</div>
+                <div className="mb-1">✓ Successfully fetched {(status.data as unknown[]).length} record(s)</div>
                 <div className="text-xs opacity-60">Database is ready</div>
               </div>
             )}
@@ -105,6 +123,9 @@ export function DebugConnection() {
                     <li>Check RLS policies (ensure public SELECT access)</li>
                     <li>Verify table names match TypeScript types</li>
                     <li>Confirm environment variables are set correctly</li>
+                    {status.config?.isLocal && (
+                      <li>Ensure local Supabase is running: <code>supabase start</code></li>
+                    )}
                   </ul>
                 </div>
               </div>
