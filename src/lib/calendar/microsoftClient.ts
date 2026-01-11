@@ -248,8 +248,35 @@ export class MicrosoftCalendarClient implements CalendarProviderClient {
 
   /**
    * Build a Microsoft Graph Calendar event object
+   * 
+   * Microsoft Graph API expects dateTime in local time format (without timezone suffix)
+   * along with a separate timeZone field. We convert UTC to the target timezone.
    */
   private buildMicrosoftEvent(eventData: CalendarEventData): Record<string, unknown> {
+    // Format datetime for Microsoft Graph API
+    // The API expects: "2024-01-15T14:30:00" (no Z suffix) with timeZone specified separately
+    const formatForMicrosoft = (date: Date): string => {
+      // Create a formatter for the target timezone
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: eventData.timeZone,
+      };
+      
+      const parts = new Intl.DateTimeFormat('en-CA', options).formatToParts(date);
+      const values: Record<string, string> = {};
+      parts.forEach(({ type, value }) => {
+        values[type] = value;
+      });
+      
+      return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}`;
+    };
+
     return {
       subject: eventData.title,
       body: {
@@ -260,11 +287,11 @@ export class MicrosoftCalendarClient implements CalendarProviderClient {
         displayName: eventData.location,
       },
       start: {
-        dateTime: eventData.startTime.toISOString().replace('Z', ''),
+        dateTime: formatForMicrosoft(eventData.startTime),
         timeZone: eventData.timeZone,
       },
       end: {
-        dateTime: eventData.endTime.toISOString().replace('Z', ''),
+        dateTime: formatForMicrosoft(eventData.endTime),
         timeZone: eventData.timeZone,
       },
       singleValueExtendedProperties: [

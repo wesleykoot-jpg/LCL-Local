@@ -60,7 +60,7 @@ export const CalendarSettings: React.FC = () => {
     const code = params.get('code');
     const state = params.get('state');
     
-    if (code && state) {
+    if (code) {
       // Determine provider from URL path
       const path = window.location.pathname;
       let provider: CalendarProvider | null = null;
@@ -72,16 +72,16 @@ export const CalendarSettings: React.FC = () => {
       }
       
       if (provider) {
-        handleOAuthCallback(provider, code);
+        handleOAuthCallback(provider, code, state || undefined);
         // Clear URL params
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
   }, []);
 
-  const handleOAuthCallback = async (provider: CalendarProvider, code: string) => {
+  const handleOAuthCallback = async (provider: CalendarProvider, code: string, state?: string) => {
     setConnecting(provider);
-    const { success, error } = await calendarSyncService.handleOAuthCallback(provider, code);
+    const { success, error } = await calendarSyncService.handleOAuthCallback(provider, code, state);
     setConnecting(null);
 
     if (success) {

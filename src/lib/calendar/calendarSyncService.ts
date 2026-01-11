@@ -2,6 +2,13 @@
  * Calendar Sync Service
  * 
  * Main service for managing calendar synchronization between LCL and external providers
+ * 
+ * SECURITY NOTES:
+ * - This implementation uses client-side OAuth which exposes client secrets in the frontend.
+ *   For production, implement OAuth flows in Supabase Edge Functions or a backend service.
+ * - Token encryption uses Base64 for demo purposes only. For production, use proper AES
+ *   encryption with CALENDAR_TOKEN_ENCRYPTION_KEY or a KMS service.
+ * - OAuth state parameter should be validated server-side for proper CSRF protection.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -20,13 +27,21 @@ type UserCalendarAccount = Database['public']['Tables']['user_calendar_accounts'
 type EventCalendarMapping = Database['public']['Tables']['event_calendar_mappings']['Row'];
 type Event = Database['public']['Tables']['events']['Row'];
 
+// Storage key for OAuth state validation
+const OAUTH_STATE_KEY = 'lcl_oauth_state';
+
 /**
- * Simple encryption/decryption for token storage
- * In production, use proper KMS or encryption service
+ * Token encryption for secure storage
+ * 
+ * NOTE: This is a basic implementation for development.
+ * For production, use:
+ * - AES-256-GCM encryption with CALENDAR_TOKEN_ENCRYPTION_KEY
+ * - Or a KMS service like AWS KMS, Google Cloud KMS
+ * - Or Supabase Vault for secrets management
  */
 const encryptToken = (token: string): string => {
-  // Base64 encode for simple obfuscation
-  // In production, use proper encryption with CALENDAR_TOKEN_ENCRYPTION_KEY
+  // Base64 encode for simple obfuscation in development
+  // TODO: Replace with proper AES encryption for production
   return btoa(token);
 };
 
@@ -36,18 +51,34 @@ const decryptToken = (encrypted: string): string => {
 
 /**
  * Get OAuth configuration from environment
+ * 
+ * NOTE: For production, OAuth flows should be handled server-side
+ * to protect client secrets. Consider using Supabase Edge Functions
+ * or implementing PKCE flow for public clients.
  */
-const getGoogleConfig = (): OAuthConfig => ({
-  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
-  clientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET || '',
-  redirectUri: import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URL || `${window.location.origin}/calendar/callback/google`,
-});
+const getGoogleConfig = (): OAuthConfig => {
+  const redirectUri = import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URL;
+  if (!redirectUri) {
+    console.warn('[Calendar] VITE_GOOGLE_OAUTH_REDIRECT_URL not configured. Using default.');
+  }
+  return {
+    clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+    clientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET || '',
+    redirectUri: redirectUri || `${window.location.origin}/calendar/callback/google`,
+  };
+};
 
-const getMicrosoftConfig = (): OAuthConfig => ({
-  clientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || '',
-  clientSecret: import.meta.env.VITE_MICROSOFT_CLIENT_SECRET || '',
-  redirectUri: import.meta.env.VITE_MICROSOFT_OAUTH_REDIRECT_URL || `${window.location.origin}/calendar/callback/microsoft`,
-});
+const getMicrosoftConfig = (): OAuthConfig => {
+  const redirectUri = import.meta.env.VITE_MICROSOFT_OAUTH_REDIRECT_URL;
+  if (!redirectUri) {
+    console.warn('[Calendar] VITE_MICROSOFT_OAUTH_REDIRECT_URL not configured. Using default.');
+  }
+  return {
+    clientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || '',
+    clientSecret: import.meta.env.VITE_MICROSOFT_CLIENT_SECRET || '',
+    redirectUri: redirectUri || `${window.location.origin}/calendar/callback/microsoft`,
+  };
+};
 
 /**
  * Get the appropriate calendar client for a provider
@@ -104,11 +135,60 @@ export const calendarSyncService = {
 
   /**
    * Get the OAuth authorization URL for a provider
+   * Generates and stores a state parameter for CSRF protection
    */
   getAuthorizationUrl(provider: CalendarProvider, state?: string): string {
     const client = getClient(provider);
     const config = provider === 'google' ? getGoogleConfig() : getMicrosoftConfig();
-    return client.getAuthorizationUrl(config.redirectUri, state || crypto.randomUUID());
+    
+    // Generate state for CSRF protection
+    const oauthState = state || crypto.randomUUID();
+    
+    // Store state with provider info for validation on callback
+    try {
+      sessionStorage.setItem(OAUTH_STATE_KEY, JSON.stringify({
+        state: oauthState,
+        provider,
+        timestamp: Date.now(),
+      }));
+    } catch {
+      // Session storage may not be available in some contexts
+      console.warn('[Calendar] Unable to store OAuth state');
+    }
+    
+    return client.getAuthorizationUrl(config.redirectUri, oauthState);
+  },
+
+  /**
+   * Validate OAuth state parameter to prevent CSRF attacks
+   */
+  validateOAuthState(state: string, provider: CalendarProvider): boolean {
+    try {
+      const stored = sessionStorage.getItem(OAUTH_STATE_KEY);
+      if (!stored) {
+        return false;
+      }
+      
+      const { state: storedState, provider: storedProvider, timestamp } = JSON.parse(stored);
+      
+      // Clear state after reading
+      sessionStorage.removeItem(OAUTH_STATE_KEY);
+      
+      // State must match and be for the same provider
+      if (storedState !== state || storedProvider !== provider) {
+        return false;
+      }
+      
+      // State expires after 10 minutes
+      const maxAge = 10 * 60 * 1000;
+      if (Date.now() - timestamp > maxAge) {
+        return false;
+      }
+      
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   /**
@@ -116,9 +196,15 @@ export const calendarSyncService = {
    */
   async handleOAuthCallback(
     provider: CalendarProvider,
-    code: string
+    code: string,
+    state?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // Validate state for CSRF protection
+      if (state && !this.validateOAuthState(state, provider)) {
+        return { success: false, error: 'Invalid OAuth state. Please try connecting again.' };
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         return { success: false, error: 'User not authenticated' };
@@ -330,7 +416,7 @@ export const calendarSyncService = {
       // Get all mappings for this event
       const { data: mappings, error: mappingsError } = await supabase
         .from('event_calendar_mappings')
-        .select('*, user_calendar_accounts(*)')
+        .select('*')
         .eq('event_id', eventId)
         .eq('status', 'synced');
 
@@ -342,13 +428,20 @@ export const calendarSyncService = {
 
       for (const mapping of mappings) {
         try {
-          const accountData = mapping.user_calendar_accounts;
-          if (!accountData || !Array.isArray(accountData) || accountData.length === 0) {
+          // Fetch the calendar account separately to avoid join issues
+          const { data: accountData, error: accountError } = await supabase
+            .from('user_calendar_accounts')
+            .select('*')
+            .eq('id', mapping.calendar_account_id)
+            .single();
+          
+          if (accountError || !accountData) {
+            errors.push(`Mapping ${mapping.id}: Calendar account not found`);
             continue;
           }
           
-          const account = toCalendarAccount(accountData[0] as UserCalendarAccount);
-          await this.updateCalendarEvent(account, mapping as EventCalendarMapping, eventData);
+          const account = toCalendarAccount(accountData);
+          await this.updateCalendarEvent(account, mapping, eventData);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'Unknown error';
           errors.push(`Mapping ${mapping.id}: ${errorMsg}`);
@@ -375,7 +468,7 @@ export const calendarSyncService = {
       // Get all mappings for this user and event
       const { data: mappings, error: mappingsError } = await supabase
         .from('event_calendar_mappings')
-        .select('*, user_calendar_accounts(*)')
+        .select('*')
         .eq('event_id', eventId)
         .eq('user_id', userId)
         .neq('status', 'canceled');
@@ -386,13 +479,20 @@ export const calendarSyncService = {
 
       for (const mapping of mappings) {
         try {
-          const accountData = mapping.user_calendar_accounts;
-          if (!accountData || !Array.isArray(accountData) || accountData.length === 0) {
+          // Fetch the calendar account separately
+          const { data: accountData, error: accountError } = await supabase
+            .from('user_calendar_accounts')
+            .select('*')
+            .eq('id', mapping.calendar_account_id)
+            .single();
+          
+          if (accountError || !accountData) {
+            errors.push(`Mapping ${mapping.id}: Calendar account not found`);
             continue;
           }
 
-          const account = toCalendarAccount(accountData[0] as UserCalendarAccount);
-          await this.deleteCalendarEvent(account, mapping as EventCalendarMapping);
+          const account = toCalendarAccount(accountData);
+          await this.deleteCalendarEvent(account, mapping);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'Unknown error';
           errors.push(`Mapping ${mapping.id}: ${errorMsg}`);
@@ -408,11 +508,13 @@ export const calendarSyncService = {
 
   /**
    * Build CalendarEventData from an LCL event
+   * @param event - The LCL event
+   * @param durationMinutes - Default duration in minutes (default: 120 = 2 hours)
    */
-  buildEventData(event: Event): CalendarEventData {
+  buildEventData(event: Event, durationMinutes: number = 120): CalendarEventData {
     const startTime = new Date(event.event_date);
-    // Default to 2 hour duration if no end time specified
-    const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+    // Use provided duration, defaulting to 2 hours
+    const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
 
     return {
       title: event.title,
