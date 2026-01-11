@@ -1,25 +1,19 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnchorCard } from '@/components/AnchorCard';
-import { ForkedCard } from '@/components/ForkedCard';
-import { NicheCard } from '@/components/NicheCard';
+import { AnimatePresence } from 'framer-motion';
+import { EventCard } from '@/components/EventCard';
 import { FloatingNav } from '@/components/FloatingNav';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
-import { MapPin, Bell, Sun, Sparkles, Plus, Zap } from 'lucide-react';
+import { MapPin, SlidersHorizontal, Plus } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { formatEventTime } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { CATEGORY_MAP } from '@/lib/categories';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
-
-const getTimeOfDay = (): string => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 18) return 'Good Afternoon';
-  return 'Good Evening';
-};
 
 const Feed = () => {
   const navigate = useNavigate();
@@ -27,23 +21,25 @@ const Feed = () => {
   const { events: allEvents, loading, refetch: refetchEvents } = useEvents();
   const { handleJoinEvent, joiningEvents } = useJoinEvent(profile?.id, refetchEvents);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createModalType, setCreateModalType] = useState<{
-    category: 'cinema' | 'market' | 'crafts' | 'sports' | 'gaming';
-    type: 'anchor' | 'fork' | 'signal';
-  }>({ category: 'cinema', type: 'anchor' });
-  const { toast } = useToast();
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  
+  const {
+    showOnboarding,
+    setShowOnboarding,
+    preferences,
+    completeOnboarding,
+    isLoaded,
+  } = useOnboarding();
 
-  const localLifeEvents = useMemo(() => {
-    return allEvents.filter(e => e.event_type === 'anchor' && ['cinema', 'market'].includes(e.category));
-  }, [allEvents]);
-
-  const tribeEvents = useMemo(() => {
-    return allEvents.filter(e => ['crafts', 'sports', 'gaming'].includes(e.category) && e.event_type !== 'fork');
-  }, [allEvents]);
-
-  const getSidecarEvents = useCallback((parentId: string) => {
-    return allEvents.filter(e => e.parent_event_id === parentId);
-  }, [allEvents]);
+  // Filter events based on user preferences
+  const filteredEvents = useMemo(() => {
+    if (!preferences?.selectedCategories?.length) return allEvents;
+    
+    return allEvents.filter(event => {
+      const mappedCategory = CATEGORY_MAP[event.category] || event.category;
+      return preferences.selectedCategories.includes(mappedCategory);
+    });
+  }, [allEvents, preferences?.selectedCategories]);
 
   const handleNavigate = (view: 'feed' | 'map' | 'profile') => {
     if (view === 'feed') navigate('/feed');
@@ -51,197 +47,142 @@ const Feed = () => {
     else if (view === 'profile') navigate('/profile');
   };
 
+  // Show loading while checking onboarding status
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[hsl(var(--surface-warm))] text-zinc-900 pb-32 font-sans selection:bg-zinc-900 selection:text-white">
-      <header className="sticky top-0 z-40 glass-light px-6 py-4 flex items-center justify-between border-b border-zinc-200/50 shadow-apple-sm">
+    <div className="min-h-screen bg-zinc-950 text-white pb-32 font-sans selection:bg-white selection:text-zinc-900">
+      {/* Header */}
+      <header className="sticky top-0 z-40 px-5 py-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-xl border-b border-white/5">
         <div>
-          <h1 className="text-xl font-bold text-zinc-900 leading-tight tracking-tight">
-            {getTimeOfDay()}, {profile?.full_name?.split(' ')[0] || 'Explorer'}
+          <h1 className="text-xl font-bold text-white leading-tight tracking-tight">
+            Discover
           </h1>
-          <div className="flex items-center gap-1 text-xs font-medium text-zinc-500 mt-0.5">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 mt-0.5">
             <MapPin size={12} />
-            <span>{profile?.location_city || 'Amsterdam'}, {profile?.location_country || 'NL'}</span>
+            <span>{preferences?.zone || profile?.location_city || 'Amsterdam'}</span>
           </div>
         </div>
+        
         <button 
-          onClick={() => toast({ title: 'Notifications coming soon!', description: '🔔' })}
-          className="w-12 h-12 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-zinc-600 shadow-apple-sm hover:shadow-apple-md transition-all active:scale-95"
+          onClick={() => setShowFilterMenu(!showFilterMenu)}
+          className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
         >
-          <Bell size={18} />
+          <SlidersHorizontal size={18} />
         </button>
       </header>
 
-      <main className="px-4 max-w-md mx-auto space-y-12 pt-6">
-        {/* SECTION 1: LOCAL LIFE */}
-        <section>
-          <div className="flex items-center justify-between mb-6 px-1">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-orange-100 rounded-xl text-orange-600">
-                <Sun size={16} />
+      {/* Filter Menu Dropdown */}
+      <AnimatePresence>
+        {showFilterMenu && (
+          <div className="absolute top-16 right-4 z-50 bg-zinc-900 border border-white/10 rounded-2xl p-4 shadow-2xl min-w-[200px]">
+            <p className="text-xs text-zinc-500 mb-3 font-medium">Active Filters</p>
+            {preferences?.selectedCategories?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {preferences.selectedCategories.slice(0, 4).map(cat => (
+                  <span key={cat} className="px-2.5 py-1 bg-white/10 rounded-lg text-xs text-white capitalize">
+                    {cat}
+                  </span>
+                ))}
+                {preferences.selectedCategories.length > 4 && (
+                  <span className="px-2.5 py-1 bg-white/10 rounded-lg text-xs text-zinc-400">
+                    +{preferences.selectedCategories.length - 4}
+                  </span>
+                )}
               </div>
-              <h2 className="text-lg font-bold text-zinc-900 tracking-tight">
-                Local Life
-              </h2>
-            </div>
-            <button
-              onClick={() => {
-                setCreateModalType({ category: 'cinema', type: 'anchor' });
-                setShowCreateModal(true);
-              }}
-              className="flex items-center gap-1.5 px-4 py-2.5 min-h-[48px] bg-white border border-zinc-200 rounded-2xl text-sm font-semibold text-zinc-900 hover:bg-zinc-50 hover:shadow-apple-sm transition-all shadow-apple-sm active:scale-95"
-            >
-              <Plus size={16} strokeWidth={2.5} />
-              <span>Create</span>
-            </button>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-8 text-zinc-500">Loading events...</div>
-          ) : localLifeEvents.length > 0 ? (
-            <>
-              {localLifeEvents.slice(0, 1).map(event => {
-                const sidecars = getSidecarEvents(event.id);
-                return (
-                  <AnchorCard
-                    key={event.id}
-                    eventId={event.id}
-                    title={event.title}
-                    image={event.image_url || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=1000'}
-                    matchPercentage={event.match_percentage}
-                    distance={event.venue_name}
-                    category={event.category.charAt(0).toUpperCase() + event.category.slice(1)}
-                    date={formatEventTime(event.event_date, event.event_time)}
-                    onCommit={handleJoinEvent}
-                  >
-                    {sidecars.length > 0 && (
-                      <ForkedCard
-                        title={sidecars[0].title}
-                        parentEvent={event.title}
-                        eventId={sidecars[0].id}
-                        onJoin={handleJoinEvent}
-                        isJoining={joiningEvents.has(sidecars[0].id)}
-                        attendees={[
-                          { id: '1', image: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&auto=format&fit=crop&q=60', alt: 'User 1' },
-                          { id: '2', image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60', alt: 'User 2' },
-                          { id: '3', image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&auto=format&fit=crop&q=60', alt: 'User 3' }
-                        ]}
-                        extraCount={sidecars[0].attendee_count ? sidecars[0].attendee_count - 3 : 0}
-                      />
-                    )}
-                  </AnchorCard>
-                );
-              })}
-
-              {localLifeEvents.slice(1, 2).map(event => (
-                <div key={event.id} className="mt-4 glass-light rounded-3xl p-5 shadow-apple-sm border border-zinc-200/50 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-1">
-                      {event.category}
-                    </div>
-                    <h3 className="font-bold text-zinc-900">{event.title}</h3>
-                    <p className="text-xs text-zinc-500 mt-0.5">{event.venue_name} • {formatEventTime(event.event_date, event.event_time)}</p>
-                  </div>
-                  <button
-                    onClick={() => handleJoinEvent(event.id)}
-                    disabled={joiningEvents.has(event.id)}
-                    className="px-5 py-2.5 min-h-[44px] bg-zinc-900 text-white text-sm font-semibold rounded-2xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shadow-apple-sm"
-                  >
-                    {joiningEvents.has(event.id) ? 'Joining...' : 'Join'}
-                  </button>
-                </div>
-              ))}
-            </>
-          ) : (
-            <div className="text-center py-8 text-zinc-500">No local events available.</div>
-          )}
-        </section>
-
-        {/* SECTION 2: MY TRIBES */}
-        <section>
-          <div className="flex items-center justify-between mb-6 px-1">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-violet-100 rounded-xl text-violet-600">
-                <Sparkles size={16} />
-              </div>
-              <h2 className="text-lg font-bold text-zinc-900 tracking-tight">
-                My Tribes
-              </h2>
-            </div>
-            <button
-              onClick={() => {
-                setCreateModalType({ category: 'gaming', type: 'signal' });
-                setShowCreateModal(true);
-              }}
-              className="flex items-center gap-1.5 px-4 py-2.5 min-h-[48px] bg-gradient-to-r from-violet-500 to-indigo-500 rounded-2xl text-sm font-semibold text-white hover:shadow-apple-md transition-all shadow-apple-md active:scale-95"
-            >
-              <Zap size={16} strokeWidth={2.5} />
-              <span>Create</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {loading ? (
-              <div className="col-span-2 text-center py-8 text-zinc-500">Loading tribe events...</div>
-            ) : tribeEvents.length > 0 ? (
-              <>
-                {tribeEvents.map((event, index) => {
-                  let variant: 'crafts' | 'sports' | 'gaming' = 'crafts';
-                  if (event.category === 'sports') variant = 'sports';
-                  else if (event.category === 'gaming') variant = 'gaming';
-
-                  const colSpan = index === 0 ? 'col-span-2 sm:col-span-1' : 'col-span-1';
-
-                  return (
-                    <div key={event.id} className={colSpan}>
-                      <NicheCard
-                        variant={variant}
-                        title={event.title}
-                        venue={event.venue_name}
-                        status={event.status}
-                        date={new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase().replace(',', '')}
-                        eventId={event.id}
-                        onJoin={handleJoinEvent}
-                        isJoining={joiningEvents.has(event.id)}
-                      />
-                    </div>
-                  );
-                })}
-
-                <div className="col-span-1">
-                  <button
-                    onClick={() => {
-                      setCreateModalType({ category: 'crafts', type: 'signal' });
-                      setShowCreateModal(true);
-                    }}
-                    className="relative w-full aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-violet-500 via-purple-500 to-rose-500 shadow-apple-lg group cursor-pointer hover:shadow-apple-xl transition-all duration-300 active:scale-95"
-                  >
-                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"></div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
-                      <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <Plus size={28} strokeWidth={2.5} />
-                      </div>
-                      <h3 className="text-lg font-bold text-center leading-tight">Start Your Own</h3>
-                      <p className="text-xs opacity-80 mt-1 text-center">Create a tribe event</p>
-                    </div>
-                  </button>
-                </div>
-              </>
             ) : (
-              <div className="col-span-2 text-center py-8 text-zinc-500">No tribe events available.</div>
+              <p className="text-sm text-zinc-400">All categories</p>
             )}
+            <button
+              onClick={() => {
+                setShowOnboarding(true);
+                setShowFilterMenu(false);
+              }}
+              className="mt-4 w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium text-white transition-colors"
+            >
+              Edit Preferences
+            </button>
           </div>
-        </section>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <main className="px-4 max-w-lg mx-auto pt-6">
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-48 bg-white/5 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : filteredEvents.length > 0 ? (
+          <div className="space-y-4">
+            {filteredEvents.map(event => (
+              <EventCard
+                key={event.id}
+                id={event.id}
+                title={event.title}
+                category={event.category}
+                venue={event.venue_name}
+                date={formatEventTime(event.event_date, event.event_time)}
+                imageUrl={event.image_url || undefined}
+                matchPercentage={event.match_percentage || undefined}
+                attendees={[
+                  { id: '1', image: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&auto=format&fit=crop&q=60', alt: 'User 1' },
+                  { id: '2', image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60', alt: 'User 2' },
+                ]}
+                extraCount={event.attendee_count ? Math.max(0, event.attendee_count - 2) : 0}
+                onJoin={handleJoinEvent}
+                isJoining={joiningEvents.has(event.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+              <MapPin size={28} className="text-zinc-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">No events found</h3>
+            <p className="text-sm text-zinc-500 max-w-xs">
+              Try adjusting your filters or check back later for new events.
+            </p>
+          </div>
+        )}
       </main>
+
+      {/* Floating Action Button */}
+      <button
+        onClick={() => setShowCreateModal(true)}
+        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-white text-zinc-900 shadow-soft-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
 
       <FloatingNav activeView="feed" onNavigate={handleNavigate} />
 
+      {/* Onboarding Wizard */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingWizard
+            onComplete={completeOnboarding}
+            onClose={() => setShowOnboarding(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Create Event Modal */}
       {showCreateModal && (
         <ErrorBoundary>
           <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
             <CreateEventModal
               onClose={() => setShowCreateModal(false)}
-              defaultCategory={createModalType.category}
-              defaultEventType={createModalType.type}
+              defaultCategory="social"
+              defaultEventType="anchor"
             />
           </Suspense>
         </ErrorBoundary>
