@@ -71,13 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Timeout duration for initial auth check (in milliseconds)
+    const AUTH_TIMEOUT_MS = 10000;
+
     // Set a timeout to ensure loading state is always resolved
     // This prevents infinite loading if Supabase connection hangs
     let loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
       console.warn('[Auth] Session check timeout - continuing without authentication');
       setLoading(false);
-      loadingTimeout = null; // Clear reference to prevent double-clear on cleanup
-    }, 10000); // 10 second timeout
+      loadingTimeout = null;
+    }, AUTH_TIMEOUT_MS);
 
     // Helper to safely clear timeout if it hasn't fired yet
     const clearLoadingTimeout = () => {
