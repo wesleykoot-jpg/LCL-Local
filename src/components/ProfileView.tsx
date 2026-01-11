@@ -28,24 +28,51 @@ const iconMap: Record<string, React.ComponentType> = {
   Radio,
 };
 
+// Mock profile for development mode
+const MOCK_PROFILE = {
+  id: 'dev-profile-001',
+  user_id: 'dev-user-001',
+  full_name: 'Demo User',
+  location_city: 'Amsterdam',
+  location_country: 'Netherlands',
+  verified_resident: true,
+  reliability_score: 95,
+  events_attended: 12,
+  events_committed: 13,
+  avatar_url: null,
+  current_persona: 'family',
+  location_coordinates: null,
+  profile_complete: true,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
 export function ProfileView() {
   const { profile, signOut } = useAuth();
   const [personaMode, setPersonaMode] = useState<PersonaMode>('family');
   const [isSigningOut, setIsSigningOut] = useState(false);
 
+  // Use mock profile if not authenticated (for development)
+  const displayProfile = profile || MOCK_PROFILE;
+  const isDemoMode = !profile;
+
   const { stats: personaStats, loading: statsLoading } = usePersonaStats(
-    profile?.id || '',
+    displayProfile.id,
     personaMode
   );
   const { badges: personaBadges, loading: badgesLoading } = usePersonaBadges(
-    profile?.id || '',
+    displayProfile.id,
     personaMode
   );
-  const { commitments, loading: commitmentsLoading } = useUserCommitments(profile?.id || '');
+  const { commitments, loading: commitmentsLoading } = useUserCommitments(displayProfile.id);
 
   const currentPersona = personaModeConfig[personaMode];
 
   const handleSignOut = async () => {
+    if (isDemoMode) {
+      toast('Demo mode - no account to sign out from', { icon: 'ℹ️' });
+      return;
+    }
     setIsSigningOut(true);
     try {
       await signOut();
@@ -60,15 +87,14 @@ export function ProfileView() {
   const handleSettingsClick = (setting: string) => {
     toast(`${setting} coming soon!`, { icon: '🚧' });
   };
-
-  if (!profile) {
-    return (
-      <div className="w-full min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-        <div className="text-zinc-600">No profile found.</div>
-      </div>
-    );
-  }
   return <div className="w-full min-h-screen bg-[#F8F9FA] pb-32">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="bg-amber-500 text-white text-center py-2 text-sm font-medium">
+          Demo Mode — Sign in for your real profile
+        </div>
+      )}
+      
       {/* Header with Persona Switcher */}
       <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 text-white">
         <div className="max-w-md mx-auto px-6 py-6">
@@ -92,20 +118,20 @@ export function ProfileView() {
           <div className="flex items-center gap-4 mb-6">
             <div className="relative">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                {profile.full_name.charAt(0).toUpperCase()}
+                {displayProfile.full_name.charAt(0).toUpperCase()}
               </div>
-              {profile.verified_resident && (
+              {displayProfile.verified_resident && (
                 <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center border-4 border-zinc-900">
                   <CheckCircle size={14} className="text-white" fill="currentColor" />
                 </div>
               )}
             </div>
             <div>
-              <h2 className="text-xl font-bold">{profile.full_name}</h2>
+              <h2 className="text-xl font-bold">{displayProfile.full_name}</h2>
               <div className="flex items-center gap-2 text-sm text-white/80 mt-1">
                 <MapPin size={14} />
-                <span>{profile.location_city}, {profile.location_country}</span>
-                {profile.verified_resident && (
+                <span>{displayProfile.location_city}, {displayProfile.location_country}</span>
+                {displayProfile.verified_resident && (
                   <span className="px-2 py-0.5 bg-green-500/20 text-green-300 text-xs font-bold rounded-full border border-green-500/30">
                     Verified Resident
                   </span>
@@ -123,19 +149,19 @@ export function ProfileView() {
               <div className="flex items-center gap-1">
                 <TrendingUp size={14} className="text-green-400" />
                 <span className="text-xs text-green-400 font-bold">
-                  {profile.reliability_score >= 95 ? '+2% this month' : 'Stable'}
+                  {displayProfile.reliability_score >= 95 ? '+2% this month' : 'Stable'}
                 </span>
               </div>
             </div>
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-4xl font-bold">{Math.round(profile.reliability_score)}%</span>
+              <span className="text-4xl font-bold">{Math.round(displayProfile.reliability_score)}%</span>
               <span className="text-white/60 text-sm">Attendance Rate</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-white/80">
               <CheckCircle size={14} className="text-green-400" />
               <span>
                 Attended{' '}
-                <span className="font-bold text-white">{profile.events_attended} of last {profile.events_committed}</span>{' '}
+                <span className="font-bold text-white">{displayProfile.events_attended} of last {displayProfile.events_committed}</span>{' '}
                 events
               </span>
             </div>
