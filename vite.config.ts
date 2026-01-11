@@ -3,10 +3,10 @@ import react from '@vitejs/plugin-react-swc'
 import { componentTagger } from 'lovable-tagger'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     componentTagger({
-      enabled: process.env.NODE_ENV === 'development',
+      enabled: mode === 'development',
     }),
     react(),
   ],
@@ -37,4 +37,4 @@ export default defineConfig({
     host: "::",
     port: 8080,
   },
-})
+}))
