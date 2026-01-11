@@ -71,20 +71,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id)
-          .catch(() => {
-            // Profile doesn't exist, ignore for now
-            // Will be handled by onAuthStateChange for new users
-          })
-          .finally(() => setLoading(false));
-      } else {
+    // Set a timeout to ensure loading state is always resolved
+    const loadingTimeout = setTimeout(() => {
+      console.warn('[Auth] Session check timeout - continuing without authentication');
+      setLoading(false);
+    }, 10000); // 10 second timeout
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(loadingTimeout);
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id)
+            .catch(() => {
+              // Profile doesn't exist, ignore for now
+              // Will be handled by onAuthStateChange for new users
+            })
+            .finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        clearTimeout(loadingTimeout);
+        console.error('[Auth] Failed to get session:', error);
         setLoading(false);
-      }
-    });
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
@@ -127,7 +140,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
