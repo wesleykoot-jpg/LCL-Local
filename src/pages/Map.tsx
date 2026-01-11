@@ -13,7 +13,7 @@ const Map = () => {
           <MapView />
         </Suspense>
       </ErrorBoundary>
-      <FloatingNav activeView="map" onNavigate={handleNavigate} />
+      <FloatingNav activeView="map" />
     </>
   );
 };
