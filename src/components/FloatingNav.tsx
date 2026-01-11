@@ -1,16 +1,34 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Map, User } from 'lucide-react';
 
 interface FloatingNavProps {
-  activeView: 'feed' | 'map' | 'profile';
-  onNavigate: (view: 'feed' | 'map' | 'profile') => void;
+  activeView?: 'feed' | 'map' | 'profile';
+  onNavigate?: (view: 'feed' | 'map' | 'profile') => void;
 }
 
 export function FloatingNav({
-  activeView,
+  activeView: activeViewProp,
   onNavigate
 }: FloatingNavProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Determine active view from URL if not provided
+  const activeView = activeViewProp || (() => {
+    if (location.pathname === '/map') return 'map';
+    if (location.pathname === '/profile') return 'profile';
+    return 'feed';
+  })();
+
+  const handleNav = (view: 'feed' | 'map' | 'profile') => {
+    if (onNavigate) {
+      onNavigate(view);
+    } else {
+      navigate(`/${view}`);
+    }
+  };
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
       {/* 2026: Premium glass nav with refined blur and subtle shadow */}
@@ -22,7 +40,7 @@ export function FloatingNav({
       >
         {/* Touch targets 48px minimum for better mobile UX */}
         <motion.button 
-          onClick={() => onNavigate('feed')} 
+          onClick={() => handleNav('feed')} 
           className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
             activeView === 'feed' 
               ? 'bg-white/20 text-white' 
@@ -33,7 +51,7 @@ export function FloatingNav({
           <Home size={22} strokeWidth={2} />
         </motion.button>
         <motion.button 
-          onClick={() => onNavigate('map')} 
+          onClick={() => handleNav('map')} 
           className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
             activeView === 'map' 
               ? 'bg-white/20 text-white' 
@@ -44,7 +62,7 @@ export function FloatingNav({
           <Map size={22} strokeWidth={2} />
         </motion.button>
         <motion.button 
-          onClick={() => onNavigate('profile')} 
+          onClick={() => handleNav('profile')} 
           className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
             activeView === 'profile' 
               ? 'bg-white/20 text-white' 
