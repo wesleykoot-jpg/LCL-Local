@@ -119,12 +119,14 @@ export function CreateEventModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-3xl">
+      {/* LCL 2.0: Enhanced bottom sheet with upward shadow */}
+      <div className="bg-white rounded-t-[2rem] sm:rounded-3xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto shadow-up-sheet">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-[2rem]">
           <h2 className="text-xl font-bold text-zinc-900">Create Event</h2>
+          {/* LCL 2.0: Close button meets 44px touch target */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors"
           >
             <X size={24} />
           </button>
@@ -297,18 +299,19 @@ export function CreateEventModal({
             />
           </div>
 
+          {/* LCL 2.0: Touch targets meet 52px for comfortable primary action */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-4 border border-gray-300 rounded-xl font-bold text-zinc-900 hover:bg-gray-50 transition-all active:scale-95"
+              className="flex-1 px-6 py-4 min-h-[52px] border border-gray-300 rounded-xl font-bold text-zinc-900 hover:bg-gray-50 transition-all active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-4 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-4 min-h-[52px] bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating...' : 'Create Event'}
             </button>

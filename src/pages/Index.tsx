@@ -111,20 +111,22 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-zinc-900 pb-32 font-sans selection:bg-zinc-900 selection:text-white">
       <DebugConnection />
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#F8F9FA]/90 backdrop-blur-md px-6 py-4 flex items-center justify-between border-b border-gray-200/50">
+      {/* LCL 2.0: Enhanced header with improved glass effect and touch target */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl px-6 py-4 flex items-center justify-between border-b border-gray-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
         <div>
           <h1 className="text-xl font-bold text-zinc-900 leading-tight">
             {getTimeOfDay()}, {profile?.full_name.split(' ')[0] || 'User'}
           </h1>
-          <div className="flex items-center gap-1 text-xs font-medium text-zinc-500 mt-0.5">
+          {/* LCL 2.0: Improved text contrast with text-zinc-600 */}
+          <div className="flex items-center gap-1 text-xs font-medium text-zinc-600 mt-0.5">
             <MapPin size={12} />
             <span>{profile?.location_city || 'Unknown'}, {profile?.location_country || 'NL'}</span>
           </div>
         </div>
+        {/* LCL 2.0: Touch target now meets 44px minimum (w-11 = 2.75rem = 44px) */}
         <button 
           onClick={() => toast({ title: 'Notifications coming soon!', description: '🔔' })}
-          className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-zinc-600 shadow-sm hover:scale-105 transition-transform"
+          className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-zinc-600 shadow-sm hover:scale-105 transition-transform"
         >
           <Bell size={18} />
         </button>
@@ -132,22 +134,25 @@ const Index = () => {
 
       <main className="px-4 max-w-md mx-auto space-y-12 pt-6">
         {/* SECTION 1: LOCAL LIFE */}
+        {/* LCL 2.0: Improved section spacing with mb-6 for better visual rhythm */}
         <section>
-          <div className="flex items-center justify-between mb-4 px-1">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-blue-100 rounded-md text-blue-600">
-                <Sun size={14} />
+          <div className="flex items-center justify-between mb-6 px-1">
+            <div className="flex items-center gap-3">
+              {/* LCL 2.0: Larger icon container for visual balance */}
+              <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                <Sun size={16} />
               </div>
               <h2 className="text-lg font-bold text-zinc-900 tracking-tight">
                 Local Life
               </h2>
             </div>
+            {/* LCL 2.0: Touch target meets 44px minimum with min-h-[44px] */}
             <button
               onClick={() => {
                 setCreateModalType({ category: 'cinema', type: 'anchor' });
                 setShowCreateModal(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-zinc-900 hover:bg-gray-50 hover:scale-105 transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-4 py-2 min-h-[44px] bg-white border border-gray-200 rounded-full text-xs font-bold text-zinc-900 hover:bg-gray-50 hover:scale-105 transition-all shadow-sm"
             >
               <Plus size={14} strokeWidth={3} />
               <span>Create</span>
@@ -155,7 +160,7 @@ const Index = () => {
           </div>
 
           {loading ? (
-            <div className="text-center py-8 text-zinc-500">Loading events...</div>
+            <div className="text-center py-8 text-zinc-600">Loading events...</div>
           ) : localLifeEvents.length > 0 ? (
             <>
               {localLifeEvents.slice(0, 1).map(event => {
@@ -212,7 +217,7 @@ const Index = () => {
                     <h3 className="font-bold text-zinc-900">
                       {event.title}
                     </h3>
-                    <p className="text-xs text-zinc-500">{event.venue_name} • {formatEventTime(event.event_date, event.event_time)}</p>
+                    <p className="text-xs text-zinc-600">{event.venue_name} • {formatEventTime(event.event_date, event.event_time)}</p>
                   </div>
                   <button
                     onClick={() => handleJoinEvent(event.id)}
@@ -225,27 +230,30 @@ const Index = () => {
               ))}
             </>
           ) : (
-            <div className="text-center py-8 text-zinc-500">No local events available. Please seed the database.</div>
+            <div className="text-center py-8 text-zinc-600">No local events available. Please seed the database.</div>
           )}
         </section>
 
         {/* SECTION 2: MY TRIBES */}
+        {/* LCL 2.0: Improved section spacing with mb-6 for better visual rhythm */}
         <section>
-          <div className="flex items-center justify-between mb-4 px-1">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-purple-100 rounded-md text-purple-600">
-                <Sparkles size={14} />
+          <div className="flex items-center justify-between mb-6 px-1">
+            <div className="flex items-center gap-3">
+              {/* LCL 2.0: Larger icon container for visual balance */}
+              <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
+                <Sparkles size={16} />
               </div>
               <h2 className="text-lg font-bold text-zinc-900 tracking-tight">
                 My Tribes
               </h2>
             </div>
+            {/* LCL 2.0: Touch target meets 44px minimum with min-h-[44px] */}
             <button
               onClick={() => {
                 setCreateModalType({ category: 'gaming', type: 'signal' });
                 setShowCreateModal(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-xs font-bold text-white hover:scale-105 transition-all shadow-lg hover:shadow-xl"
+              className="flex items-center gap-1.5 px-4 py-2 min-h-[44px] bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-xs font-bold text-white hover:scale-105 transition-all shadow-lg hover:shadow-xl"
             >
               <Zap size={14} strokeWidth={3} />
               <span>Create</span>
@@ -254,7 +262,7 @@ const Index = () => {
 
           <div className="grid grid-cols-2 gap-4">
             {loading ? (
-              <div className="col-span-2 text-center py-8 text-zinc-500">Loading tribe events...</div>
+              <div className="col-span-2 text-center py-8 text-zinc-600">Loading tribe events...</div>
             ) : tribeEvents.length > 0 ? (
               <>
                 {tribeEvents.map((event, index) => {
@@ -306,7 +314,7 @@ const Index = () => {
                 </div>
               </>
             ) : (
-              <div className="col-span-2 text-center py-8 text-zinc-500">No tribe events available. Please seed the database.</div>
+              <div className="col-span-2 text-center py-8 text-zinc-600">No tribe events available. Please seed the database.</div>
             )}
           </div>
         </section>

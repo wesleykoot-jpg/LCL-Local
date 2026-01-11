@@ -57,11 +57,50 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // LCL 2.0 Design System Brand Colors
+        brand: {
+          primary: "#B4FF39",
+          "primary-hover": "#a3ed28",
+        },
+        surface: {
+          base: "#F8F9FA",
+          card: "#FFFFFF",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      // LCL 2.0 Design System Shadows
+      boxShadow: {
+        "card": "0 4px 24px rgba(0, 0, 0, 0.06)",
+        "card-hover": "0 8px 32px rgba(0, 0, 0, 0.1)",
+        "card-elevated": "0 8px 32px rgba(0, 0, 0, 0.12)",
+        "float": "0 8px 40px rgba(0, 0, 0, 0.15)",
+        "nav": "0 8px 40px rgba(0, 0, 0, 0.5)",
+        "glass": "0 8px 32px rgba(0, 0, 0, 0.08)",
+        "up-sheet": "0 -12px 48px rgba(0, 0, 0, 0.2)",
+      },
+      // LCL 2.0 Design System Backdrop Blur
+      backdropBlur: {
+        xs: "2px",
+        "3xl": "64px",
+      },
+      // LCL 2.0 Touch Target Spacing
+      spacing: {
+        "11": "2.75rem",
+        "13": "3.25rem", 
+        "15": "3.75rem",
+      },
+      // LCL 2.0 Touch Target Min Sizes
+      minHeight: {
+        "touch": "44px",
+        "touch-lg": "48px",
+      },
+      minWidth: {
+        "touch": "44px",
+        "touch-lg": "48px",
       },
       keyframes: {
         "accordion-down": {
