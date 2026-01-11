@@ -71,20 +71,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id)
-          .catch(() => {
-            // Profile doesn't exist, ignore for now
-            // Will be handled by onAuthStateChange for new users
-          })
-          .finally(() => setLoading(false));
-      } else {
-        setLoading(false);
+    // Timeout duration for initial auth check (in milliseconds)
+    const AUTH_TIMEOUT_MS = 10000;
+
+    // Set a timeout to ensure loading state is always resolved
+    // This prevents infinite loading if Supabase connection hangs
+    let loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
+      console.warn('[Auth] Session check timeout - continuing without authentication');
+      setLoading(false);
+      loadingTimeout = null;
+    }, AUTH_TIMEOUT_MS);
+
+    // Helper to safely clear timeout if it hasn't fired yet
+    const clearLoadingTimeout = () => {
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = null;
       }
-    });
+    };
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        clearLoadingTimeout();
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id)
+            .catch(() => {
+              // Profile doesn't exist, ignore for now
+              // Will be handled by onAuthStateChange for new users
+            })
+            .finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        clearLoadingTimeout();
+        console.error('[Auth] Failed to get session:', error);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
@@ -127,7 +155,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearLoadingTimeout();
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
