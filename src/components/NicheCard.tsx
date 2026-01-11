@@ -1,6 +1,9 @@
 import React, { memo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { MapPin, Radio, Palette, Loader2 } from 'lucide-react';
+
 export type NicheCardVariant = 'crafts' | 'sports' | 'gaming';
+
 interface NicheCardProps {
   variant: NicheCardVariant;
   title: string;
@@ -11,6 +14,7 @@ interface NicheCardProps {
   onJoin?: (eventId: string) => Promise<void>;
   isJoining?: boolean;
 }
+
 export const NicheCard = memo(function NicheCard({
   variant,
   title,
@@ -33,145 +37,142 @@ export const NicheCard = memo(function NicheCard({
       setLocalJoining(false);
     }
   };
-  // CRAFTS VARIANT (Soft / Museum) - LCL 2.0: Enhanced shadows and touch targets
-  if (variant === 'crafts') {
-    return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#F5F1E8] shadow-card-elevated group cursor-pointer border border-[#E6E0D0]">
-        {/* Paper Texture Overlay */}
-        <div className="absolute inset-0 bg-paper-texture pointer-events-none mix-blend-multiply"></div>
 
+  // CRAFTS VARIANT - 2026: Warm gradient, refined elegance
+  if (variant === 'crafts') {
+    return (
+      <motion.div 
+        className="relative w-full aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 shadow-apple-md group cursor-pointer border border-orange-100/50"
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      >
         {/* Content */}
-        <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
+        <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
           <div className="flex justify-between items-start">
-            <div className="bg-[#E8E1D0] p-2 rounded-full text-[#8A7E70]">
+            <div className="bg-white/80 backdrop-blur-sm p-2.5 rounded-2xl text-orange-600 shadow-apple-sm">
               <Palette size={18} />
             </div>
-            {status && <span className="text-[#8A7E70] text-xs font-serif-display italic tracking-wide">
+            {status && (
+              <span className="text-orange-600/80 text-xs font-serif-display italic tracking-wide bg-white/60 backdrop-blur-sm px-3 py-1 rounded-full">
                 {status}
-              </span>}
+              </span>
+            )}
           </div>
 
           <div className="space-y-3">
-            <div className="space-y-1">
-              <p className="text-[#8A7E70] text-xs font-medium uppercase tracking-widest">
+            <div className="space-y-1.5">
+              <p className="text-orange-600/70 text-xs font-medium uppercase tracking-widest">
                 Workshop
               </p>
-              <h3 className="text-2xl font-serif-display font-bold text-[#4A4036] leading-tight italic">
+              <h3 className="text-xl font-serif-display font-bold text-zinc-800 leading-tight">
                 {title}
               </h3>
-              <p className="text-[#6B5E50] text-sm font-serif-display flex items-center gap-1.5">
+              <p className="text-zinc-600 text-sm flex items-center gap-1.5">
                 <MapPin size={12} /> {venue}
               </p>
             </div>
 
-            {/* LCL 2.0: Touch target now exceeds 44px minimum */}
             <button 
               onClick={handleJoin}
               disabled={joining || !eventId || !onJoin}
-              className="w-full bg-[#D4886F] text-[#F5F1E8] font-serif-display font-semibold py-3.5 min-h-[48px] rounded-xl hover:bg-[#C0765E] transition-colors text-sm shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-orange-500 text-white font-semibold py-3.5 min-h-[48px] rounded-2xl hover:bg-orange-600 transition-all text-sm shadow-apple-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
             >
-              {joining ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : null}
-              {joining ? 'Reserving...' : 'Reserve Easel'}
+              {joining && <Loader2 size={16} className="animate-spin" />}
+              {joining ? 'Reserving...' : 'Reserve Spot'}
             </button>
           </div>
         </div>
-      </div>;
+      </motion.div>
+    );
   }
-  // SPORTS VARIANT (Team / Athletic) - LCL 2.0: Enhanced shadows and touch targets
-  if (variant === 'sports') {
-    return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#FFD700] shadow-card-elevated group cursor-pointer border-2 border-black">
-        {/* Athletic Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="w-full h-full" style={{
-          backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)',
-          backgroundSize: '10px 10px'
-        }}></div>
-        </div>
 
+  // SPORTS VARIANT - 2026: Vibrant amber, clean typography
+  if (variant === 'sports') {
+    return (
+      <motion.div 
+        className="relative w-full aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-400 shadow-apple-md group cursor-pointer"
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      >
         <div className="absolute inset-0 p-5 flex flex-col justify-between z-10">
           <div className="flex justify-between items-start">
-            <div className="bg-black text-[#FFD700] px-2 py-1 text-xs font-athletic font-bold uppercase tracking-wider -skew-x-12">
-              MATCH DAY
+            <div className="bg-zinc-900 text-amber-400 px-3 py-1.5 text-xs font-athletic font-bold uppercase tracking-wider rounded-xl">
+              Match Day
             </div>
-            <div className="text-black font-athletic font-bold text-lg">
+            <div className="text-zinc-900 font-athletic font-bold text-base bg-white/30 backdrop-blur-sm px-3 py-1 rounded-xl">
               {date || 'JAN 17'}
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
-              <h3 className="text-3xl font-athletic font-bold text-black leading-[0.9] uppercase mb-1">
+              <h3 className="text-2xl font-athletic font-bold text-zinc-900 leading-[0.95] uppercase mb-2">
                 {title}
               </h3>
-              <p className="text-black/80 text-xs font-bold uppercase flex items-center gap-1">
-                <MapPin size={12} strokeWidth={3} /> {venue}
+              <p className="text-zinc-900/70 text-xs font-semibold uppercase flex items-center gap-1.5">
+                <MapPin size={12} strokeWidth={2.5} /> {venue}
               </p>
             </div>
 
-            {/* LCL 2.0: Touch target now exceeds 44px minimum */}
             <button 
               onClick={handleJoin}
               disabled={joining || !eventId || !onJoin}
-              className="w-full bg-black text-[#FFD700] font-athletic font-bold py-3.5 min-h-[48px] rounded-lg hover:bg-black/90 transition-colors text-sm uppercase tracking-wide skew-x-0 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-zinc-900 text-amber-400 font-athletic font-bold py-3.5 min-h-[48px] rounded-2xl hover:bg-zinc-800 transition-all text-sm uppercase tracking-wide active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {joining ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : null}
-              {joining ? 'Joining...' : 'Match Day Squad'}
+              {joining && <Loader2 size={16} className="animate-spin" />}
+              {joining ? 'Joining...' : 'Join Squad'}
             </button>
           </div>
         </div>
-      </div>;
+      </motion.div>
+    );
   }
-  // GAMING VARIANT (Tech / Dashboard) - LCL 2.0: Enhanced shadows and touch targets
-  return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#0F1115] shadow-card-elevated border border-zinc-800 group cursor-pointer">
-      {/* Tactical Map Background */}
+
+  // GAMING VARIANT - 2026: Refined dark with indigo/violet accents
+  return (
+    <motion.div 
+      className="relative w-full aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 shadow-apple-lg border border-zinc-700/50 group cursor-pointer"
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+    >
+      {/* Subtle gradient glow */}
       <div className="absolute inset-0 opacity-30">
-        <div className="w-full h-full bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 50 L40 60 L80 40" stroke="#00FF88" strokeWidth="1" fill="none" opacity="0.5" />
-          <circle cx="40" cy="60" r="3" fill="#00FF88" />
-          <circle cx="80" cy="40" r="3" fill="#00FF88" />
-          <circle cx="20" cy="50" r="3" fill="#00FF88" />
-        </svg>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/40 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-500/30 rounded-full blur-2xl"></div>
       </div>
 
       {/* Status Indicator */}
       <div className="absolute top-4 left-4 flex items-center gap-2">
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00FF88] opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00FF88]"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-400"></span>
         </span>
-        <span className="text-[#00FF88] text-[10px] font-mono-tech uppercase tracking-widest">
+        <span className="text-violet-400 text-[10px] font-mono-tech uppercase tracking-widest">
           {status || 'LIVE'}
         </span>
       </div>
 
       {/* Content */}
       <div className="absolute inset-0 p-5 flex flex-col justify-end">
-        <div className="space-y-2">
-          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-2">
-            <Radio size={18} className="text-[#00FF88]" />
+        <div className="space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white mb-2">
+            <Radio size={18} className="text-violet-400" />
           </div>
           <h3 className="text-lg font-bold text-white leading-tight font-mono-tech">
             {title}
           </h3>
-          {/* LCL 2.0: Improved contrast for dark background */}
           <p className="text-zinc-400 text-xs font-mono-tech">{venue}</p>
         </div>
 
-        {/* LCL 2.0: Touch target now exceeds 44px minimum */}
         <button 
           onClick={handleJoin}
           disabled={joining || !eventId || !onJoin}
-          className="mt-4 w-full bg-[#00FF88] text-black font-bold py-3 min-h-[48px] rounded-lg hover:bg-[#00cc6a] transition-colors text-xs font-mono-tech uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="mt-4 w-full bg-violet-500 text-white font-bold py-3 min-h-[48px] rounded-2xl hover:bg-violet-600 transition-all text-xs font-mono-tech uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95"
         >
-          {joining ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : null}
+          {joining && <Loader2 size={14} className="animate-spin" />}
           {joining ? 'Connecting...' : 'Connect'}
         </button>
       </div>
-    </div>;
+    </motion.div>
+  );
 });
