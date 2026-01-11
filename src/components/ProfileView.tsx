@@ -193,7 +193,7 @@ export function ProfileView() {
               <div className="col-span-3 text-center text-zinc-500 py-4">Loading badges...</div>
             ) : personaBadges.length > 0 ? (
               personaBadges.map((badge) => (
-                <div key={badge.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition-shadow duration-300 text-center cursor-pointer">
+                <div key={badge.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition-shadow duration-300 text-center">
                   <div className={`w-12 h-12 mx-auto rounded-full bg-gradient-to-br ${currentPersona.color} flex items-center justify-center text-white mb-2 text-xl`}>
                     {iconMap[badge.badge_icon] ? createElement(iconMap[badge.badge_icon], { size: 20 }) : badge.badge_icon}
                   </div>
