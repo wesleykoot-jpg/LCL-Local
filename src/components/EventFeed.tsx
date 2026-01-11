@@ -15,7 +15,7 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
   foodie: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
   community: 'https://images.unsplash.com/photo-1470246973918-29a93221c455?auto=format&fit=crop&w=900&q=80',
   entertainment: 'https://images.unsplash.com/photo-1507306300249-2bf49030b4ce?auto=format&fit=crop&w=900&q=80',
-  default: 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=900&q=80',
+  default: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=900&q=80',
 };
 
 // Mock events data for Meppel, Netherlands - all with images
@@ -68,7 +68,7 @@ const MOCK_MEPPEL_EVENTS = [
     id: 'mock-5',
     title: 'Vaartocht over het Meppeler Diep',
     category: 'outdoors',
-    venue_name: 'Meppeler haven (Stouwepad)',
+    venue_name: 'Meppeler Haven (Stouwepad)',
     event_date: '2025-06-22',
     event_time: '13:00',
     image_url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=80',
@@ -99,7 +99,7 @@ const MOCK_MEPPEL_EVENTS = [
   },
   {
     id: 'mock-8',
-    title: 'Streekmarkt Hoofdstraat 2025',
+    title: 'Streekmarkt Hoofdstraat',
     category: 'foodie',
     venue_name: 'Hoofdstraat Meppel',
     event_date: '2025-05-18',
