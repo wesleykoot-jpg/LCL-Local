@@ -72,14 +72,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Set a timeout to ensure loading state is always resolved
-    const loadingTimeout = setTimeout(() => {
+    let loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
       console.warn('[Auth] Session check timeout - continuing without authentication');
       setLoading(false);
+      loadingTimeout = null; // Mark as fired
     }, 10000); // 10 second timeout
 
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        clearTimeout(loadingTimeout);
+        if (loadingTimeout) clearTimeout(loadingTimeout);
+        loadingTimeout = null;
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -94,8 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch((error) => {
-        clearTimeout(loadingTimeout);
+        if (loadingTimeout) clearTimeout(loadingTimeout);
+        loadingTimeout = null;
         console.error('[Auth] Failed to get session:', error);
+        setSession(null);
+        setUser(null);
         setLoading(false);
       });
 
@@ -141,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      clearTimeout(loadingTimeout);
+      if (loadingTimeout) clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, []);
