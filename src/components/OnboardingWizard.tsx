@@ -66,7 +66,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
               {step === 3 && 'You\'re All Set!'}
             </h2>
             <p className="text-sm text-zinc-400 mt-1">
-              {step === 1 && 'Select the categories you\'re interested in'}
+              {step === 1 && 'Select the tribes you want to join'}
               {step === 2 && 'Enter your city or postcode'}
               {step === 3 && 'Your personalized feed is ready'}
             </p>
@@ -105,30 +105,39 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
               >
                 {CATEGORIES.map((cat: CategoryConfig) => {
                   const isSelected = selectedCategories.has(cat.id);
-                  const Icon = cat.icon;
                   
                   return (
                     <button
                       key={cat.id}
                       onClick={() => toggleCategory(cat.id)}
                       className={cn(
-                        'relative p-4 rounded-2xl border transition-all text-left',
+                        'relative p-4 rounded-2xl transition-all text-left',
                         'hover:scale-[1.02] active:scale-[0.98]',
+                        'border-2',
                         isSelected
-                          ? 'bg-white/10 border-white/40'
+                          ? cn('bg-white/5', cat.borderClass.replace('/20', '/60'))
                           : 'bg-white/5 border-white/10 hover:border-white/20'
                       )}
                     >
+                      {/* Check mark for selected */}
                       {isSelected && (
                         <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-white flex items-center justify-center">
                           <Check size={12} className="text-zinc-900" />
                         </div>
                       )}
-                      <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center mb-3', cat.bgClass)}>
-                        <Icon size={20} className={cat.textClass} />
+                      
+                      {/* Color dot indicator */}
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={cn('w-3 h-3 rounded-full', cat.dotClass)} />
                       </div>
-                      <div className="text-sm font-semibold text-white">{cat.label}</div>
-                      <div className="text-xs text-zinc-500 mt-0.5">{cat.emoji}</div>
+                      
+                      {/* Label */}
+                      <div className={cn(
+                        'text-base font-semibold transition-colors',
+                        isSelected ? 'text-white' : 'text-zinc-300'
+                      )}>
+                        {cat.label}
+                      </div>
                     </button>
                   );
                 })}
@@ -185,13 +194,21 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                     const cat = CATEGORIES.find(c => c.id === catId);
                     if (!cat) return null;
                     return (
-                      <span key={catId} className={cn('px-3 py-1.5 rounded-full text-xs font-medium', cat.bgClass, cat.textClass)}>
-                        {cat.emoji} {cat.label}
+                      <span 
+                        key={catId} 
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full',
+                          'text-xs font-semibold uppercase tracking-wide border',
+                          cat.bgClass, cat.textClass, cat.borderClass
+                        )}
+                      >
+                        <span className={cn('w-1.5 h-1.5 rounded-full', cat.dotClass)} />
+                        {cat.label}
                       </span>
                     );
                   })}
                   {selectedCategories.size > 5 && (
-                    <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white">
+                    <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/20">
                       +{selectedCategories.size - 5} more
                     </span>
                   )}

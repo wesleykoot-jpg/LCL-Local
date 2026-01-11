@@ -6,9 +6,10 @@ import { FloatingNav } from '@/components/FloatingNav';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { CategoryFilter } from '@/components/CategoryFilter';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
-import { MapPin, SlidersHorizontal, Plus } from 'lucide-react';
+import { MapPin, Plus } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { formatEventTime } from '@/lib/utils';
 import { CATEGORY_MAP } from '@/lib/categories';
@@ -21,7 +22,7 @@ const Feed = () => {
   const { events: allEvents, loading, refetch: refetchEvents } = useEvents();
   const { handleJoinEvent, joiningEvents } = useJoinEvent(profile?.id, refetchEvents);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
   
   const {
     showOnboarding,
@@ -31,15 +32,29 @@ const Feed = () => {
     isLoaded,
   } = useOnboarding();
 
-  // Filter events based on user preferences
+  // Toggle a category in the active filters
+  const handleToggleFilter = useCallback((categoryId: string) => {
+    setActiveFilters(prev => {
+      if (prev.includes(categoryId)) {
+        return prev.filter(id => id !== categoryId);
+      }
+      return [...prev, categoryId];
+    });
+  }, []);
+
+  // Filter events based on active filters (or user preferences if no active filters)
   const filteredEvents = useMemo(() => {
-    if (!preferences?.selectedCategories?.length) return allEvents;
+    const categoriesToFilter = activeFilters.length > 0 
+      ? activeFilters 
+      : preferences?.selectedCategories || [];
+    
+    if (!categoriesToFilter.length) return allEvents;
     
     return allEvents.filter(event => {
       const mappedCategory = CATEGORY_MAP[event.category] || event.category;
-      return preferences.selectedCategories.includes(mappedCategory);
+      return categoriesToFilter.includes(mappedCategory);
     });
-  }, [allEvents, preferences?.selectedCategories]);
+  }, [allEvents, activeFilters, preferences?.selectedCategories]);
 
   const handleNavigate = (view: 'feed' | 'map' | 'profile') => {
     if (view === 'feed') navigate('/feed');
@@ -59,58 +74,34 @@ const Feed = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-white pb-32 font-sans selection:bg-white selection:text-zinc-900">
       {/* Header */}
-      <header className="sticky top-0 z-40 px-5 py-4 flex items-center justify-between bg-zinc-950/80 backdrop-blur-xl border-b border-white/5">
-        <div>
-          <h1 className="text-xl font-bold text-white leading-tight tracking-tight">
-            Discover
-          </h1>
-          <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 mt-0.5">
-            <MapPin size={12} />
-            <span>{preferences?.zone || profile?.location_city || 'Amsterdam'}</span>
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5">
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white leading-tight tracking-tight">
+              Discover
+            </h1>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 mt-0.5">
+              <MapPin size={12} />
+              <span>{preferences?.zone || profile?.location_city || 'Amsterdam'}</span>
+            </div>
           </div>
+          
+          <button 
+            onClick={() => setShowOnboarding(true)}
+            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
+          >
+            Edit Tribes
+          </button>
         </div>
         
-        <button 
-          onClick={() => setShowFilterMenu(!showFilterMenu)}
-          className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
-        >
-          <SlidersHorizontal size={18} />
-        </button>
+        {/* Category Filter Bar */}
+        <div className="px-4 pb-3">
+          <CategoryFilter
+            selectedCategories={activeFilters}
+            onToggle={handleToggleFilter}
+          />
+        </div>
       </header>
-
-      {/* Filter Menu Dropdown */}
-      <AnimatePresence>
-        {showFilterMenu && (
-          <div className="absolute top-16 right-4 z-50 bg-zinc-900 border border-white/10 rounded-2xl p-4 shadow-2xl min-w-[200px]">
-            <p className="text-xs text-zinc-500 mb-3 font-medium">Active Filters</p>
-            {preferences?.selectedCategories?.length ? (
-              <div className="flex flex-wrap gap-2">
-                {preferences.selectedCategories.slice(0, 4).map(cat => (
-                  <span key={cat} className="px-2.5 py-1 bg-white/10 rounded-lg text-xs text-white capitalize">
-                    {cat}
-                  </span>
-                ))}
-                {preferences.selectedCategories.length > 4 && (
-                  <span className="px-2.5 py-1 bg-white/10 rounded-lg text-xs text-zinc-400">
-                    +{preferences.selectedCategories.length - 4}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-400">All categories</p>
-            )}
-            <button
-              onClick={() => {
-                setShowOnboarding(true);
-                setShowFilterMenu(false);
-              }}
-              className="mt-4 w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium text-white transition-colors"
-            >
-              Edit Preferences
-            </button>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Main Content */}
       <main className="px-4 max-w-lg mx-auto pt-6">
