@@ -28,7 +28,17 @@ export default defineConfig({
     include: ['react', 'react-dom', '@supabase/supabase-js', 'lucide-react'],
   },
   server: {
+    host: "::",
     port: 8080,
-    host: true,
   },
-})
+  plugins: [
+    react(),
+    mode === 'development' &&
+    componentTagger(),
+  ].filter(Boolean),
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+}));
