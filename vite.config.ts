@@ -1,28 +1,22 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
 
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    target: 'es2015',
-    minify: 'terser',
-    cssCodeSplit: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'supabase-vendor': ['@supabase/supabase-js'],
-          'icons-vendor': ['lucide-react'],
-        },
-      },
-    },
-    chunkSizeWarningLimit: 1000,
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom', '@supabase/supabase-js', 'lucide-react'],
-  },
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
   server: {
+    host: "::",
     port: 8080,
-    host: true,
   },
-})
+  plugins: [
+    react(),
+    mode === 'development' &&
+    componentTagger(),
+  ].filter(Boolean),
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+}));
