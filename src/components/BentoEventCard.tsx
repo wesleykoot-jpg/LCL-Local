@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Check, Loader2 } from 'lucide-react';
-import { CategoryBadge } from './CategoryBadge';
+import { getCategoryConfig } from '@/lib/categories';
 import { cn } from '@/lib/utils';
 
 type TileSize = 'hero' | 'tower' | 'standard';
@@ -52,6 +52,7 @@ export const BentoEventCard = memo(function BentoEventCard({
   const [joined, setJoined] = useState(false);
   const joining = isJoining || localJoining;
 
+  const categoryConfig = getCategoryConfig(category);
   const friendAttendees = attendees.filter(a => a.isFriend);
   const showFriendBubbles = friendAttendees.length > 0;
 
@@ -67,40 +68,50 @@ export const BentoEventCard = memo(function BentoEventCard({
   };
 
   const isLarge = size === 'hero' || size === 'tower';
+  const isHero = size === 'hero';
+  const isTower = size === 'tower';
 
   return (
     <motion.article
       className={cn(
-        'bento-card relative overflow-hidden cursor-pointer group',
+        'relative overflow-hidden cursor-pointer group rounded-2xl bg-white border border-border/50',
+        'border-l-[3px]',
+        categoryConfig.accentBorder,
         getGridClass(size),
-        isLarge ? 'p-5' : 'p-4',
         className
       )}
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
     >
-      {/* Background Image (for hero/tower) */}
-      {imageUrl && isLarge && (
-        <div className="absolute inset-0">
+      {/* Image Section */}
+      {imageUrl && (
+        <div className={cn(
+          'relative overflow-hidden',
+          isHero && 'h-[55%]',
+          isTower && 'h-[40%]',
+          !isLarge && 'absolute top-4 right-4 w-12 h-12 rounded-xl'
+        )}>
           <img
             src={imageUrl}
             alt=""
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          {isLarge && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          )}
         </div>
       )}
 
-      {/* Friend Avatars - Social Proof Priority */}
+      {/* Friend Avatars - Social Proof */}
       {showFriendBubbles && (
         <div className={cn(
           'absolute z-20',
-          isLarge ? 'top-4 right-4' : 'top-3 right-3'
+          isLarge ? 'top-3 left-3' : 'bottom-14 right-4'
         )}>
           <div className="flex -space-x-2">
             {friendAttendees.slice(0, 3).map((friend, idx) => (
@@ -111,7 +122,7 @@ export const BentoEventCard = memo(function BentoEventCard({
                 transition={{ delay: idx * 0.1, type: 'spring', stiffness: 500 }}
                 className={cn(
                   'rounded-full border-2 border-white shadow-md overflow-hidden',
-                  isLarge ? 'w-10 h-10' : 'w-8 h-8'
+                  isLarge ? 'w-8 h-8' : 'w-7 h-7'
                 )}
               >
                 <img
@@ -124,7 +135,7 @@ export const BentoEventCard = memo(function BentoEventCard({
             {friendAttendees.length > 3 && (
               <div className={cn(
                 'rounded-full border-2 border-white bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold',
-                isLarge ? 'w-10 h-10' : 'w-8 h-8'
+                isLarge ? 'w-8 h-8' : 'w-7 h-7'
               )}>
                 +{friendAttendees.length - 3}
               </div>
@@ -135,92 +146,88 @@ export const BentoEventCard = memo(function BentoEventCard({
 
       {/* Content */}
       <div className={cn(
-        'relative z-10 flex flex-col h-full',
-        isLarge && imageUrl ? 'justify-end text-white' : ''
+        'flex flex-col h-full',
+        isLarge ? 'p-4' : 'p-4 pr-20'
       )}>
-        {/* Category Tag */}
-        <div className="mb-auto">
-          <CategoryBadge 
-            category={category} 
-            className={cn(isLarge && imageUrl && 'bg-white/20 text-white border-white/30')}
-          />
+        {/* Category Label - Minimal */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className={cn('w-1.5 h-1.5 rounded-full', categoryConfig.dotClass)} />
+          <span className={cn('text-xs font-medium', categoryConfig.textClass)}>
+            {categoryConfig.label}
+          </span>
         </div>
 
-        {/* Event Info */}
-        <div className={cn('mt-3', isLarge ? 'mt-auto' : '')}>
-          <h3 className={cn(
-            'font-headline leading-tight line-clamp-2 mb-2',
-            isLarge ? 'text-xl' : 'text-base',
-            isLarge && imageUrl ? 'text-white' : 'text-foreground'
-          )}>
-            {title}
-          </h3>
+        {/* Event Title */}
+        <h3 className={cn(
+          'font-semibold leading-tight line-clamp-2 text-foreground',
+          isHero ? 'text-xl mb-2' : isTower ? 'text-lg mb-2' : 'text-base mb-1.5'
+        )}>
+          {title}
+        </h3>
 
-          {/* Meta */}
-          <div className={cn(
-            'flex items-center gap-2 text-sm mb-3',
-            isLarge && imageUrl ? 'text-white/70' : 'text-muted-foreground'
-          )}>
-            <MapPin size={14} className="shrink-0" />
-            <span className="truncate">{venue}</span>
-            <span className="opacity-50">·</span>
-            <span className="whitespace-nowrap">{date}</span>
-          </div>
+        {/* Meta Info */}
+        <div className={cn(
+          'flex items-center gap-1.5 text-muted-foreground',
+          isLarge ? 'text-sm' : 'text-xs'
+        )}>
+          <MapPin size={isLarge ? 14 : 12} className="shrink-0 opacity-60" />
+          <span className="truncate">{venue}</span>
+          <span className="opacity-40">·</span>
+          <span className="whitespace-nowrap">{date}</span>
+        </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between gap-3">
-            {/* Attendee count */}
-            {totalAttendees > 0 && (
-              <span className={cn(
-                'text-sm',
-                isLarge && imageUrl ? 'text-white/60' : 'text-muted-foreground'
-              )}>
-                {totalAttendees} going
-              </span>
+        {/* Spacer */}
+        <div className="flex-1 min-h-2" />
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-2 mt-auto">
+          {/* Attendee count */}
+          {totalAttendees > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {totalAttendees} going
+            </span>
+          )}
+
+          {/* Action Button */}
+          <motion.button
+            onClick={handleJoin}
+            disabled={joining || !onJoin}
+            className={cn(
+              'ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all',
+              joined
+                ? 'bg-emerald-500 text-white'
+                : 'bg-primary text-primary-foreground shadow-sm hover:shadow-md',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
-
-            {/* Action Button */}
-            <motion.button
-              onClick={handleJoin}
-              disabled={joining || !onJoin}
-              className={cn(
-                'ml-auto px-4 py-2 rounded-xl text-sm font-semibold min-h-touch flex items-center gap-2 transition-all',
-                joined
-                  ? 'bg-emerald-500 text-white'
-                  : 'btn-action',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
+            whileTap={{ scale: 0.95 }}
+          >
+            <AnimatePresence mode="wait">
+              {joining ? (
+                <motion.span
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Loader2 size={14} className="animate-spin" />
+                </motion.span>
+              ) : joined ? (
+                <motion.span
+                  key="joined"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-1"
+                >
+                  <Check size={14} />
+                  <span>Joined</span>
+                </motion.span>
+              ) : (
+                <motion.span key="join" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  Join
+                </motion.span>
               )}
-              whileTap={{ scale: 0.95 }}
-            >
-              <AnimatePresence mode="wait">
-                {joining ? (
-                  <motion.span
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center gap-2"
-                  >
-                    <Loader2 size={16} className="animate-spin" />
-                  </motion.span>
-                ) : joined ? (
-                  <motion.span
-                    key="joined"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-2"
-                  >
-                    <Check size={16} />
-                    <span>Joined!</span>
-                  </motion.span>
-                ) : (
-                  <motion.span key="join" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    Join
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          </div>
+            </AnimatePresence>
+          </motion.button>
         </div>
       </div>
     </motion.article>

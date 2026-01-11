@@ -217,7 +217,7 @@ export const BentoGrid = memo(function BentoGrid({
 
   return (
     <LayoutGroup>
-      <motion.div className="grid grid-cols-2 gap-3 auto-rows-[180px]" layout>
+      <motion.div className="grid grid-cols-2 gap-4 auto-rows-[200px]" layout>
         <AnimatePresence mode="popLayout">
           {processedEvents.map((event) => (
             <BentoEventCard
