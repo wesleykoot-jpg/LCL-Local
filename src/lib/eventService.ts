@@ -1,5 +1,5 @@
-import { supabase } from './supabase';
-import type { Database } from './database.types';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
@@ -141,8 +141,10 @@ export async function checkEventAttendance(eventId: string, profileId: string) {
  */
 export async function createEvent(params: CreateEventParams) {
   try {
+    const { creator_profile_id, ...eventParams } = params;
     const event = {
-      ...params,
+      ...eventParams,
+      created_by: creator_profile_id,
       created_at: new Date().toISOString(),
       status: 'active',
       match_percentage: 85,

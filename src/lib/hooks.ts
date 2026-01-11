@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from './supabase';
-import { joinEvent } from './eventService';
+import { supabase } from '@/integrations/supabase/client';
+import { joinEvent, checkEventAttendance } from './eventService';
 import { hapticNotification } from './haptics';
 import toast from 'react-hot-toast';
-import type { Database } from './database.types';
+import type { Database } from '@/integrations/supabase/types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type Event = Database['public']['Tables']['events']['Row'];
@@ -130,48 +130,55 @@ export function useEvents(options?: {
   const [events, setEvents] = useState<EventWithAttendees[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        let query = supabase
-          .from('events')
-          .select(`
-            *,
-            attendee_count:event_attendees(count)
-          `)
-          .order('event_date', { ascending: true });
+  // Stabilize dependency keys to prevent re-renders from reference changes
+  const categoryKey = options?.category?.join(',') ?? '';
+  const eventTypeKey = options?.eventType?.join(',') ?? '';
 
-        if (options?.category && options.category.length > 0) {
-          query = query.in('category', options.category);
-        }
+  const fetchEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('events')
+        .select(`
+          *,
+          attendee_count:event_attendees(count)
+        `)
+        .order('event_date', { ascending: true });
 
-        if (options?.eventType && options.eventType.length > 0) {
-          query = query.in('event_type', options.eventType);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        const eventsWithCount = (data || []).map(event => ({
-          ...event,
-          attendee_count: Array.isArray(event.attendee_count)
-            ? event.attendee_count[0]?.count || 0
-            : 0,
-        }));
-
-        setEvents(eventsWithCount);
-      } catch (e) {
-        console.error('Error fetching events:', e);
-      } finally {
-        setLoading(false);
+      if (options?.category && options.category.length > 0) {
+        query = query.in('category', options.category);
       }
+
+      if (options?.eventType && options.eventType.length > 0) {
+        query = query.in('event_type', options.eventType);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const eventsWithCount = (data || []).map(event => ({
+        ...event,
+        attendee_count: Array.isArray(event.attendee_count)
+          ? event.attendee_count[0]?.count || 0
+          : 0,
+      }));
+
+      setEvents(eventsWithCount);
+    } catch (e) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching events:', e);
+      }
+    } finally {
+      setLoading(false);
     }
+  }, [categoryKey, eventTypeKey]);
 
+  useEffect(() => {
     fetchEvents();
-  }, [options?.category, options?.eventType]);
+  }, [fetchEvents]);
 
-  return { events, loading };
+  return { events, loading, refetch: fetchEvents };
 }
 
 export function useEventWithSidecars(parentEventId: string) {
@@ -281,7 +288,7 @@ export function useUserCommitments(profileId: string) {
  * @param profileId - The ID of the user's profile
  * @returns Object with handleJoinEvent function, joiningEvents set, and isJoining helper
  */
-export function useJoinEvent(profileId: string | undefined) {
+export function useJoinEvent(profileId: string | undefined, onSuccess?: () => void) {
   const [joiningEvents, setJoiningEvents] = useState<Set<string>>(new Set());
 
   const handleJoinEvent = useCallback(
@@ -301,6 +308,14 @@ export function useJoinEvent(profileId: string | undefined) {
       if (alreadyJoining) return;
 
       try {
+        // Check if already attending
+        const { isAttending, status } = await checkEventAttendance(eventId, profileId);
+        if (isAttending) {
+          await hapticNotification('warning');
+          toast.error(`You're already ${status === 'waitlist' ? 'on the waitlist' : 'attending'} this event`);
+          return;
+        }
+
         const { error, waitlisted } = await joinEvent({
           eventId,
           profileId,
@@ -315,6 +330,9 @@ export function useJoinEvent(profileId: string | undefined) {
         } else {
           toast.success("You're in! Event added to your calendar");
         }
+
+        // Call refetch callback if provided
+        onSuccess?.();
       } catch (error) {
         console.error('Error joining event:', error);
         await hapticNotification('error');
@@ -327,7 +345,7 @@ export function useJoinEvent(profileId: string | undefined) {
         });
       }
     },
-    [profileId]
+    [profileId, onSuccess]
   );
 
   const isJoining = useCallback(
