@@ -57,50 +57,64 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // LCL 2.0 Design System Brand Colors
+        // 2026 Design System - Premium Brand Colors
         brand: {
-          primary: "#B4FF39",
-          "primary-hover": "#a3ed28",
+          primary: "hsl(var(--brand-primary))",
+          accent: "hsl(var(--brand-accent))",
+          secondary: "hsl(var(--brand-secondary))",
+          highlight: "hsl(var(--brand-highlight))",
         },
         surface: {
-          base: "#F8F9FA",
-          card: "#FFFFFF",
+          base: "hsl(var(--surface-base))",
+          warm: "hsl(var(--surface-warm))",
+          card: "hsl(var(--surface-card))",
         },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        "2xl": "1rem",
+        "3xl": "1.5rem",
+        "4xl": "1.75rem",
       },
-      // LCL 2.0 Design System Shadows
+      // 2026 Apple-Inspired Shadow System
       boxShadow: {
-        "card": "0 4px 24px rgba(0, 0, 0, 0.06)",
-        "card-hover": "0 8px 32px rgba(0, 0, 0, 0.1)",
-        "card-elevated": "0 8px 32px rgba(0, 0, 0, 0.12)",
-        "float": "0 8px 40px rgba(0, 0, 0, 0.15)",
-        "nav": "0 8px 40px rgba(0, 0, 0, 0.5)",
-        "glass": "0 8px 32px rgba(0, 0, 0, 0.08)",
-        "up-sheet": "0 -12px 48px rgba(0, 0, 0, 0.2)",
+        "card": "0 2px 12px rgba(0, 0, 0, 0.04)",
+        "card-hover": "0 8px 24px rgba(0, 0, 0, 0.08)",
+        "card-elevated": "0 4px 20px rgba(0, 0, 0, 0.06)",
+        "float": "0 8px 32px rgba(0, 0, 0, 0.12)",
+        "nav": "0 4px 24px rgba(0, 0, 0, 0.25)",
+        "glass": "0 4px 24px rgba(0, 0, 0, 0.06)",
+        "up-sheet": "0 -8px 32px rgba(0, 0, 0, 0.12)",
+        // Apple 2026 shadow utilities
+        "apple-sm": "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)",
+        "apple-md": "0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)",
+        "apple-lg": "0 4px 16px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.08)",
+        "apple-xl": "0 8px 24px rgba(0,0,0,0.08), 0 24px 64px rgba(0,0,0,0.12)",
       },
-      // LCL 2.0 Design System Backdrop Blur
+      // 2026 Backdrop Blur System
       backdropBlur: {
         xs: "2px",
         "3xl": "64px",
+        "4xl": "80px",
       },
-      // LCL 2.0 Touch Target Spacing
+      // Touch Target Spacing
       spacing: {
         "11": "2.75rem",
         "13": "3.25rem", 
         "15": "3.75rem",
       },
-      // LCL 2.0 Touch Target Min Sizes
+      // Touch Target Min Sizes (Apple HIG compliant)
       minHeight: {
         "touch": "44px",
         "touch-lg": "48px",
+        "touch-xl": "56px",
       },
       minWidth: {
         "touch": "44px",
         "touch-lg": "48px",
+        "touch-xl": "56px",
       },
       keyframes: {
         "accordion-down": {
