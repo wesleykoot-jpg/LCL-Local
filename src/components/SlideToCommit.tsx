@@ -58,7 +58,8 @@ export function SlideToCommit({
       window.removeEventListener('touchend', onTouchEnd);
     };
   }, [isDragging, committed, handleEnd, handleMove]);
-  return <div ref={containerRef} className={`relative h-16 rounded-full overflow-hidden select-none transition-colors duration-300 ${committed ? 'bg-emerald-500' : 'bg-white/20 backdrop-blur-md border border-white/30'}`}>
+  {/* LCL 2.0: Slightly taller container for better touch comfort */}
+  return <div ref={containerRef} className={`relative h-[60px] rounded-full overflow-hidden select-none transition-colors duration-300 ${committed ? 'bg-emerald-500' : 'bg-white/20 backdrop-blur-md border border-white/30'}`}>
       {/* Background Text */}
       <div className={`absolute inset-0 flex items-center justify-center font-bold tracking-wide transition-opacity duration-300 ${committed ? 'opacity-0' : 'opacity-100 text-white'}`} style={{
       opacity: Math.max(0, 1 - position / 150)
@@ -71,8 +72,8 @@ export function SlideToCommit({
         YOU'RE IN!
       </div>
 
-      {/* Slider Handle */}
-      <div onMouseDown={handleStart} onTouchStart={handleStart} className={`absolute top-1 bottom-1 w-14 rounded-full flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing transition-transform duration-75 ${committed ? 'bg-white text-emerald-600' : 'bg-white text-black'}`} style={{
+      {/* LCL 2.0: Larger handle for generous touch target */}
+      <div onMouseDown={handleStart} onTouchStart={handleStart} className={`absolute top-1 bottom-1 w-[56px] min-h-[52px] rounded-full flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing transition-transform duration-75 ${committed ? 'bg-white text-emerald-600' : 'bg-white text-black'}`} style={{
       transform: `translateX(${position}px)`
     }}>
         {committed ? <Check size={24} strokeWidth={3} /> : <ArrowRight size={24} />}

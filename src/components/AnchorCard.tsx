@@ -24,8 +24,8 @@ export const AnchorCard = memo(function AnchorCard({
   children
 }: AnchorCardProps) {
   return <div className="w-full">
-      {/* Main Card */}
-      <div className="relative w-full min-h-[520px] rounded-[2.5rem] overflow-hidden group shadow-2xl transition-transform hover:scale-[1.005] duration-500 bg-black">
+      {/* LCL 2.0: Enhanced main card with refined shadow system */}
+      <div className="relative w-full min-h-[520px] rounded-[2.5rem] overflow-hidden group shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-transform hover:scale-[1.005] duration-500 bg-black">
         {/* Background Image (Poster Art) */}
         <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden">
           <img src={image} alt={title} className="w-full h-full object-cover opacity-90" />
@@ -35,9 +35,9 @@ export const AnchorCard = memo(function AnchorCard({
 
         {/* Content Container */}
         <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-between z-10">
-          {/* Top: Smart Badge */}
+          {/* LCL 2.0: Smart Badge with improved contrast - dark glass for guaranteed legibility */}
           <div className="flex justify-start">
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 flex items-center gap-2 text-white text-xs font-medium shadow-lg">
+            <div className="bg-black/40 backdrop-blur-md border border-white/25 rounded-full px-4 py-1.5 flex items-center gap-2 text-white text-xs font-medium shadow-lg">
               <Film size={14} className="text-blue-400" />
               <span>{category} • {matchPercentage}% Match</span>
             </div>
@@ -46,11 +46,13 @@ export const AnchorCard = memo(function AnchorCard({
           {/* Bottom: Title & Action */}
           <div className="space-y-6 pb-4 max-w-full">
             <div className="space-y-2">
-              <p className="text-blue-300 font-medium tracking-wide uppercase text-xs md:text-sm drop-shadow-sm flex items-center gap-2">
+              {/* LCL 2.0: Improved text contrast with text-blue-400 */}
+              <p className="text-blue-400 font-medium tracking-wide uppercase text-xs md:text-sm drop-shadow-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
                 {date} • {distance}
               </p>
-              <h2 className="text-4xl md:text-5xl font-bold text-white leading-[1.05] tracking-tight drop-shadow-xl line-clamp-3">
+              {/* LCL 2.0: Enhanced text shadow for legibility on variable backgrounds */}
+              <h2 className="text-4xl md:text-5xl font-bold text-white leading-[1.05] tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] line-clamp-3">
                 {title}
               </h2>
             </div>

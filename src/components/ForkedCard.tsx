@@ -37,7 +37,8 @@ export const ForkedCard = memo(function ForkedCard({
       setLocalJoining(false);
     }
   };
-  return <div className={`relative w-full rounded-2xl bg-white border border-gray-100 shadow-sm p-4 flex flex-col gap-3 group transition-all hover:shadow-md ${className}`}>
+  {/* LCL 2.0: Enhanced card shadow for better depth hierarchy */}
+  return <div className={`relative w-full rounded-2xl bg-white border border-gray-100 shadow-card p-4 flex flex-col gap-3 group transition-all hover:shadow-card-hover ${className}`}>
       {/* Header / Connection */}
       <div className="flex items-center gap-2 text-gray-500 text-xs font-medium">
         <CornerDownRight size={14} className="text-gray-400" />
@@ -58,10 +59,11 @@ export const ForkedCard = memo(function ForkedCard({
 
       <div className="flex items-center justify-between mt-1">
         <Facepile users={attendees} extraCount={extraCount} className="scale-90 origin-left" borderColor="border-white" />
+        {/* LCL 2.0: Touch target now meets 44px minimum requirement */}
         <button 
           onClick={handleJoin}
           disabled={joining || !eventId || !onJoin}
-          className="px-4 py-2 rounded-full bg-gray-50 text-gray-900 text-xs font-bold hover:bg-gray-100 transition-colors flex items-center gap-2 border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 min-h-[44px] rounded-full bg-gray-50 text-gray-900 text-xs font-bold hover:bg-gray-100 transition-colors flex items-center gap-2 border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {joining ? (
             <Loader2 size={14} className="animate-spin" />

@@ -33,9 +33,9 @@ export const NicheCard = memo(function NicheCard({
       setLocalJoining(false);
     }
   };
-  // CRAFTS VARIANT (Soft / Museum)
+  // CRAFTS VARIANT (Soft / Museum) - LCL 2.0: Enhanced shadows and touch targets
   if (variant === 'crafts') {
-    return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#F5F1E8] shadow-lg group cursor-pointer border border-[#E6E0D0]">
+    return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#F5F1E8] shadow-card-elevated group cursor-pointer border border-[#E6E0D0]">
         {/* Paper Texture Overlay */}
         <div className="absolute inset-0 bg-paper-texture pointer-events-none mix-blend-multiply"></div>
 
@@ -63,10 +63,11 @@ export const NicheCard = memo(function NicheCard({
               </p>
             </div>
 
+            {/* LCL 2.0: Touch target now exceeds 44px minimum */}
             <button 
               onClick={handleJoin}
               disabled={joining || !eventId || !onJoin}
-              className="w-full bg-[#D4886F] text-[#F5F1E8] font-serif-display font-semibold py-3 rounded-xl hover:bg-[#C0765E] transition-colors text-sm shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#D4886F] text-[#F5F1E8] font-serif-display font-semibold py-3.5 min-h-[48px] rounded-xl hover:bg-[#C0765E] transition-colors text-sm shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {joining ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -77,9 +78,9 @@ export const NicheCard = memo(function NicheCard({
         </div>
       </div>;
   }
-  // SPORTS VARIANT (Team / Athletic)
+  // SPORTS VARIANT (Team / Athletic) - LCL 2.0: Enhanced shadows and touch targets
   if (variant === 'sports') {
-    return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#FFD700] shadow-xl group cursor-pointer border-2 border-black">
+    return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#FFD700] shadow-card-elevated group cursor-pointer border-2 border-black">
         {/* Athletic Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="w-full h-full" style={{
@@ -108,10 +109,11 @@ export const NicheCard = memo(function NicheCard({
               </p>
             </div>
 
+            {/* LCL 2.0: Touch target now exceeds 44px minimum */}
             <button 
               onClick={handleJoin}
               disabled={joining || !eventId || !onJoin}
-              className="w-full bg-black text-[#FFD700] font-athletic font-bold py-3 rounded-lg hover:bg-black/90 transition-colors text-sm uppercase tracking-wide skew-x-0 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-black text-[#FFD700] font-athletic font-bold py-3.5 min-h-[48px] rounded-lg hover:bg-black/90 transition-colors text-sm uppercase tracking-wide skew-x-0 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {joining ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -122,8 +124,8 @@ export const NicheCard = memo(function NicheCard({
         </div>
       </div>;
   }
-  // GAMING VARIANT (Tech / Dashboard)
-  return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#0F1115] shadow-lg border border-zinc-800 group cursor-pointer">
+  // GAMING VARIANT (Tech / Dashboard) - LCL 2.0: Enhanced shadows and touch targets
+  return <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-[#0F1115] shadow-card-elevated border border-zinc-800 group cursor-pointer">
       {/* Tactical Map Background */}
       <div className="absolute inset-0 opacity-30">
         <div className="w-full h-full bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:16px_16px]"></div>
@@ -158,10 +160,11 @@ export const NicheCard = memo(function NicheCard({
           <p className="text-zinc-500 text-xs font-mono-tech">{venue}</p>
         </div>
 
+        {/* LCL 2.0: Touch target now exceeds 44px minimum */}
         <button 
           onClick={handleJoin}
           disabled={joining || !eventId || !onJoin}
-          className="mt-4 w-full bg-[#00FF88] text-black font-bold py-2.5 rounded-lg hover:bg-[#00cc6a] transition-colors text-xs font-mono-tech uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="mt-4 w-full bg-[#00FF88] text-black font-bold py-3 min-h-[48px] rounded-lg hover:bg-[#00cc6a] transition-colors text-xs font-mono-tech uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {joining ? (
             <Loader2 size={14} className="animate-spin" />

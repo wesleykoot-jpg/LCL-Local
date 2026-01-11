@@ -155,15 +155,16 @@ export function MapView() {
       {/* Event Pins */}
       {filteredEvents.map((event, index) => renderPin(event, index))}
 
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 p-4 z-30">
+      {/* LCL 2.0: Enhanced header with improved glass effect */}
+      <div className="absolute top-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 p-4 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div>
             <h1 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
               <Zap size={20} className="text-purple-600" />
               LCL Radar
             </h1>
-            <p className="text-xs text-zinc-500">Live in Meppel</p>
+            {/* LCL 2.0: Improved text contrast */}
+            <p className="text-xs text-zinc-600">Live in Meppel</p>
           </div>
           <div className="flex items-center gap-2 text-zinc-600 text-sm font-medium">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -173,13 +174,14 @@ export function MapView() {
       </div>
 
       {/* Mode Toggle */}
+      {/* LCL 2.0: Touch targets meet 48px minimum */}
       <div className="absolute top-20 left-0 right-0 z-30 px-4">
-        <div className="max-w-md mx-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl p-1.5 flex gap-1 border border-gray-200/50">
-          <button onClick={() => setMapMode('safe')} className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${mapMode === 'safe' ? 'bg-blue-500 text-white shadow-lg scale-105' : 'text-gray-600 hover:bg-gray-100'}`}>
+        <div className="max-w-md mx-auto bg-white/95 backdrop-blur-xl rounded-2xl shadow-glass p-1.5 flex gap-1 border border-gray-200/50">
+          <button onClick={() => setMapMode('safe')} className={`flex-1 px-5 py-3.5 min-h-[48px] rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${mapMode === 'safe' ? 'bg-blue-500 text-white shadow-lg scale-105' : 'text-gray-600 hover:bg-gray-100'}`}>
             <Shield size={16} strokeWidth={2.5} />
             <span>Safe & Local</span>
           </button>
-          <button onClick={() => setMapMode('tribe')} className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${mapMode === 'tribe' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg scale-105' : 'text-gray-600 hover:bg-gray-100'}`}>
+          <button onClick={() => setMapMode('tribe')} className={`flex-1 px-5 py-3.5 min-h-[48px] rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${mapMode === 'tribe' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg scale-105' : 'text-gray-600 hover:bg-gray-100'}`}>
             <Sparkles size={16} strokeWidth={2.5} />
             <span>My Tribes</span>
           </button>
@@ -187,7 +189,8 @@ export function MapView() {
       </div>
 
       {/* Legend */}
-      <div className="absolute top-40 left-4 z-20 bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-3 border border-gray-200/50 space-y-2">
+      {/* LCL 2.0: Enhanced glass effect with visible shadow */}
+      <div className="absolute top-40 left-4 z-20 bg-white/95 backdrop-blur-xl rounded-2xl shadow-card p-3 border border-gray-200/50 space-y-2">
         <div className="flex items-center gap-2 text-xs">
           <div className="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center">
             <div className="w-1 h-3 bg-white/50 rounded-full"></div>
@@ -210,8 +213,9 @@ export function MapView() {
       </div>
 
       {/* Event Detail Card */}
+      {/* LCL 2.0: Enhanced bottom sheet with upward shadow and improved glass */}
       {selectedEvent && <div className="absolute bottom-0 left-0 right-0 z-40 p-4 animate-slide-up">
-          <div className="max-w-md mx-auto bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/50 overflow-hidden">
+          <div className="max-w-md mx-auto bg-white/98 backdrop-blur-2xl rounded-3xl shadow-up-sheet border border-gray-100 overflow-hidden">
             <div className={`h-1 ${categoryConfig[selectedEvent.category].color}`}></div>
 
             <div className="p-6">
@@ -223,7 +227,8 @@ export function MapView() {
                 strokeWidth: 2.5
               })}
                 </div>
-                <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                {/* LCL 2.0: Close button meets 44px touch target */}
+                <button onClick={() => setSelectedEvent(null)} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors">
                   <X size={20} />
                 </button>
               </div>
@@ -267,10 +272,11 @@ export function MapView() {
                   </p>
                 </div>}
 
+              {/* LCL 2.0: Touch target exceeds 44px minimum */}
               <button 
                 onClick={() => onJoinEvent(selectedEvent.id)}
                 disabled={isJoining(selectedEvent.id) || !profile?.id}
-                className="w-full bg-zinc-900 text-white font-bold py-4 rounded-xl hover:bg-zinc-800 transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-zinc-900 text-white font-bold py-4 min-h-[52px] rounded-xl hover:bg-zinc-800 transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isJoining(selectedEvent.id) ? (
                   <>
