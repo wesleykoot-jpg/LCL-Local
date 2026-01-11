@@ -9,6 +9,7 @@ import { LoginView } from './components/LoginView';
 import { SignUpView } from './components/SignUpView';
 import { ProfileSetupView } from './components/ProfileSetupView';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuth } from './contexts/useAuth';
 import { MapPin, Bell, Sun, Sparkles, Plus, Zap } from 'lucide-react';
 import { useEvents, useJoinEvent } from './lib/hooks';
@@ -22,12 +23,20 @@ const CreateEventModal = lazy(() => import('./components/CreateEventModal').then
 type View = 'feed' | 'map' | 'profile';
 type AuthView = 'login' | 'signup';
 
+// Pure utility function - no need for useCallback
+const getTimeOfDay = (): string => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 18) return 'Good Afternoon';
+  return 'Good Evening';
+};
+
 export function App() {
   const [activeView, setActiveView] = useState<View>('feed');
   const [authView, setAuthView] = useState<AuthView>('login');
   const { user, profile, loading: authLoading } = useAuth();
-  const { events: allEvents, loading } = useEvents();
-  const { handleJoinEvent, joiningEvents } = useJoinEvent(profile?.id);
+  const { events: allEvents, loading, refetch: refetchEvents } = useEvents();
+  const { handleJoinEvent, joiningEvents } = useJoinEvent(profile?.id, refetchEvents);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalType, setCreateModalType] = useState<{
     category: 'cinema' | 'market' | 'crafts' | 'sports' | 'gaming';
@@ -46,13 +55,6 @@ export function App() {
   const getSidecarEvents = useCallback((parentId: string) => {
     return allEvents.filter(e => e.parent_event_id === parentId);
   }, [allEvents]);
-
-  const getTimeOfDay = useCallback(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  }, []);
 
   if (authLoading) {
     return (
@@ -81,9 +83,11 @@ export function App() {
   if (activeView === 'map') {
     return <>
         <DebugConnection />
-        <Suspense fallback={<LoadingSkeleton />}>
-          <MapView />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingSkeleton />}>
+            <MapView />
+          </Suspense>
+        </ErrorBoundary>
         <FloatingNav activeView={activeView} onNavigate={setActiveView} />
       </>;
   }
@@ -303,13 +307,17 @@ export function App() {
       <FloatingNav activeView={activeView} onNavigate={setActiveView} />
 
       {showCreateModal && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
-          <CreateEventModal
-            onClose={() => setShowCreateModal(false)}
-            defaultCategory={createModalType.category}
-            defaultEventType={createModalType.type}
-          />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
+            <CreateEventModal
+              onClose={() => setShowCreateModal(false)}
+              defaultCategory={createModalType.category}
+              defaultEventType={createModalType.type}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
     </div>;
 }
+
+export default App;
