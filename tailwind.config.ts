@@ -57,17 +57,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // 2026 Design System - Premium Brand Colors
-        brand: {
-          primary: "hsl(var(--brand-primary))",
-          accent: "hsl(var(--brand-accent))",
-          secondary: "hsl(var(--brand-secondary))",
-          highlight: "hsl(var(--brand-highlight))",
+        // Action Color
+        action: {
+          DEFAULT: "hsl(var(--action))",
+          foreground: "hsl(var(--action-foreground))",
         },
         surface: {
           base: "hsl(var(--surface-base))",
-          warm: "hsl(var(--surface-warm))",
-          card: "hsl(var(--surface-card))",
+          elevated: "hsl(var(--surface-elevated))",
+          overlay: "hsl(var(--surface-overlay))",
         },
       },
       borderRadius: {

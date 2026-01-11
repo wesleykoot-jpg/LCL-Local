@@ -1,20 +1,22 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
-import { EventCard } from '@/components/EventCard';
+import { AnimatePresence, motion } from 'framer-motion';
+import { BentoGrid } from '@/components/BentoGrid';
+import { CategoryFilter } from '@/components/CategoryFilter';
+import { PulseTribeToggle } from '@/components/PulseTribeToggle';
 import { FloatingNav } from '@/components/FloatingNav';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
-import { CategoryFilter } from '@/components/CategoryFilter';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
-import { MapPin, Plus } from 'lucide-react';
+import { MapPin, Plus, Settings } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
-import { formatEventTime } from '@/lib/utils';
 import { CATEGORY_MAP } from '@/lib/categories';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
+
+type ViewMode = 'pulse' | 'tribe';
 
 const Feed = () => {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ const Feed = () => {
   const { handleJoinEvent, joiningEvents } = useJoinEvent(profile?.id, refetchEvents);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>('pulse');
   
   const {
     showOnboarding,
@@ -32,7 +35,6 @@ const Feed = () => {
     isLoaded,
   } = useOnboarding();
 
-  // Toggle a category in the active filters
   const handleToggleFilter = useCallback((categoryId: string) => {
     setActiveFilters(prev => {
       if (prev.includes(categoryId)) {
@@ -42,7 +44,6 @@ const Feed = () => {
     });
   }, []);
 
-  // Filter events based on active filters (or user preferences if no active filters)
   const filteredEvents = useMemo(() => {
     const categoriesToFilter = activeFilters.length > 0 
       ? activeFilters 
@@ -62,25 +63,24 @@ const Feed = () => {
     else if (view === 'profile') navigate('/profile');
   };
 
-  // Show loading while checking onboarding status
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <LoadingSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white pb-32 font-sans selection:bg-white selection:text-zinc-900">
+    <div className="min-h-screen bg-background text-foreground pb-32 font-sans selection:bg-primary selection:text-primary-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="px-5 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white leading-tight tracking-tight">
-              Discover
+            <h1 className="font-display text-2xl text-foreground leading-none tracking-tight">
+              LCL
             </h1>
-            <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 mt-0.5">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-1">
               <MapPin size={12} />
               <span>{preferences?.zone || profile?.location_city || 'Amsterdam'}</span>
             </div>
@@ -88,14 +88,19 @@ const Feed = () => {
           
           <button 
             onClick={() => setShowOnboarding(true)}
-            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
+            className="p-2.5 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors min-h-touch min-w-touch flex items-center justify-center"
           >
-            Edit Tribes
+            <Settings size={20} />
           </button>
         </div>
         
+        {/* Biphasic Toggle */}
+        <div className="px-5 pb-4 flex justify-center">
+          <PulseTribeToggle activeMode={viewMode} onChange={setViewMode} />
+        </div>
+        
         {/* Category Filter Bar */}
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-4">
           <CategoryFilter
             selectedCategories={activeFilters}
             onToggle={handleToggleFilter}
@@ -103,56 +108,54 @@ const Feed = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="px-4 max-w-lg mx-auto pt-6">
+      {/* Main Content - Bento Grid */}
+      <main className="px-4 pt-6">
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-48 bg-white/5 rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        ) : filteredEvents.length > 0 ? (
-          <div className="space-y-4">
-            {filteredEvents.map(event => (
-              <EventCard
-                key={event.id}
-                id={event.id}
-                title={event.title}
-                category={event.category}
-                venue={event.venue_name}
-                date={formatEventTime(event.event_date, event.event_time)}
-                imageUrl={event.image_url || undefined}
-                matchPercentage={event.match_percentage || undefined}
-                attendees={[
-                  { id: '1', image: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&auto=format&fit=crop&q=60', alt: 'User 1' },
-                  { id: '2', image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60', alt: 'User 2' },
-                ]}
-                extraCount={event.attendee_count ? Math.max(0, event.attendee_count - 2) : 0}
-                onJoin={handleJoinEvent}
-                isJoining={joiningEvents.has(event.id)}
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <motion.div
+                key={i}
+                className="h-44 bg-muted rounded-2xl"
+                animate={{ opacity: [0.5, 0.8, 0.5] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.1 }}
               />
             ))}
           </div>
+        ) : filteredEvents.length > 0 ? (
+          <BentoGrid
+            events={filteredEvents}
+            viewMode={viewMode}
+            onJoin={handleJoinEvent}
+            joiningEvents={joiningEvents}
+          />
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-              <MapPin size={28} className="text-zinc-600" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-20 text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <MapPin size={28} className="text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">No events found</h3>
-            <p className="text-sm text-zinc-500 max-w-xs">
-              Try adjusting your filters or check back later for new events.
+            <h3 className="text-lg font-semibold text-foreground mb-2">No events found</h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              {viewMode === 'tribe' 
+                ? "None of your friends are attending events yet. Check Local Pulse for discovery!"
+                : "Try adjusting your filters or check back later for new events."}
             </p>
-          </div>
+          </motion.div>
         )}
       </main>
 
       {/* Floating Action Button */}
-      <button
+      <motion.button
         onClick={() => setShowCreateModal(true)}
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-white text-zinc-900 shadow-soft-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full btn-action flex items-center justify-center"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
       >
         <Plus size={24} strokeWidth={2.5} />
-      </button>
+      </motion.button>
 
       <FloatingNav activeView="feed" onNavigate={handleNavigate} />
 
