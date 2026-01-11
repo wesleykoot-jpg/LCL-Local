@@ -1,0 +1,339 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from './supabase';
+import { joinEvent } from './eventService';
+import { hapticNotification } from './haptics';
+import toast from 'react-hot-toast';
+import type { Database } from './database.types';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type Event = Database['public']['Tables']['events']['Row'];
+type PersonaStats = Database['public']['Tables']['persona_stats']['Row'];
+type PersonaBadge = Database['public']['Tables']['persona_badges']['Row'];
+
+export interface EventWithAttendees extends Event {
+  attendee_count?: number;
+  attendees?: Array<{
+    profile: Profile;
+  }>;
+  parent_event?: Event | null;
+}
+
+export function useProfile(profileId?: string) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        setLoading(true);
+
+        if (!profileId) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .limit(1)
+            .maybeSingle();
+
+          if (error) throw error;
+          setProfile(data);
+        } else {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', profileId)
+            .maybeSingle();
+
+          if (error) throw error;
+          setProfile(data);
+        }
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, [profileId]);
+
+  return { profile, loading, error };
+}
+
+export function usePersonaStats(profileId: string, personaType: 'family' | 'gamer') {
+  const [stats, setStats] = useState<PersonaStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const { data, error } = await supabase
+          .from('persona_stats')
+          .select('*')
+          .eq('profile_id', profileId)
+          .eq('persona_type', personaType)
+          .maybeSingle();
+
+        if (error) throw error;
+        setStats(data);
+      } catch (e) {
+        console.error('Error fetching persona stats:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (profileId) {
+      fetchStats();
+    }
+  }, [profileId, personaType]);
+
+  return { stats, loading };
+}
+
+export function usePersonaBadges(profileId: string, personaType: 'family' | 'gamer') {
+  const [badges, setBadges] = useState<PersonaBadge[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchBadges() {
+      try {
+        const { data, error } = await supabase
+          .from('persona_badges')
+          .select('*')
+          .eq('profile_id', profileId)
+          .eq('persona_type', personaType);
+
+        if (error) throw error;
+        setBadges(data || []);
+      } catch (e) {
+        console.error('Error fetching badges:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (profileId) {
+      fetchBadges();
+    }
+  }, [profileId, personaType]);
+
+  return { badges, loading };
+}
+
+export function useEvents(options?: {
+  category?: string[];
+  eventType?: string[];
+  userLocation?: { lat: number; lng: number };
+  radiusKm?: number;
+}) {
+  const [events, setEvents] = useState<EventWithAttendees[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        let query = supabase
+          .from('events')
+          .select(`
+            *,
+            attendee_count:event_attendees(count)
+          `)
+          .order('event_date', { ascending: true });
+
+        if (options?.category && options.category.length > 0) {
+          query = query.in('category', options.category);
+        }
+
+        if (options?.eventType && options.eventType.length > 0) {
+          query = query.in('event_type', options.eventType);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        const eventsWithCount = (data || []).map(event => ({
+          ...event,
+          attendee_count: Array.isArray(event.attendee_count)
+            ? event.attendee_count[0]?.count || 0
+            : 0,
+        }));
+
+        setEvents(eventsWithCount);
+      } catch (e) {
+        console.error('Error fetching events:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchEvents();
+  }, [options?.category, options?.eventType]);
+
+  return { events, loading };
+}
+
+export function useEventWithSidecars(parentEventId: string) {
+  const [event, setEvent] = useState<EventWithAttendees | null>(null);
+  const [sidecars, setSidecars] = useState<EventWithAttendees[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEventAndSidecars() {
+      try {
+        const { data: eventData, error: eventError } = await supabase
+          .from('events')
+          .select(`
+            *,
+            attendee_count:event_attendees(count)
+          `)
+          .eq('id', parentEventId)
+          .maybeSingle();
+
+        if (eventError) throw eventError;
+
+        if (eventData) {
+          setEvent({
+            ...eventData,
+            attendee_count: Array.isArray(eventData.attendee_count)
+              ? eventData.attendee_count[0]?.count || 0
+              : 0,
+          });
+
+          const { data: sidecarData, error: sidecarError } = await supabase
+            .from('events')
+            .select(`
+              *,
+              attendee_count:event_attendees(count)
+            `)
+            .eq('parent_event_id', parentEventId);
+
+          if (sidecarError) throw sidecarError;
+
+          const sidecarsWithCount = (sidecarData || []).map(sidecar => ({
+            ...sidecar,
+            attendee_count: Array.isArray(sidecar.attendee_count)
+              ? sidecar.attendee_count[0]?.count || 0
+              : 0,
+          }));
+
+          setSidecars(sidecarsWithCount);
+        }
+      } catch (e) {
+        console.error('Error fetching event and sidecars:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (parentEventId) {
+      fetchEventAndSidecars();
+    }
+  }, [parentEventId]);
+
+  return { event, sidecars, loading };
+}
+
+export function useUserCommitments(profileId: string) {
+  const [commitments, setCommitments] = useState<Array<EventWithAttendees & { ticket_number?: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCommitments() {
+      try {
+        const { data, error } = await supabase
+          .from('event_attendees')
+          .select(`
+            *,
+            event:events(*)
+          `)
+          .eq('profile_id', profileId)
+          .eq('status', 'going')
+          .order('joined_at', { ascending: false })
+          .limit(3);
+
+        if (error) throw error;
+
+        const commitmentsWithEvents = (data || []).map(attendance => ({
+          ...attendance.event,
+          ticket_number: attendance.ticket_number,
+        })) as Array<EventWithAttendees & { ticket_number?: string }>;
+
+        setCommitments(commitmentsWithEvents);
+      } catch (e) {
+        console.error('Error fetching commitments:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (profileId) {
+      fetchCommitments();
+    }
+  }, [profileId]);
+
+  return { commitments, loading };
+}
+
+/**
+ * Custom hook for handling event joining with loading states and toast notifications
+ * @param profileId - The ID of the user's profile
+ * @returns Object with handleJoinEvent function, joiningEvents set, and isJoining helper
+ */
+export function useJoinEvent(profileId: string | undefined) {
+  const [joiningEvents, setJoiningEvents] = useState<Set<string>>(new Set());
+
+  const handleJoinEvent = useCallback(
+    async (eventId: string) => {
+      if (!profileId) return;
+
+      // Use state setter to check if already joining (avoids stale closure)
+      let alreadyJoining = false;
+      setJoiningEvents((prev) => {
+        if (prev.has(eventId)) {
+          alreadyJoining = true;
+          return prev;
+        }
+        return new Set(prev).add(eventId);
+      });
+
+      if (alreadyJoining) return;
+
+      try {
+        const { error, waitlisted } = await joinEvent({
+          eventId,
+          profileId,
+          status: 'going',
+        });
+
+        if (error) throw error;
+
+        await hapticNotification('success');
+        if (waitlisted) {
+          toast.success("Event is full! You've been added to the waitlist");
+        } else {
+          toast.success("You're in! Event added to your calendar");
+        }
+      } catch (error) {
+        console.error('Error joining event:', error);
+        await hapticNotification('error');
+        toast.error('Failed to join event. Please try again.');
+      } finally {
+        setJoiningEvents((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(eventId);
+          return newSet;
+        });
+      }
+    },
+    [profileId]
+  );
+
+  const isJoining = useCallback(
+    (eventId: string) => joiningEvents.has(eventId),
+    [joiningEvents]
+  );
+
+  return { handleJoinEvent, joiningEvents, isJoining };
+}

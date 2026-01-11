@@ -1,0 +1,226 @@
+import { supabase } from './supabase';
+import type { Database } from './database.types';
+
+type Event = Database['public']['Tables']['events']['Row'];
+type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
+
+export interface JoinEventParams {
+  eventId: string;
+  profileId: string;
+  status?: 'going' | 'interested' | 'waitlist';
+}
+
+export interface CreateEventParams {
+  title: string;
+  description?: string;
+  category: 'cinema' | 'market' | 'crafts' | 'sports' | 'gaming';
+  event_type: 'anchor' | 'fork' | 'signal';
+  event_date: string;
+  event_time: string;
+  venue_name: string;
+  location: string;
+  image_url?: string;
+  parent_event_id?: string;
+  creator_profile_id: string;
+  max_attendees?: number;
+}
+
+/**
+ * Adds a user to an event as an attendee, with automatic waitlist handling
+ * @param eventId - ID of the event to join
+ * @param profileId - ID of the user's profile
+ * @param status - Attendance status (default: 'going', or 'waitlist' if full)
+ * @returns Object with data, waitlisted flag, and error (if any)
+ */
+export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams) {
+  try {
+    // Check if event has capacity limit and current attendance
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('max_attendees')
+      .eq('id', eventId)
+      .maybeSingle();
+
+    if (eventError) throw eventError;
+    if (!event) throw new Error('Event not found');
+
+    let finalStatus = status;
+    let wasWaitlisted = false;
+
+    // If event has capacity limit and user wants to go, check if full
+    if (event.max_attendees && status === 'going') {
+      const { count, error: countError } = await supabase
+        .from('event_attendees')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', eventId)
+        .eq('status', 'going');
+
+      if (countError) throw countError;
+
+      // If at capacity, automatically add to waitlist instead
+      if (count && count >= event.max_attendees) {
+        finalStatus = 'waitlist';
+        wasWaitlisted = true;
+      }
+    }
+
+    const attendee: EventAttendee = {
+      event_id: eventId,
+      profile_id: profileId,
+      status: finalStatus,
+      joined_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('event_attendees')
+      .insert(attendee)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error('Failed to create attendance record');
+
+    return { data, error: null, waitlisted: wasWaitlisted };
+  } catch (error) {
+    console.error('Error joining event:', error);
+    return { data: null, error: error as Error, waitlisted: false };
+  }
+}
+
+/**
+ * Removes a user from an event's attendee list
+ * @param eventId - ID of the event to leave
+ * @param profileId - ID of the user's profile
+ * @returns Object with error (if any)
+ */
+export async function leaveEvent(eventId: string, profileId: string) {
+  try {
+    const { error } = await supabase
+      .from('event_attendees')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('profile_id', profileId);
+
+    if (error) throw error;
+
+    return { error: null };
+  } catch (error) {
+    console.error('Error leaving event:', error);
+    return { error: error as Error };
+  }
+}
+
+/**
+ * Checks if a user is attending a specific event
+ * @param eventId - ID of the event
+ * @param profileId - ID of the user's profile
+ * @returns Object with attendance status and error (if any)
+ */
+export async function checkEventAttendance(eventId: string, profileId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('event_attendees')
+      .select('status')
+      .eq('event_id', eventId)
+      .eq('profile_id', profileId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return { isAttending: !!data, status: data?.status, error: null };
+  } catch (error) {
+    console.error('Error checking attendance:', error);
+    return { isAttending: false, status: null, error: error as Error };
+  }
+}
+
+/**
+ * Creates a new event and automatically adds the creator as an attendee
+ * @param params - Event creation parameters
+ * @returns Object with created event data and error (if any)
+ */
+export async function createEvent(params: CreateEventParams) {
+  try {
+    const event = {
+      ...params,
+      created_at: new Date().toISOString(),
+      status: 'active',
+      match_percentage: 85,
+    };
+
+    const { data, error } = await supabase
+      .from('events')
+      .insert(event)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (data) {
+      await joinEvent({
+        eventId: data.id,
+        profileId: params.creator_profile_id,
+        status: 'going',
+      });
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error creating event:', error);
+    return { data: null, error: error as Error };
+  }
+}
+
+export async function updateEvent(eventId: string, updates: Partial<Event>) {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .update(updates)
+      .eq('id', eventId)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return { data: null, error: error as Error };
+  }
+}
+
+export async function deleteEvent(eventId: string) {
+  try {
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', eventId);
+
+    if (error) throw error;
+
+    return { error: null };
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    return { error: error as Error };
+  }
+}
+
+export async function getEventAttendees(eventId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('event_attendees')
+      .select(`
+        *,
+        profile:profiles(*)
+      `)
+      .eq('event_id', eventId)
+      .eq('status', 'going');
+
+    if (error) throw error;
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching attendees:', error);
+    return { data: null, error: error as Error };
+  }
+}
