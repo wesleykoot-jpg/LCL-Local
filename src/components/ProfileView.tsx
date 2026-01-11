@@ -181,7 +181,7 @@ export function ProfileView() {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-md mx-auto px-4 py-6 space-y-5">
         {/* Persona Badges */}
         <section>
           <h3 className="text-lg font-bold text-zinc-900 mb-3 px-2 flex items-center gap-2">
@@ -193,7 +193,7 @@ export function ProfileView() {
               <div className="col-span-3 text-center text-zinc-500 py-4">Loading badges...</div>
             ) : personaBadges.length > 0 ? (
               personaBadges.map((badge) => (
-                <div key={badge.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                <div key={badge.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition-shadow duration-300 text-center cursor-pointer">
                   <div className={`w-12 h-12 mx-auto rounded-full bg-gradient-to-br ${currentPersona.color} flex items-center justify-center text-white mb-2 text-xl`}>
                     {iconMap[badge.badge_icon] ? createElement(iconMap[badge.badge_icon], { size: 20 }) : badge.badge_icon}
                   </div>
@@ -204,7 +204,7 @@ export function ProfileView() {
                 </div>
               ))
             ) : (
-              <div className="col-span-3 text-center text-zinc-500 py-4">No badges yet</div>
+              <div className="col-span-3 bg-white rounded-2xl shadow-sm p-8 text-center text-zinc-500">No badges yet</div>
             )}
           </div>
         </section>
@@ -216,11 +216,11 @@ export function ProfileView() {
             Contributor Stats
           </h3>
           {statsLoading ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center text-zinc-500">
+            <div className="bg-white rounded-2xl shadow-sm p-5 text-center text-zinc-500">
               Loading stats...
             </div>
           ) : personaStats ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 p-5">
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-orange-600 mb-1">
@@ -269,7 +269,7 @@ export function ProfileView() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center text-zinc-500">
+            <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-zinc-500">
               No stats available for this persona
             </div>
           )}
@@ -294,7 +294,7 @@ export function ProfileView() {
                       <button 
                         key={event.id} 
                         onClick={() => toast(`Viewing ${event.title}`, { icon: '🎟️' })}
-                        className="w-full bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden hover:scale-[1.02] transition-transform active:scale-[0.98]" 
+                        className="w-full bg-white rounded-2xl shadow-sm hover:shadow-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]" 
                         style={{
                           transform: `translateY(-${index * 4}px)`,
                           zIndex: commitments.length - index
@@ -336,7 +336,7 @@ export function ProfileView() {
                 </div>
 
                 {/* Wallet Summary */}
-                <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-4 border border-purple-200">
+                <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-bold text-purple-900">
@@ -351,7 +351,7 @@ export function ProfileView() {
                 </div>
               </>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-zinc-500">
+              <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-zinc-500">
                 No upcoming commitments
               </div>
             )}
@@ -361,7 +361,7 @@ export function ProfileView() {
         {/* Settings Options */}
         <section>
           <h3 className="text-lg font-bold text-zinc-900 mb-3 px-2">Account</h3>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
+          <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 divide-y divide-gray-100 overflow-hidden">
             <button 
               onClick={() => handleSettingsClick('Verification & Safety')}
               className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
