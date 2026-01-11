@@ -1,9 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import { componentTagger } from 'lovable-tagger'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    componentTagger({
+      enabled: process.env.NODE_ENV === 'development',
+    }),
+    react(),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
