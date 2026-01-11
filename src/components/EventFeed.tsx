@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { BentoEventCard } from './BentoEventCard';
+import { motion, AnimatePresence } from 'framer-motion';
+import { EventCard } from './EventCard';
 import { CATEGORY_MAP } from '@/lib/categories';
 
 // Mock events data for Meppel, Netherlands
@@ -115,28 +115,6 @@ const MOCK_MEPPEL_EVENTS = [
     match_percentage: 79,
     attendee_count: 35,
   },
-  {
-    id: 'mock-11',
-    title: 'Running Club - Drentse Aa Trail',
-    category: 'active',
-    venue_name: 'Drentse Aa Trail Start',
-    event_date: '2026-01-18',
-    event_time: '07:30',
-    image_url: 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&auto=format&fit=crop&q=60',
-    match_percentage: 84,
-    attendee_count: 16,
-  },
-  {
-    id: 'mock-12',
-    title: 'Retro Gaming Tournament',
-    category: 'gaming',
-    venue_name: 'Youth Center Meppel',
-    event_date: '2026-01-19',
-    event_time: '14:00',
-    image_url: 'https://images.unsplash.com/photo-1493711662062-fa541f7f3d24?w=800&auto=format&fit=crop&q=60',
-    match_percentage: 91,
-    attendee_count: 28,
-  },
 ];
 
 interface EventData {
@@ -152,33 +130,16 @@ interface EventData {
   attendees?: Array<{ id: string; image: string; name?: string; isFriend?: boolean }>;
 }
 
-interface BentoGridProps {
+interface EventFeedProps {
   events: EventData[];
-  onJoin: (eventId: string) => Promise<void>;
-  joiningEvents: Set<string>;
+  onEventClick?: (eventId: string) => void;
 }
 
-// Calculate tile size based on relevance score
-const getTileSize = (score: number, index: number): 'hero' | 'tower' | 'standard' => {
-  if (score >= 85 && index === 0) return 'hero';
-  if (score >= 75 && index < 3) return 'tower';
-  return 'standard';
-};
-
-// Weighted relevance calculation
-const calculateRelevance = (event: EventData, hasFriends: boolean): number => {
-  const socialScore = hasFriends ? 50 : (event.attendee_count || 0) > 10 ? 30 : 15;
-  const interestScore = ((event.match_percentage || 50) / 100) * 30;
-  const proximityScore = 20;
-  return socialScore + interestScore + proximityScore;
-};
-
-export const BentoGrid = memo(function BentoGrid({
+export const EventFeed = memo(function EventFeed({
   events,
-  onJoin,
-  joiningEvents,
-}: BentoGridProps) {
-  // Combine real events with mock data, prioritizing mock for demo
+  onEventClick,
+}: EventFeedProps) {
+  // Combine real events with mock data
   const allEvents = useMemo(() => {
     if (events.length === 0) {
       return MOCK_MEPPEL_EVENTS;
@@ -186,27 +147,15 @@ export const BentoGrid = memo(function BentoGrid({
     return [...events, ...MOCK_MEPPEL_EVENTS.slice(0, Math.max(0, 8 - events.length))];
   }, [events]);
 
-  // Process events with friend data and relevance scoring
+  // Add mock attendees for demo
   const processedEvents = useMemo(() => {
-    const eventsWithFriends = allEvents.map(event => ({
+    return allEvents.map(event => ({
       ...event,
       attendees: [
         { id: '1', image: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100', name: 'Jan', isFriend: Math.random() > 0.5 },
         { id: '2', image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100', name: 'Pieter', isFriend: Math.random() > 0.6 },
         { id: '3', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', name: 'Emma', isFriend: Math.random() > 0.7 },
       ],
-    }));
-
-    const scored = eventsWithFriends.map(event => ({
-      ...event,
-      relevanceScore: calculateRelevance(event, event.attendees?.some(a => a.isFriend) || false),
-    }));
-
-    scored.sort((a, b) => b.relevanceScore - a.relevanceScore);
-
-    return scored.map((event, index) => ({
-      ...event,
-      tileSize: getTileSize(event.relevanceScore, index),
     }));
   }, [allEvents]);
 
@@ -216,28 +165,34 @@ export const BentoGrid = memo(function BentoGrid({
   };
 
   return (
-    <LayoutGroup>
-      <motion.div className="grid grid-cols-2 gap-4 auto-rows-[200px]" layout>
-        <AnimatePresence mode="popLayout">
-          {processedEvents.map((event) => (
-            <BentoEventCard
-              key={event.id}
-              id={event.id}
-              title={event.title}
-              category={CATEGORY_MAP[event.category] || event.category}
-              venue={event.venue_name}
-              date={formatDate(event.event_date)}
-              imageUrl={event.image_url || undefined}
-              attendees={event.attendees}
-              totalAttendees={event.attendee_count || event.attendees?.length || 0}
-              relevanceScore={event.relevanceScore}
-              size={event.tileSize}
-              onJoin={onJoin}
-              isJoining={joiningEvents.has(event.id)}
-            />
-          ))}
-        </AnimatePresence>
-      </motion.div>
-    </LayoutGroup>
+    <motion.div 
+      className="grid grid-cols-1 sm:grid-cols-2 gap-5"
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: { staggerChildren: 0.08 }
+        }
+      }}
+    >
+      <AnimatePresence mode="popLayout">
+        {processedEvents.map((event) => (
+          <EventCard
+            key={event.id}
+            id={event.id}
+            title={event.title}
+            category={CATEGORY_MAP[event.category] || event.category}
+            venue={event.venue_name}
+            date={formatDate(event.event_date)}
+            imageUrl={event.image_url || undefined}
+            attendees={event.attendees}
+            totalAttendees={event.attendee_count || event.attendees?.length || 0}
+            onClick={() => onEventClick?.(event.id)}
+          />
+        ))}
+      </AnimatePresence>
+    </motion.div>
   );
 });

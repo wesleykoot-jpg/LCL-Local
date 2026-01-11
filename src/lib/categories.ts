@@ -1,12 +1,11 @@
 export interface CategoryConfig {
   id: string;
   label: string;
-  // Color classes using Tailwind 500 scale - Premium Muted palette
+  // Color classes using Tailwind 500 scale
   dotClass: string;      // The color dot
   bgClass: string;       // Badge background (10% opacity)
-  textClass: string;     // Badge text (300 shade for readability)
+  textClass: string;     // Badge text
   borderClass: string;   // Badge border (20% opacity)
-  accentBorder: string;  // Left accent border for cards
 }
 
 export const CATEGORIES: CategoryConfig[] = [
@@ -15,90 +14,80 @@ export const CATEGORIES: CategoryConfig[] = [
     label: 'Active',
     dotClass: 'bg-orange-500',
     bgClass: 'bg-orange-500/10',
-    textClass: 'text-orange-500',
+    textClass: 'text-orange-600',
     borderClass: 'border-orange-500/20',
-    accentBorder: 'border-l-orange-500',
   },
   {
     id: 'gaming',
     label: 'Gaming',
     dotClass: 'bg-violet-500',
     bgClass: 'bg-violet-500/10',
-    textClass: 'text-violet-500',
+    textClass: 'text-violet-600',
     borderClass: 'border-violet-500/20',
-    accentBorder: 'border-l-violet-500',
   },
   {
     id: 'entertainment',
     label: 'Entertainment',
     dotClass: 'bg-rose-500',
     bgClass: 'bg-rose-500/10',
-    textClass: 'text-rose-500',
+    textClass: 'text-rose-600',
     borderClass: 'border-rose-500/20',
-    accentBorder: 'border-l-rose-500',
   },
   {
     id: 'social',
     label: 'Social',
     dotClass: 'bg-blue-500',
     bgClass: 'bg-blue-500/10',
-    textClass: 'text-blue-500',
+    textClass: 'text-blue-600',
     borderClass: 'border-blue-500/20',
-    accentBorder: 'border-l-blue-500',
   },
   {
     id: 'family',
     label: 'Family',
     dotClass: 'bg-teal-500',
     bgClass: 'bg-teal-500/10',
-    textClass: 'text-teal-500',
+    textClass: 'text-teal-600',
     borderClass: 'border-teal-500/20',
-    accentBorder: 'border-l-teal-500',
   },
   {
     id: 'outdoors',
     label: 'Outdoors',
     dotClass: 'bg-emerald-500',
     bgClass: 'bg-emerald-500/10',
-    textClass: 'text-emerald-500',
+    textClass: 'text-emerald-600',
     borderClass: 'border-emerald-500/20',
-    accentBorder: 'border-l-emerald-500',
   },
   {
     id: 'music',
     label: 'Music',
     dotClass: 'bg-indigo-500',
     bgClass: 'bg-indigo-500/10',
-    textClass: 'text-indigo-500',
+    textClass: 'text-indigo-600',
     borderClass: 'border-indigo-500/20',
-    accentBorder: 'border-l-indigo-500',
   },
   {
     id: 'workshops',
     label: 'Workshops',
     dotClass: 'bg-amber-500',
     bgClass: 'bg-amber-500/10',
-    textClass: 'text-amber-500',
+    textClass: 'text-amber-600',
     borderClass: 'border-amber-500/20',
-    accentBorder: 'border-l-amber-500',
   },
   {
     id: 'foodie',
     label: 'Foodie',
     dotClass: 'bg-pink-500',
     bgClass: 'bg-pink-500/10',
-    textClass: 'text-pink-500',
+    textClass: 'text-pink-600',
     borderClass: 'border-pink-500/20',
-    accentBorder: 'border-l-pink-500',
   },
   {
     id: 'community',
     label: 'Community',
     dotClass: 'bg-slate-500',
     bgClass: 'bg-slate-500/10',
-    textClass: 'text-slate-500',
+    textClass: 'text-slate-600',
     borderClass: 'border-slate-500/20',
-    accentBorder: 'border-l-slate-500',
   },
 ];
 

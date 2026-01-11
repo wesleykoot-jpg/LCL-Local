@@ -1,7 +1,7 @@
 import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BentoGrid } from '@/components/BentoGrid';
+import { EventFeed } from '@/components/EventFeed';
 import { FloatingNav } from '@/components/FloatingNav';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -9,15 +9,14 @@ import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
 import { MapPin, Plus, Settings } from 'lucide-react';
-import { useEvents, useJoinEvent } from '@/lib/hooks';
+import { useEvents } from '@/lib/hooks';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 
 const Feed = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { events: allEvents, loading, refetch: refetchEvents } = useEvents();
-  const { handleJoinEvent, joiningEvents } = useJoinEvent(profile?.id, refetchEvents);
+  const { events: allEvents, loading } = useEvents();
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   const {
@@ -34,6 +33,11 @@ const Feed = () => {
     else if (view === 'profile') navigate('/profile');
   };
 
+  const handleEventClick = (eventId: string) => {
+    // TODO: Open event detail modal/page
+    console.log('Event clicked:', eventId);
+  };
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -44,46 +48,45 @@ const Feed = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-32 font-sans selection:bg-primary selection:text-primary-foreground">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
+      {/* Header - Clean, Airbnb-inspired */}
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
         <div className="px-5 py-4 flex items-center justify-between">
           <div>
             <h1 className="font-display text-2xl text-foreground leading-none tracking-tight">
-              LCL
+              Explore
             </h1>
-            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-1">
-              <MapPin size={12} />
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+              <MapPin size={14} />
               <span>{preferences?.zone || profile?.location_city || 'Meppel, NL'}</span>
             </div>
           </div>
           
           <button 
             onClick={() => setShowOnboarding(true)}
-            className="p-2.5 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors min-h-touch min-w-touch flex items-center justify-center"
+            className="p-2.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
           >
             <Settings size={20} />
           </button>
         </div>
       </header>
 
-      {/* Main Content - Bento Grid */}
+      {/* Main Content - Instagram/Airbnb style feed */}
       <main className="px-4 pt-6">
         {loading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <motion.div
                 key={i}
-                className="h-44 bg-muted rounded-2xl"
+                className="aspect-[4/3] bg-muted rounded-2xl"
                 animate={{ opacity: [0.5, 0.8, 0.5] }}
                 transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.1 }}
               />
             ))}
           </div>
         ) : (
-          <BentoGrid
+          <EventFeed
             events={allEvents}
-            onJoin={handleJoinEvent}
-            joiningEvents={joiningEvents}
+            onEventClick={handleEventClick}
           />
         )}
       </main>
@@ -91,7 +94,7 @@ const Feed = () => {
       {/* Floating Action Button */}
       <motion.button
         onClick={() => setShowCreateModal(true)}
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full btn-action flex items-center justify-center"
+        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full btn-action flex items-center justify-center shadow-lg"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
