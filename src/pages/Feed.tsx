@@ -4,7 +4,6 @@ import { AnchorCard } from '@/components/AnchorCard';
 import { ForkedCard } from '@/components/ForkedCard';
 import { NicheCard } from '@/components/NicheCard';
 import { FloatingNav } from '@/components/FloatingNav';
-import { DebugConnection } from '@/components/DebugConnection';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/contexts/useAuth';
@@ -54,7 +53,6 @@ const Feed = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--surface-warm))] text-zinc-900 pb-32 font-sans selection:bg-zinc-900 selection:text-white">
-      <DebugConnection />
       <header className="sticky top-0 z-40 glass-light px-6 py-4 flex items-center justify-between border-b border-zinc-200/50 shadow-apple-sm">
         <div>
           <h1 className="text-xl font-bold text-zinc-900 leading-tight tracking-tight">
