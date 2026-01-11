@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { calendarSyncService } from '@/lib/calendar';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
@@ -7,6 +8,7 @@ type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
 export interface JoinEventParams {
   eventId: string;
   profileId: string;
+  userId?: string;
   status?: 'going' | 'interested' | 'waitlist';
 }
 
@@ -22,6 +24,7 @@ export interface CreateEventParams {
   image_url?: string;
   parent_event_id?: string;
   creator_profile_id: string;
+  userId?: string;
   max_attendees?: number;
 }
 
@@ -29,15 +32,16 @@ export interface CreateEventParams {
  * Adds a user to an event as an attendee, with automatic waitlist handling
  * @param eventId - ID of the event to join
  * @param profileId - ID of the user's profile
+ * @param userId - ID of the authenticated user (for calendar sync)
  * @param status - Attendance status (default: 'going', or 'waitlist' if full)
  * @returns Object with data, waitlisted flag, and error (if any)
  */
-export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams) {
+export async function joinEvent({ eventId, profileId, userId, status = 'going' }: JoinEventParams) {
   try {
     // Check if event has capacity limit and current attendance
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('max_attendees')
+      .select('*')
       .eq('id', eventId)
       .maybeSingle();
 
@@ -80,6 +84,13 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
     if (error) throw error;
     if (!data) throw new Error('Failed to create attendance record');
 
+    // Sync to connected calendars (async, don't block)
+    if (userId && finalStatus === 'going') {
+      calendarSyncService.syncEventJoin(eventId, userId, event).catch((err) => {
+        console.error('Calendar sync failed:', err);
+      });
+    }
+
     return { data, error: null, waitlisted: wasWaitlisted };
   } catch (error) {
     console.error('Error joining event:', error);
@@ -91,9 +102,10 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
  * Removes a user from an event's attendee list
  * @param eventId - ID of the event to leave
  * @param profileId - ID of the user's profile
+ * @param userId - ID of the authenticated user (for calendar sync)
  * @returns Object with error (if any)
  */
-export async function leaveEvent(eventId: string, profileId: string) {
+export async function leaveEvent(eventId: string, profileId: string, userId?: string) {
   try {
     const { error } = await supabase
       .from('event_attendees')
@@ -102,6 +114,13 @@ export async function leaveEvent(eventId: string, profileId: string) {
       .eq('profile_id', profileId);
 
     if (error) throw error;
+
+    // Sync to connected calendars (async, don't block)
+    if (userId) {
+      calendarSyncService.syncEventLeave(eventId, userId).catch((err) => {
+        console.error('Calendar sync (leave) failed:', err);
+      });
+    }
 
     return { error: null };
   } catch (error) {
@@ -183,6 +202,13 @@ export async function updateEvent(eventId: string, updates: Partial<Event>) {
       .maybeSingle();
 
     if (error) throw error;
+
+    // Sync to connected calendars (async, don't block)
+    if (data) {
+      calendarSyncService.syncEventUpdate(eventId, data).catch((err) => {
+        console.error('Calendar sync (update) failed:', err);
+      });
+    }
 
     return { data, error: null };
   } catch (error) {

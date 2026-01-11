@@ -6,6 +6,12 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Calendar provider type
+export type CalendarProvider = 'google' | 'microsoft';
+
+// Calendar sync status type
+export type CalendarSyncStatus = 'pending' | 'synced' | 'failed' | 'canceled';
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -14,6 +20,135 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_calendar_mappings: {
+        Row: {
+          id: string
+          event_id: string
+          user_id: string
+          calendar_account_id: string
+          provider: CalendarProvider
+          provider_event_id: string
+          provider_event_etag: string | null
+          lcl_external_id: string
+          status: CalendarSyncStatus
+          last_synced_at: string | null
+          sync_error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          user_id: string
+          calendar_account_id: string
+          provider: CalendarProvider
+          provider_event_id: string
+          provider_event_etag?: string | null
+          lcl_external_id: string
+          status?: CalendarSyncStatus
+          last_synced_at?: string | null
+          sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          user_id?: string
+          calendar_account_id?: string
+          provider?: CalendarProvider
+          provider_event_id?: string
+          provider_event_etag?: string | null
+          lcl_external_id?: string
+          status?: CalendarSyncStatus
+          last_synced_at?: string | null
+          sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_calendar_mappings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_calendar_mappings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_calendar_mappings_calendar_account_id_fkey"
+            columns: ["calendar_account_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_calendar_accounts: {
+        Row: {
+          id: string
+          user_id: string
+          provider: CalendarProvider
+          provider_account_id: string
+          provider_email: string | null
+          primary_calendar_id: string | null
+          access_token_encrypted: string
+          refresh_token_encrypted: string
+          token_expires_at: string
+          sync_enabled: boolean
+          last_sync_at: string | null
+          last_sync_error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: CalendarProvider
+          provider_account_id: string
+          provider_email?: string | null
+          primary_calendar_id?: string | null
+          access_token_encrypted: string
+          refresh_token_encrypted: string
+          token_expires_at: string
+          sync_enabled?: boolean
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          provider?: CalendarProvider
+          provider_account_id?: string
+          provider_email?: string | null
+          primary_calendar_id?: string | null
+          access_token_encrypted?: string
+          refresh_token_encrypted?: string
+          token_expires_at?: string
+          sync_enabled?: boolean
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_calendar_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_attendees: {
         Row: {
           checked_in: boolean | null
