@@ -88,7 +88,7 @@ const Feed = () => {
             </header>
 
             {/* Main Content - Instagram/Airbnb style feed */}
-            <main className="px-4 pt-6">
+            <main className="px-4 pt-6 overflow-x-hidden">
               {loading ? (
                 <div className="max-w-md mx-auto flex flex-col gap-5">
                   {[1, 2, 3, 4].map(i => (

@@ -141,7 +141,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
               onJoin?.();
             }}
             disabled={isJoining}
-            className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95"
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95"
           >
             {isJoining ? (
               <Loader2 size={16} className="animate-spin" />
@@ -189,21 +189,21 @@ const ForkEventCard = memo(function ForkEventCard({
   return (
     <div className="flex">
       {/* Thread line connector */}
-      <div className="w-8 flex-shrink-0 relative">
+      <div className="w-6 flex-shrink-0 relative">
         {/* Vertical line */}
         <div className={`absolute top-0 left-0 w-0.5 bg-border ${isLast ? 'h-6' : 'h-full'}`} />
         {/* Horizontal elbow */}
-        <div className="absolute top-6 left-0 h-0.5 w-5 bg-border" />
+        <div className="absolute top-6 left-0 h-0.5 w-4 bg-border" />
         {/* Corner icon */}
         <CornerDownRight 
-          size={16} 
-          className="absolute top-3 left-3 text-muted-foreground" 
+          size={14} 
+          className="absolute top-3 left-2 text-muted-foreground" 
         />
       </div>
 
       {/* Fork card content */}
       <motion.div
-        className="flex-1 rounded-2xl bg-muted/50 border border-border p-4 cursor-pointer hover:bg-muted/80 transition-colors"
+        className="flex-1 min-w-0 overflow-hidden rounded-2xl bg-muted/50 border border-border p-3 cursor-pointer hover:bg-muted/80 transition-colors"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -240,7 +240,7 @@ const ForkEventCard = memo(function ForkEventCard({
           </div>
 
           {/* Action */}
-          <div className="flex flex-col justify-between items-end">
+          <div className="flex flex-col justify-between items-end flex-shrink-0">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Users size={12} />
               <span>{event.attendee_count || 0}</span>
@@ -252,7 +252,7 @@ const ForkEventCard = memo(function ForkEventCard({
                 onJoin?.();
               }}
               disabled={isJoining}
-              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
+              className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
             >
               {isJoining ? <Loader2 size={12} className="animate-spin" /> : 'Join'}
             </button>
@@ -286,7 +286,7 @@ export const EventStackCard = memo(function EventStackCard({
       <AnimatePresence>
         {forks.length > 0 && (
           <motion.div
-            className="space-y-3 pt-6 pl-4"
+            className="space-y-3 pt-6 pl-2"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

@@ -20,7 +20,7 @@ export function Facepile({
       {users.slice(0, 3).map((user, index) => (
         <div 
           key={user.id} 
-          className="relative w-11 h-11 rounded-full ring-2 ring-white/90 overflow-hidden shadow-apple-sm" 
+          className="relative w-9 h-9 rounded-full ring-2 ring-white/90 overflow-hidden shadow-apple-sm" 
           style={{ zIndex: 3 - index }}
         >
           <img 
@@ -32,7 +32,7 @@ export function Facepile({
       ))}
       {extraCount > 0 && (
         <div 
-          className="relative flex items-center justify-center w-11 h-11 rounded-full ring-2 ring-white/90 bg-zinc-100 text-xs font-bold text-zinc-600 shadow-apple-sm" 
+          className="relative flex items-center justify-center w-9 h-9 rounded-full ring-2 ring-white/90 bg-zinc-100 text-xs font-bold text-zinc-600 shadow-apple-sm" 
           style={{ zIndex: 0 }}
         >
           +{extraCount}
