@@ -35,7 +35,107 @@ interface ScraperSource {
   };
 }
 
-// Default selectors for event scraping
+/**
+ * Platform detection patterns.
+ * Many municipalities use common CMS platforms - detecting these allows for optimized scraping.
+ */
+interface PlatformConfig {
+  name: string;
+  /** URL patterns that identify this platform */
+  urlPatterns: RegExp[];
+  /** Optimized CSS selectors for this platform */
+  selectors: string[];
+  /** Specific date/time extraction logic */
+  dateSelector?: string;
+  timeSelector?: string;
+}
+
+const PLATFORM_CONFIGS: Record<string, PlatformConfig> = {
+  // "Ontdek" platform - used by many Dutch municipalities
+  ontdek: {
+    name: "Ontdek Platform",
+    urlPatterns: [/ontdek[\w]+\.nl/i, /beleef[\w]+\.nl/i, /bezoek[\w]+\.nl/i],
+    selectors: [
+      ".agenda-item",
+      ".event-card",
+      "article.agenda-item",
+      '[class*="agenda-item"]',
+      ".card--event",
+    ],
+    dateSelector: ".event-date, .date, time",
+    timeSelector: ".event-time, .time",
+  },
+  // "Visit" platform - tourism boards
+  visit: {
+    name: "Visit/VVV Platform",
+    urlPatterns: [/visit[\w]+\.(nl|com)/i, /vvv[\w]+\.nl/i, /touristinfo[\w]+\.nl/i],
+    selectors: [
+      "article.event",
+      ".event-item",
+      ".agenda-event",
+      '[class*="event-card"]',
+      ".card.event",
+    ],
+  },
+  // "Uit" platform - cultural agendas
+  uit: {
+    name: "Uit Agenda Platform",
+    urlPatterns: [/uit\.[\w]+\.nl/i, /uitin[\w]+\.nl/i, /uiteratuur[\w]+\.nl/i],
+    selectors: [
+      ".event",
+      ".agenda-item",
+      "article",
+      '[class*="event"]',
+    ],
+  },
+  // Generic Dutch municipality sites
+  gemeente: {
+    name: "Municipality Website",
+    urlPatterns: [/\.nl\/agenda/i, /\.nl\/evenementen/i],
+    selectors: [
+      "article.event-card",
+      ".agenda-item",
+      ".event-item",
+      '[class*="agenda"]',
+    ],
+  },
+};
+
+/**
+ * Detect which platform a URL belongs to and return optimized config.
+ */
+function detectPlatform(url: string): PlatformConfig | null {
+  for (const [key, config] of Object.entries(PLATFORM_CONFIGS)) {
+    for (const pattern of config.urlPatterns) {
+      if (pattern.test(url)) {
+        console.log(`🔍 Detected platform: ${config.name} (${key})`);
+        return config;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Get optimized selectors for a source, using platform detection if no custom selectors provided.
+ */
+function getOptimizedSelectors(source: ScraperSource): string[] {
+  // Use custom selectors if provided
+  if (source.config.selectors && source.config.selectors.length > 0) {
+    return source.config.selectors;
+  }
+  
+  // Try to detect platform and use its optimized selectors
+  const platform = detectPlatform(source.url);
+  if (platform) {
+    return platform.selectors;
+  }
+  
+  // Fall back to default selectors
+  return DEFAULT_SELECTORS;
+}
+
+// Default selectors for event scraping (fallback)
 const DEFAULT_SELECTORS = [
   "article.event-card",
   "article.agenda-item",
@@ -371,6 +471,12 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
   // Apply dynamic year replacement if configured
   const actualUrl = applyDynamicYear(source.url, source.config.dynamic_year === true);
   
+  // Detect platform for optimization
+  const platform = detectPlatform(actualUrl);
+  if (platform) {
+    console.log(`🔧 Using optimized config for: ${platform.name}`);
+  }
+  
   console.log(`🌐 Fetching agenda from ${source.name} (${actualUrl})...`);
 
   const headers = source.config.headers || DEFAULT_HEADERS;
@@ -384,7 +490,8 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
   const $ = cheerio.load(html);
   const events: RawEventCard[] = [];
 
-  const selectors = source.config.selectors || DEFAULT_SELECTORS;
+  // Use optimized selectors based on platform detection
+  const selectors = getOptimizedSelectors(source);
 
   // deno-lint-ignore no-explicit-any
   let foundElements: any = $([]);
