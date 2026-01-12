@@ -6,6 +6,21 @@ import { groupEventsIntoStacks, type EventStack } from '@/lib/feedGrouping';
 import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 import type { EventWithAttendees } from '@/lib/hooks';
 
+// Reliable Unsplash images for Meppel, Netherlands events
+const MEPPEL_EVENT_IMAGES = {
+  football: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=900&q=80', // Amateur football field
+  borrel: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=80', // Cozy bar interior
+  boardGames: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=900&q=80', // Board games cafe
+  park: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80', // Green park picnic
+  picnic: 'https://images.unsplash.com/photo-1506784365847-bbad939e9335?auto=format&fit=crop&w=900&q=80', // Picnic blanket food
+  iceCream: 'https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&w=900&q=80', // Ice cream
+  terrace: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80', // Dutch terrace drinks
+  canal: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80', // Dutch canal boat
+  jazz: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?auto=format&fit=crop&w=900&q=80', // Jazz performance
+  afterparty: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80', // Social gathering
+  market: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80', // Street market food
+};
+
 // Mock events data for Meppel, Netherlands - all with images
 const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
   {
@@ -16,7 +31,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-04-12',
     event_time: '14:30',
     event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.football,
     match_percentage: 92,
     attendee_count: 24,
     description: null,
@@ -36,7 +51,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-04-12',
     event_time: '12:30',
     event_type: 'fork',
-    image_url: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.borrel,
     match_percentage: 78,
     attendee_count: 12,
     parent_event_id: 'mock-1',
@@ -56,7 +71,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-03-28',
     event_time: '19:30',
     event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.boardGames,
     match_percentage: 85,
     attendee_count: 16,
     description: null,
@@ -76,7 +91,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-05-10',
     event_time: '10:30',
     event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.park,
     match_percentage: 78,
     attendee_count: 8,
     description: null,
@@ -96,7 +111,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-05-10',
     event_time: '12:30',
     event_type: 'fork',
-    image_url: 'https://images.unsplash.com/photo-1526401485004-46910ecc8e51?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.picnic,
     match_percentage: 72,
     attendee_count: 5,
     parent_event_id: 'mock-3',
@@ -116,7 +131,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-05-10',
     event_time: '14:00',
     event_type: 'fork',
-    image_url: 'https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.iceCream,
     match_percentage: 65,
     attendee_count: 4,
     parent_event_id: 'mock-3',
@@ -136,7 +151,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-03-21',
     event_time: '17:00',
     event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.terrace,
     match_percentage: 88,
     attendee_count: 18,
     description: null,
@@ -156,7 +171,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-06-22',
     event_time: '13:00',
     event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.canal,
     match_percentage: 72,
     attendee_count: 15,
     description: null,
@@ -176,7 +191,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-04-19',
     event_time: '20:30',
     event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.jazz,
     match_percentage: 82,
     attendee_count: 45,
     description: null,
@@ -196,7 +211,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-04-19',
     event_time: '22:30',
     event_type: 'fork',
-    image_url: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.afterparty,
     match_percentage: 75,
     attendee_count: 20,
     parent_event_id: 'mock-6',
@@ -216,7 +231,7 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     event_date: '2025-05-18',
     event_time: '11:00',
     event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=900&q=80',
+    image_url: MEPPEL_EVENT_IMAGES.market,
     match_percentage: 95,
     attendee_count: 120,
     description: null,
@@ -229,7 +244,6 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
     updated_at: null,
   },
 ];
-
 // Vibe header configuration
 type VibeType = 'tonight' | 'weekend' | 'later';
 

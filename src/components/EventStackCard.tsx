@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CornerDownRight, Users, MapPin, Clock, Loader2 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
@@ -7,20 +7,23 @@ import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
 
-// Fallback images by category
+// Fallback images by category - Dutch/Netherlands themed
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
-  active: 'https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?auto=format&fit=crop&w=900&q=80',
-  gaming: 'https://images.unsplash.com/photo-1505764706515-aa95265c5abc?auto=format&fit=crop&w=900&q=80',
-  family: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=900&q=80',
-  social: 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=900&q=80',
-  outdoors: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=80',
-  music: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
-  workshops: 'https://images.unsplash.com/photo-1521292270410-a8c2eaff8701?auto=format&fit=crop&w=900&q=80',
-  foodie: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
-  community: 'https://images.unsplash.com/photo-1470246973918-29a93221c455?auto=format&fit=crop&w=900&q=80',
-  entertainment: 'https://images.unsplash.com/photo-1507306300249-2bf49030b4ce?auto=format&fit=crop&w=900&q=80',
-  default: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=900&q=80',
+  active: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=900&q=80', // Football field
+  gaming: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=900&q=80', // Board games
+  family: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80', // Park
+  social: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80', // Terrace
+  outdoors: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80', // Dutch canal
+  music: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?auto=format&fit=crop&w=900&q=80', // Jazz
+  workshops: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=900&q=80', // Kitchen workshop
+  foodie: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80', // Market food
+  community: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80', // Community gathering
+  entertainment: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80', // Social event
+  default: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80', // Dutch canal default
 };
+
+// Ultimate fallback - subtle grey pattern (data URI)
+const GREY_PATTERN_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Cpath fill="%23d1d5db" d="M0 0h50v50H0zM50 50h50v50H50z"/%3E%3C/svg%3E';
 
 interface EventStackCardProps {
   stack: EventStack;
@@ -33,6 +36,33 @@ const getEventImage = (event: EventWithAttendees): string => {
   if (event.image_url) return event.image_url;
   const category = CATEGORY_MAP[event.category] || event.category;
   return CATEGORY_FALLBACK_IMAGES[category] || CATEGORY_FALLBACK_IMAGES.default;
+};
+
+const getCategoryFallback = (category: string): string => {
+  const mappedCategory = CATEGORY_MAP[category] || category;
+  return CATEGORY_FALLBACK_IMAGES[mappedCategory] || CATEGORY_FALLBACK_IMAGES.default;
+};
+
+// Custom hook for image error handling with fallback chain
+const useImageFallback = (primaryUrl: string, category: string) => {
+  const [currentSrc, setCurrentSrc] = useState(primaryUrl);
+  const [errorCount, setErrorCount] = useState(0);
+
+  const handleError = useCallback(() => {
+    setErrorCount(prev => {
+      const newCount = prev + 1;
+      if (newCount === 1) {
+        // First error: try category fallback
+        setCurrentSrc(getCategoryFallback(category));
+      } else {
+        // Second error: use grey pattern
+        setCurrentSrc(GREY_PATTERN_FALLBACK);
+      }
+      return newCount;
+    });
+  }, [category]);
+
+  return { src: currentSrc, onError: handleError };
 };
 
 const formatDate = (dateStr: string) => {
@@ -63,7 +93,8 @@ const AnchorEventCard = memo(function AnchorEventCard({
   hasForks: boolean;
 }) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
-  const imageUrl = getEventImage(event);
+  const primaryImageUrl = getEventImage(event);
+  const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   
   // Create attendee display from nested data
   const attendeeDisplay = event.attendees?.slice(0, 4).map(a => ({
@@ -81,11 +112,13 @@ const AnchorEventCard = memo(function AnchorEventCard({
       layout
     >
       {/* Image Section */}
-      <div className="relative h-56 overflow-hidden">
+      <div className="relative h-56 overflow-hidden bg-muted">
         <img 
           src={imageUrl} 
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          onError={handleImageError}
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         
@@ -178,7 +211,8 @@ const ForkEventCard = memo(function ForkEventCard({
   isLast: boolean;
 }) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
-  const imageUrl = getEventImage(event);
+  const primaryImageUrl = getEventImage(event);
+  const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   
   const attendeeDisplay = event.attendees?.slice(0, 3).map(a => ({
     id: a.profile?.id || '',
@@ -211,13 +245,15 @@ const ForkEventCard = memo(function ForkEventCard({
         whileTap={{ scale: 0.98 }}
         onClick={onClick}
       >
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           {/* Thumbnail */}
-          <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+          <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
             <img 
               src={imageUrl} 
               alt={event.title}
               className="w-full h-full object-cover"
+              onError={handleImageError}
+              loading="lazy"
             />
           </div>
 
