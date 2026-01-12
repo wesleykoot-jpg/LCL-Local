@@ -1,8 +1,8 @@
 import React, { useState, createElement } from 'react';
 import { 
   MapPin, Shield, ChevronRight, Trophy, Star, Award, Users, 
-  CheckCircle, Flame, LogOut, Loader2, Settings,
-  Calendar, Clock, Sparkles, BadgeCheck, Edit3, Camera
+  CheckCircle, Flame, LogOut, Loader2, Settings, Heart,
+  Calendar, Clock, Sparkles, BadgeCheck, Edit3, Share2, Camera
 } from 'lucide-react';
 import { useAuth } from '../contexts/useAuth';
 import { usePersonaStats, usePersonaBadges, useUserCommitments } from '../lib/hooks';
