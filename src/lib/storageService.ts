@@ -104,23 +104,3 @@ export async function compressImage(file: File, maxWidth = 1200, quality = 0.8):
     reader.onerror = reject;
   });
 }
-
-/**
- * Deletes an image file from Supabase storage
- * @param filePath - Path to the file in storage (including folder)
- * @returns Object with error (if any)
- */
-export async function deleteImage(filePath: string) {
-  try {
-    const { error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .remove([filePath]);
-
-    if (error) throw error;
-
-    return { error: null };
-  } catch (error) {
-    console.error('Error deleting image:', error);
-    return { error: error as Error };
-  }
-}

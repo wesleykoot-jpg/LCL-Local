@@ -28,48 +28,6 @@ export interface EventWithAttendees extends Event {
 
 const ATTENDEE_LIMIT = 4;
 
-export function useProfile(profileId?: string) {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    async function fetchProfile() {
-      try {
-        setLoading(true);
-
-        if (!profileId) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .limit(1)
-            .maybeSingle();
-
-          if (error) throw error;
-          setProfile(data);
-        } else {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', profileId)
-            .maybeSingle();
-
-          if (error) throw error;
-          setProfile(data);
-        }
-      } catch (e) {
-        setError(e as Error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchProfile();
-  }, [profileId]);
-
-  return { profile, loading, error };
-}
-
 export function usePersonaStats(profileId: string) {
   const [stats, setStats] = useState<PersonaStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -230,67 +188,6 @@ export function useEvents(options?: {
   }, [fetchEvents]);
 
   return { events, loading, refetch: fetchEvents };
-}
-
-export function useEventWithSidecars(parentEventId: string) {
-  const [event, setEvent] = useState<EventWithAttendees | null>(null);
-  const [sidecars, setSidecars] = useState<EventWithAttendees[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchEventAndSidecars() {
-      try {
-        const { data: eventData, error: eventError } = await supabase
-          .from('events')
-          .select(`
-            *,
-            attendee_count:event_attendees(count)
-          `)
-          .eq('id', parentEventId)
-          .maybeSingle();
-
-        if (eventError) throw eventError;
-
-        if (eventData) {
-          setEvent({
-            ...eventData,
-            attendee_count: Array.isArray(eventData.attendee_count)
-              ? eventData.attendee_count[0]?.count || 0
-              : 0,
-          });
-
-          const { data: sidecarData, error: sidecarError } = await supabase
-            .from('events')
-            .select(`
-              *,
-              attendee_count:event_attendees(count)
-            `)
-            .eq('parent_event_id', parentEventId);
-
-          if (sidecarError) throw sidecarError;
-
-          const sidecarsWithCount = (sidecarData || []).map(sidecar => ({
-            ...sidecar,
-            attendee_count: Array.isArray(sidecar.attendee_count)
-              ? sidecar.attendee_count[0]?.count || 0
-              : 0,
-          }));
-
-          setSidecars(sidecarsWithCount);
-        }
-      } catch (e) {
-        console.error('Error fetching event and sidecars:', e);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (parentEventId) {
-      fetchEventAndSidecars();
-    }
-  }, [parentEventId]);
-
-  return { event, sidecars, loading };
 }
 
 export function useUserCommitments(profileId: string) {
