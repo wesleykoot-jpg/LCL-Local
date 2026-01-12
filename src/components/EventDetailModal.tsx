@@ -16,7 +16,7 @@ import { CategoryBadge } from './CategoryBadge';
 import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
-import { getVenueCoordinates } from '@/lib/distance';
+// import { getVenueCoordinates } from '@/lib/distance';
 import { useLocation } from '@/contexts/LocationContext';
 import type { EventWithAttendees } from '@/lib/hooks';
 
@@ -92,7 +92,8 @@ export const EventDetailModal = memo(function EventDetailModal({
     ? (CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default)
     : (event.image_url || CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default);
 
-  const venueCoords = getVenueCoordinates(event.venue_name);
+  // TODO: Fix getVenueCoordinates - temporarily using fallback
+  const venueCoords = { lat: 52.6947, lng: 6.1943 }; // Meppel center
   
   // Static map using OpenStreetMap
   const staticMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`;
