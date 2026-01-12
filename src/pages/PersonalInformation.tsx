@@ -31,7 +31,9 @@ export function PersonalInformation() {
   const handleSave = async () => {
     setIsLoading(true);
     
-    // Simulate save operation
+    // TODO: Implement actual save operation with backend API
+    // This is a placeholder for demo purposes
+    // In production, this should call the Supabase API to update the profile
     setTimeout(() => {
       toast.success('Personal information updated successfully');
       setIsLoading(false);

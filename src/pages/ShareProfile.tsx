@@ -12,11 +12,16 @@ export function ShareProfile() {
   
   const profileUrl = `https://lcl-local.com/profile/${profile?.id || 'demo-user'}`;
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(profileUrl);
-    setCopied(true);
-    toast.success('Profile link copied!');
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCopied(true);
+      toast.success('Profile link copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      toast.error('Failed to copy link. Please try again.');
+    }
   };
 
   const handleShare = (platform: string) => {

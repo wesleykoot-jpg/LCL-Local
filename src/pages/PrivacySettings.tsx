@@ -16,7 +16,7 @@ export function PrivacySettings() {
     analyticsTracking: true,
   });
 
-  const handleToggle = (key: keyof typeof settings) => {
+  const handleToggle = (key: 'showLocation' | 'showEvents' | 'dataProcessing' | 'marketingEmails' | 'analyticsTracking') => {
     setSettings(prev => ({
       ...prev,
       [key]: !prev[key]
