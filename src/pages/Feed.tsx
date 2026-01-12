@@ -8,68 +8,14 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
-import { MapPin, Plus, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { MapPin, Plus, SlidersHorizontal, ChevronDown, RefreshCw, Database } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { motion } from 'framer-motion';
+import { triggerScraper } from '@/lib/scraperService';
+import { toast } from 'sonner';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 const EventDetailModal = lazy(() => import('@/components/EventDetailModal'));
-
-// Mock events for looking up event details
-const MOCK_MEPPEL_EVENTS = [
-  {
-    id: 'mock-1',
-    title: 'FC Meppel thuiswedstrijd op Ezinge',
-    category: 'active',
-    venue_name: 'Sportpark Ezinge, Meppel',
-    event_date: '2025-04-12',
-    event_time: '14:30',
-    event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=900&q=80',
-    match_percentage: 92,
-    attendee_count: 24,
-    description: 'Come watch FC Meppel play at home! Great atmosphere and good food at the canteen.',
-  },
-  {
-    id: 'mock-2',
-    title: 'Spellenavond bij Café De Kansel',
-    category: 'gaming',
-    venue_name: 'Café De Kansel, Woldstraat',
-    event_date: '2025-03-28',
-    event_time: '19:30',
-    event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=900&q=80',
-    match_percentage: 85,
-    attendee_count: 16,
-    description: 'Weekly board game night with a great selection of games. All skill levels welcome!',
-  },
-  {
-    id: 'mock-3',
-    title: 'Speelmiddag in Wilhelminapark',
-    category: 'family',
-    venue_name: 'Wilhelminapark Meppel',
-    event_date: '2025-05-10',
-    event_time: '10:30',
-    event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80',
-    match_percentage: 78,
-    attendee_count: 8,
-    description: 'Fun afternoon for families with kids. Bring your own toys and snacks!',
-  },
-  {
-    id: 'mock-4',
-    title: 'Vrijmibo bij Café 1761',
-    category: 'social',
-    venue_name: 'Café 1761, Prinsengracht',
-    event_date: '2025-03-21',
-    event_time: '17:00',
-    event_type: 'anchor',
-    image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
-    match_percentage: 88,
-    attendee_count: 18,
-    description: 'Weekly Friday afternoon drinks. Great way to end the work week!',
-  },
-];
 
 const Feed = () => {
   const navigate = useNavigate();
@@ -77,6 +23,7 @@ const Feed = () => {
   const { events: allEvents, loading, refetch } = useEvents({ currentUserProfileId: profile?.id });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [isScraping, setIsScraping] = useState(false);
   
   // Use real Supabase join event hook
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
@@ -103,30 +50,28 @@ const Feed = () => {
     setSelectedEventId(null);
   };
 
-  // Find selected event from all sources
+  // Dev scraper trigger
+  const handleScrape = async () => {
+    setIsScraping(true);
+    try {
+      const result = await triggerScraper();
+      if (result.success) {
+        toast.success(`Scraped ${result.inserted} new events (${result.skipped} duplicates)`);
+        refetch();
+      } else {
+        toast.error('Scraping failed: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error) {
+      toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  // Find selected event from real events only
   const selectedEvent = useMemo(() => {
     if (!selectedEventId) return null;
-    
-    // Check real events first
-    const realEvent = allEvents.find(e => e.id === selectedEventId);
-    if (realEvent) return realEvent;
-    
-    // Check mock events
-    const mockEvent = MOCK_MEPPEL_EVENTS.find(e => e.id === selectedEventId);
-    if (mockEvent) {
-      return {
-        ...mockEvent,
-        created_at: null,
-        created_by: null,
-        location: null,
-        max_attendees: null,
-        parent_event_id: null,
-        status: 'active',
-        updated_at: null,
-      };
-    }
-    
-    return null;
+    return allEvents.find(e => e.id === selectedEventId) || null;
   }, [selectedEventId, allEvents]);
 
   // Handle joining event from detail modal using real Supabase API
@@ -174,6 +119,29 @@ const Feed = () => {
             </button>
           </div>
         </header>
+
+        {/* Dev Scraper Button - Only visible in development */}
+        {import.meta.env.DEV && (
+          <motion.button
+            onClick={handleScrape}
+            disabled={isScraping}
+            className="fixed top-20 right-4 z-50 px-3 py-2 bg-amber-500/90 text-white text-xs font-medium rounded-full shadow-lg flex items-center gap-2 hover:bg-amber-600 transition-colors disabled:opacity-50"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {isScraping ? (
+              <>
+                <RefreshCw size={14} className="animate-spin" />
+                Scraping...
+              </>
+            ) : (
+              <>
+                <Database size={14} />
+                DEV: Scrape
+              </>
+            )}
+          </motion.button>
+        )}
 
         {/* Main Content - Warm, organized feed */}
         <main className="px-4 pt-4 overflow-x-hidden">
