@@ -94,7 +94,8 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   // Load initial preferences from storage
   const [preferences, setPreferences] = useState<LocationPreferences>(loadPersistedPreferences);
   
-  // Use the geolocation hook with watching enabled when GPS is preferred
+  // Use the geolocation hook - don't conditionally enable watch based on permissionState
+  // since that would create a circular reference (permissionState comes from the hook)
   const {
     location: gpsLocation,
     isLoading,
@@ -105,7 +106,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     getCurrentPosition,
     refresh,
   } = useGeolocation({
-    enableWatch: preferences.useGPS && permissionState === 'granted',
+    enableWatch: preferences.useGPS, // Only check preferences, not permissionState
     enableHighAccuracy: true,
     maximumAge: 30000, // 30 seconds
     timeout: 15000, // 15 seconds
