@@ -267,6 +267,45 @@ export type Database = {
         }
         Relationships: []
       }
+      scraper_sources: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          last_scraped_at: string | null
+          last_success: boolean | null
+          name: string
+          total_events_scraped: number | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_scraped_at?: string | null
+          last_success?: boolean | null
+          name: string
+          total_events_scraped?: number | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_scraped_at?: string | null
+          last_success?: boolean | null
+          name?: string
+          total_events_scraped?: number | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -1219,6 +1258,14 @@ export type Database = {
         Returns: unknown
       }
       unlockrows: { Args: { "": string }; Returns: number }
+      update_scraper_source_stats: {
+        Args: {
+          p_events_scraped: number
+          p_source_id: string
+          p_success: boolean
+        }
+        Returns: undefined
+      }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
