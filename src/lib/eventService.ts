@@ -83,6 +83,45 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
     return { data, error: null, waitlisted: wasWaitlisted };
   } catch (error) {
     console.error('Error joining event:', error);
+
+    // Fallback to atomic RPC to handle stricter RLS or race conditions in UAT
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
+        p_event_id: eventId,
+        p_profile_id: profileId,
+        p_status: status,
+      });
+
+      if (rpcError) throw rpcError;
+
+      if (rpcResult?.status === 'exists') {
+        return { data: null, error: new Error('already_joined'), waitlisted: false };
+      }
+
+      if (rpcResult?.status === 'full' && status === 'going') {
+        const { data: waitlistData, error: waitlistError } = await supabase
+          .from('event_attendees')
+          .insert({
+            event_id: eventId,
+            profile_id: profileId,
+            status: 'waitlist',
+            joined_at: new Date().toISOString(),
+          })
+          .select()
+          .maybeSingle();
+
+        if (waitlistError) throw waitlistError;
+        if (waitlistData) return { data: waitlistData, error: null, waitlisted: true };
+      }
+
+      // Success path for RPC
+      if (rpcResult?.status === 'ok') {
+        return { data: rpcResult as any, error: null, waitlisted: false };
+      }
+    } catch (fallbackError) {
+      console.error('Fallback RPC join failed:', fallbackError);
+    }
+
     return { data: null, error: error as Error, waitlisted: false };
   }
 }
