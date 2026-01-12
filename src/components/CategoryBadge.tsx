@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 interface CategoryBadgeProps {
   category: string;
   className?: string;
+  variant?: 'default' | 'glass';
+  size?: 'sm' | 'md';
 }
 
 /**
@@ -14,19 +16,24 @@ interface CategoryBadgeProps {
  */
 export const CategoryBadge = memo(function CategoryBadge({ 
   category, 
-  className 
+  className,
+  variant = 'default',
+  size = 'md',
 }: CategoryBadgeProps) {
   const config = getCategoryConfig(category);
 
   return (
     <span 
       className={cn(
-        'inline-flex items-center px-2.5 py-1 rounded-full',
-        'text-xs font-semibold uppercase tracking-wide',
+        'inline-flex items-center rounded-full',
+        'font-semibold uppercase tracking-wide',
         'border',
-        config.bgClass,
-        config.textClass,
-        config.borderClass,
+        // Size variants
+        size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs',
+        // Style variants
+        variant === 'glass' 
+          ? 'bg-black/40 backdrop-blur-sm text-white border-white/20' 
+          : cn(config.bgClass, config.textClass, config.borderClass),
         className
       )}
     >
