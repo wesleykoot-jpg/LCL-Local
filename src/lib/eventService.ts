@@ -125,6 +125,7 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
           return { data: null, error: waitlistError, waitlisted: false };
         }
         if (waitlistData) return { data: waitlistData, error: null, waitlisted: true };
+        return { data: null, error: new Error('Failed to add to waitlist'), waitlisted: false };
       }
 
       // Success path for RPC
