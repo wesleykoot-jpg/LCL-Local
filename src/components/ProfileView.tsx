@@ -510,6 +510,7 @@ export function ProfileView() {
               { label: 'Verification & Safety', icon: Shield, path: '/profile/verification-safety' },
               { label: 'Notification Preferences', icon: Heart, path: '/profile/notification-preferences' },
               { label: 'Privacy Settings', icon: CheckCircle, path: '/profile/privacy-settings' },
+              { label: 'Google Calendar', icon: Calendar, path: '/profile/calendar' },
               { label: 'Share Profile', icon: Share2, path: '/profile/share' },
             ].map((item) => (
               <button 
