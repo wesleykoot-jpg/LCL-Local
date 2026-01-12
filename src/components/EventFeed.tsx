@@ -412,7 +412,7 @@ export const EventFeed = memo(function EventFeed({
 
   return (
     <motion.div 
-      className="max-w-md mx-auto flex flex-col gap-6"
+      className="max-w-md mx-auto flex flex-col gap-6 overflow-hidden"
       initial="hidden"
       animate="visible"
       variants={{
