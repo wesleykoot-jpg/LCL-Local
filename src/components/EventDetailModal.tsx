@@ -17,6 +17,7 @@ import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { getVenueCoordinates } from '@/lib/distance';
+import { isMockEvent } from '@/lib/utils';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 interface EventDetailModalProps {
@@ -85,7 +86,7 @@ export const EventDetailModal = memo(function EventDetailModal({
   const [imageError, setImageError] = useState(false);
   
   // Check if this is a mock event (cannot be joined)
-  const isMockEvent = event.id.startsWith('mock-');
+  const isDemo = isMockEvent(event.id);
 
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const imageUrl = imageError 
@@ -291,20 +292,20 @@ export const EventDetailModal = memo(function EventDetailModal({
                 {/* Primary action */}
                 <button
                   onClick={() => {
-                    if (!isMockEvent) {
+                    if (!isDemo) {
                       onJoin?.();
                     }
                   }}
-                  disabled={isJoining || isMockEvent}
+                  disabled={isJoining || isDemo}
                   className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
-                  title={isMockEvent ? 'Demo event - cannot join' : undefined}
+                  title={isDemo ? 'Demo event - cannot join' : undefined}
                 >
                   {isJoining ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
                       Joining...
                     </>
-                  ) : isMockEvent ? (
+                  ) : isDemo ? (
                     <>
                       <Users size={18} />
                       Demo Event

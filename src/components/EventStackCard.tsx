@@ -6,6 +6,7 @@ import { DistanceBadge } from './DistanceBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
+import { isMockEvent } from '@/lib/utils';
 
 // Fallback images by category - Dutch/Netherlands themed
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
@@ -100,7 +101,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   
   // Check if this is a mock event (cannot be joined)
-  const isMockEvent = event.id.startsWith('mock-');
+  const isDemo = isMockEvent(event.id);
   
   // Check if current user has already joined this event
   const hasJoined = currentUserProfileId && event.attendees?.some(
@@ -166,24 +167,24 @@ const AnchorEventCard = memo(function AnchorEventCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (!isMockEvent && !hasJoined) {
+              if (!isDemo && !hasJoined) {
                 onJoin?.();
               }
             }}
-            disabled={isJoining || isMockEvent || hasJoined}
+            disabled={isJoining || isDemo || hasJoined}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95 ${
               hasJoined 
                 ? 'bg-muted text-muted-foreground cursor-default' 
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
             }`}
-            title={isMockEvent ? 'Demo event - cannot join' : hasJoined ? 'Already joined' : undefined}
+            title={isDemo ? 'Demo event - cannot join' : hasJoined ? 'Already joined' : undefined}
           >
             {isJoining ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <Users size={16} />
             )}
-            <span>{isJoining ? 'Joining...' : hasJoined ? 'Joined' : isMockEvent ? 'Demo' : 'Join'}</span>
+            <span>{isJoining ? 'Joining...' : hasJoined ? 'Joined' : isDemo ? 'Demo' : 'Join'}</span>
           </button>
         </div>
       </div>
@@ -219,7 +220,7 @@ const ForkEventCard = memo(function ForkEventCard({
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   
   // Check if this is a mock event (cannot be joined)
-  const isMockEvent = event.id.startsWith('mock-');
+  const isDemo = isMockEvent(event.id);
   
   // Check if current user has already joined this event
   const hasJoined = currentUserProfileId && event.attendees?.some(
@@ -291,19 +292,19 @@ const ForkEventCard = memo(function ForkEventCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (!isMockEvent && !hasJoined) {
+                if (!isDemo && !hasJoined) {
                   onJoin?.();
                 }
               }}
-              disabled={isJoining || isMockEvent || hasJoined}
+              disabled={isJoining || isDemo || hasJoined}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all disabled:opacity-50 active:scale-95 ${
                 hasJoined 
                   ? 'bg-muted text-muted-foreground cursor-default' 
                   : 'bg-primary text-primary-foreground hover:bg-primary/90'
               }`}
-              title={isMockEvent ? 'Demo event - cannot join' : hasJoined ? 'Already joined' : undefined}
+              title={isDemo ? 'Demo event - cannot join' : hasJoined ? 'Already joined' : undefined}
             >
-              {isJoining ? <Loader2 size={12} className="animate-spin" /> : hasJoined ? 'Joined' : isMockEvent ? 'Demo' : 'Join'}
+              {isJoining ? <Loader2 size={12} className="animate-spin" /> : hasJoined ? 'Joined' : isDemo ? 'Demo' : 'Join'}
             </button>
           </div>
         </div>
