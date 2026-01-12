@@ -34,10 +34,14 @@ Two new tables support the calendar integration:
 ### Service Layer
 
 **googleCalendarService.ts**: Core integration service
-- OAuth flow management
+- Browser-compatible REST API implementation
+- OAuth flow management using fetch API
 - Token refresh handling
 - CRUD operations for calendar events
 - Event format conversion
+- No Node.js dependencies - works entirely in the browser
+
+**Technical Implementation Note**: The service uses browser-native `fetch()` API to make direct REST API calls to Google Calendar API v3. This approach avoids Node.js-specific dependencies like the `googleapis` npm package, making the code fully compatible with browser environments and Vite bundling.
 
 **eventService.ts**: Updated to trigger calendar sync
 - Syncs events when users join (status: 'going')
@@ -55,6 +59,11 @@ Two new tables support the calendar integration:
 - Processes authorization code
 - Saves tokens
 - Redirects to profile
+
+**CalendarSyncBadge**: Visual indicator component
+- Shows when an event is synced to calendar
+- Displays on event cards
+- Updates in real-time
 
 ## Setup Instructions
 
