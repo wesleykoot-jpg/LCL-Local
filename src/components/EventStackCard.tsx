@@ -1,8 +1,9 @@
 import { memo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CornerDownRight, Users, MapPin, Clock, Loader2 } from 'lucide-react';
+import { CornerDownRight, Users, Clock, Loader2 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import { Facepile } from './Facepile';
+import { DistanceBadge } from './DistanceBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
@@ -143,10 +144,8 @@ const AnchorEventCard = memo(function AnchorEventCard({
           </h3>
           
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <MapPin size={14} className="text-primary" />
-              {event.venue_name}
-            </span>
+            <DistanceBadge venueName={event.venue_name} size="md" />
+            <span className="opacity-50">·</span>
             <span className="flex items-center gap-1.5">
               <Clock size={14} className="text-primary" />
               {formatDate(event.event_date)} · {formatTime(event.event_time)}

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Map, CalendarCheck, User } from 'lucide-react';
+import { Home, CalendarCheck, User } from 'lucide-react';
 
-type NavView = 'feed' | 'map' | 'my-events' | 'profile';
+type NavView = 'feed' | 'my-events' | 'profile';
 
 interface FloatingNavProps {
   activeView?: NavView;
@@ -19,7 +19,6 @@ export function FloatingNav({
   
   // Determine active view from URL if not provided
   const activeView: NavView = activeViewProp || (() => {
-    if (location.pathname === '/map') return 'map';
     if (location.pathname === '/my-events') return 'my-events';
     if (location.pathname === '/profile') return 'profile';
     return 'feed';
@@ -52,17 +51,6 @@ export function FloatingNav({
           whileTap={{ scale: 0.9 }}
         >
           <Home size={22} strokeWidth={2} />
-        </motion.button>
-        <motion.button 
-          onClick={() => handleNav('map')} 
-          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
-            activeView === 'map' 
-              ? 'bg-white/20 text-white' 
-              : 'text-zinc-400 hover:text-white'
-          }`}
-          whileTap={{ scale: 0.9 }}
-        >
-          <Map size={22} strokeWidth={2} />
         </motion.button>
         <motion.button 
           onClick={() => handleNav('my-events')} 

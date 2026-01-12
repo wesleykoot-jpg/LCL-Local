@@ -8,7 +8,6 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Page imports
 import Feed from "./pages/Feed";
-import Map from "./pages/Map";
 import MyEvents from "./pages/MyEvents";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
@@ -28,7 +27,6 @@ const App = () => (
               {/* Main app routes - accessible without login for dev */}
               <Route path="/" element={<Navigate to="/feed" replace />} />
               <Route path="/feed" element={<Feed />} />
-              <Route path="/map" element={<Map />} />
               <Route path="/my-events" element={<MyEvents />} />
               <Route path="/profile" element={<Profile />} />
               
