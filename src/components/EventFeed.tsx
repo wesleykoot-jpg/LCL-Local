@@ -454,7 +454,7 @@ export const EventFeed = memo(function EventFeed({
 
   // Group stacks by vibe if headers are enabled and filter is 'all'
   const vibeGroups = useMemo(() => {
-    if (!showVibeHeaders || activeFilter !== 'all') return null;
+    if (!showVibeHeaders || activeFilter !== 'all') return [];
     return groupStacksByVibe(eventStacks);
   }, [eventStacks, showVibeHeaders, activeFilter]);
 
@@ -521,7 +521,7 @@ export const EventFeed = memo(function EventFeed({
           }
         }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           <motion.div
             key={activeFilter}
             initial={{ opacity: 0, y: 10 }}
@@ -530,45 +530,27 @@ export const EventFeed = memo(function EventFeed({
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-6"
           >
-            {(() => {
-              // When "All" is selected and we have vibe groups, show grouped view
-              if (activeFilter === 'all' && vibeGroups && vibeGroups.length > 0) {
-                return vibeGroups.map(group => (
-                  <Fragment key={group.vibe}>
-                    <VibeHeaderSection vibe={group.vibe} />
-                    {group.stacks.map((stack, index) => 
-                      renderStackCard(
-                        stack, 
-                        index, 
-                        group.vibe === 'later', 
-                        group.stacks.length
-                      )
-                    )}
-                  </Fragment>
-                ));
-              }
-              
-              // For filtered views OR when "All" has no vibe groups, show flat list
-              if (eventStacks.length > 0) {
-                return eventStacks.map((stack, index) => renderStackCard(stack, index));
-              }
-              
-              // Empty state
-              return (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-12"
-                >
-                  <p className="text-muted-foreground text-lg">
-                    No events found for this time
-                  </p>
-                  <p className="text-muted-foreground/60 text-sm mt-2">
-                    Try selecting a different filter
-                  </p>
-                </motion.div>
-              );
-            })()}
+            {activeFilter === 'all' && vibeGroups.length > 0 ? (
+              vibeGroups.map(group => (
+                <Fragment key={group.vibe}>
+                  <VibeHeaderSection vibe={group.vibe} />
+                  {group.stacks.map((stack, index) => 
+                    renderStackCard(stack, index, group.vibe === 'later', group.stacks.length)
+                  )}
+                </Fragment>
+              ))
+            ) : eventStacks.length > 0 ? (
+              eventStacks.map((stack, index) => renderStackCard(stack, index))
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-12"
+              >
+                <p className="text-muted-foreground text-lg">No events found for this time</p>
+                <p className="text-muted-foreground/60 text-sm mt-2">Try selecting a different filter</p>
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </motion.div>
