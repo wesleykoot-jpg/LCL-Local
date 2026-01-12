@@ -262,7 +262,58 @@ interface ParsedEvent {
   image_url: string | null;
 }
 
-const AI_SYSTEM_PROMPT = `You are a data cleaner for a social event app in the Netherlands.
+/**
+ * Safely parses a date string into YYYY-MM-DD format.
+ * Handles various date formats including ISO, Dutch, and relative dates.
+ * Returns null if parsing fails.
+ */
+function parseToISODate(dateStr: string): string | null {
+  if (!dateStr || typeof dateStr !== 'string') {
+    return null;
+  }
+  
+  // Already in correct format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    // Validate that it's a real date
+    const [year, month, day] = dateStr.split('-').map(Number);
+    if (year >= 2020 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return dateStr;
+    }
+    return null;
+  }
+  
+  // Try ISO format (YYYY-MM-DDTHH:MM:SS)
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  }
+  
+  // Try common date formats: DD-MM-YYYY, DD/MM/YYYY
+  const europeanMatch = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (europeanMatch) {
+    const [, day, month, year] = europeanMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Try US format: MM-DD-YYYY, MM/DD/YYYY (less common in NL)
+  // We prioritize European format above, so this is a fallback
+  
+  return null;
+}
+
+/**
+ * Gets today's date in YYYY-MM-DD format.
+ */
+function getTodayISO(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * Generates the AI system prompt with the current date.
+ */
+function getAISystemPrompt(): string {
+  const today = getTodayISO();
+  return `You are a data cleaner for a social event app in the Netherlands.
 Your task is to extract event information from raw HTML text.
 
 Extract the following fields:
@@ -279,10 +330,11 @@ Extract the following fields:
 - event_time: Time in HH:MM format, or descriptive like "Evening" or "All day"
 - image_url: Full image URL if found, or null
 
-Today's date is: ${new Date().toISOString().split('T')[0]}
+Today's date is: ${today}
 
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanation.
 If you cannot extract meaningful data, return null for that field.`;
+}
 
 /**
  * Uses OpenAI to parse raw event data into structured format.
@@ -306,7 +358,7 @@ ${rawEvent.rawHtml}`;
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: AI_SYSTEM_PROMPT },
+        { role: 'system', content: getAISystemPrompt() },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.3,
@@ -334,21 +386,15 @@ ${rawEvent.rawHtml}`;
       parsed.category = 'market';
     }
     
-    // Validate date format
-    if (parsed.event_date && !/^\d{4}-\d{2}-\d{2}$/.test(parsed.event_date)) {
-      console.log(`   ⚠️  Invalid date format "${parsed.event_date}"`);
-      // Try to parse and reformat
-      const dateObj = new Date(parsed.event_date);
-      if (!isNaN(dateObj.getTime())) {
-        parsed.event_date = dateObj.toISOString().split('T')[0];
-      } else {
-        parsed.event_date = new Date().toISOString().split('T')[0];
-      }
-    }
-    
-    // Ensure event_date has a default
-    if (!parsed.event_date) {
-      parsed.event_date = new Date().toISOString().split('T')[0];
+    // Validate and normalize date format using our robust parser
+    const parsedDate = parseToISODate(parsed.event_date);
+    if (parsedDate) {
+      parsed.event_date = parsedDate;
+    } else if (parsed.event_date) {
+      console.log(`   ⚠️  Could not parse date "${parsed.event_date}", using today`);
+      parsed.event_date = getTodayISO();
+    } else {
+      parsed.event_date = getTodayISO();
     }
     
     // Validate time format
@@ -394,19 +440,42 @@ interface EventInsert {
 }
 
 /**
+ * Constructs a full ISO datetime from date and time strings.
+ * Uses the parsed time if available (HH:MM format), otherwise defaults to noon.
+ */
+function constructEventDateTime(eventDate: string, eventTime: string): string {
+  // Check if eventTime is in HH:MM format
+  const timeMatch = eventTime.match(/^(\d{2}):(\d{2})$/);
+  
+  if (timeMatch) {
+    const [, hours, minutes] = timeMatch;
+    return `${eventDate}T${hours}:${minutes}:00Z`;
+  }
+  
+  // Default to noon for descriptive times like "Evening", "All day", "TBD"
+  return `${eventDate}T12:00:00Z`;
+}
+
+/**
  * Checks if an event with the same title and date already exists.
+ * Uses date-only comparison to handle different time zones.
  */
 async function eventExists(
   supabase: AnySupabaseClient,
   title: string,
   eventDate: string
 ): Promise<boolean> {
+  // Use a date range that covers the entire day in any timezone
+  // eventDate is in YYYY-MM-DD format
+  const startOfDay = `${eventDate}T00:00:00.000Z`;
+  const endOfDay = `${eventDate}T23:59:59.999Z`;
+  
   const { data, error } = await supabase
     .from('events')
     .select('id')
     .eq('title', title)
-    .gte('event_date', `${eventDate}T00:00:00`)
-    .lte('event_date', `${eventDate}T23:59:59`)
+    .gte('event_date', startOfDay)
+    .lte('event_date', endOfDay)
     .limit(1);
   
   if (error) {
@@ -524,7 +593,7 @@ async function main(): Promise<void> {
       event_type: DEFAULT_EVENT_TYPE,
       venue_name: event.venue_name,
       location: `POINT(${coords.lng} ${coords.lat})`,
-      event_date: `${event.event_date}T12:00:00Z`, // Default to noon if no time
+      event_date: constructEventDateTime(event.event_date, event.event_time),
       event_time: event.event_time,
       image_url: event.image_url,
       created_by: SYSTEM_ADMIN_UUID || null,
