@@ -14,8 +14,39 @@ type Category = (typeof VALID_CATEGORIES)[number];
 // Default event type for scraped events
 const DEFAULT_EVENT_TYPE = "anchor";
 
-// Target URL
-const TARGET_URL = "https://ontdekmeppel.nl/ontdek-meppel/agenda/";
+// Interface for scraper source from database
+interface ScraperSource {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  config: {
+    selectors?: string[];
+    headers?: Record<string, string>;
+    rate_limit_ms?: number;
+  };
+}
+
+// Default selectors for event scraping
+const DEFAULT_SELECTORS = [
+  "article.event-card",
+  "article.agenda-item",
+  "div.event-card",
+  "div.agenda-item",
+  ".event-item",
+  ".card.event",
+  "article",
+  ".agenda-event",
+  '[class*="event"]',
+  '[class*="agenda"]',
+];
+
+// Default headers for scraping
+const DEFAULT_HEADERS = {
+  "User-Agent": "LCL-Meppel-Scraper/1.0 (Event aggregator for local social app)",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
+};
 
 // Known Meppel venues with coordinates
 const MEPPEL_VENUES = [
@@ -233,38 +264,24 @@ function constructEventDateTime(eventDate: string, eventTime: string): string {
   return utcDate.toISOString();
 }
 
-// Scraping function
-async function scrapeEventCards(): Promise<RawEventCard[]> {
-  console.log(`🌐 Fetching agenda from ${TARGET_URL}...`);
+// Scraping function - now accepts source configuration
+async function scrapeEventCards(source: ScraperSource): Promise<RawEventCard[]> {
+  console.log(`🌐 Fetching agenda from ${source.name} (${source.url})...`);
 
-  const response = await fetch(TARGET_URL, {
-    headers: {
-      "User-Agent": "LCL-Meppel-Scraper/1.0 (Event aggregator for local social app)",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
-    },
-  });
+  const headers = source.config.headers || DEFAULT_HEADERS;
+  
+  const response = await fetch(source.url, { headers });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+    throw new Error(`Failed to fetch ${source.name}: ${response.status} ${response.statusText}`);
   }
 
   const html = await response.text();
   const $ = cheerio.load(html);
   const events: RawEventCard[] = [];
 
-  const selectors = [
-    "article.event-card",
-    "article.agenda-item",
-    "div.event-card",
-    "div.agenda-item",
-    ".event-item",
-    ".card.event",
-    "article",
-    ".agenda-event",
-    '[class*="event"]',
-    '[class*="agenda"]',
-  ];
+  // Use source-specific selectors or fall back to defaults
+  const selectors = source.config.selectors || DEFAULT_SELECTORS;
 
   // deno-lint-ignore no-explicit-any
   let foundElements: any = $([]);
@@ -504,6 +521,159 @@ async function insertEvent(
   return true;
 }
 
+// Fetch enabled scraper sources from database
+// deno-lint-ignore no-explicit-any
+async function getEnabledSources(supabase: any): Promise<ScraperSource[]> {
+  const { data, error } = await supabase
+    .from("scraper_sources")
+    .select("id, name, url, enabled, config")
+    .eq("enabled", true);
+
+  if (error) {
+    console.error("❌ Error fetching scraper sources:", error.message);
+    return [];
+  }
+
+  return data || [];
+}
+
+// Update source stats after scraping
+// deno-lint-ignore no-explicit-any
+async function updateSourceStats(
+  supabase: any,
+  sourceId: string,
+  eventsScraped: number,
+  success: boolean
+): Promise<void> {
+  const { error } = await supabase.rpc("update_scraper_source_stats", {
+    p_source_id: sourceId,
+    p_events_scraped: eventsScraped,
+    p_success: success,
+  });
+
+  if (error) {
+    console.error("⚠️ Failed to update source stats:", error.message);
+  }
+}
+
+// Process a single source and return results
+// deno-lint-ignore no-explicit-any
+async function processSource(
+  supabase: any,
+  source: ScraperSource,
+  apiKey: string
+): Promise<{
+  sourceId: string;
+  sourceName: string;
+  totalScraped: number;
+  parsedByAI: number;
+  inserted: number;
+  skipped: number;
+  failed: number;
+  error?: string;
+}> {
+  const result = {
+    sourceId: source.id,
+    sourceName: source.name,
+    totalScraped: 0,
+    parsedByAI: 0,
+    inserted: 0,
+    skipped: 0,
+    failed: 0,
+    error: undefined as string | undefined,
+  };
+
+  try {
+    // Step 1: Scrape events from this source
+    console.log(`\n📥 Scraping from: ${source.name}`);
+    const rawEvents = await scrapeEventCards(source);
+    result.totalScraped = rawEvents.length;
+
+    if (rawEvents.length === 0) {
+      console.log(`   ⚠️ No events found on ${source.name}`);
+      await updateSourceStats(supabase, source.id, 0, true);
+      return result;
+    }
+
+    // Step 2: Parse with AI
+    console.log(`   🤖 Parsing ${rawEvents.length} events with AI...`);
+    const parsedEvents: ParsedEvent[] = [];
+    const rateLimitMs = source.config.rate_limit_ms || 200;
+
+    for (let i = 0; i < rawEvents.length; i++) {
+      const rawEvent = rawEvents[i];
+      console.log(`   [${i + 1}/${rawEvents.length}] Processing: ${rawEvent.title || "Unknown event"}...`);
+
+      const parsed = await parseEventWithAI(apiKey, rawEvent);
+      if (parsed) {
+        parsedEvents.push(parsed);
+        console.log(`   ✅ Parsed: "${parsed.title}" (${parsed.category})`);
+      } else {
+        console.log("   ⚠️ Skipped: Could not parse event");
+      }
+
+      // Rate limiting
+      if (i < rawEvents.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, rateLimitMs));
+      }
+    }
+
+    result.parsedByAI = parsedEvents.length;
+    console.log(`   ✅ Successfully parsed ${parsedEvents.length} of ${rawEvents.length} events`);
+
+    // Step 3: Insert into database
+    console.log(`   💾 Inserting events into database...`);
+
+    for (const event of parsedEvents) {
+      const exists = await eventExists(supabase, event.title, event.event_date);
+      if (exists) {
+        console.log(`   ⏭️ Skipping duplicate: "${event.title}" on ${event.event_date}`);
+        result.skipped++;
+        continue;
+      }
+
+      // Use AI-provided coordinates if available, otherwise fall back to known venues
+      const coords = event.coordinates || getVenueCoordinates(event.venue_name);
+
+      if (event.coordinates) {
+        console.log(`   📍 Using AI-provided coordinates for "${event.venue_name}": ${coords.lat}, ${coords.lng}`);
+      }
+
+      const insertData: EventInsert = {
+        title: event.title,
+        description: event.description,
+        category: event.category,
+        event_type: DEFAULT_EVENT_TYPE,
+        venue_name: event.venue_name,
+        location: `POINT(${coords.lng} ${coords.lat})`,
+        event_date: constructEventDateTime(event.event_date, event.event_time),
+        event_time: event.event_time,
+        image_url: event.image_url,
+        created_by: null,
+        status: "Upcoming",
+      };
+
+      const success = await insertEvent(supabase, insertData);
+      if (success) {
+        console.log(`   ✅ Inserted: "${event.title}"`);
+        result.inserted++;
+      } else {
+        result.failed++;
+      }
+    }
+
+    // Update source stats
+    await updateSourceStats(supabase, source.id, result.inserted, true);
+
+  } catch (error) {
+    console.error(`❌ Error processing source ${source.name}:`, error);
+    result.error = error instanceof Error ? error.message : "Unknown error";
+    await updateSourceStats(supabase, source.id, 0, false);
+  }
+
+  return result;
+}
+
 // Main handler
 serve(async (req) => {
   // Handle CORS
@@ -528,98 +698,63 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    console.log("🚀 Starting Meppel Event Scraper (using Google Gemini)...");
+    console.log("🚀 Starting Multi-Source Event Scraper (using Google Gemini)...");
 
-    // Step 1: Scrape events
-    console.log("\n📥 Step 1: Scraping event cards...");
-    const rawEvents = await scrapeEventCards();
+    // Step 1: Fetch enabled sources from database
+    console.log("\n📋 Fetching enabled scraper sources...");
+    const sources = await getEnabledSources(supabase);
 
-    if (rawEvents.length === 0) {
+    if (sources.length === 0) {
+      console.log("⚠️ No enabled scraper sources found.");
       return new Response(
-        JSON.stringify({ success: true, message: "No events found on the page", inserted: 0, skipped: 0 }),
+        JSON.stringify({
+          success: true,
+          message: "No enabled scraper sources found. Add sources to the scraper_sources table.",
+          sources: [],
+          totals: { totalScraped: 0, parsedByAI: 0, inserted: 0, skipped: 0, failed: 0 },
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Step 2: Parse with AI
-    console.log("\n🤖 Step 2: Parsing events with Google Gemini...");
-    const parsedEvents: ParsedEvent[] = [];
+    console.log(`📍 Found ${sources.length} enabled source(s): ${sources.map(s => s.name).join(", ")}`);
 
-    for (let i = 0; i < rawEvents.length; i++) {
-      const rawEvent = rawEvents[i];
-      console.log(`[${i + 1}/${rawEvents.length}] Processing: ${rawEvent.title || "Unknown event"}...`);
+    // Step 2: Process each source
+    const sourceResults = [];
+    const totals = {
+      totalScraped: 0,
+      parsedByAI: 0,
+      inserted: 0,
+      skipped: 0,
+      failed: 0,
+    };
 
-      const parsed = await parseEventWithAI(GOOGLE_AI_API_KEY, rawEvent);
-      if (parsed) {
-        parsedEvents.push(parsed);
-        console.log(`✅ Parsed: "${parsed.title}" (${parsed.category})`);
-      } else {
-        console.log("⚠️ Skipped: Could not parse event");
-      }
+    for (const source of sources) {
+      const result = await processSource(supabase, source, GOOGLE_AI_API_KEY);
+      sourceResults.push(result);
 
-      // Rate limiting
-      if (i < rawEvents.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      }
-    }
-
-    console.log(`\n✅ Successfully parsed ${parsedEvents.length} of ${rawEvents.length} events`);
-
-    // Step 3: Insert into database
-    console.log("\n💾 Step 3: Inserting events into database...");
-    let inserted = 0;
-    let skipped = 0;
-    let failed = 0;
-
-    for (const event of parsedEvents) {
-      const exists = await eventExists(supabase, event.title, event.event_date);
-      if (exists) {
-        console.log(`⏭️ Skipping duplicate: "${event.title}" on ${event.event_date}`);
-        skipped++;
-        continue;
-      }
-
-      // Use AI-provided coordinates if available, otherwise fall back to known venues
-      const coords = event.coordinates || getVenueCoordinates(event.venue_name);
-      
-      if (event.coordinates) {
-        console.log(`   📍 Using AI-provided coordinates for "${event.venue_name}": ${coords.lat}, ${coords.lng}`);
-      }
-
-      const insertData: EventInsert = {
-        title: event.title,
-        description: event.description,
-        category: event.category,
-        event_type: DEFAULT_EVENT_TYPE,
-        venue_name: event.venue_name,
-        location: `POINT(${coords.lng} ${coords.lat})`,
-        event_date: constructEventDateTime(event.event_date, event.event_time),
-        event_time: event.event_time,
-        image_url: event.image_url,
-        created_by: null,
-        status: "Upcoming",
-      };
-
-      const success = await insertEvent(supabase, insertData);
-      if (success) {
-        console.log(`✅ Inserted: "${event.title}"`);
-        inserted++;
-      } else {
-        failed++;
-      }
+      // Aggregate totals
+      totals.totalScraped += result.totalScraped;
+      totals.parsedByAI += result.parsedByAI;
+      totals.inserted += result.inserted;
+      totals.skipped += result.skipped;
+      totals.failed += result.failed;
     }
 
     // Summary
     const summary = {
       success: true,
-      totalScraped: rawEvents.length,
-      parsedByAI: parsedEvents.length,
-      inserted,
-      skipped,
-      failed,
+      sources: sourceResults,
+      totals,
     };
 
-    console.log("\n📊 Summary:", summary);
+    console.log("\n📊 Final Summary:");
+    console.log(`   Sources processed: ${sources.length}`);
+    console.log(`   Total scraped: ${totals.totalScraped}`);
+    console.log(`   Parsed by AI: ${totals.parsedByAI}`);
+    console.log(`   Inserted: ${totals.inserted}`);
+    console.log(`   Skipped (duplicates): ${totals.skipped}`);
+    console.log(`   Failed: ${totals.failed}`);
 
     return new Response(JSON.stringify(summary), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
