@@ -1,37 +1,12 @@
 /**
  * Distance utility functions for calculating and formatting distances
- * between user location and event locations
+ * between user location and event locations.
+ * 
+ * This module is location-agnostic - it works anywhere in the world.
+ * Coordinates come from:
+ * - User: GPS/manual location via LocationContext
+ * - Events: PostGIS location column in database
  */
-
-// Meppel center coordinates (default user location)
-export const MEPPEL_CENTER = {
-  lat: 52.6961,
-  lng: 6.1944,
-};
-
-// Meppel venue coordinates for mock events
-export const MEPPEL_VENUES: Record<string, { lat: number; lng: number }> = {
-  'Sportpark Ezinge, Meppel': { lat: 52.6985, lng: 6.1876 },
-  'Sportkantine Ezinge': { lat: 52.6985, lng: 6.1876 },
-  'Café De Kansel, Woldstraat': { lat: 52.6956, lng: 6.1944 },
-  'Wilhelminapark Meppel': { lat: 52.6923, lng: 6.1912 },
-  'Wilhelminapark grasveld': { lat: 52.6923, lng: 6.1912 },
-  'IJssalon op de Markt': { lat: 52.6961, lng: 6.1938 },
-  'Café 1761, Prinsengracht': { lat: 52.6961, lng: 6.1938 },
-  'Meppeler Haven (Stouwepad)': { lat: 52.6978, lng: 6.1891 },
-  'Schouwburg Ogterop': { lat: 52.6952, lng: 6.1972 },
-  'Foyer Schouwburg': { lat: 52.6952, lng: 6.1972 },
-  'Hoofdstraat Meppel': { lat: 52.6961, lng: 6.1944 },
-  'Luxor Cinema': { lat: 52.6968, lng: 6.192 },
-  'De Plataan': { lat: 52.6961, lng: 6.1944 },
-  'Café de Plataan': { lat: 52.6961, lng: 6.1944 },
-  'De Beurs': { lat: 52.6959, lng: 6.1931 },
-  'Reestkerk': { lat: 52.705, lng: 6.195 },
-  'Markt Meppel': { lat: 52.6958, lng: 6.1935 },
-  'Bibliotheek Meppel': { lat: 52.695, lng: 6.1905 },
-  'Alcides': { lat: 52.6898, lng: 6.2012 },
-  'Meppel Centrum': { lat: 52.696, lng: 6.192 },
-};
 
 /**
  * Calculate distance between two points using Haversine formula
@@ -114,26 +89,4 @@ export function getDistanceDisplay(distanceKm: number): {
   return {
     primary: formatDistance(distanceKm),
   };
-}
-
-/**
- * Get coordinates for a venue name, with fallback to Meppel center
- * Supports fuzzy matching for venue names
- */
-export function getVenueCoordinates(venueName: string): { lat: number; lng: number } {
-  // Try exact match first
-  if (MEPPEL_VENUES[venueName]) {
-    return MEPPEL_VENUES[venueName];
-  }
-  
-  // Try fuzzy match (case insensitive, partial match)
-  const lowerVenue = venueName.toLowerCase();
-  for (const [key, coords] of Object.entries(MEPPEL_VENUES)) {
-    if (lowerVenue.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerVenue)) {
-      return coords;
-    }
-  }
-  
-  // Default to Meppel center
-  return MEPPEL_CENTER;
 }

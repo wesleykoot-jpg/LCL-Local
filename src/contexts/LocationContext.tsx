@@ -9,11 +9,11 @@
  * - Automatic location updates when user moves
  * - Distance radius preference for event filtering
  * - Permission state management with UI hints
+ * - Works globally - no hardcoded default locations
  */
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { useGeolocation, type UserLocation, type LocationPermissionState } from '@/hooks/useGeolocation';
-import { MEPPEL_CENTER } from '@/lib/distance';
 
 // Storage key for persisted preferences
 const LOCATION_PREFS_KEY = 'lcl_location_preferences';
@@ -23,15 +23,15 @@ export interface LocationPreferences {
   radiusKm: number;
   /** Whether to use GPS location or manual zone */
   useGPS: boolean;
-  /** User's manually set zone name (e.g., "Meppel") */
+  /** User's manually set zone name (e.g., "Amsterdam, NL" or "Vienna, AT") */
   manualZone: string;
   /** User's manually set coordinates (when GPS is disabled) */
   manualCoordinates: UserLocation | null;
 }
 
 export interface LocationContextType {
-  /** Current user location (GPS or manual) */
-  location: UserLocation;
+  /** Current user location (GPS or manual), null if not available */
+  location: UserLocation | null;
   /** Whether location is being fetched */
   isLoading: boolean;
   /** Any error that occurred */
@@ -42,6 +42,8 @@ export interface LocationContextType {
   isNative: boolean;
   /** User preferences for location */
   preferences: LocationPreferences;
+  /** Whether user has a valid location (GPS or manual) */
+  hasLocation: boolean;
   /** Request location permission from user */
   requestPermission: () => Promise<boolean>;
   /** Refresh current location */
@@ -49,7 +51,7 @@ export interface LocationContextType {
   /** Update location preferences */
   updatePreferences: (updates: Partial<LocationPreferences>) => void;
   /** Set a manual zone (disables GPS) */
-  setManualZone: (zone: string, coordinates?: UserLocation) => void;
+  setManualZone: (zone: string, coordinates: UserLocation) => void;
   /** Enable GPS-based location */
   enableGPS: () => Promise<boolean>;
 }
@@ -57,8 +59,8 @@ export interface LocationContextType {
 const defaultPreferences: LocationPreferences = {
   radiusKm: 25, // Default 25km radius
   useGPS: true,
-  manualZone: 'Meppel, NL',
-  manualCoordinates: MEPPEL_CENTER,
+  manualZone: '', // No default zone
+  manualCoordinates: null, // No default coordinates
 };
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
@@ -94,8 +96,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   // Load initial preferences from storage
   const [preferences, setPreferences] = useState<LocationPreferences>(loadPersistedPreferences);
   
-  // Use the geolocation hook - don't conditionally enable watch based on permissionState
-  // since that would create a circular reference (permissionState comes from the hook)
+  // Use the geolocation hook
   const {
     location: gpsLocation,
     isLoading,
@@ -106,19 +107,23 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     getCurrentPosition,
     refresh,
   } = useGeolocation({
-    enableWatch: preferences.useGPS, // Only check preferences, not permissionState
+    enableWatch: preferences.useGPS,
     enableHighAccuracy: true,
     maximumAge: 30000, // 30 seconds
     timeout: 15000, // 15 seconds
   });
 
   // Determine which location to use (GPS or manual)
-  const effectiveLocation = useMemo((): UserLocation => {
-    if (preferences.useGPS && permissionState === 'granted') {
+  const effectiveLocation = useMemo((): UserLocation | null => {
+    if (preferences.useGPS && permissionState === 'granted' && gpsLocation) {
       return gpsLocation;
     }
-    return preferences.manualCoordinates || MEPPEL_CENTER;
+    // Fall back to manual coordinates if set
+    return preferences.manualCoordinates;
   }, [preferences.useGPS, preferences.manualCoordinates, gpsLocation, permissionState]);
+
+  // Check if user has any valid location
+  const hasLocation = effectiveLocation !== null;
 
   /**
    * Request location permission
@@ -161,13 +166,13 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   /**
    * Set a manual zone (disables GPS-based location)
    */
-  const setManualZone = useCallback((zone: string, coordinates?: UserLocation) => {
+  const setManualZone = useCallback((zone: string, coordinates: UserLocation) => {
     setPreferences(prev => {
       const updated = {
         ...prev,
         useGPS: false,
         manualZone: zone,
-        manualCoordinates: coordinates || prev.manualCoordinates,
+        manualCoordinates: coordinates,
       };
       persistPreferences(updated);
       return updated;
@@ -203,6 +208,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     permissionState,
     isNative,
     preferences,
+    hasLocation,
     requestPermission,
     refreshLocation,
     updatePreferences,
@@ -215,6 +221,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     permissionState,
     isNative,
     preferences,
+    hasLocation,
     requestPermission,
     refreshLocation,
     updatePreferences,
