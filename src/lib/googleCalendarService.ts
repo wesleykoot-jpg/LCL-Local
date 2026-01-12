@@ -1,4 +1,3 @@
-import { google } from 'googleapis';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -7,8 +6,11 @@ type CalendarEventMapping = Database['public']['Tables']['calendar_event_mapping
 type Event = Database['public']['Tables']['events']['Row'];
 
 // OAuth2 configuration
-const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
+const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const REDIRECT_URI = `${window.location.origin}/calendar/callback`;
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
 interface GoogleCalendarEvent {
   summary: string;
@@ -28,30 +30,25 @@ interface GoogleCalendarEvent {
 }
 
 /**
- * Get OAuth2 client configuration
- */
-function getOAuth2Client() {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error('Google OAuth credentials not configured');
-  }
-
-  return new google.auth.OAuth2(clientId, clientSecret, REDIRECT_URI);
-}
-
-/**
  * Generate Google OAuth consent URL
  */
 export function getAuthorizationUrl(): string {
-  const oauth2Client = getOAuth2Client();
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-  return oauth2Client.generateAuthUrl({
-    access_type: 'offline',
+  if (!clientId) {
+    throw new Error('Google OAuth credentials not configured');
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'code',
     scope: SCOPES,
+    access_type: 'offline',
     prompt: 'consent', // Force consent to get refresh token
   });
+
+  return `${GOOGLE_AUTH_URL}?${params.toString()}`;
 }
 
 /**
@@ -59,17 +56,40 @@ export function getAuthorizationUrl(): string {
  */
 export async function exchangeCodeForTokens(code: string) {
   try {
-    const oauth2Client = getOAuth2Client();
-    const { tokens } = await oauth2Client.getToken(code);
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
 
-    if (!tokens.access_token) {
-      throw new Error('No access token received');
+    if (!clientId || !clientSecret) {
+      throw new Error('Google OAuth credentials not configured');
     }
 
+    const response = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error_description || 'Failed to exchange code for tokens');
+    }
+
+    const data = await response.json();
+
     return {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiryDate: data.expires_in
+        ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+        : null,
     };
   } catch (error) {
     console.error('Error exchanging code for tokens:', error);
@@ -137,27 +157,49 @@ async function refreshAccessToken(integration: CalendarIntegration): Promise<str
     throw new Error('No refresh token available');
   }
 
-  const oauth2Client = getOAuth2Client();
-  oauth2Client.setCredentials({
-    refresh_token: integration.refresh_token,
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Google OAuth credentials not configured');
+  }
+
+  const response = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: integration.refresh_token,
+      grant_type: 'refresh_token',
+    }),
   });
 
-  const { credentials } = await oauth2Client.refreshAccessToken();
-  
-  if (!credentials.access_token) {
-    throw new Error('Failed to refresh access token');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error_description || 'Failed to refresh access token');
+  }
+
+  const data = await response.json();
+
+  if (!data.access_token) {
+    throw new Error('No access token in refresh response');
   }
 
   // Update the integration with new token
   await supabase
     .from('calendar_integrations')
     .update({
-      access_token: credentials.access_token,
-      token_expiry: credentials.expiry_date ? new Date(credentials.expiry_date).toISOString() : null,
+      access_token: data.access_token,
+      token_expiry: data.expires_in
+        ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+        : null,
     })
     .eq('id', integration.id);
 
-  return credentials.access_token;
+  return data.access_token;
 }
 
 /**
@@ -172,7 +214,7 @@ async function getValidAccessToken(integration: CalendarIntegration): Promise<st
   if (integration.token_expiry) {
     const expiry = new Date(integration.token_expiry);
     const now = new Date();
-    
+
     // Refresh if token expires in less than 5 minutes
     if (expiry.getTime() - now.getTime() < 5 * 60 * 1000) {
       return await refreshAccessToken(integration);
@@ -189,10 +231,10 @@ function convertToGoogleCalendarEvent(event: Event): GoogleCalendarEvent {
   // Parse event date and time
   const eventDate = new Date(event.event_date);
   const [hours, minutes] = event.event_time.split(':').map(Number);
-  
+
   const startDateTime = new Date(eventDate);
   startDateTime.setHours(hours || 0, minutes || 0, 0, 0);
-  
+
   // Default event duration: 2 hours
   const endDateTime = new Date(startDateTime);
   endDateTime.setHours(endDateTime.getHours() + 2);
@@ -224,24 +266,34 @@ export async function createCalendarEvent(
 ): Promise<{ success: boolean; externalEventId?: string; error?: string }> {
   try {
     const integration = await getCalendarIntegration(profileId);
-    
+
     if (!integration || !integration.sync_enabled) {
       return { success: false, error: 'Calendar integration not enabled' };
     }
 
     const accessToken = await getValidAccessToken(integration);
-    const oauth2Client = getOAuth2Client();
-    oauth2Client.setCredentials({ access_token: accessToken });
-
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
     const googleEvent = convertToGoogleCalendarEvent(event);
 
-    const response = await calendar.events.insert({
-      calendarId: integration.calendar_id || 'primary',
-      requestBody: googleEvent,
-    });
+    const response = await fetch(
+      `${GOOGLE_CALENDAR_API}/calendars/${integration.calendar_id || 'primary'}/events`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(googleEvent),
+      }
+    );
 
-    if (!response.data.id) {
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to create calendar event');
+    }
+
+    const data = await response.json();
+
+    if (!data.id) {
       throw new Error('No event ID returned from Google Calendar');
     }
 
@@ -250,19 +302,19 @@ export async function createCalendarEvent(
       event_id: event.id,
       profile_id: profileId,
       integration_id: integration.id,
-      external_event_id: response.data.id,
+      external_event_id: data.id,
       external_calendar_id: integration.calendar_id || 'primary',
       sync_status: 'synced',
     };
 
     await supabase.from('calendar_event_mappings').insert(mapping);
 
-    return { success: true, externalEventId: response.data.id };
+    return { success: true, externalEventId: data.id };
   } catch (error) {
     console.error('Error creating calendar event:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to create calendar event' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create calendar event',
     };
   }
 }
@@ -276,7 +328,7 @@ export async function updateCalendarEvent(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const integration = await getCalendarIntegration(profileId);
-    
+
     if (!integration || !integration.sync_enabled) {
       return { success: false, error: 'Calendar integration not enabled' };
     }
@@ -295,22 +347,29 @@ export async function updateCalendarEvent(
     }
 
     const accessToken = await getValidAccessToken(integration);
-    const oauth2Client = getOAuth2Client();
-    oauth2Client.setCredentials({ access_token: accessToken });
-
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
     const googleEvent = convertToGoogleCalendarEvent(event);
 
-    await calendar.events.update({
-      calendarId: mapping.external_calendar_id,
-      eventId: mapping.external_event_id,
-      requestBody: googleEvent,
-    });
+    const response = await fetch(
+      `${GOOGLE_CALENDAR_API}/calendars/${mapping.external_calendar_id}/events/${mapping.external_event_id}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(googleEvent),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to update calendar event');
+    }
 
     // Update mapping timestamp
     await supabase
       .from('calendar_event_mappings')
-      .update({ 
+      .update({
         last_synced_at: new Date().toISOString(),
         sync_status: 'synced',
       })
@@ -319,9 +378,9 @@ export async function updateCalendarEvent(
     return { success: true };
   } catch (error) {
     console.error('Error updating calendar event:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to update calendar event' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update calendar event',
     };
   }
 }
@@ -335,7 +394,7 @@ export async function deleteCalendarEvent(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const integration = await getCalendarIntegration(profileId);
-    
+
     if (!integration || !integration.sync_enabled) {
       return { success: false, error: 'Calendar integration not enabled' };
     }
@@ -353,28 +412,31 @@ export async function deleteCalendarEvent(
     }
 
     const accessToken = await getValidAccessToken(integration);
-    const oauth2Client = getOAuth2Client();
-    oauth2Client.setCredentials({ access_token: accessToken });
 
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const response = await fetch(
+      `${GOOGLE_CALENDAR_API}/calendars/${mapping.external_calendar_id}/events/${mapping.external_event_id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-    await calendar.events.delete({
-      calendarId: mapping.external_calendar_id,
-      eventId: mapping.external_event_id,
-    });
+    if (!response.ok && response.status !== 404) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to delete calendar event');
+    }
 
     // Delete mapping
-    await supabase
-      .from('calendar_event_mappings')
-      .delete()
-      .eq('id', mapping.id);
+    await supabase.from('calendar_event_mappings').delete().eq('id', mapping.id);
 
     return { success: true };
   } catch (error) {
     console.error('Error deleting calendar event:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to delete calendar event' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete calendar event',
     };
   }
 }
@@ -382,13 +444,12 @@ export async function deleteCalendarEvent(
 /**
  * Disconnect calendar integration
  */
-export async function disconnectCalendar(profileId: string): Promise<{ success: boolean; error?: string }> {
+export async function disconnectCalendar(
+  profileId: string
+): Promise<{ success: boolean; error?: string }> {
   try {
     // Delete all mappings
-    await supabase
-      .from('calendar_event_mappings')
-      .delete()
-      .eq('profile_id', profileId);
+    await supabase.from('calendar_event_mappings').delete().eq('profile_id', profileId);
 
     // Delete integration
     await supabase
@@ -400,9 +461,9 @@ export async function disconnectCalendar(profileId: string): Promise<{ success: 
     return { success: true };
   } catch (error) {
     console.error('Error disconnecting calendar:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to disconnect calendar' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to disconnect calendar',
     };
   }
 }
