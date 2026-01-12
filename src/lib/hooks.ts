@@ -172,7 +172,7 @@ export function useEvents(options?: {
         `)
         .order('event_date', { ascending: true })
         .range(from, to)
-        .limit(attendeesLimit, { foreignTable: 'attendees' });
+        .limit(attendeesLimit, { foreignTable: 'event_attendees' });
 
       if (options?.category && options.category.length > 0) {
         query = query.in('category', options.category);
