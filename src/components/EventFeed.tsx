@@ -523,24 +523,25 @@ export const EventFeed = memo(function EventFeed({
       >
         <AnimatePresence mode="popLayout">
           <motion.div
-            key={activeFilter}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-6"
           >
-            {activeFilter === 'all' && vibeGroups.length > 0 ? (
-              vibeGroups.map(group => (
-                <Fragment key={group.vibe}>
-                  <VibeHeaderSection vibe={group.vibe} />
-                  {group.stacks.map((stack, index) => 
-                    renderStackCard(stack, index, group.vibe === 'later', group.stacks.length)
-                  )}
-                </Fragment>
-              ))
-            ) : eventStacks.length > 0 ? (
-              eventStacks.map((stack, index) => renderStackCard(stack, index))
+            {eventStacks.length > 0 ? (
+              activeFilter === 'all' && vibeGroups.length > 0 ? (
+                vibeGroups.map(group => (
+                  <Fragment key={group.vibe}>
+                    <VibeHeaderSection vibe={group.vibe} />
+                    {group.stacks.map((stack, index) => 
+                      renderStackCard(stack, index, group.vibe === 'later', group.stacks.length)
+                    )}
+                  </Fragment>
+                ))
+              ) : (
+                eventStacks.map((stack, index) => renderStackCard(stack, index))
+              )
             ) : (
               <motion.div
                 initial={{ opacity: 0 }}
