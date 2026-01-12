@@ -283,6 +283,86 @@ export function useUserCommitments(profileId: string) {
   return { commitments, loading };
 }
 
+interface GroupedEvents {
+  [monthYear: string]: Array<EventWithAttendees & { ticket_number?: string }>;
+}
+
+/**
+ * Fetch ALL user commitments for the timeline view, grouped by month
+ */
+export function useAllUserCommitments(profileId: string) {
+  const [commitments, setCommitments] = useState<Array<EventWithAttendees & { ticket_number?: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [groupedByMonth, setGroupedByMonth] = useState<GroupedEvents>({});
+
+  useEffect(() => {
+    async function fetchAllCommitments() {
+      if (!profileId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('event_attendees')
+          .select(`
+            *,
+            event:events(
+              *,
+              attendee_count:event_attendees(count)
+            )
+          `)
+          .eq('profile_id', profileId)
+          .eq('status', 'going');
+
+        if (error) throw error;
+
+        // Process and sort by event date
+        const commitmentsWithEvents = (data || [])
+          .map(attendance => {
+            const event = attendance.event as unknown as Event & { attendee_count: Array<{ count: number }> };
+            return {
+              ...event,
+              ticket_number: attendance.ticket_number,
+              attendee_count: Array.isArray(event?.attendee_count)
+                ? event.attendee_count[0]?.count || 0
+                : 0,
+            };
+          })
+          .filter(e => e.id) // Filter out null events
+          .sort((a, b) => {
+            const dateA = new Date(a.event_date);
+            const dateB = new Date(b.event_date);
+            return dateA.getTime() - dateB.getTime();
+          }) as Array<EventWithAttendees & { ticket_number?: string }>;
+
+        setCommitments(commitmentsWithEvents);
+
+        // Group by month
+        const grouped: GroupedEvents = {};
+        commitmentsWithEvents.forEach(event => {
+          const date = new Date(event.event_date);
+          const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          if (!grouped[monthYear]) {
+            grouped[monthYear] = [];
+          }
+          grouped[monthYear].push(event);
+        });
+
+        setGroupedByMonth(grouped);
+      } catch (e) {
+        console.error('Error fetching all commitments:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAllCommitments();
+  }, [profileId]);
+
+  return { commitments, loading, groupedByMonth };
+}
+
 /**
  * Custom hook for handling event joining with loading states and toast notifications
  * @param profileId - The ID of the user's profile

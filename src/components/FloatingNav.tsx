@@ -1,11 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Map, User } from 'lucide-react';
+import { Home, Map, CalendarCheck, User } from 'lucide-react';
+
+type NavView = 'feed' | 'map' | 'my-events' | 'profile';
 
 interface FloatingNavProps {
-  activeView?: 'feed' | 'map' | 'profile';
-  onNavigate?: (view: 'feed' | 'map' | 'profile') => void;
+  activeView?: NavView;
+  onNavigate?: (view: NavView) => void;
 }
 
 export function FloatingNav({
@@ -16,13 +18,14 @@ export function FloatingNav({
   const location = useLocation();
   
   // Determine active view from URL if not provided
-  const activeView = activeViewProp || (() => {
+  const activeView: NavView = activeViewProp || (() => {
     if (location.pathname === '/map') return 'map';
+    if (location.pathname === '/my-events') return 'my-events';
     if (location.pathname === '/profile') return 'profile';
     return 'feed';
   })();
 
-  const handleNav = (view: 'feed' | 'map' | 'profile') => {
+  const handleNav = (view: NavView) => {
     if (onNavigate) {
       onNavigate(view);
     } else {
@@ -60,6 +63,17 @@ export function FloatingNav({
           whileTap={{ scale: 0.9 }}
         >
           <Map size={22} strokeWidth={2} />
+        </motion.button>
+        <motion.button 
+          onClick={() => handleNav('my-events')} 
+          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
+            activeView === 'my-events' 
+              ? 'bg-white/20 text-white' 
+              : 'text-zinc-400 hover:text-white'
+          }`}
+          whileTap={{ scale: 0.9 }}
+        >
+          <CalendarCheck size={22} strokeWidth={2} />
         </motion.button>
         <motion.button 
           onClick={() => handleNav('profile')} 
