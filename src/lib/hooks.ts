@@ -134,6 +134,8 @@ export function useEvents(options?: {
   eventType?: string[];
   userLocation?: { lat: number; lng: number };
   radiusKm?: number;
+  page?: number;
+  pageSize?: number;
 }) {
   const [events, setEvents] = useState<EventWithAttendees[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +143,9 @@ export function useEvents(options?: {
   // Stabilize dependency keys to prevent re-renders from reference changes
   const categoryKey = options?.category?.join(',') ?? '';
   const eventTypeKey = options?.eventType?.join(',') ?? '';
+  const page = Math.max(1, options?.page ?? 1);
+  const pageSize = options?.pageSize ?? 10;
+  const paginationKey = `${page}-${pageSize}`;
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -148,6 +153,10 @@ export function useEvents(options?: {
       
       // Fetch events with attendees in a single query to solve N+1 problem
       // Limit attendees to first 4 per event to keep it light
+      const attendeesLimit = 4;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       let query = supabase
         .from('events')
         .select(`
@@ -161,7 +170,9 @@ export function useEvents(options?: {
             )
           )
         `)
-        .order('event_date', { ascending: true });
+        .order('event_date', { ascending: true })
+        .range(from, to)
+        .limit(attendeesLimit, { foreignTable: 'attendees' });
 
       if (options?.category && options.category.length > 0) {
         query = query.in('category', options.category);
@@ -201,7 +212,7 @@ export function useEvents(options?: {
     } finally {
       setLoading(false);
     }
-  }, [categoryKey, eventTypeKey]);
+  }, [categoryKey, eventTypeKey, paginationKey]);
 
   useEffect(() => {
     fetchEvents();
