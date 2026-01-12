@@ -33,23 +33,29 @@ function notifyConfigChange(): void {
 
 /**
  * Get user-provided Google Client ID from localStorage
+ * SSR-safe: Returns null if window is not available
  */
 export function getUserProvidedClientId(): string | null {
+  if (typeof window === 'undefined') return null;
   return localStorage.getItem(USER_CLIENT_ID_KEY);
 }
 
 /**
  * Set user-provided Google Client ID in localStorage
+ * SSR-safe: Only sets if window is available
  */
 export function setUserProvidedClientId(clientId: string): void {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(USER_CLIENT_ID_KEY, clientId);
   notifyConfigChange();
 }
 
 /**
  * Clear user-provided Google Client ID from localStorage
+ * SSR-safe: Only clears if window is available
  */
 export function clearUserProvidedClientId(): void {
+  if (typeof window === 'undefined') return;
   localStorage.removeItem(USER_CLIENT_ID_KEY);
   notifyConfigChange();
 }

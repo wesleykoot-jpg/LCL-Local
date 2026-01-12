@@ -72,6 +72,8 @@ export function GoogleCalendarSettings() {
   };
 
   const handleConfigured = () => {
+    // Close the setup dialog
+    setShowSetupDialog(false);
     // Configuration change event will trigger hook to update isConfigured
     // which will then update isUserConfigured via useEffect
   };
