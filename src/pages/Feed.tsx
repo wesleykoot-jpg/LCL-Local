@@ -6,13 +6,12 @@ import { FloatingNav } from '@/components/FloatingNav';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { DevPanel } from '@/components/DevPanel';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
-import { MapPin, Plus, SlidersHorizontal, ChevronDown, RefreshCw, Database } from 'lucide-react';
+import { MapPin, Plus, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { motion } from 'framer-motion';
-import { triggerScraper } from '@/lib/scraperService';
-import { toast } from 'sonner';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 const EventDetailModal = lazy(() => import('@/components/EventDetailModal'));
@@ -23,7 +22,6 @@ const Feed = () => {
   const { events: allEvents, loading, refetch } = useEvents({ currentUserProfileId: profile?.id });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [isScraping, setIsScraping] = useState(false);
   
   // Use real Supabase join event hook
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
@@ -50,23 +48,6 @@ const Feed = () => {
     setSelectedEventId(null);
   };
 
-  // Dev scraper trigger
-  const handleScrape = async () => {
-    setIsScraping(true);
-    try {
-      const result = await triggerScraper();
-      if (result.success) {
-        toast.success(`Scraped ${result.inserted} new events (${result.skipped} duplicates)`);
-        refetch();
-      } else {
-        toast.error('Scraping failed: ' + (result.error || 'Unknown error'));
-      }
-    } catch (error) {
-      toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsScraping(false);
-    }
-  };
 
   // Find selected event from real events only
   const selectedEvent = useMemo(() => {
@@ -120,28 +101,6 @@ const Feed = () => {
           </div>
         </header>
 
-        {/* Dev Scraper Button - Only visible in development */}
-        {import.meta.env.DEV && (
-          <motion.button
-            onClick={handleScrape}
-            disabled={isScraping}
-            className="fixed top-20 right-4 z-50 px-3 py-2 bg-amber-500/90 text-white text-xs font-medium rounded-full shadow-lg flex items-center gap-2 hover:bg-amber-600 transition-colors disabled:opacity-50"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {isScraping ? (
-              <>
-                <RefreshCw size={14} className="animate-spin" />
-                Scraping...
-              </>
-            ) : (
-              <>
-                <Database size={14} />
-                DEV: Scrape
-              </>
-            )}
-          </motion.button>
-        )}
 
         {/* Main Content - Warm, organized feed */}
         <main className="px-4 pt-4 overflow-x-hidden">
@@ -180,6 +139,9 @@ const Feed = () => {
       </motion.button>
 
       <FloatingNav activeView="feed" onNavigate={handleNavigate} />
+
+      {/* Dev Panel - Enable via ?dev=true in URL */}
+      <DevPanel onRefetchEvents={refetch} />
 
       {/* Onboarding Wizard */}
       <AnimatePresence>
