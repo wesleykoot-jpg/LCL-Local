@@ -143,7 +143,7 @@ export function useEvents(options?: {
   // Stabilize dependency keys to prevent re-renders from reference changes
   const categoryKey = options?.category?.join(',') ?? '';
   const eventTypeKey = options?.eventType?.join(',') ?? '';
-  const page = Math.max(1, options?.page ?? 1);
+  const page = options?.page ?? 1;
   const pageSize = options?.pageSize ?? 10;
   const paginationKey = `${page}-${pageSize}`;
 
@@ -173,7 +173,9 @@ export function useEvents(options?: {
         .order('event_date', { ascending: true })
         .range(from, to);
 
-      query = query.limit(attendeesLimit, { foreignTable: 'attendees' });
+      query = query
+        .order('joined_at', { foreignTable: 'attendees', ascending: false })
+        .limit(attendeesLimit, { foreignTable: 'attendees' });
 
       if (options?.category && options.category.length > 0) {
         query = query.in('category', options.category);
