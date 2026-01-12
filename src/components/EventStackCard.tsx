@@ -104,8 +104,10 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const isDemo = isMockEvent(event.id);
   
   // Check if current user has already joined this event
-  const hasJoined = currentUserProfileId && event.attendees?.some(
-    attendee => attendee.profile?.id === currentUserProfileId
+  const hasJoined = Boolean(
+    currentUserProfileId && event.attendees?.some(
+      attendee => attendee.profile?.id === currentUserProfileId
+    )
   );
 
   return (
@@ -223,8 +225,10 @@ const ForkEventCard = memo(function ForkEventCard({
   const isDemo = isMockEvent(event.id);
   
   // Check if current user has already joined this event
-  const hasJoined = currentUserProfileId && event.attendees?.some(
-    attendee => attendee.profile?.id === currentUserProfileId
+  const hasJoined = Boolean(
+    currentUserProfileId && event.attendees?.some(
+      attendee => attendee.profile?.id === currentUserProfileId
+    )
   );
 
   return (
