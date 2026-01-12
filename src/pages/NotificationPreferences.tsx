@@ -28,7 +28,9 @@ export function NotificationPreferences() {
     hapticsEnabled: true,
   });
 
-  const handleToggle = (key: keyof typeof notifications) => {
+  type NotificationKeys = keyof typeof notifications;
+
+  const handleToggle = (key: NotificationKeys) => {
     setNotifications(prev => ({
       ...prev,
       [key]: !prev[key]

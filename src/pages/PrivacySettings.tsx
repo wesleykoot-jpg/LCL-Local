@@ -16,7 +16,9 @@ export function PrivacySettings() {
     analyticsTracking: true,
   });
 
-  const handleToggle = (key: 'showLocation' | 'showEvents' | 'dataProcessing' | 'marketingEmails' | 'analyticsTracking') => {
+  type BooleanSettingKeys = 'showLocation' | 'showEvents' | 'dataProcessing' | 'marketingEmails' | 'analyticsTracking';
+  
+  const handleToggle = (key: BooleanSettingKeys) => {
     setSettings(prev => ({
       ...prev,
       [key]: !prev[key]

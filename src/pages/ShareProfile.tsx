@@ -10,6 +10,8 @@ export function ShareProfile() {
   const { profile } = useAuth();
   const [copied, setCopied] = useState(false);
   
+  // TODO: Use environment variable for base URL to support different environments
+  // e.g., const baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://lcl-local.com';
   const profileUrl = `https://lcl-local.com/profile/${profile?.id || 'demo-user'}`;
 
   const handleCopyLink = async () => {
