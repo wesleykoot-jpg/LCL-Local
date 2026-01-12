@@ -138,7 +138,16 @@ Extract the following fields:
   - market: markets, fairs, festivals, food events, community events
 - venue_name: The venue/location name (keep in Dutch)
 - event_date: Date in YYYY-MM-DD format. If only relative (e.g., "morgen"), calculate from today.
-- event_time: Time in HH:MM format, or descriptive like "Avond" or "Hele dag"
+- event_time: IMPORTANT - Extract the START TIME in HH:MM 24-hour format (e.g., "19:30", "14:00", "21:00").
+  Look for time patterns like "19.30 uur", "vanaf 20:00", "aanvang 19.30", "doors open 18:00", etc.
+  Common Dutch time indicators: "uur", "aanvang", "start", "vanaf", "deuren open".
+  If time shows a range like "19:00 - 22:00", use the START time (19:00).
+  If time shows "14.00" (with dot), convert to "14:00" (with colon).
+  ONLY use fallback values if absolutely no time is found:
+  - "Hele dag" for all-day events explicitly marked as such
+  - "Avond" (evening) if context suggests evening but no specific time
+  - "Middag" (afternoon) if context suggests afternoon but no specific time
+  - "TBD" only as absolute last resort
 - image_url: Full image URL if found, or null
 
 Today's date is: ${today}
