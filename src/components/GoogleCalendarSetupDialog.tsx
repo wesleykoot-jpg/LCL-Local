@@ -35,13 +35,13 @@ export function GoogleCalendarSetupDialog({
     const trimmedClientId = clientId.trim();
     
     if (!trimmedClientId) {
-      setError('Please enter a Client ID');
+      setError('Please paste your connection code');
       return;
     }
 
     // Basic validation - Google Client IDs end with .apps.googleusercontent.com
     if (!trimmedClientId.endsWith('.apps.googleusercontent.com')) {
-      setError('Client ID should end with .apps.googleusercontent.com');
+      setError('This doesn\'t look right. The code should end with .apps.googleusercontent.com');
       return;
     }
 
@@ -65,9 +65,9 @@ export function GoogleCalendarSetupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Setup Google Calendar Integration</DialogTitle>
+          <DialogTitle>Connect Your Calendar</DialogTitle>
           <DialogDescription>
-            Configure your own Google Calendar integration by creating a Google Cloud project and OAuth credentials.
+            Set up calendar sync so events you join automatically appear in your Google Calendar.
           </DialogDescription>
         </DialogHeader>
 
@@ -76,37 +76,37 @@ export function GoogleCalendarSetupDialog({
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 flex gap-3">
             <Info size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-700 space-y-2">
-              <p className="font-medium">You'll need a Google Cloud account (free tier is sufficient)</p>
-              <p>Follow these steps to get your Google Client ID:</p>
+              <p className="font-medium">You'll need a free Google account to continue</p>
+              <p>Follow these quick steps to connect your calendar:</p>
             </div>
           </div>
 
           {/* Setup instructions */}
           <div className="bg-muted/50 rounded-lg p-4 space-y-3 text-sm">
             <div className="space-y-2">
-              <p className="font-semibold">Step 1: Create a Google Cloud Project</p>
+              <p className="font-semibold">Step 1: Go to Google Cloud Console</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
-                <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Google Cloud Console <ExternalLink size={12} /></a></li>
-                <li>Create a new project or select an existing one</li>
+                <li>Visit <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Google Cloud Console <ExternalLink size={12} /></a></li>
+                <li>Create a new project (give it any name you like)</li>
               </ol>
             </div>
 
             <div className="space-y-2">
-              <p className="font-semibold">Step 2: Enable Google Calendar API</p>
+              <p className="font-semibold">Step 2: Turn on Calendar Access</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
-                <li>In your project, go to "APIs & Services" → "Library"</li>
-                <li>Search for "Google Calendar API" and enable it</li>
+                <li>Go to "APIs & Services" then "Library"</li>
+                <li>Find "Google Calendar API" and click Enable</li>
               </ol>
             </div>
 
             <div className="space-y-2">
-              <p className="font-semibold">Step 3: Create OAuth 2.0 Credentials</p>
+              <p className="font-semibold">Step 3: Get Your Connection Code</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
-                <li>Go to "APIs & Services" → "Credentials"</li>
-                <li>Click "Create Credentials" → "OAuth client ID"</li>
-                <li>Select "Web application" as application type</li>
-                <li>Add authorized redirect URI: <code className="bg-background px-1 py-0.5 rounded text-xs">{redirectUri}</code></li>
-                <li>Click "Create" and copy your Client ID</li>
+                <li>Go to "APIs & Services" then "Credentials"</li>
+                <li>Click "Create Credentials" and choose "OAuth client ID"</li>
+                <li>Pick "Web application"</li>
+                <li>Add this redirect address: <code className="bg-background px-1 py-0.5 rounded text-xs">{redirectUri}</code></li>
+                <li>Click "Create" and copy the code it gives you</li>
               </ol>
             </div>
           </div>
@@ -114,7 +114,7 @@ export function GoogleCalendarSetupDialog({
           {/* Input field */}
           <div className="space-y-2">
             <label htmlFor="clientId" className="text-sm font-medium">
-              Google Client ID
+              Paste Your Connection Code Here
             </label>
             <Input
               id="clientId"
@@ -130,7 +130,7 @@ export function GoogleCalendarSetupDialog({
               <p className="text-xs text-red-600">{error}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Your Client ID ends with .apps.googleusercontent.com
+              The code should end with .apps.googleusercontent.com
             </p>
           </div>
 
@@ -143,7 +143,7 @@ export function GoogleCalendarSetupDialog({
               className="text-sm text-primary hover:underline flex items-center gap-2"
             >
               <ExternalLink size={14} />
-              View detailed setup guide from Google
+              Need more help? View the detailed guide
             </a>
           </div>
         </div>
@@ -153,7 +153,7 @@ export function GoogleCalendarSetupDialog({
             Cancel
           </Button>
           <Button onClick={handleSave}>
-            Save Configuration
+            Connect Calendar
           </Button>
         </DialogFooter>
       </DialogContent>

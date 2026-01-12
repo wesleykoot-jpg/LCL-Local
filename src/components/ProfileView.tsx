@@ -388,7 +388,7 @@ export function ProfileView() {
         {/* Divider */}
         <div className="h-2 bg-muted" />
 
-        {/* Integrations Section - Elevated Google Calendar */}
+        {/* Calendar Sync Section - Elevated */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -397,7 +397,7 @@ export function ProfileView() {
         >
           <div className="flex items-center gap-2 px-5 mb-4">
             <Link2 size={20} className="text-primary" />
-            <h3 className="text-lg font-semibold text-foreground">Integrations</h3>
+            <h3 className="text-lg font-semibold text-foreground">Connected Apps</h3>
           </div>
           
           <div className="px-5">
@@ -414,7 +414,7 @@ export function ProfileView() {
                 <div className="flex-1 text-left">
                   <div className="flex items-center gap-2 mb-0.5">
                     <h4 className="font-semibold text-foreground">
-                      Google Calendar
+                      Calendar Sync
                     </h4>
                     {isCalendarConnected ? (
                       <span className="px-2 py-0.5 text-xs font-medium bg-green-500/10 text-green-600 rounded-full">
@@ -428,8 +428,8 @@ export function ProfileView() {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {isCalendarConnected 
-                      ? 'Events auto-sync to your calendar' 
-                      : 'Auto-sync events you join'}
+                      ? 'Events sync to Google Calendar' 
+                      : 'Never miss events you join'}
                   </p>
                 </div>
                 

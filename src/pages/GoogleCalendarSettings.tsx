@@ -106,7 +106,7 @@ export function GoogleCalendarSettings() {
           <div className="flex items-center gap-2">
             <Calendar size={20} className="text-primary" />
             <h1 className="font-display text-xl text-foreground tracking-tight">
-              Google Calendar
+              Calendar Sync
             </h1>
           </div>
         </div>
@@ -127,7 +127,7 @@ export function GoogleCalendarSettings() {
 
         {!isProcessingCallback && (
           <>
-            {/* Integration Info */}
+            {/* Calendar Sync Info */}
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -140,10 +140,10 @@ export function GoogleCalendarSettings() {
                   </div>
                   <div className="flex-1">
                     <h2 className="font-semibold text-foreground text-lg">
-                      Google Calendar Sync
+                      Sync with Google Calendar
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Automatically sync events you join
+                      Never miss an event you've joined
                     </p>
                   </div>
                   {isConnected && (
@@ -159,10 +159,10 @@ export function GoogleCalendarSettings() {
                       <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm text-blue-700 font-medium">
-                          Setup Required
+                          One-time setup needed
                         </p>
                         <p className="text-xs text-blue-600 mt-1">
-                          Configure Google Calendar integration with your own Google Cloud credentials to start syncing events.
+                          Connect your Google account to automatically add events to your calendar. Takes about 5 minutes.
                         </p>
                       </div>
                     </div>
@@ -172,12 +172,12 @@ export function GoogleCalendarSettings() {
                       className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                     >
                       <SettingsIcon size={18} />
-                      Setup Google Calendar
+                      Connect Calendar
                     </button>
                     
                     <div className="bg-muted/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">
-                        <strong>What you'll need:</strong> A free Google Cloud account to create OAuth credentials. Setup takes about 5 minutes.
+                        <strong>Why sync?</strong> Events you join will automatically appear in your Google Calendar with reminders, so you never forget.
                       </p>
                     </div>
                   </div>
@@ -186,18 +186,18 @@ export function GoogleCalendarSettings() {
                     <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm text-amber-700 font-medium">
-                        Sign In Required
+                        Please sign in first
                       </p>
                       <p className="text-xs text-amber-600 mt-1">
-                        Please sign in to connect your Google Calendar.
+                        You'll need to sign in to sync your calendar.
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      When you connect Google Calendar, events you join will be automatically added to your calendar. 
-                      Updates to event details will also sync automatically.
+                      Events you join will automatically appear in your Google Calendar. 
+                      Any updates to event details will sync too.
                     </p>
 
                     {isConnected ? (
@@ -212,7 +212,7 @@ export function GoogleCalendarSettings() {
                             Disconnecting...
                           </>
                         ) : (
-                          'Disconnect Google Calendar'
+                          'Turn Off Calendar Sync'
                         )}
                       </button>
                     ) : (
@@ -229,7 +229,7 @@ export function GoogleCalendarSettings() {
                         ) : (
                           <>
                             <Calendar size={18} />
-                            Connect Google Calendar
+                            Connect Calendar
                           </>
                         )}
                       </button>
@@ -241,24 +241,24 @@ export function GoogleCalendarSettings() {
                 {isConfigured && isUserConfigured && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium text-muted-foreground">Configuration</p>
+                      <p className="text-xs font-medium text-muted-foreground">Advanced</p>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={handleReconfigure}
                         className="flex-1 py-2 px-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm text-foreground"
                       >
-                        Reconfigure
+                        Update Settings
                       </button>
                       <button
                         onClick={handleClearConfig}
                         className="flex-1 py-2 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-sm text-red-600"
                       >
-                        Clear Setup
+                        Remove Setup
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      You configured this integration with your own credentials
+                      You're using your own Google account credentials
                     </p>
                   </div>
                 )}
@@ -357,15 +357,15 @@ export function GoogleCalendarSettings() {
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear Google Calendar Setup?</AlertDialogTitle>
+            <AlertDialogTitle>Remove calendar sync setup?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove your Google Calendar configuration. If you're currently connected, you will be disconnected. You can always set it up again later.
+              This will remove your calendar connection. If you're currently syncing, it will stop. You can always set it up again later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmClearConfig}>
-              Clear Setup
+              Remove Setup
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
