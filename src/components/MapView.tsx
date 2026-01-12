@@ -138,8 +138,9 @@ function EventMarker({
   const config = categoryConfig[event.category];
   const Icon = config.icon;
 
-  // Get color values for inline styles
+  // Get color values for inline styles (used in divIcon which doesn't support Tailwind)
   const getColorValue = (colorClass: string) => {
+    // These hex values match Tailwind's default color palette
     const colorMap: Record<string, string> = {
       'bg-blue-500': '#3b82f6',
       'bg-amber-500': '#f59e0b',
@@ -553,6 +554,25 @@ export function MapView() {
           </div>
         </div>}
 
+      <style jsx global>{`
+        /* Keyframes for Leaflet marker animations - these need to be global as they're used in divIcon HTML strings */
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+        
+        @keyframes ping {
+          75%, 100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+      `}</style>
+      
       <style jsx>{`
         @keyframes slide-up {
           from {
@@ -565,18 +585,11 @@ export function MapView() {
           }
         }
         
-        @keyframes ping {
-          75%, 100% {
-            transform: scale(2);
-            opacity: 0;
-          }
-        }
-        
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;
         }
         
-        /* Custom marker styles */
+        /* Custom marker styles - these markers are rendered outside React in Leaflet divIcons */
         :global(.custom-marker-anchor),
         :global(.custom-marker-fork),
         :global(.custom-marker-signal),
@@ -589,16 +602,6 @@ export function MapView() {
         :global(.custom-marker-fork):hover,
         :global(.custom-marker-signal):hover {
           cursor: pointer;
-        }
-        
-        /* Pulse animation for user location */
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
         }
       `}</style>
     </div>;
