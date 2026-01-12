@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import OpenAI from "https://esm.sh/openai@4.20.1";
 import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
 
 const corsHeaders = {
@@ -259,10 +258,10 @@ async function scrapeEventCards(): Promise<RawEventCard[]> {
   return events;
 }
 
-// AI Parsing function
-async function parseEventWithAI(openai: OpenAI, rawEvent: RawEventCard): Promise<ParsedEvent | null> {
+// AI Parsing function using Google Gemini
+async function parseEventWithAI(apiKey: string, rawEvent: RawEventCard): Promise<ParsedEvent | null> {
   try {
-    const userPrompt = `Parse this event data:
+    const userPrompt = `Parse this event data and return ONLY valid JSON:
 
 Title hint: ${rawEvent.title || "unknown"}
 Date hint: ${rawEvent.date || "unknown"}
@@ -271,26 +270,62 @@ Description hint: ${rawEvent.description || "unknown"}
 Image URL hint: ${rawEvent.imageUrl || "none"}
 
 Raw HTML:
-${rawEvent.rawHtml}`;
+${rawEvent.rawHtml}
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: getAISystemPrompt() },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 500,
-      response_format: { type: "json_object" },
-    });
+Return JSON with these fields:
+{
+  "title": "event name",
+  "description": "brief description (max 200 chars)",
+  "category": "one of: cinema, crafts, sports, gaming, market",
+  "venue_name": "location name",
+  "event_date": "YYYY-MM-DD",
+  "event_time": "HH:MM or TBD",
+  "image_url": "url or null"
+}`;
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      console.log("⚠️ Empty AI response");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: getAISystemPrompt() + "\n\n" + userPrompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 500,
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Gemini API error (${response.status}):`, errorText);
       return null;
     }
 
-    const parsed = JSON.parse(content);
+    const data = await response.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!content) {
+      console.log("⚠️ Empty Gemini response");
+      return null;
+    }
+
+    // Extract JSON from response (handle markdown code blocks)
+    let jsonStr = content;
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    }
+
+    const parsed = JSON.parse(jsonStr);
 
     if (!parsed.title || !parsed.venue_name) {
       console.log("⚠️ Missing required fields from AI response");
@@ -384,23 +419,22 @@ serve(async (req) => {
 
   try {
     // Get secrets
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!GOOGLE_AI_API_KEY) {
+      throw new Error("GOOGLE_AI_API_KEY is not configured");
     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials not configured");
     }
 
-    // Initialize clients
+    // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-    console.log("🚀 Starting Meppel Event Scraper...");
+    console.log("🚀 Starting Meppel Event Scraper (using Google Gemini)...");
 
     // Step 1: Scrape events
     console.log("\n📥 Step 1: Scraping event cards...");
@@ -414,14 +448,14 @@ serve(async (req) => {
     }
 
     // Step 2: Parse with AI
-    console.log("\n🤖 Step 2: Parsing events with AI...");
+    console.log("\n🤖 Step 2: Parsing events with Google Gemini...");
     const parsedEvents: ParsedEvent[] = [];
 
     for (let i = 0; i < rawEvents.length; i++) {
       const rawEvent = rawEvents[i];
       console.log(`[${i + 1}/${rawEvents.length}] Processing: ${rawEvent.title || "Unknown event"}...`);
 
-      const parsed = await parseEventWithAI(openai, rawEvent);
+      const parsed = await parseEventWithAI(GOOGLE_AI_API_KEY, rawEvent);
       if (parsed) {
         parsedEvents.push(parsed);
         console.log(`✅ Parsed: "${parsed.title}" (${parsed.category})`);
