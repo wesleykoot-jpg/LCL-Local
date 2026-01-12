@@ -70,22 +70,33 @@ export function useProfile(profileId?: string) {
   return { profile, loading, error };
 }
 
-export function usePersonaStats(profileId: string, personaType: 'family' | 'gamer') {
+export function usePersonaStats(profileId: string) {
   const [stats, setStats] = useState<PersonaStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
+        // Fetch all persona stats and combine them
         const { data, error } = await supabase
           .from('persona_stats')
           .select('*')
-          .eq('profile_id', profileId)
-          .eq('persona_type', personaType)
-          .maybeSingle();
+          .eq('profile_id', profileId);
 
         if (error) throw error;
-        setStats(data);
+        
+        // Combine stats from all persona types
+        if (data && data.length > 0) {
+          const combined: PersonaStats = {
+            ...data[0],
+            rallies_hosted: data.reduce((sum, s) => sum + (s.rallies_hosted || 0), 0),
+            newcomers_welcomed: data.reduce((sum, s) => sum + (s.newcomers_welcomed || 0), 0),
+            host_rating: data.reduce((sum, s) => sum + (s.host_rating || 0), 0) / data.length,
+          };
+          setStats(combined);
+        } else {
+          setStats(null);
+        }
       } catch (e) {
         console.error('Error fetching persona stats:', e);
       } finally {
@@ -96,23 +107,23 @@ export function usePersonaStats(profileId: string, personaType: 'family' | 'game
     if (profileId) {
       fetchStats();
     }
-  }, [profileId, personaType]);
+  }, [profileId]);
 
   return { stats, loading };
 }
 
-export function usePersonaBadges(profileId: string, personaType: 'family' | 'gamer') {
+export function usePersonaBadges(profileId: string) {
   const [badges, setBadges] = useState<PersonaBadge[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchBadges() {
       try {
+        // Fetch all badges regardless of persona type
         const { data, error } = await supabase
           .from('persona_badges')
           .select('*')
-          .eq('profile_id', profileId)
-          .eq('persona_type', personaType);
+          .eq('profile_id', profileId);
 
         if (error) throw error;
         setBadges(data || []);
@@ -126,7 +137,7 @@ export function usePersonaBadges(profileId: string, personaType: 'family' | 'gam
     if (profileId) {
       fetchBadges();
     }
-  }, [profileId, personaType]);
+  }, [profileId]);
 
   return { badges, loading };
 }
