@@ -37,7 +37,11 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
     try {
       const result = await triggerScraper();
       if (result.success) {
-        toast.success(`Scraped ${result.inserted} new events (${result.skipped} duplicates)`);
+        // Support both new and legacy response formats
+        const inserted = result.totals?.inserted ?? result.inserted ?? 0;
+        const skipped = result.totals?.skipped ?? result.skipped ?? 0;
+        const sourceCount = result.sources?.length ?? 1;
+        toast.success(`Scraped ${inserted} new events from ${sourceCount} source(s) (${skipped} duplicates)`);
         onRefetchEvents?.();
       } else {
         toast.error('Scraping failed: ' + (result.error || 'Unknown error'));
