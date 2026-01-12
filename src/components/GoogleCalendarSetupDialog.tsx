@@ -25,6 +25,11 @@ export function GoogleCalendarSetupDialog({
 }: GoogleCalendarSetupDialogProps) {
   const [clientId, setClientId] = useState('');
   const [error, setError] = useState('');
+  
+  // Get redirect URI safely (avoiding SSR issues)
+  const redirectUri = typeof window !== 'undefined' 
+    ? `${window.location.origin}/profile/calendar`
+    : '/profile/calendar';
 
   const handleSave = () => {
     const trimmedClientId = clientId.trim();
@@ -100,7 +105,7 @@ export function GoogleCalendarSetupDialog({
                 <li>Go to "APIs & Services" → "Credentials"</li>
                 <li>Click "Create Credentials" → "OAuth client ID"</li>
                 <li>Select "Web application" as application type</li>
-                <li>Add authorized redirect URI: <code className="bg-background px-1 py-0.5 rounded text-xs">{window.location.origin}/profile/calendar</code></li>
+                <li>Add authorized redirect URI: <code className="bg-background px-1 py-0.5 rounded text-xs">{redirectUri}</code></li>
                 <li>Click "Create" and copy your Client ID</li>
               </ol>
             </div>

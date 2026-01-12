@@ -18,8 +18,8 @@ const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 // LocalStorage key for user-provided Google Client ID
 const USER_CLIENT_ID_KEY = 'google_calendar_client_id';
 
-// Custom event for configuration changes
-const CONFIG_CHANGE_EVENT = 'google-calendar-config-changed';
+// Custom event name for configuration changes
+export const CONFIG_CHANGE_EVENT = 'google-calendar-config-changed';
 
 /**
  * Dispatch a custom event when configuration changes
@@ -49,16 +49,6 @@ export function setUserProvidedClientId(clientId: string): void {
 export function clearUserProvidedClientId(): void {
   localStorage.removeItem(USER_CLIENT_ID_KEY);
   notifyConfigChange();
-}
-
-/**
- * Hook to listen for configuration changes
- */
-export function useConfigChange(callback: () => void): void {
-  if (typeof window === 'undefined') return;
-  
-  window.addEventListener(CONFIG_CHANGE_EVENT, callback);
-  return () => window.removeEventListener(CONFIG_CHANGE_EVENT, callback);
 }
 
 /**

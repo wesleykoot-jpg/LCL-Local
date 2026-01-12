@@ -12,7 +12,7 @@ import {
   parseOAuthCallback,
   validateOAuthState,
   type GoogleCalendarEventData,
-  useConfigChange,
+  CONFIG_CHANGE_EVENT,
 } from '@/integrations/googleCalendar/client';
 import {
   exchangeCodeForTokens,
@@ -97,8 +97,8 @@ export function useGoogleCalendar(): UseGoogleCalendarResult {
     };
     
     if (typeof window !== 'undefined') {
-      window.addEventListener('google-calendar-config-changed', handleConfigChange);
-      return () => window.removeEventListener('google-calendar-config-changed', handleConfigChange);
+      window.addEventListener(CONFIG_CHANGE_EVENT, handleConfigChange);
+      return () => window.removeEventListener(CONFIG_CHANGE_EVENT, handleConfigChange);
     }
   }, []);
 
