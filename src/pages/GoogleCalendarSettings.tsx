@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Calendar, Check, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Calendar, Check, Loader2, AlertCircle, ExternalLink, Settings as SettingsIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useAuth } from '@/contexts/useAuth';
+import { GoogleCalendarSetupDialog } from '@/components/GoogleCalendarSetupDialog';
+import { clearUserProvidedClientId, getUserProvidedClientId } from '@/integrations/googleCalendar/client';
 
 export function GoogleCalendarSettings() {
   const navigate = useNavigate();
@@ -18,6 +20,13 @@ export function GoogleCalendarSettings() {
   } = useGoogleCalendar();
   
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
+  const [showSetupDialog, setShowSetupDialog] = useState(false);
+  const [isUserConfigured, setIsUserConfigured] = useState(false);
+
+  // Check if user has configured their own Client ID
+  useEffect(() => {
+    setIsUserConfigured(Boolean(getUserProvidedClientId()));
+  }, [isConfigured]);
 
   // Handle OAuth callback on page load
   useEffect(() => {
@@ -45,6 +54,28 @@ export function GoogleCalendarSettings() {
 
   const handleDisconnect = async () => {
     await disconnectCalendar();
+  };
+
+  const handleSetupClick = () => {
+    setShowSetupDialog(true);
+  };
+
+  const handleConfigured = () => {
+    // Refresh the page to pick up new configuration
+    setIsUserConfigured(true);
+    window.location.reload();
+  };
+
+  const handleReconfigure = () => {
+    setShowSetupDialog(true);
+  };
+
+  const handleClearConfig = () => {
+    if (confirm('Are you sure you want to remove your Google Calendar configuration? You will be disconnected.')) {
+      clearUserProvidedClientId();
+      setIsUserConfigured(false);
+      window.location.reload();
+    }
   };
 
   return (
@@ -109,14 +140,30 @@ export function GoogleCalendarSettings() {
                 </div>
 
                 {!isConfigured ? (
-                  <div className="bg-amber-500/10 rounded-xl p-4 flex gap-3">
-                    <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-amber-700 font-medium">
-                        Integration Not Configured
-                      </p>
-                      <p className="text-xs text-amber-600 mt-1">
-                        Google Calendar integration requires configuration. Please contact your administrator.
+                  <div className="space-y-4">
+                    <div className="bg-blue-500/10 rounded-xl p-4 flex gap-3">
+                      <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-blue-700 font-medium">
+                          Setup Required
+                        </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Configure Google Calendar integration with your own Google Cloud credentials to start syncing events.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={handleSetupClick}
+                      className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <SettingsIcon size={18} />
+                      Setup Google Calendar
+                    </button>
+                    
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">
+                        <strong>What you'll need:</strong> A free Google Cloud account to create OAuth credentials. Setup takes about 5 minutes.
                       </p>
                     </div>
                   </div>
@@ -173,6 +220,32 @@ export function GoogleCalendarSettings() {
                         )}
                       </button>
                     )}
+                  </div>
+                )}
+                
+                {/* Configuration Management - shown only when user has configured */}
+                {isConfigured && isUserConfigured && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-muted-foreground">Configuration</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleReconfigure}
+                        className="flex-1 py-2 px-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm text-foreground"
+                      >
+                        Reconfigure
+                      </button>
+                      <button
+                        onClick={handleClearConfig}
+                        className="flex-1 py-2 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-sm text-red-600"
+                      >
+                        Clear Setup
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      You configured this integration with your own credentials
+                    </p>
                   </div>
                 )}
               </div>
@@ -258,6 +331,13 @@ export function GoogleCalendarSettings() {
           </>
         )}
       </div>
+      
+      {/* Setup Dialog */}
+      <GoogleCalendarSetupDialog
+        open={showSetupDialog}
+        onOpenChange={setShowSetupDialog}
+        onConfigured={handleConfigured}
+      />
     </div>
   );
 }
