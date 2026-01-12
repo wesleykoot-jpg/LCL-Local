@@ -15,19 +15,73 @@ export const GOOGLE_CALENDAR_SCOPES = [
 const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
+// LocalStorage key for user-provided Google Client ID
+const USER_CLIENT_ID_KEY = 'google_calendar_client_id';
+
+// Custom event name for configuration changes
+export const CONFIG_CHANGE_EVENT = 'google-calendar-config-changed';
+
 /**
- * Get the Google Client ID from environment
+ * Dispatch a custom event when configuration changes
+ * SSR-safe: Only dispatches if window is available
+ */
+function notifyConfigChange(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(CONFIG_CHANGE_EVENT));
+  }
+}
+
+/**
+ * Get user-provided Google Client ID from localStorage
+ * SSR-safe: Returns null if window is not available
+ */
+export function getUserProvidedClientId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(USER_CLIENT_ID_KEY);
+}
+
+/**
+ * Set user-provided Google Client ID in localStorage
+ * SSR-safe: Only sets if window is available
+ */
+export function setUserProvidedClientId(clientId: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(USER_CLIENT_ID_KEY, clientId);
+  notifyConfigChange();
+}
+
+/**
+ * Clear user-provided Google Client ID from localStorage
+ * SSR-safe: Only clears if window is available
+ */
+export function clearUserProvidedClientId(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(USER_CLIENT_ID_KEY);
+  notifyConfigChange();
+}
+
+/**
+ * Get the Google Client ID from user config or environment
+ * Priority: User-provided > Environment variable
  */
 export function getGoogleClientId(): string {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    console.warn('[Google Calendar] Missing VITE_GOOGLE_CLIENT_ID environment variable');
+  // First check if user has provided their own Client ID
+  const userClientId = getUserProvidedClientId();
+  if (userClientId) {
+    return userClientId;
   }
-  return clientId || '';
+  
+  // Fallback to environment variable (for admin configuration)
+  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (!envClientId) {
+    console.warn('[Google Calendar] No Client ID configured (user or environment)');
+  }
+  return envClientId || '';
 }
 
 /**
  * Check if Google Calendar integration is configured
+ * Returns true if either user-provided or environment Client ID exists
  */
 export function isGoogleCalendarConfigured(): boolean {
   return Boolean(getGoogleClientId());
