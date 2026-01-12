@@ -3,6 +3,12 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
+type JoinEventRpcResult = {
+  status: 'ok' | 'exists' | 'full' | 'error';
+  message?: string;
+  event_id?: string;
+  profile_id?: string;
+};
 
 export interface JoinEventParams {
   eventId: string;
@@ -116,7 +122,7 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
 
       // Success path for RPC
       if (rpcResult?.status === 'ok') {
-        return { data: rpcResult as any, error: null, waitlisted: false };
+        return { data: rpcResult as JoinEventRpcResult, error: null, waitlisted: false };
       }
     } catch (fallbackError) {
       console.error('Fallback RPC join failed:', fallbackError);
