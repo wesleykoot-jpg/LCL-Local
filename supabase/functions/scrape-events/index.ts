@@ -143,10 +143,39 @@ const DEFAULT_SELECTORS = [
   "div.agenda-item",
   ".event-item",
   ".card.event",
-  "article",
   ".agenda-event",
-  '[class*="event"]',
-  '[class*="agenda"]',
+  // More specific selectors - avoid generic ones that catch nav items
+  'main article[class*="event"]',
+  'main [class*="agenda-item"]',
+  '.content article',
+];
+
+// Containers to exclude from scraping (navigation, footers, etc.)
+const EXCLUDED_CONTAINERS = [
+  'nav', 'header', 'footer', '.menu', '.navigation', '.nav',
+  '.footer', '.header', '.sidebar', '[role="navigation"]',
+  '.language-selector', '.cookie-notice', '.disclaimer',
+  '.breadcrumb', '.pagination', '.social-links', '.share-buttons',
+  '.newsletter', '.signup', '.login', '.search', '.filter',
+];
+
+// Common navigation/UI text that should never be event titles (exact matches only)
+const TITLE_BLOCKLIST = [
+  // Navigation (exact matches)
+  'kies je taal', 'choose language', 'sprache wählen', 'selecteer taal',
+  'disclaimer', 'privacy', 'cookie', 'contact', 'over ons', 'about us',
+  'info', 'tips', 'ontdek', 'discover', 'entdecken', 'about',
+  'home', 'menu', 'search', 'zoeken', 'suchen', 'login', 'inloggen',
+  'register', 'registreren', 'newsletter', 'nieuwsbrief',
+  'follow us', 'volg ons', 'share', 'delen', 'teilen',
+  'read more', 'lees meer', 'mehr lesen', 'bekijk alle', 'view all',
+  // Generic UI (exact matches)
+  'filters', 'sorteer', 'sort by', 'categorie', 'category',
+  'agenda', 'evenementen', 'events', 'kalender', 'calendar',
+  'meer informatie', 'more info', 'details', 'tickets',
+  'accepteren', 'accept', 'weigeren', 'decline',
+  'sluiten', 'close', 'open', 'terug', 'back', 'next', 'previous',
+  'volgende', 'vorige', 'laden', 'loading',
 ];
 
 // Default headers for scraping (language-neutral)
@@ -505,12 +534,30 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
     }
   }
 
+  // Filter out elements inside excluded containers
+  const excludedSelector = EXCLUDED_CONTAINERS.join(', ');
+  foundElements = foundElements.filter((_: number, el: cheerio.Element) => {
+    // Check if this element is inside any excluded container
+    const isInExcluded = $(el).parents(excludedSelector).length > 0;
+    if (isInExcluded) {
+      console.log(`  ⏭️ Skipped element inside excluded container`);
+    }
+    return !isInExcluded;
+  });
+
   if (foundElements.length === 0) {
     console.log("⚠️ No event elements found with common selectors. Trying generic approach...");
-    foundElements = $("article, .card, [class*=\"item\"]").filter((_: number, el: cheerio.Element) => {
-      const text = $(el).text();
-      return text.length > 50 && text.length < 5000;
-    });
+    // Smarter fallback: require structural markers like dates or proper titles
+    foundElements = $("main article, main .card, .content article, .events article")
+      .not(excludedSelector)
+      .filter((_: number, el: cheerio.Element) => {
+        const $el = $(el);
+        const text = $el.text();
+        const hasDate = $el.find('time, [class*="date"], [datetime]').length > 0;
+        const hasTitle = $el.find('h1, h2, h3, h4').length > 0;
+        const hasDatePattern = /\d{1,2}[\s\-./]\w{3,}|\d{1,2}[\s\-./]\d{1,2}/i.test(text);
+        return text.length > 50 && text.length < 5000 && (hasDate || hasTitle || hasDatePattern);
+      });
   }
 
   console.log(`Processing ${foundElements.length} potential event cards...`);
@@ -523,6 +570,29 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
     const title =
       $el.find("h1, h2, h3, h4, .title, [class*=\"title\"]").first().text().trim() ||
       $el.find("a").first().text().trim();
+
+    // Skip if title is blocklisted (exact match only)
+    const titleLower = title.toLowerCase().trim();
+    if (TITLE_BLOCKLIST.some(blocked => titleLower === blocked)) {
+      console.log(`  ⏭️ Skipped blocklisted title: "${title}"`);
+      return;
+    }
+
+    // Skip if title is too short or empty
+    if (!title || title.length < 4) {
+      console.log(`  ⏭️ Skipped empty/short title: "${title}"`);
+      return;
+    }
+
+    // Skip if title looks like navigation (single word, all caps, etc.)
+    if (title.length < 15 && !/\d/.test(title) && !title.includes(' ')) {
+      // Single word without numbers - likely navigation unless it has date patterns nearby
+      const hasDateNearby = /\d{1,2}[\s\-./]\w{3,}|\d{1,2}[\s\-./]\d{1,2}/i.test(rawHtml);
+      if (!hasDateNearby) {
+        console.log(`  ⏭️ Skipped likely navigation item: "${title}"`);
+        return;
+      }
+    }
 
     const date =
       $el.find("time, .date, [class*=\"date\"], .event-date").first().text().trim() ||
@@ -545,17 +615,25 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
     const description = $el.find(".description, .excerpt, .summary, p").first().text().trim();
     const detailUrl = $el.find("a").first().attr("href") || null;
 
-    if (title || rawHtml.length > 100) {
-      events.push({
-        rawHtml: rawHtml.substring(0, 3000),
-        title,
-        date,
-        location,
-        imageUrl,
-        description,
-        detailUrl,
-      });
+    // Final validation: must have date OR date-like patterns in HTML
+    const hasDate = date && date.length > 0;
+    const hasDatePattern = /\d{1,2}[\s\-./](jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2})[\s\-./]?\d{0,4}/i.test(rawHtml);
+    
+    if (!hasDate && !hasDatePattern) {
+      console.log(`  ⏭️ Skipped no date indicator: "${title}"`);
+      return;
     }
+
+    console.log(`  ✅ Valid event: "${title}"`);
+    events.push({
+      rawHtml: rawHtml.substring(0, 3000),
+      title,
+      date,
+      location,
+      imageUrl,
+      description,
+      detailUrl,
+    });
   });
 
   console.log(`✅ Extracted ${events.length} event cards`);
