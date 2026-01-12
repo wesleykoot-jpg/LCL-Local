@@ -442,18 +442,82 @@ interface EventInsert {
 /**
  * Constructs a full ISO datetime from date and time strings.
  * Uses the parsed time if available (HH:MM format), otherwise defaults to noon.
+ * Properly converts from Dutch local time (CET/CEST = UTC+1/+2) to UTC.
+ * 
+ * Netherlands uses:
+ * - CET (UTC+1) in winter (last Sunday of October to last Sunday of March)
+ * - CEST (UTC+2) in summer (last Sunday of March to last Sunday of October)
  */
 function constructEventDateTime(eventDate: string, eventTime: string): string {
   // Check if eventTime is in HH:MM format
   const timeMatch = eventTime.match(/^(\d{2}):(\d{2})$/);
   
-  if (timeMatch) {
-    const [, hours, minutes] = timeMatch;
-    return `${eventDate}T${hours}:${minutes}:00Z`;
-  }
+  const hours = timeMatch ? timeMatch[1] : '12';
+  const minutes = timeMatch ? timeMatch[2] : '00';
   
-  // Default to noon for descriptive times like "Evening", "All day", "TBD"
-  return `${eventDate}T12:00:00Z`;
+  // Parse the date components
+  const [year, month, day] = eventDate.split('-').map(Number);
+  
+  // Create a Date object treating the input as local Dutch time
+  // We'll use a helper to determine DST and calculate the UTC offset
+  const isDST = isDutchDST(year, month, day);
+  const utcOffset = isDST ? 2 : 1; // CEST = UTC+2, CET = UTC+1
+  
+  // Create the local datetime
+  const localHours = parseInt(hours, 10);
+  const localMinutes = parseInt(minutes, 10);
+  
+  // Convert to UTC by subtracting the offset
+  // Date.UTC automatically handles negative hours and day rollover
+  const utcHours = localHours - utcOffset;
+  
+  // Create a Date object in UTC (Date.UTC handles day rollover automatically)
+  const utcDate = new Date(Date.UTC(year, month - 1, day, utcHours, localMinutes, 0));
+  
+  return utcDate.toISOString();
+}
+
+/**
+ * Determines if a given date is in Daylight Saving Time (DST) in the Netherlands.
+ * DST in Netherlands: Last Sunday of March (02:00 CET -> 03:00 CEST) to Last Sunday of October (03:00 CEST -> 02:00 CET)
+ */
+function isDutchDST(year: number, month: number, day: number): boolean {
+  // Month is 1-indexed here (1 = January, 12 = December)
+  
+  // DST starts on last Sunday of March at 02:00 CET
+  // DST ends on last Sunday of October at 03:00 CEST
+  
+  // If before March or after October, definitely not DST
+  if (month < 3 || month > 10) return false;
+  if (month > 3 && month < 10) return true;
+  
+  // For March and October, need to check if we're past the last Sunday
+  const lastSunday = getLastSundayOfMonth(year, month);
+  
+  if (month === 3) {
+    // DST starts on last Sunday of March
+    return day >= lastSunday;
+  } else {
+    // month === 10, DST ends on last Sunday of October
+    return day < lastSunday;
+  }
+}
+
+/**
+ * Gets the day of the month for the last Sunday of a given month.
+ */
+function getLastSundayOfMonth(year: number, month: number): number {
+  // month is 1-indexed (1 = January)
+  // Find the last day of the month
+  const lastDay = new Date(year, month, 0).getDate();
+  
+  // Find what day of the week the last day is
+  const lastDayOfWeek = new Date(year, month - 1, lastDay).getDay();
+  
+  // Calculate how many days to subtract to get to Sunday (0)
+  const daysToSubtract = lastDayOfWeek === 0 ? 0 : lastDayOfWeek;
+  
+  return lastDay - daysToSubtract;
 }
 
 /**
