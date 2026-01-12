@@ -4,25 +4,31 @@
  * This module implements a smart ranking algorithm for the event feed.
  * The algorithm considers multiple factors to personalize event recommendations:
  * 
- * 1. Category Preference Match (40% weight)
+ * 1. Category Preference Match (35% weight)
  *    - Events matching user's selected categories get higher scores
  * 
- * 2. Time Relevance (25% weight)
+ * 2. Time Relevance (20% weight)
  *    - Events happening soon get higher priority
  *    - Uses exponential decay for events far in the future
  * 
- * 3. Social Proof (20% weight)
+ * 3. Social Proof (15% weight)
  *    - Events with more attendees are ranked higher
  *    - Applies logarithmic scaling to prevent large events from dominating
  * 
- * 4. Event Match Score (15% weight)
+ * 4. Event Match Score (10% weight)
  *    - Uses the pre-computed match_percentage from the database
  *    - Represents algorithmic compatibility
+ * 
+ * 5. Distance/Proximity (20% weight)
+ *    - Events closer to user's location get higher scores
+ *    - Uses inverse distance scoring with configurable radius
  * 
  * Additionally, the algorithm ensures feed diversity by:
  * - Preventing too many cards of the same category appearing consecutively
  * - Boosting underrepresented categories in the initial results
  */
+
+import { calculateDistanceKm, MEPPEL_CENTER } from './distance';
 
 export interface EventForRanking {
   id: string;
@@ -31,13 +37,21 @@ export interface EventForRanking {
   match_percentage?: number | null;
   attendee_count?: number;
   image_url?: string | null;
+  venue_name?: string;
   // Add any other fields needed for display
   [key: string]: any;
+}
+
+export interface UserLocation {
+  lat: number;
+  lng: number;
 }
 
 export interface UserPreferences {
   selectedCategories: string[];
   zone: string;
+  userLocation?: UserLocation;
+  radiusKm?: number;
 }
 
 interface ScoredEvent<T extends EventForRanking> {
@@ -48,15 +62,17 @@ interface ScoredEvent<T extends EventForRanking> {
     timeScore: number;
     socialScore: number;
     matchScore: number;
+    distanceScore: number;
   };
 }
 
 // Algorithm weights - sum should equal 1.0
 const WEIGHTS = {
-  CATEGORY: 0.40,
-  TIME: 0.25,
-  SOCIAL: 0.20,
-  MATCH: 0.15,
+  CATEGORY: 0.35,
+  TIME: 0.20,
+  SOCIAL: 0.15,
+  MATCH: 0.10,
+  DISTANCE: 0.20,
 } as const;
 
 // Configuration constants
@@ -67,6 +83,10 @@ const CONFIG = {
   SOCIAL_LOG_BASE: 10,
   // Diversity: minimum distance between same-category events
   DIVERSITY_MIN_GAP: 2,
+  // Distance: default radius in km for distance scoring
+  DEFAULT_RADIUS_KM: 25,
+  // Distance: minimum score for events outside radius
+  DISTANCE_MIN_SCORE: 0.1,
 } as const;
 
 /**
@@ -145,6 +165,88 @@ function calculateMatchScore(matchPercentage: number | null | undefined): number
 }
 
 /**
+ * Calculates distance score based on proximity to user (0-1)
+ * Events closer to the user get higher scores
+ * Uses inverse distance with configurable radius
+ */
+function calculateDistanceScore(
+  venueName: string | undefined,
+  userLocation: UserLocation | undefined,
+  radiusKm: number = CONFIG.DEFAULT_RADIUS_KM
+): number {
+  if (!userLocation || !venueName) {
+    return 0.5; // Default score when location unavailable
+  }
+  
+  // Get venue coordinates from known venues or default
+  const venueCoords = getVenueCoordinatesForScoring(venueName);
+  
+  // Calculate distance between user and venue
+  const distanceKm = calculateDistanceKm(
+    userLocation.lat,
+    userLocation.lng,
+    venueCoords.lat,
+    venueCoords.lng
+  );
+  
+  // Score calculation:
+  // - At 0 km: score = 1.0
+  // - At radiusKm: score ≈ 0.5
+  // - Beyond radiusKm: score decreases towards DISTANCE_MIN_SCORE
+  if (distanceKm <= 0.1) {
+    return 1.0; // Very close (< 100m)
+  }
+  
+  // Inverse distance with smooth decay
+  const score = 1 / (1 + distanceKm / (radiusKm * 0.5));
+  
+  return Math.max(CONFIG.DISTANCE_MIN_SCORE, Math.min(1.0, score));
+}
+
+/**
+ * Get venue coordinates for scoring (uses known venues or Meppel center)
+ */
+function getVenueCoordinatesForScoring(venueName: string): { lat: number; lng: number } {
+  // Known Meppel venues for accurate distance calculation
+  const venues: Record<string, { lat: number; lng: number }> = {
+    'Sportpark Ezinge, Meppel': { lat: 52.6985, lng: 6.1876 },
+    'Sportkantine Ezinge': { lat: 52.6985, lng: 6.1876 },
+    'Café De Kansel, Woldstraat': { lat: 52.6956, lng: 6.1944 },
+    'Wilhelminapark Meppel': { lat: 52.6923, lng: 6.1912 },
+    'Wilhelminapark grasveld': { lat: 52.6923, lng: 6.1912 },
+    'IJssalon op de Markt': { lat: 52.6961, lng: 6.1938 },
+    'Café 1761, Prinsengracht': { lat: 52.6961, lng: 6.1938 },
+    'Meppeler Haven (Stouwepad)': { lat: 52.6978, lng: 6.1891 },
+    'Schouwburg Ogterop': { lat: 52.6952, lng: 6.1972 },
+    'Foyer Schouwburg': { lat: 52.6952, lng: 6.1972 },
+    'Hoofdstraat Meppel': { lat: 52.6961, lng: 6.1944 },
+    'Luxor Cinema': { lat: 52.6968, lng: 6.192 },
+    'De Plataan': { lat: 52.6961, lng: 6.1944 },
+    'De Beurs': { lat: 52.6959, lng: 6.1931 },
+    'Reestkerk': { lat: 52.705, lng: 6.195 },
+    'Markt Meppel': { lat: 52.6958, lng: 6.1935 },
+    'Bibliotheek Meppel': { lat: 52.695, lng: 6.1905 },
+    'Alcides': { lat: 52.6898, lng: 6.2012 },
+  };
+  
+  // Try exact match first
+  if (venues[venueName]) {
+    return venues[venueName];
+  }
+  
+  // Try fuzzy match (case insensitive, partial match)
+  const lowerVenue = venueName.toLowerCase();
+  for (const [key, coords] of Object.entries(venues)) {
+    if (lowerVenue.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerVenue)) {
+      return coords;
+    }
+  }
+  
+  // Default to Meppel center
+  return MEPPEL_CENTER;
+}
+
+/**
  * Calculates a composite score for an event based on multiple factors
  */
 function scoreEvent<T extends EventForRanking>(
@@ -152,18 +254,22 @@ function scoreEvent<T extends EventForRanking>(
   preferences: UserPreferences | null
 ): ScoredEvent<T> {
   const userCategories = preferences?.selectedCategories || [];
+  const userLocation = preferences?.userLocation;
+  const radiusKm = preferences?.radiusKm || CONFIG.DEFAULT_RADIUS_KM;
   
   const categoryScore = calculateCategoryScore(event.category, userCategories);
   const timeScore = calculateTimeScore(event.event_date);
   const socialScore = calculateSocialScore(event.attendee_count);
   const matchScore = calculateMatchScore(event.match_percentage);
+  const distanceScore = calculateDistanceScore(event.venue_name, userLocation, radiusKm);
   
   // Weighted sum of all factors
   const totalScore = 
     categoryScore * WEIGHTS.CATEGORY +
     timeScore * WEIGHTS.TIME +
     socialScore * WEIGHTS.SOCIAL +
-    matchScore * WEIGHTS.MATCH;
+    matchScore * WEIGHTS.MATCH +
+    distanceScore * WEIGHTS.DISTANCE;
   
   return {
     event,
@@ -173,6 +279,7 @@ function scoreEvent<T extends EventForRanking>(
       timeScore,
       socialScore,
       matchScore,
+      distanceScore,
     },
   };
 }
