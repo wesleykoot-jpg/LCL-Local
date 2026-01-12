@@ -758,13 +758,16 @@ serve(async (req) => {
   }
 
   try {
-    // Get API keys
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    // Get API keys - support both GEMINI_API_KEY and GOOGLE_AI_API_KEY
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!geminiApiKey || !supabaseUrl || !supabaseKey) {
-      throw new Error("Missing required environment variables");
+    if (!geminiApiKey) {
+      throw new Error("Missing GEMINI_API_KEY or GOOGLE_AI_API_KEY environment variable");
+    }
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);

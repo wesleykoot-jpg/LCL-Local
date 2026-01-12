@@ -16,7 +16,6 @@ import { CategoryBadge } from './CategoryBadge';
 import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
-import { getVenueCoordinates } from '@/lib/distance';
 import { useLocation } from '@/contexts/LocationContext';
 import type { EventWithAttendees } from '@/lib/hooks';
 
@@ -77,6 +76,23 @@ function openInMaps(lat: number, lng: number, label: string) {
   }
 }
 
+/**
+ * Parse PostGIS POINT format to coordinates
+ */
+function parseEventLocation(location: unknown): { lat: number; lng: number } | null {
+  if (!location) return null;
+  
+  // Handle string format: "POINT(lng lat)"
+  if (typeof location === 'string') {
+    const match = location.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
+    if (match) {
+      return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
+    }
+  }
+  
+  return null;
+}
+
 export const EventDetailModal = memo(function EventDetailModal({
   event,
   onClose,
@@ -92,7 +108,8 @@ export const EventDetailModal = memo(function EventDetailModal({
     ? (CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default)
     : (event.image_url || CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default);
 
-  const venueCoords = getVenueCoordinates(event.venue_name);
+  // Get coordinates from event's location column (PostGIS)
+  const venueCoords = parseEventLocation(event.location) || { lat: 52.5, lng: 6.0 };
   
   // Static map using OpenStreetMap
   const staticMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`;
