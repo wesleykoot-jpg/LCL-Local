@@ -3,6 +3,18 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
+type JoinEventRpcResult = {
+  status: 'ok' | 'exists' | 'full' | 'error';
+  message?: string;
+  event_id?: string;
+  profile_id?: string;
+};
+type JoinEventResult = {
+  data: EventAttendee | null;
+  rpcResult?: JoinEventRpcResult | null;
+  error: Error | null;
+  waitlisted: boolean;
+};
 
 export interface JoinEventParams {
   eventId: string;
@@ -32,7 +44,7 @@ export interface CreateEventParams {
  * @param status - Attendance status (default: 'going', or 'waitlist' if full)
  * @returns Object with data, waitlisted flag, and error (if any)
  */
-export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams) {
+export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams): Promise<JoinEventResult> {
   try {
     // Check if event has capacity limit and current attendance
     const { data: event, error: eventError } = await supabase
@@ -83,7 +95,36 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
     return { data, error: null, waitlisted: wasWaitlisted };
   } catch (error) {
     console.error('Error joining event:', error);
-    return { data: null, error: error as Error, waitlisted: false };
+
+    // Fallback to atomic RPC to handle stricter RLS or race conditions in UAT
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
+        p_event_id: eventId,
+        p_profile_id: profileId,
+        p_status: status,
+      });
+
+      if (rpcError) throw rpcError;
+
+      if (rpcResult?.status === 'exists') {
+        return { data: null, error: new Error('already_joined'), waitlisted: false };
+      }
+
+      if (rpcResult?.status === 'full' && status === 'going') {
+        return { data: null, rpcResult, error: new Error('event_full'), waitlisted: true };
+      }
+
+      // Success path for RPC
+      if (rpcResult?.status === 'ok') {
+        return { data: null, rpcResult, error: null, waitlisted: false };
+      }
+
+      // Unexpected RPC status
+      return { data: null, rpcResult, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
+    } catch (fallbackError) {
+      console.error('Fallback RPC join failed:', fallbackError);
+      return { data: null, error: fallbackError as Error, waitlisted: false };
+    }
   }
 }
 

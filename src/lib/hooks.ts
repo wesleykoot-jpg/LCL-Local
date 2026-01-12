@@ -404,6 +404,11 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
         onSuccess?.();
       } catch (error) {
         console.error('Error joining event:', error);
+        if (error instanceof Error && error.message === 'already_joined') {
+          await hapticNotification('warning');
+          toast.error("You're already attending this event");
+          return;
+        }
         await hapticNotification('error');
         toast.error('Failed to join event. Please try again.');
       } finally {
