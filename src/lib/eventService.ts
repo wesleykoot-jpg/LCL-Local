@@ -10,7 +10,8 @@ type JoinEventRpcResult = {
   profile_id?: string;
 };
 type JoinEventResult = {
-  data: EventAttendee | JoinEventRpcResult | null;
+  data: EventAttendee | null;
+  rpcResult?: JoinEventRpcResult | null;
   error: Error | null;
   waitlisted: boolean;
 };
@@ -110,37 +111,20 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
       }
 
       if (rpcResult?.status === 'full' && status === 'going') {
-        const { data: waitlistData, error: waitlistError } = await supabase
-          .from('event_attendees')
-          .insert({
-            event_id: eventId,
-            profile_id: profileId,
-            status: 'waitlist',
-            joined_at: new Date().toISOString(),
-          })
-          .select()
-          .maybeSingle();
-
-        if (waitlistError) {
-          return { data: null, error: waitlistError, waitlisted: false };
-        }
-        if (waitlistData) return { data: waitlistData, error: null, waitlisted: true };
-        return { data: null, error: new Error('Failed to add to waitlist'), waitlisted: false };
+        return { data: null, rpcResult, error: new Error('event_full'), waitlisted: false };
       }
 
       // Success path for RPC
       if (rpcResult?.status === 'ok') {
-        return { data: rpcResult, error: null, waitlisted: false };
+        return { data: null, rpcResult, error: null, waitlisted: false };
       }
 
       // Unexpected RPC status
-      return { data: null, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
+      return { data: null, rpcResult, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
     } catch (fallbackError) {
       console.error('Fallback RPC join failed:', fallbackError);
       return { data: null, error: fallbackError as Error, waitlisted: false };
     }
-
-    return { data: null, error: error as Error, waitlisted: false };
   }
 }
 
