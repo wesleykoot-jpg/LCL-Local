@@ -470,11 +470,6 @@ export const EventFeed = memo(function EventFeed({
     console.log('Subscribed to category:', category);
   }, []);
 
-  // Get joining event ID for a specific event
-  const getJoiningEventId = useCallback((eventId: string) => 
-    isJoining(eventId) ? eventId : undefined,
-  [isJoining]);
-
   // Render a single stack card
   const renderStackCard = (stack: EventStack, index: number, injectSubscribeCard: boolean = false, totalInGroup: number = 0) => (
     <Fragment key={stack.anchor.id}>
@@ -490,7 +485,7 @@ export const EventFeed = memo(function EventFeed({
           stack={stack}
           onEventClick={onEventClick}
           onJoinEvent={handleJoinEvent}
-          joiningEventId={getJoiningEventId(stack.anchor.id)}
+          joiningEventId={isJoining(stack.anchor.id) ? stack.anchor.id : undefined}
         />
       </motion.div>
       {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
