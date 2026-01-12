@@ -13,7 +13,7 @@ const FILTERS: { id: TimeFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'tonight', label: 'Tonight' },
   { id: 'tomorrow', label: 'Tomorrow' },
-  { id: 'weekend', label: 'This Weekend' },
+  { id: 'weekend', label: 'Weekend' },
 ];
 
 export const TimeFilterPills = memo(function TimeFilterPills({
@@ -21,25 +21,31 @@ export const TimeFilterPills = memo(function TimeFilterPills({
   onFilterChange,
 }: TimeFilterPillsProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-hide py-2 px-1">
+    <div className="flex items-center">
       {FILTERS.map((filter) => {
         const isActive = activeFilter === filter.id;
         return (
-          <motion.button
+          <button
             key={filter.id}
             onClick={() => onFilterChange(filter.id)}
             className={cn(
-              'relative px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
               isActive
-                ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
-                : 'bg-transparent text-muted-foreground hover:bg-muted'
+                ? 'text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             )}
-            whileTap={{ scale: 0.95 }}
-            transition={{ duration: 0.1 }}
           >
             {filter.label}
-          </motion.button>
+            {/* Animated underline indicator */}
+            {isActive && (
+              <motion.div
+                layoutId="activeTimeFilter"
+                className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+              />
+            )}
+          </button>
         );
       })}
     </div>
