@@ -95,6 +95,9 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
+  
+  // Check if this is a mock event (cannot be joined)
+  const isMockEvent = event.id.startsWith('mock-');
 
   return (
     <motion.div
@@ -155,17 +158,20 @@ const AnchorEventCard = memo(function AnchorEventCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onJoin?.();
+              if (!isMockEvent) {
+                onJoin?.();
+              }
             }}
-            disabled={isJoining}
+            disabled={isJoining || isMockEvent}
             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95"
+            title={isMockEvent ? 'Demo event - cannot join' : undefined}
           >
             {isJoining ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <Users size={16} />
             )}
-            <span>{isJoining ? 'Joining...' : 'Join'}</span>
+            <span>{isJoining ? 'Joining...' : isMockEvent ? 'Demo' : 'Join'}</span>
           </button>
         </div>
       </div>
@@ -197,6 +203,9 @@ const ForkEventCard = memo(function ForkEventCard({
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
+  
+  // Check if this is a mock event (cannot be joined)
+  const isMockEvent = event.id.startsWith('mock-');
 
   return (
     <div className="flex">
@@ -263,12 +272,15 @@ const ForkEventCard = memo(function ForkEventCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onJoin?.();
+                if (!isMockEvent) {
+                  onJoin?.();
+                }
               }}
-              disabled={isJoining}
+              disabled={isJoining || isMockEvent}
               className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
+              title={isMockEvent ? 'Demo event - cannot join' : undefined}
             >
-              {isJoining ? <Loader2 size={12} className="animate-spin" /> : 'Join'}
+              {isJoining ? <Loader2 size={12} className="animate-spin" /> : isMockEvent ? 'Demo' : 'Join'}
             </button>
           </div>
         </div>

@@ -471,31 +471,38 @@ export const EventFeed = memo(function EventFeed({
   }, []);
 
   // Render a single stack card
-  const renderStackCard = (stack: EventStack, index: number, injectSubscribeCard: boolean = false, totalInGroup: number = 0) => (
-    <Fragment key={stack.anchor.id}>
-      <motion.div
-        variants={{
-          hidden: { opacity: 0, y: 20 },
-          visible: { opacity: 1, y: 0 }
-        }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        layout
-      >
-        <EventStackCard
-          stack={stack}
-          onEventClick={onEventClick}
-          onJoinEvent={handleJoinEvent}
-          joiningEventId={isJoining(stack.anchor.id) ? stack.anchor.id : undefined}
-        />
-      </motion.div>
-      {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
-      {injectSubscribeCard && index === 1 && totalInGroup > 2 && (
-        <CategorySubscribeCard
-          categoryLabel={getCategoryConfig(stack.anchor.category).label}
-        />
-      )}
-    </Fragment>
-  );
+  const renderStackCard = (stack: EventStack, index: number, injectSubscribeCard: boolean = false, totalInGroup: number = 0) => {
+    // Check if any event in the stack (anchor or any fork) is being joined
+    const joiningId = isJoining(stack.anchor.id) 
+      ? stack.anchor.id 
+      : stack.forks.find(fork => isJoining(fork.id))?.id;
+
+    return (
+      <Fragment key={stack.anchor.id}>
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 }
+          }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          layout
+        >
+          <EventStackCard
+            stack={stack}
+            onEventClick={onEventClick}
+            onJoinEvent={handleJoinEvent}
+            joiningEventId={joiningId}
+          />
+        </motion.div>
+        {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
+        {injectSubscribeCard && index === 1 && totalInGroup > 2 && (
+          <CategorySubscribeCard
+            categoryLabel={getCategoryConfig(stack.anchor.category).label}
+          />
+        )}
+      </Fragment>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
