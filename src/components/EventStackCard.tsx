@@ -30,6 +30,7 @@ interface EventStackCardProps {
   onEventClick?: (eventId: string) => void;
   onJoinEvent?: (eventId: string) => Promise<void>;
   joiningEventId?: string;
+  currentUserProfileId?: string;
 }
 
 const getEventImage = (event: EventWithAttendees): string => {
@@ -85,12 +86,14 @@ const AnchorEventCard = memo(function AnchorEventCard({
   onJoin,
   isJoining,
   hasForks,
+  currentUserProfileId,
 }: {
   event: EventWithAttendees;
   onClick?: () => void;
   onJoin?: () => void;
   isJoining?: boolean;
   hasForks: boolean;
+  currentUserProfileId?: string;
 }) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event);
@@ -98,6 +101,11 @@ const AnchorEventCard = memo(function AnchorEventCard({
   
   // Check if this is a mock event (cannot be joined)
   const isMockEvent = event.id.startsWith('mock-');
+  
+  // Check if current user has already joined this event
+  const hasJoined = currentUserProfileId && event.attendees?.some(
+    attendee => attendee.profile?.id === currentUserProfileId
+  );
 
   return (
     <motion.div
@@ -158,20 +166,24 @@ const AnchorEventCard = memo(function AnchorEventCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (!isMockEvent) {
+              if (!isMockEvent && !hasJoined) {
                 onJoin?.();
               }
             }}
-            disabled={isJoining || isMockEvent}
-            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95"
-            title={isMockEvent ? 'Demo event - cannot join' : undefined}
+            disabled={isJoining || isMockEvent || hasJoined}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95 ${
+              hasJoined 
+                ? 'bg-muted text-muted-foreground cursor-default' 
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            }`}
+            title={isMockEvent ? 'Demo event - cannot join' : hasJoined ? 'Already joined' : undefined}
           >
             {isJoining ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <Users size={16} />
             )}
-            <span>{isJoining ? 'Joining...' : isMockEvent ? 'Demo' : 'Join'}</span>
+            <span>{isJoining ? 'Joining...' : hasJoined ? 'Joined' : isMockEvent ? 'Demo' : 'Join'}</span>
           </button>
         </div>
       </div>
@@ -192,6 +204,7 @@ const ForkEventCard = memo(function ForkEventCard({
   onJoin,
   isJoining,
   isLast,
+  currentUserProfileId,
 }: {
   event: EventWithAttendees;
   parentTitle: string;
@@ -199,6 +212,7 @@ const ForkEventCard = memo(function ForkEventCard({
   onJoin?: () => void;
   isJoining?: boolean;
   isLast: boolean;
+  currentUserProfileId?: string;
 }) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event);
@@ -206,6 +220,11 @@ const ForkEventCard = memo(function ForkEventCard({
   
   // Check if this is a mock event (cannot be joined)
   const isMockEvent = event.id.startsWith('mock-');
+  
+  // Check if current user has already joined this event
+  const hasJoined = currentUserProfileId && event.attendees?.some(
+    attendee => attendee.profile?.id === currentUserProfileId
+  );
 
   return (
     <div className="flex">
@@ -272,15 +291,19 @@ const ForkEventCard = memo(function ForkEventCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (!isMockEvent) {
+                if (!isMockEvent && !hasJoined) {
                   onJoin?.();
                 }
               }}
-              disabled={isJoining || isMockEvent}
-              className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
-              title={isMockEvent ? 'Demo event - cannot join' : undefined}
+              disabled={isJoining || isMockEvent || hasJoined}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all disabled:opacity-50 active:scale-95 ${
+                hasJoined 
+                  ? 'bg-muted text-muted-foreground cursor-default' 
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              }`}
+              title={isMockEvent ? 'Demo event - cannot join' : hasJoined ? 'Already joined' : undefined}
             >
-              {isJoining ? <Loader2 size={12} className="animate-spin" /> : isMockEvent ? 'Demo' : 'Join'}
+              {isJoining ? <Loader2 size={12} className="animate-spin" /> : hasJoined ? 'Joined' : isMockEvent ? 'Demo' : 'Join'}
             </button>
           </div>
         </div>
@@ -294,6 +317,7 @@ export const EventStackCard = memo(function EventStackCard({
   onEventClick,
   onJoinEvent,
   joiningEventId,
+  currentUserProfileId,
 }: EventStackCardProps) {
   const { anchor, forks, type } = stack;
 
@@ -306,6 +330,7 @@ export const EventStackCard = memo(function EventStackCard({
         onJoin={() => onJoinEvent?.(anchor.id)}
         isJoining={joiningEventId === anchor.id}
         hasForks={forks.length > 0}
+        currentUserProfileId={currentUserProfileId}
       />
 
       {/* Fork Events */}
@@ -320,6 +345,21 @@ export const EventStackCard = memo(function EventStackCard({
             {forks.map((fork, index) => (
               <ForkEventCard
                 key={fork.id}
+                event={fork}
+                parentTitle={anchor.title}
+                onClick={() => onEventClick?.(fork.id)}
+                onJoin={() => onJoinEvent?.(fork.id)}
+                isJoining={joiningEventId === fork.id}
+                isLast={index === forks.length - 1}
+                currentUserProfileId={currentUserProfileId}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
                 event={fork}
                 parentTitle={anchor.title}
                 onClick={() => onEventClick?.(fork.id)}

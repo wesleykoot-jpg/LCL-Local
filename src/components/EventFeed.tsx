@@ -492,6 +492,7 @@ export const EventFeed = memo(function EventFeed({
             onEventClick={onEventClick}
             onJoinEvent={handleJoinEvent}
             joiningEventId={joiningId}
+            currentUserProfileId={profileId}
           />
         </motion.div>
         {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
