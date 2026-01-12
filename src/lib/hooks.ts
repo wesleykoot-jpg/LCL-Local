@@ -10,11 +10,19 @@ type Event = Database['public']['Tables']['events']['Row'];
 type PersonaStats = Database['public']['Tables']['persona_stats']['Row'];
 type PersonaBadge = Database['public']['Tables']['persona_badges']['Row'];
 
+export interface AttendeeProfile {
+  id: string;
+  avatar_url: string | null;
+  full_name: string;
+}
+
+export interface EventAttendee {
+  profile: AttendeeProfile | null;
+}
+
 export interface EventWithAttendees extends Event {
   attendee_count?: number;
-  attendees?: Array<{
-    profile: Profile;
-  }>;
+  attendees?: EventAttendee[];
   parent_event?: Event | null;
 }
 
@@ -137,11 +145,21 @@ export function useEvents(options?: {
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Fetch events with attendees in a single query to solve N+1 problem
+      // Limit attendees to first 4 per event to keep it light
       let query = supabase
         .from('events')
         .select(`
           *,
-          attendee_count:event_attendees(count)
+          attendee_count:event_attendees(count),
+          attendees:event_attendees(
+            profile:profiles(
+              id,
+              avatar_url,
+              full_name
+            )
+          )
         `)
         .order('event_date', { ascending: true });
 
@@ -157,14 +175,25 @@ export function useEvents(options?: {
 
       if (error) throw error;
 
-      const eventsWithCount = (data || []).map(event => ({
-        ...event,
-        attendee_count: Array.isArray(event.attendee_count)
+      const eventsWithData = (data || []).map(event => {
+        // Extract count from nested array
+        const count = Array.isArray(event.attendee_count)
           ? event.attendee_count[0]?.count || 0
-          : 0,
-      }));
+          : 0;
+        
+        // Limit attendees to first 4
+        const attendees = Array.isArray(event.attendees)
+          ? event.attendees.slice(0, 4) as EventAttendee[]
+          : [];
 
-      setEvents(eventsWithCount);
+        return {
+          ...event,
+          attendee_count: count,
+          attendees,
+        };
+      });
+
+      setEvents(eventsWithData);
     } catch (e) {
       if (import.meta.env.DEV) {
         console.error('Error fetching events:', e);
