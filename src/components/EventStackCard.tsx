@@ -360,17 +360,3 @@ export const EventStackCard = memo(function EventStackCard({
     </div>
   );
 });
-                event={fork}
-                parentTitle={anchor.title}
-                onClick={() => onEventClick?.(fork.id)}
-                onJoin={() => onJoinEvent?.(fork.id)}
-                isJoining={joiningEventId === fork.id}
-                isLast={index === forks.length - 1}
-              />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-});
