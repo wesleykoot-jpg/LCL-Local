@@ -111,7 +111,7 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
       }
 
       if (rpcResult?.status === 'full' && status === 'going') {
-        return { data: null, rpcResult, error: new Error('event_full'), waitlisted: false };
+        return { data: null, rpcResult, error: new Error('event_full'), waitlisted: true };
       }
 
       // Success path for RPC
