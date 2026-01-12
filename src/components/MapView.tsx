@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState, createElement } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { MapPin, Users, Zap, Film, Palette, Trophy, Radio, Shield, Sparkles, X, Loader2 } from 'lucide-react';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
 import type { LatLngTuple } from 'leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -72,8 +72,6 @@ const defaultIcon = L.icon({
   iconSize: [25, 41],
   iconAnchor: [12, 41]
 });
-
-L.Marker.prototype.options.icon = defaultIcon;
 
 function FitBounds({ events }: { events: MapEvent[] }) {
   const map = useMap();
@@ -157,20 +155,48 @@ export function MapView() {
         <FitBounds events={filteredEvents} />
         {filteredEvents.map((event) => {
           const color = categoryColors[event.category];
-          const radius = event.type === 'anchor' ? 14 : event.type === 'fork' ? 10 : 12;
-          const fillOpacity = event.type === 'signal' ? 0.25 : 0.85;
+          if (event.type === 'signal') {
+            return (
+              <CircleMarker
+                key={event.id}
+                center={[event.lat, event.lng]}
+                radius={12}
+                pathOptions={{
+                  color,
+                  fillColor: color,
+                  fillOpacity: 0.25,
+                  weight: 2,
+                }}
+                eventHandlers={{
+                  click: () => setSelectedEvent(event),
+                }}
+              >
+                <Popup>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-zinc-900">{event.title}</p>
+                    <p className="text-xs text-zinc-600 flex items-center gap-1">
+                      <MapPin size={12} />
+                      {event.venue}
+                    </p>
+                    <p className="text-xs text-zinc-500">{event.time}</p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEvent(event)}
+                      className="mt-2 w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800"
+                    >
+                      View details
+                    </button>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            );
+          }
 
           return (
-            <CircleMarker
+            <Marker
               key={event.id}
-              center={[event.lat, event.lng]}
-              radius={radius}
-              pathOptions={{
-                color,
-                fillColor: color,
-                fillOpacity,
-                weight: event.type === 'signal' ? 2 : 3,
-              }}
+              position={[event.lat, event.lng]}
+              icon={defaultIcon}
               eventHandlers={{
                 click: () => setSelectedEvent(event),
               }}
@@ -192,7 +218,7 @@ export function MapView() {
                   </button>
                 </div>
               </Popup>
-            </CircleMarker>
+            </Marker>
           );
         })}
       </MapContainer>
