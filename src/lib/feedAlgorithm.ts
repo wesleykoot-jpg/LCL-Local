@@ -26,9 +26,11 @@
  * Additionally, the algorithm ensures feed diversity by:
  * - Preventing too many cards of the same category appearing consecutively
  * - Boosting underrepresented categories in the initial results
+ * 
+ * This module is location-agnostic - works globally with any coordinates.
  */
 
-import { calculateDistanceKm, getVenueCoordinates, MEPPEL_CENTER } from './distance';
+import { calculateDistanceKm } from './distance';
 
 export interface EventForRanking {
   id: string;
@@ -38,6 +40,8 @@ export interface EventForRanking {
   attendee_count?: number;
   image_url?: string | null;
   venue_name?: string;
+  /** Event coordinates from database (PostGIS location column) */
+  coordinates?: { lat: number; lng: number } | null;
   // Add any other fields needed for display
   [key: string]: any;
 }
@@ -50,7 +54,7 @@ export interface UserLocation {
 export interface UserPreferences {
   selectedCategories: string[];
   zone: string;
-  userLocation?: UserLocation;
+  userLocation?: UserLocation | null;
   radiusKm?: number;
 }
 
@@ -168,25 +172,25 @@ function calculateMatchScore(matchPercentage: number | null | undefined): number
  * Calculates distance score based on proximity to user (0-1)
  * Events closer to the user get higher scores
  * Uses inverse distance with configurable radius
+ * 
+ * Works globally - uses coordinates directly from events.
  */
 function calculateDistanceScore(
-  venueName: string | undefined,
-  userLocation: UserLocation | undefined,
+  eventCoordinates: { lat: number; lng: number } | null | undefined,
+  userLocation: UserLocation | null | undefined,
   radiusKm: number = CONFIG.DEFAULT_RADIUS_KM
 ): number {
-  if (!userLocation || !venueName) {
-    return 0.5; // Default score when location unavailable
+  // If either location is unavailable, return neutral score
+  if (!userLocation || !eventCoordinates) {
+    return 0.5;
   }
   
-  // Get venue coordinates from known venues or default
-  const venueCoords = getVenueCoordinates(venueName);
-  
-  // Calculate distance between user and venue
+  // Calculate distance between user and event
   const distanceKm = calculateDistanceKm(
     userLocation.lat,
     userLocation.lng,
-    venueCoords.lat,
-    venueCoords.lng
+    eventCoordinates.lat,
+    eventCoordinates.lng
   );
   
   // Score calculation:
@@ -218,7 +222,7 @@ function scoreEvent<T extends EventForRanking>(
   const timeScore = calculateTimeScore(event.event_date);
   const socialScore = calculateSocialScore(event.attendee_count);
   const matchScore = calculateMatchScore(event.match_percentage);
-  const distanceScore = calculateDistanceScore(event.venue_name, userLocation, radiusKm);
+  const distanceScore = calculateDistanceScore(event.coordinates, userLocation, radiusKm);
   
   // Weighted sum of all factors
   const totalScore = 
@@ -298,7 +302,7 @@ function ensureDiversity<T extends EventForRanking>(
 /**
  * Main function: Ranks events based on the feed algorithm
  * 
- * @param events - Array of events to rank
+ * @param events - Array of events to rank (should include coordinates from DB)
  * @param preferences - User preferences from onboarding
  * @param options - Optional configuration
  * @returns Ranked array of events

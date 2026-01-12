@@ -1,40 +1,44 @@
 import { memo } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { 
-  calculateDistanceKm, 
-  getDistanceDisplay, 
-  getVenueCoordinates,
-  MEPPEL_CENTER 
-} from '@/lib/distance';
+import { calculateDistanceKm, getDistanceDisplay } from '@/lib/distance';
 
 interface DistanceBadgeProps {
-  venueName: string;
-  userLocation?: { lat: number; lng: number };
+  /** Coordinates of the venue/event location */
+  venueCoordinates?: { lat: number; lng: number } | null;
+  /** User's current location */
+  userLocation?: { lat: number; lng: number } | null;
+  /** Whether to show walking time for close distances */
   showWalkTime?: boolean;
+  /** Badge size */
   size?: 'sm' | 'md';
+  /** Additional CSS classes */
   className?: string;
 }
 
 /**
  * DistanceBadge - Displays distance between user and event venue
  * 
- * Accepts userLocation as a prop for flexibility.
- * Parent components should get location from LocationContext.
+ * Works globally - uses coordinates directly from events and user location.
+ * If either location is unavailable, the badge is not rendered.
  */
 export const DistanceBadge = memo(function DistanceBadge({
-  venueName,
-  userLocation = MEPPEL_CENTER,
+  venueCoordinates,
+  userLocation,
   showWalkTime = true,
   size = 'md',
   className,
 }: DistanceBadgeProps) {
-  const venueCoords = getVenueCoordinates(venueName);
+  // Don't render if we don't have both locations
+  if (!venueCoordinates || !userLocation) {
+    return null;
+  }
+
   const distanceKm = calculateDistanceKm(
     userLocation.lat,
     userLocation.lng,
-    venueCoords.lat,
-    venueCoords.lng
+    venueCoordinates.lat,
+    venueCoordinates.lng
   );
 
   const display = getDistanceDisplay(distanceKm);

@@ -9,13 +9,12 @@
  * - Web Geolocation API fallback for browser testing
  * - Automatic position watching for real-time updates
  * - Permission state management
- * - Graceful error handling with defaults
+ * - Graceful error handling (no default location)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { Geolocation, Position, PermissionStatus } from '@capacitor/geolocation';
 import { Capacitor } from '@capacitor/core';
-import { MEPPEL_CENTER } from '@/lib/distance';
 
 export interface UserLocation {
   lat: number;
@@ -27,7 +26,8 @@ export interface UserLocation {
 export type LocationPermissionState = 'prompt' | 'granted' | 'denied' | 'unknown';
 
 export interface GeolocationState {
-  location: UserLocation;
+  /** Current user location, null if not yet obtained or unavailable */
+  location: UserLocation | null;
   isLoading: boolean;
   error: string | null;
   permissionState: LocationPermissionState;
@@ -59,7 +59,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
   
   const [state, setState] = useState<GeolocationState>({
-    location: MEPPEL_CENTER, // Default to Meppel center
+    location: null, // No default location - user must enable GPS or set manually
     isLoading: true,
     error: null,
     permissionState: 'unknown',
