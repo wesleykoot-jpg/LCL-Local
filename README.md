@@ -9,6 +9,7 @@ Original design by [Magic Patterns](https://www.magicpatterns.com/c/8f2shdlz13fz
 - 🎉 **Event Discovery** - Browse local events and tribe gatherings
 - 🤖 **Smart Feed Algorithm** - Personalized ranking based on preferences, time, and popularity
 - ➕ **Create Events** - Host your own events with image uploads
+- 📅 **Google Calendar Integration** - Automatically sync events with Google Calendar
 - 📱 **iOS-Optimized** - Native haptics, gestures, and smooth animations
 - ⚡ **Real-time Updates** - Live event changes via Supabase Realtime
 - 🔐 **Secure Auth** - Email/password authentication with Supabase
@@ -103,9 +104,19 @@ src/
 - Notification feedback
 - Selection feedback
 
+### Google Calendar Integration (`src/lib/googleCalendarService.ts`)
+- OAuth 2.0 authentication with Google
+- Automatic event syncing
+- Token refresh management
+- Event lifecycle management (create, update, delete)
+- See [Calendar Integration Guide](./GOOGLE_CALENDAR_INTEGRATION.md)
+
 ## Documentation
 
 - [Feed Algorithm](./FEED_ALGORITHM.md) - Smart ranking algorithm documentation
+- [Google Calendar Integration](./GOOGLE_CALENDAR_INTEGRATION.md) - Calendar sync documentation
+- [Calendar Setup Guide](./CALENDAR_SETUP_GUIDE.md) - Quick setup instructions
+- [Calendar Security](./SECURITY_CALENDAR.md) - Production security guidance
 - [Deployment Guide](./DEPLOYMENT_GUIDE.md) - Complete iOS App Store deployment guide
 - [Implementation Summary](./IMPLEMENTATION_SUMMARY.md) - Detailed feature list
 - [Backend Setup](./BACKEND_SETUP.md) - Database configuration
@@ -122,6 +133,8 @@ src/
 ```env
 VITE_SUPABASE_URL=your-project-url
 VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_GOOGLE_CLIENT_ID=your-google-client-id  # Optional: For calendar integration
+VITE_GOOGLE_CLIENT_SECRET=your-google-secret  # Optional: For calendar integration (dev only)
 ```
 
 ## Scripts
