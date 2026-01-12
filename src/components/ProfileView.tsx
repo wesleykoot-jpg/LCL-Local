@@ -4,6 +4,7 @@ import {
   CheckCircle, Flame, LogOut, Loader2, Settings,
   Calendar, Clock, Heart, Sparkles, BadgeCheck, Edit3, Share2, Camera
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { usePersonaStats, usePersonaBadges, useUserCommitments } from '../lib/hooks';
 import toast from 'react-hot-toast';
@@ -93,6 +94,7 @@ function formatEventDate(dateString: string, timeString: string, isToday: boolea
 }
 
 export function ProfileView() {
+  const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -125,6 +127,10 @@ export function ProfileView() {
 
   const handleSettingsClick = (setting: string) => {
     toast(`${setting} coming soon!`, { icon: '🚧' });
+  };
+
+  const handleNavigateToSettings = (path: string) => {
+    navigate(path);
   };
 
   return (
@@ -500,15 +506,15 @@ export function ProfileView() {
           
           <div className="divide-y divide-border">
             {[
-              { label: 'Personal Information', icon: Users },
-              { label: 'Verification & Safety', icon: Shield },
-              { label: 'Notification Preferences', icon: Heart },
-              { label: 'Privacy Settings', icon: CheckCircle },
-              { label: 'Share Profile', icon: Share2 },
+              { label: 'Personal Information', icon: Users, path: '/profile/personal-information' },
+              { label: 'Verification & Safety', icon: Shield, path: '/profile/verification-safety' },
+              { label: 'Notification Preferences', icon: Heart, path: '/profile/notification-preferences' },
+              { label: 'Privacy Settings', icon: CheckCircle, path: '/profile/privacy-settings' },
+              { label: 'Share Profile', icon: Share2, path: '/profile/share' },
             ].map((item) => (
               <button 
                 key={item.label}
-                onClick={() => handleSettingsClick(item.label)}
+                onClick={() => handleNavigateToSettings(item.path)}
                 className="w-full px-5 py-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
