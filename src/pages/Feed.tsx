@@ -74,7 +74,7 @@ const MOCK_MEPPEL_EVENTS = [
 const Feed = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { events: allEvents, loading, refetch } = useEvents();
+  const { events: allEvents, loading, refetch } = useEvents({ currentUserProfileId: profile?.id });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   

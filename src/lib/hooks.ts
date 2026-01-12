@@ -107,6 +107,7 @@ export function useEvents(options?: {
   radiusKm?: number;
   page?: number;
   pageSize?: number;
+  currentUserProfileId?: string;
 }) {
   const [events, setEvents] = useState<EventWithAttendees[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +118,7 @@ export function useEvents(options?: {
   const page = Math.max(1, options?.page ?? 1);
   const pageSize = options?.pageSize ?? 10;
   const paginationKey = `${page}-${pageSize}`;
+  const currentUserProfileId = options?.currentUserProfileId ?? '';
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -156,7 +158,7 @@ export function useEvents(options?: {
 
       if (error) throw error;
 
-      const eventsWithData = (data || []).map(event => {
+      let eventsWithData = (data || []).map(event => {
         // Extract count from nested array
         const count = Array.isArray(event.attendee_count)
           ? event.attendee_count[0]?.count || 0
@@ -173,6 +175,42 @@ export function useEvents(options?: {
         };
       });
 
+      // If currentUserProfileId is provided, fetch user's attendance for each event
+      // to ensure the "Joined" state is accurate even if user is not in first 4 attendees
+      if (options?.currentUserProfileId && eventsWithData.length > 0) {
+        const eventIds = eventsWithData.map(e => e.id);
+        const { data: userAttendances } = await supabase
+          .from('event_attendees')
+          .select('event_id, profile_id, profiles(id, avatar_url, full_name)')
+          .eq('profile_id', options.currentUserProfileId)
+          .in('event_id', eventIds);
+
+        if (userAttendances) {
+          // Add current user to attendees list if they've joined but aren't in the first 4
+          eventsWithData = eventsWithData.map(event => {
+            const userAttendance = userAttendances.find(a => a.event_id === event.id);
+            if (userAttendance) {
+              // Check if user is already in attendees list
+              const isInList = event.attendees?.some(a => a.profile?.id === options.currentUserProfileId);
+              if (!isInList && userAttendance.profiles) {
+                // Add user to beginning of attendees list
+                return {
+                  ...event,
+                  attendees: [{
+                    profile: {
+                      id: userAttendance.profiles.id,
+                      avatar_url: userAttendance.profiles.avatar_url,
+                      full_name: userAttendance.profiles.full_name,
+                    }
+                  }, ...(event.attendees || [])]
+                };
+              }
+            }
+            return event;
+          });
+        }
+      }
+
       setEvents(eventsWithData);
     } catch (e) {
       if (import.meta.env.DEV) {
@@ -181,7 +219,7 @@ export function useEvents(options?: {
     } finally {
       setLoading(false);
     }
-  }, [categoryKey, eventTypeKey, paginationKey]);
+  }, [categoryKey, eventTypeKey, paginationKey, currentUserProfileId]);
 
   useEffect(() => {
     fetchEvents();
