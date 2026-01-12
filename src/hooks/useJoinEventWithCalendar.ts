@@ -8,7 +8,8 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useJoinEvent } from '@/lib/hooks';
-import { useGoogleCalendar, type LCLEvent } from './useGoogleCalendar';
+import { useGoogleCalendar } from './useGoogleCalendar';
+import type { LCLEventData } from '@/lib/utils';
 
 interface UseJoinEventWithCalendarOptions {
   profileId: string | undefined;
@@ -29,7 +30,7 @@ export function useJoinEventWithCalendar({ profileId, onSuccess }: UseJoinEventW
   const { isConnected, syncEventToCalendar } = useGoogleCalendar();
   
   // Fetch event details for calendar sync
-  const fetchEventDetails = useCallback(async (eventId: string): Promise<LCLEvent | null> => {
+  const fetchEventDetails = useCallback(async (eventId: string): Promise<LCLEventData | null> => {
     try {
       const { data, error } = await supabase
         .from('events')
@@ -38,7 +39,7 @@ export function useJoinEventWithCalendar({ profileId, onSuccess }: UseJoinEventW
         .maybeSingle();
 
       if (error || !data) return null;
-      return data as LCLEvent;
+      return data as LCLEventData;
     } catch (error) {
       console.error('[useJoinEventWithCalendar] Error fetching event:', error);
       return null;

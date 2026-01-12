@@ -3,6 +3,11 @@
  * 
  * Handles synchronization of LCL events with Google Calendar.
  * Manages token storage, event creation, and updates.
+ * 
+ * SECURITY NOTE: This implementation uses a client-side OAuth flow.
+ * For production environments with sensitive data, consider using
+ * a backend service (e.g., Supabase Edge Function) to handle
+ * token exchange and storage securely.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +18,7 @@ import {
   type GoogleCalendarEventData,
   type GoogleCalendarEventResponse,
 } from './client';
+import { TOKEN_EXPIRY_BUFFER_MS } from '@/lib/utils';
 
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
@@ -189,8 +195,8 @@ async function getValidAccessToken(profileId: string): Promise<string | null> {
   const tokens = await getCalendarTokens(profileId);
   if (!tokens) return null;
 
-  // Check if token is expired (with 5 minute buffer)
-  const isExpired = tokens.expiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+  // Check if token is expired (with buffer time before expiry)
+  const isExpired = tokens.expiresAt.getTime() < Date.now() + TOKEN_EXPIRY_BUFFER_MS;
 
   if (isExpired && tokens.refreshToken) {
     return refreshAccessToken(profileId, tokens.refreshToken);
@@ -308,7 +314,10 @@ export async function deleteCalendarEvent(
       }
     );
 
-    // 204 No Content is success, 410 Gone means already deleted
+    // Success cases:
+    // - 204 No Content: Event was successfully deleted
+    // - 410 Gone: Event was already deleted
+    // response.ok is true for 204, so we only need to explicitly allow 410
     if (!response.ok && response.status !== 410) {
       const errorData = await response.json();
       throw new Error(errorData.error?.message || 'Failed to delete calendar event');

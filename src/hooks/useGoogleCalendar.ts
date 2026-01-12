@@ -25,6 +25,7 @@ import {
   deleteSyncedEvent,
   disconnectCalendar,
 } from '@/integrations/googleCalendar/service';
+import { parseEventDateTime, type LCLEventData } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export interface UseGoogleCalendarResult {
@@ -33,34 +34,27 @@ export interface UseGoogleCalendarResult {
   isLoading: boolean;
   connectCalendar: () => void;
   disconnectCalendar: () => Promise<void>;
-  syncEventToCalendar: (event: LCLEvent) => Promise<boolean>;
-  updateEventInCalendar: (event: LCLEvent) => Promise<boolean>;
+  syncEventToCalendar: (event: LCLEventData) => Promise<boolean>;
+  updateEventInCalendar: (event: LCLEventData) => Promise<boolean>;
   removeEventFromCalendar: (eventId: string) => Promise<boolean>;
   handleOAuthCallback: () => Promise<boolean>;
 }
 
-export interface LCLEvent {
-  id: string;
-  title: string;
-  description?: string | null;
-  venue_name: string;
-  event_date: string;
-  event_time: string;
-}
+// Re-export the type for consumers
+export type { LCLEventData as LCLEvent };
 
 /**
  * Convert LCL event to Google Calendar event format
  */
-function convertToGoogleEvent(event: LCLEvent): GoogleCalendarEventData {
-  // Parse the date and time
-  const [year, month, day] = event.event_date.split('-').map(Number);
-  const [hours, minutes] = event.event_time.split(':').map(Number);
+function convertToGoogleEvent(event: LCLEventData): GoogleCalendarEventData | null {
+  const parsed = parseEventDateTime(event.event_date, event.event_time);
   
-  // Create start datetime
-  const startDate = new Date(year, month - 1, day, hours, minutes);
-  
-  // Default event duration: 2 hours
-  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+  if (!parsed) {
+    console.error('[convertToGoogleEvent] Failed to parse event date/time');
+    return null;
+  }
+
+  const { startDate, endDate } = parsed;
   
   return {
     summary: event.title,
@@ -207,13 +201,18 @@ export function useGoogleCalendar(): UseGoogleCalendarResult {
   }, [profileId]);
 
   // Sync event to calendar
-  const syncEventToCalendar = useCallback(async (event: LCLEvent): Promise<boolean> => {
+  const syncEventToCalendar = useCallback(async (event: LCLEventData): Promise<boolean> => {
     if (!profileId || !isConnected) {
       return false;
     }
 
     try {
       const googleEvent = convertToGoogleEvent(event);
+      if (!googleEvent) {
+        console.error('[useGoogleCalendar] Failed to convert event to Google format');
+        return false;
+      }
+      
       const result = await createCalendarEvent(profileId, googleEvent);
 
       if (!result.success) {
@@ -233,7 +232,7 @@ export function useGoogleCalendar(): UseGoogleCalendarResult {
   }, [profileId, isConnected]);
 
   // Update event in calendar
-  const updateEventInCalendar = useCallback(async (event: LCLEvent): Promise<boolean> => {
+  const updateEventInCalendar = useCallback(async (event: LCLEventData): Promise<boolean> => {
     if (!profileId || !isConnected) {
       return false;
     }
@@ -247,6 +246,11 @@ export function useGoogleCalendar(): UseGoogleCalendarResult {
       }
 
       const googleEvent = convertToGoogleEvent(event);
+      if (!googleEvent) {
+        console.error('[useGoogleCalendar] Failed to convert event to Google format');
+        return false;
+      }
+      
       const result = await updateCalendarEvent(profileId, googleEventId, googleEvent);
 
       return result.success;

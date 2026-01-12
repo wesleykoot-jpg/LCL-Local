@@ -10,6 +10,7 @@ import {
   deleteSyncedEvent,
 } from '@/integrations/googleCalendar/service';
 import type { GoogleCalendarEventData } from '@/integrations/googleCalendar/client';
+import { parseEventDateTime } from '@/lib/utils';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
@@ -240,16 +241,15 @@ export async function getEventAttendees(eventId: string) {
 /**
  * Convert event to Google Calendar format
  */
-function convertEventToGoogleCalendarFormat(event: Event): GoogleCalendarEventData {
-  // Parse the date and time
-  const [year, month, day] = event.event_date.split('-').map(Number);
-  const [hours, minutes] = event.event_time.split(':').map(Number);
+function convertEventToGoogleCalendarFormat(event: Event): GoogleCalendarEventData | null {
+  const parsed = parseEventDateTime(event.event_date, event.event_time);
   
-  // Create start datetime
-  const startDate = new Date(year, month - 1, day, hours, minutes);
-  
-  // Default event duration: 2 hours
-  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+  if (!parsed) {
+    console.error('[convertEventToGoogleCalendarFormat] Failed to parse event date/time');
+    return null;
+  }
+
+  const { startDate, endDate } = parsed;
   
   return {
     summary: event.title,
@@ -300,6 +300,9 @@ export async function syncEventToGoogleCalendar(eventId: string, profileId: stri
 
     // Convert to Google Calendar format
     const googleEvent = convertEventToGoogleCalendarFormat(event);
+    if (!googleEvent) {
+      return { success: false, error: 'Failed to convert event to calendar format' };
+    }
 
     // Check if event is already synced
     const existingGoogleEventId = await getSyncedEventId(profileId, eventId);
