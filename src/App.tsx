@@ -12,6 +12,11 @@ import MyEvents from "./pages/MyEvents";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import PrivacySettings from "./pages/PrivacySettings";
+import PersonalInformation from "./pages/PersonalInformation";
+import VerificationSafety from "./pages/VerificationSafety";
+import NotificationPreferences from "./pages/NotificationPreferences";
+import ShareProfile from "./pages/ShareProfile";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +34,13 @@ const App = () => (
               <Route path="/feed" element={<Feed />} />
               <Route path="/my-events" element={<MyEvents />} />
               <Route path="/profile" element={<Profile />} />
+              
+              {/* Profile Settings routes */}
+              <Route path="/profile/privacy-settings" element={<PrivacySettings />} />
+              <Route path="/profile/personal-information" element={<PersonalInformation />} />
+              <Route path="/profile/verification-safety" element={<VerificationSafety />} />
+              <Route path="/profile/notification-preferences" element={<NotificationPreferences />} />
+              <Route path="/profile/share" element={<ShareProfile />} />
               
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />
