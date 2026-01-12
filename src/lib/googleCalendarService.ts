@@ -230,14 +230,22 @@ async function getValidAccessToken(integration: CalendarIntegration): Promise<st
 function convertToGoogleCalendarEvent(event: Event): GoogleCalendarEvent {
   // Parse event date and time
   const eventDate = new Date(event.event_date);
-  const [hours, minutes] = event.event_time.split(':').map(Number);
+  const timeParts = event.event_time.split(':');
+  const hours = parseInt(timeParts[0], 10);
+  const minutes = parseInt(timeParts[1], 10);
+
+  // Validate time parsing
+  if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    throw new Error(`Invalid event time format: ${event.event_time}`);
+  }
 
   const startDateTime = new Date(eventDate);
-  startDateTime.setHours(hours || 0, minutes || 0, 0, 0);
+  startDateTime.setHours(hours, minutes, 0, 0);
 
-  // Default event duration: 2 hours
+  // Default event duration: 2 hours (can be made configurable later)
+  const DEFAULT_EVENT_DURATION_HOURS = 2;
   const endDateTime = new Date(startDateTime);
-  endDateTime.setHours(endDateTime.getHours() + 2);
+  endDateTime.setHours(endDateTime.getHours() + DEFAULT_EVENT_DURATION_HOURS);
 
   return {
     summary: event.title,
@@ -307,7 +315,20 @@ export async function createCalendarEvent(
       sync_status: 'synced',
     };
 
-    await supabase.from('calendar_event_mappings').insert(mapping);
+    const { error: mappingError } = await supabase
+      .from('calendar_event_mappings')
+      .insert(mapping);
+
+    if (mappingError) {
+      console.error('Error saving calendar mapping:', mappingError);
+      // Event was created in Google Calendar but mapping failed
+      // Still return success as the calendar event exists
+      return {
+        success: true,
+        externalEventId: data.id,
+        error: 'Event synced but mapping save failed',
+      };
+    }
 
     return { success: true, externalEventId: data.id };
   } catch (error) {

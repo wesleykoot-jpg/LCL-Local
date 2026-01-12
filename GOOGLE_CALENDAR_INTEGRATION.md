@@ -67,6 +67,8 @@ Two new tables support the calendar integration:
 
 ## Setup Instructions
 
+⚠️ **IMPORTANT SECURITY NOTE**: The current implementation includes the client secret in frontend code for simplicity. This is suitable for development and testing but **NOT recommended for production**. See `SECURITY_CALENDAR.md` for production-ready implementation using backend proxy or PKCE flow.
+
 ### 1. Google Cloud Console Setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)

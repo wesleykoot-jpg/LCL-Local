@@ -94,9 +94,17 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
         
         if (fullEvent) {
           // Sync to calendar (don't block on this)
-          createCalendarEvent(profileId, fullEvent).catch(err => 
-            console.error('Failed to sync to calendar:', err)
-          );
+          createCalendarEvent(profileId, fullEvent)
+            .then(result => {
+              if (!result.success && result.error) {
+                console.error('Calendar sync failed:', result.error);
+                // Note: User feedback would be better handled at the UI level
+                // where toast notifications are available
+              }
+            })
+            .catch(err => {
+              console.error('Failed to sync to calendar:', err);
+            });
         }
       }
     }
@@ -127,9 +135,16 @@ export async function leaveEvent(eventId: string, profileId: string) {
     // Remove from Google Calendar if synced
     const integration = await getCalendarIntegration(profileId);
     if (integration && integration.sync_enabled) {
-      deleteCalendarEvent(profileId, eventId).catch(err =>
-        console.error('Failed to remove from calendar:', err)
-      );
+      deleteCalendarEvent(profileId, eventId)
+        .then(result => {
+          if (!result.success && result.error) {
+            console.error('Calendar removal failed:', result.error);
+            // Note: User feedback would be better handled at the UI level
+          }
+        })
+        .catch(err => {
+          console.error('Failed to remove from calendar:', err);
+        });
     }
 
     return { error: null };
