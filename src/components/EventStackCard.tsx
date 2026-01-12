@@ -82,10 +82,26 @@ const formatDatePill = (dateStr: string) => {
   return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric' });
 };
 
-// Dutch 24-hour time format
+// Dutch 24-hour time format - handles both HH:MM and descriptive times
 const formatTime = (timeStr: string) => {
-  const [hours, minutes] = timeStr.split(':');
-  return `${hours}:${minutes}`;
+  if (!timeStr) return '';
+  
+  // If it's a proper HH:MM time format
+  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+    const [hours, minutes] = timeStr.split(':');
+    return `${hours.padStart(2, '0')}:${minutes}`;
+  }
+  
+  // Handle descriptive Dutch time values
+  const descriptiveMap: Record<string, string> = {
+    'TBD': '',
+    'Hele dag': 'Hele dag',
+    'Avond': 'Avond',
+    'Middag': 'Middag',
+    'Ochtend': 'Ochtend',
+  };
+  
+  return descriptiveMap[timeStr] ?? timeStr;
 };
 
 // Anchor Card - Compact Airbnb-inspired design
