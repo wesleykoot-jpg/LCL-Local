@@ -257,9 +257,11 @@ interface ParsedEvent {
   description: string;
   category: Category;
   venue_name: string;
+  venue_address?: string;
   event_date: string; // YYYY-MM-DD
   event_time: string; // HH:MM or descriptive
   image_url: string | null;
+  coordinates?: { lat: number; lng: number };
 }
 
 /**
@@ -316,23 +318,36 @@ function getAISystemPrompt(): string {
   return `You are a data cleaner for a social event app in the Netherlands.
 Your task is to extract event information from raw HTML text.
 
+IMPORTANT: Keep all text in Dutch. Do not translate titles, descriptions, or venue names to English.
+This is a local app for Meppel, Netherlands - all content should remain in Dutch.
+
 Extract the following fields:
-- title: The event name (clean, without extra formatting)
-- description: A nice, readable description (max 200 chars). If vague, create a brief summary.
+- title: The event name in Dutch (clean, without extra formatting)
+- description: A nice, readable Dutch description (max 200 chars). If vague, create a brief summary in Dutch.
 - category: Map to one of these EXACT values: cinema, crafts, sports, gaming, market
   - cinema: movies, films, theater, performances, shows, concerts, music
   - crafts: workshops, art, creative activities, exhibitions
   - sports: sports events, fitness, outdoor activities, walking, cycling
   - gaming: gaming events, esports, board games
   - market: markets, fairs, festivals, food events, community events
-- venue_name: The venue/location name
-- event_date: Date in YYYY-MM-DD format. If only relative (e.g., "tomorrow"), calculate from today.
-- event_time: Time in HH:MM format, or descriptive like "Evening" or "All day"
+- venue_name: The venue/location name (keep in Dutch)
+- venue_address: Full street address if mentioned (e.g., "Hoofdstraat 10, Meppel")
+- event_date: Date in YYYY-MM-DD format. If only relative (e.g., "morgen"), calculate from today.
+- event_time: Time in HH:MM format, or descriptive like "Avond" or "Hele dag"
 - image_url: Full image URL if found, or null
+- coordinates: If you can determine the exact location, provide { "lat": number, "lng": number }. 
+  For known Meppel venues, use these approximate coordinates:
+  - Schouwburg Ogterop: 52.6956, 6.1938
+  - De Plataan / Café de Plataan: 52.6961, 6.1944
+  - Markt Meppel / Centrum: 52.6958, 6.1935
+  - Luxor Cinema: 52.6968, 6.1920
+  - Sportpark Ezinge / Alcides: 52.6898, 6.2012
+  - If unknown, use Meppel center: 52.6960, 6.1920
 
 Today's date is: ${today}
 
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanation.
+Keep all text in the original Dutch language.
 If you cannot extract meaningful data, return null for that field.`;
 }
 
@@ -406,14 +421,28 @@ ${rawEvent.rawHtml}`;
       parsed.event_time = 'TBD';
     }
 
+    // Validate coordinates if provided by AI
+    let coordinates: { lat: number; lng: number } | undefined;
+    if (parsed.coordinates && 
+        typeof parsed.coordinates.lat === 'number' && 
+        typeof parsed.coordinates.lng === 'number') {
+      // Validate coordinates are within reasonable bounds for Netherlands
+      if (parsed.coordinates.lat >= 50 && parsed.coordinates.lat <= 54 &&
+          parsed.coordinates.lng >= 3 && parsed.coordinates.lng <= 8) {
+        coordinates = parsed.coordinates;
+      }
+    }
+
     return {
       title: parsed.title,
       description: parsed.description || '',
       category: parsed.category,
       venue_name: parsed.venue_name,
+      venue_address: parsed.venue_address || undefined,
       event_date: parsed.event_date,
       event_time: parsed.event_time,
       image_url: parsed.image_url || rawEvent.imageUrl || null,
+      coordinates,
     };
   } catch (error) {
     console.error('   ❌ AI parsing error:', error);
@@ -646,8 +675,12 @@ async function main(): Promise<void> {
       continue;
     }
     
-    // Get venue coordinates
-    const coords = getVenueCoordinates(event.venue_name);
+    // Use AI-provided coordinates if available, otherwise fall back to known venues
+    const coords = event.coordinates || getVenueCoordinates(event.venue_name);
+    
+    if (event.coordinates) {
+      console.log(`   📍 Using AI-provided coordinates for "${event.venue_name}": ${coords.lat}, ${coords.lng}`);
+    }
     
     // Prepare insert data
     const insertData: EventInsert = {

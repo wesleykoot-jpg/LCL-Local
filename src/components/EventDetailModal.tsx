@@ -17,6 +17,7 @@ import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { getVenueCoordinates } from '@/lib/distance';
+import { useLocation } from '@/contexts/LocationContext';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 interface EventDetailModalProps {
@@ -84,6 +85,7 @@ export const EventDetailModal = memo(function EventDetailModal({
 }: EventDetailModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const { location: userLocation } = useLocation();
 
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const imageUrl = imageError 
@@ -188,7 +190,7 @@ export const EventDetailModal = memo(function EventDetailModal({
                 <h2 className="text-2xl font-bold text-foreground leading-tight">
                   {event.title}
                 </h2>
-                <DistanceBadge venueName={event.venue_name} />
+                <DistanceBadge venueName={event.venue_name} userLocation={userLocation} />
               </div>
 
               {/* Date & Time */}

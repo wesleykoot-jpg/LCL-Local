@@ -53,9 +53,11 @@ interface ParsedEvent {
   description: string;
   category: Category;
   venue_name: string;
+  venue_address?: string;
   event_date: string;
   event_time: string;
   image_url: string | null;
+  coordinates?: { lat: number; lng: number };
 }
 
 interface EventInsert {
@@ -137,6 +139,7 @@ Extract the following fields:
   - gaming: gaming events, esports, board games
   - market: markets, fairs, festivals, food events, community events
 - venue_name: The venue/location name (keep in Dutch)
+- venue_address: Full street address if mentioned (e.g., "Hoofdstraat 10, Meppel")
 - event_date: Date in YYYY-MM-DD format. If only relative (e.g., "morgen"), calculate from today.
 - event_time: IMPORTANT - Extract the START TIME in HH:MM 24-hour format (e.g., "19:30", "14:00", "21:00").
   Look for time patterns like "19.30 uur", "vanaf 20:00", "aanvang 19.30", "doors open 18:00", etc.
@@ -149,6 +152,14 @@ Extract the following fields:
   - "Middag" (afternoon) if context suggests afternoon but no specific time
   - "TBD" only as absolute last resort
 - image_url: Full image URL if found, or null
+- coordinates: If you can determine the exact location, provide { "lat": number, "lng": number }. 
+  For known Meppel venues, use these approximate coordinates:
+  - Schouwburg Ogterop: 52.6956, 6.1938
+  - De Plataan / Café de Plataan: 52.6961, 6.1944
+  - Markt Meppel / Centrum: 52.6958, 6.1935
+  - Luxor Cinema: 52.6968, 6.1920
+  - Sportpark Ezinge / Alcides: 52.6898, 6.2012
+  - If unknown, use Meppel center: 52.6960, 6.1920
 
 Today's date is: ${today}
 
@@ -345,9 +356,11 @@ Return JSON with these fields:
   "description": "brief description (max 200 chars)",
   "category": "one of: cinema, crafts, sports, gaming, market",
   "venue_name": "location name",
+  "venue_address": "full street address if available, or null",
   "event_date": "YYYY-MM-DD",
   "event_time": "HH:MM or TBD",
-  "image_url": "url or null"
+  "image_url": "url or null",
+  "coordinates": { "lat": 52.696, "lng": 6.192 }
 }`;
 
     const response = await fetch(
@@ -421,14 +434,28 @@ Return JSON with these fields:
       parsed.event_time = "TBD";
     }
 
+    // Validate coordinates if provided by AI
+    let coordinates: { lat: number; lng: number } | undefined;
+    if (parsed.coordinates && 
+        typeof parsed.coordinates.lat === 'number' && 
+        typeof parsed.coordinates.lng === 'number') {
+      // Validate coordinates are within reasonable bounds for Netherlands
+      if (parsed.coordinates.lat >= 50 && parsed.coordinates.lat <= 54 &&
+          parsed.coordinates.lng >= 3 && parsed.coordinates.lng <= 8) {
+        coordinates = parsed.coordinates;
+      }
+    }
+
     return {
       title: parsed.title,
       description: parsed.description || "",
       category: parsed.category,
       venue_name: parsed.venue_name,
+      venue_address: parsed.venue_address || undefined,
       event_date: parsed.event_date,
       event_time: parsed.event_time,
       image_url: parsed.image_url || rawEvent.imageUrl || null,
+      coordinates,
     };
   } catch (error) {
     console.error("❌ AI parsing error:", error);
@@ -552,7 +579,12 @@ serve(async (req) => {
         continue;
       }
 
-      const coords = getVenueCoordinates(event.venue_name);
+      // Use AI-provided coordinates if available, otherwise fall back to known venues
+      const coords = event.coordinates || getVenueCoordinates(event.venue_name);
+      
+      if (event.coordinates) {
+        console.log(`   📍 Using AI-provided coordinates for "${event.venue_name}": ${coords.lat}, ${coords.lng}`);
+      }
 
       const insertData: EventInsert = {
         title: event.title,

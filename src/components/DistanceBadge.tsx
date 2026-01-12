@@ -16,6 +16,12 @@ interface DistanceBadgeProps {
   className?: string;
 }
 
+/**
+ * DistanceBadge - Displays distance between user and event venue
+ * 
+ * Accepts userLocation as a prop for flexibility.
+ * Parent components should get location from LocationContext.
+ */
 export const DistanceBadge = memo(function DistanceBadge({
   venueName,
   userLocation = MEPPEL_CENTER,

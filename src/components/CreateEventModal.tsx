@@ -5,6 +5,7 @@ import { uploadImage, compressImage } from '../lib/storageService';
 import { hapticNotification } from '../lib/haptics';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/useAuth';
+import { useLocation } from '../contexts/LocationContext';
 import { createEventSchema, sanitizeInput } from '../lib/validation';
 
 interface CreateEventModalProps {
@@ -19,6 +20,7 @@ export function CreateEventModal({
   defaultEventType = 'anchor',
 }: CreateEventModalProps) {
   const { profile } = useAuth();
+  const { location: userLocation } = useLocation();
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
@@ -93,8 +95,8 @@ export function CreateEventModal({
         ...validatedData,
         description: validatedData.description || '',
         image_url: imageUrl,
-        // Use default Meppel, NL coordinates since profile uses location_coordinates (PostGIS)
-        location: `POINT(6.2 52.7)`,
+        // Use user's current location (from GPS or manual zone)
+        location: `POINT(${userLocation.lng} ${userLocation.lat})`,
         creator_profile_id: profile.id,
       });
 

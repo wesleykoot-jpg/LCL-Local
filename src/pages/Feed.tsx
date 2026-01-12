@@ -9,7 +9,8 @@ import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { DevPanel } from '@/components/DevPanel';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
-import { MapPin, Plus, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { useLocation } from '@/contexts/LocationContext';
+import { MapPin, Plus, SlidersHorizontal, ChevronDown, Navigation } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { motion } from 'framer-motion';
 
@@ -19,6 +20,7 @@ const EventDetailModal = lazy(() => import('@/components/EventDetailModal'));
 const Feed = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { location: userLocation, preferences: locationPrefs, permissionState, requestPermission } = useLocation();
   const { events: allEvents, loading, refetch } = useEvents({ currentUserProfileId: profile?.id });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -34,6 +36,16 @@ const Feed = () => {
     isLoaded,
   } = useOnboarding();
 
+  // Combine onboarding preferences with location for feed algorithm
+  const feedPreferences = useMemo(() => {
+    if (!preferences) return null;
+    return {
+      ...preferences,
+      userLocation,
+      radiusKm: locationPrefs.radiusKm,
+    };
+  }, [preferences, userLocation, locationPrefs.radiusKm]);
+
   const handleNavigate = (view: 'feed' | 'profile' | 'my-events') => {
     if (view === 'feed') navigate('/feed');
     else if (view === 'profile') navigate('/profile');
@@ -46,6 +58,13 @@ const Feed = () => {
 
   const handleCloseEventDetail = () => {
     setSelectedEventId(null);
+  };
+
+  // Handle location permission request
+  const handleLocationClick = async () => {
+    if (permissionState !== 'granted') {
+      await requestPermission();
+    }
   };
 
 
@@ -83,10 +102,19 @@ const Feed = () => {
         <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="px-5 py-4 flex items-center justify-between">
             {/* Location as primary element */}
-            <button className="flex items-center gap-2 hover:bg-muted/50 rounded-full py-1.5 px-3 -ml-3 transition-colors">
-              <MapPin size={18} className="text-primary" />
+            <button 
+              onClick={handleLocationClick}
+              className="flex items-center gap-2 hover:bg-muted/50 rounded-full py-1.5 px-3 -ml-3 transition-colors"
+            >
+              {permissionState === 'granted' && locationPrefs.useGPS ? (
+                <Navigation size={18} className="text-primary" />
+              ) : (
+                <MapPin size={18} className="text-primary" />
+              )}
               <span className="font-display text-lg text-foreground">
-                {preferences?.zone || profile?.location_city || 'Meppel, NL'}
+                {locationPrefs.useGPS && permissionState === 'granted' 
+                  ? 'Huidige locatie' 
+                  : preferences?.zone || locationPrefs.manualZone || profile?.location_city || 'Meppel, NL'}
               </span>
               <ChevronDown size={16} className="text-muted-foreground" />
             </button>
@@ -119,7 +147,7 @@ const Feed = () => {
             <EventFeed
               events={allEvents}
               onEventClick={handleEventClick}
-              userPreferences={preferences}
+              userPreferences={feedPreferences}
               showVibeHeaders
               profileId={profile?.id}
               onEventsChange={refetch}
