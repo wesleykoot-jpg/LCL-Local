@@ -3,7 +3,7 @@ import { Bell } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { triggerHaptic } from '@/lib/haptics';
+import { hapticImpact } from '@/lib/haptics';
 
 interface CategorySubscribeCardProps {
   category: string;
@@ -15,7 +15,7 @@ export const CategorySubscribeCard = memo(function CategorySubscribeCard({
   categoryLabel,
 }: CategorySubscribeCardProps) {
   const handleSubscribe = async () => {
-    await triggerHaptic('light');
+    await hapticImpact('light');
     toast.success(`You'll be notified about new ${categoryLabel} events!`, {
       icon: '🔔',
     });
