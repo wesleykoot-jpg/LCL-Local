@@ -1,5 +1,9 @@
-import React, { useState, Fragment, createElement, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, createElement } from 'react';
 import { MapPin, Users, Zap, Film, Palette, Trophy, Radio, Shield, Sparkles, X, Loader2 } from 'lucide-react';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import type { LatLngTuple } from 'leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useEvents, useJoinEvent } from '../lib/hooks';
 import { useAuth } from '../contexts/useAuth';
 import { parseGeography, formatEventTime } from '../lib/utils';
@@ -52,6 +56,41 @@ const categoryConfig = {
     textColor: 'text-purple-500'
   }
 };
+
+const categoryColors: Record<MapEvent['category'], string> = {
+  cinema: '#3b82f6',
+  crafts: '#f59e0b',
+  sports: '#eab308',
+  gaming: '#22c55e',
+  market: '#a855f7'
+};
+
+const defaultIcon = L.icon({
+  iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).toString(),
+  iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).toString(),
+  shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).toString(),
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = defaultIcon;
+
+function FitBounds({ events }: { events: MapEvent[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!events.length) return;
+
+    const bounds = L.latLngBounds(
+      events.map((event) => [event.lat, event.lng] as LatLngTuple)
+    );
+
+    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+  }, [events, map]);
+
+  return null;
+}
+
 export function MapView() {
   const [mapMode, setMapMode] = useState<MapMode>('safe');
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
@@ -91,51 +130,10 @@ export function MapView() {
       return ['gaming', 'sports', 'crafts'].includes(event.category);
     }
   });
-  const renderPin = (event: MapEvent, index: number) => {
-    const config = categoryConfig[event.category];
-    const Icon = config.icon;
-    const basePosition = {
-      top: `${30 + index * 12}%`,
-      left: `${35 + index * 10}%`
-    };
-    if (event.type === 'anchor') {
-      return <button key={event.id} onClick={() => setSelectedEvent(event)} className={`absolute w-16 h-16 rounded-2xl ${config.color} shadow-2xl flex items-center justify-center text-white transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-all duration-300 border-4 border-white z-20`} style={basePosition}>
-          <Icon size={28} strokeWidth={2.5} />
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-6 bg-white/50 rounded-full"></div>
-        </button>;
-    }
-    if (event.type === 'fork' && event.parentId) {
-      const parent = mapEvents.find(e => e.id === event.parentId);
-      if (!parent) return null;
-      return <Fragment key={event.id}>
-          <svg className="absolute inset-0 pointer-events-none z-10" style={{
-          width: '100%',
-          height: '100%'
-        }}>
-            <line x1={basePosition.left} y1={basePosition.top} x2={`${35 + mapEvents.findIndex(e => e.id === event.parentId) * 10}%`} y2={`${30 + mapEvents.findIndex(e => e.id === event.parentId) * 12}%`} stroke="white" strokeWidth="2" strokeDasharray="4 4" opacity="0.6" />
-          </svg>
 
-          <button onClick={() => setSelectedEvent(event)} className={`absolute w-12 h-12 rounded-full bg-white border-4 ${config.borderColor} shadow-xl flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-all duration-300 z-20`} style={{
-          top: `${parseFloat(basePosition.top) + 5}%`,
-          left: `${parseFloat(basePosition.left) + 3}%`
-        }}>
-            <Users size={20} className={config.textColor} strokeWidth={2.5} />
-          </button>
-        </Fragment>;
-    }
-    if (event.type === 'signal') {
-      return <button key={event.id} onClick={() => setSelectedEvent(event)} className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10" style={basePosition}>
-          <span className="absolute flex h-24 w-24">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${config.color} opacity-30`}></span>
-          </span>
-          <span className={`absolute flex h-16 w-16 rounded-full ${config.color} opacity-20 blur-sm`}></span>
-          <span className={`relative flex h-12 w-12 rounded-full ${config.color} items-center justify-center text-white shadow-lg border-2 border-white`}>
-            <Icon size={20} strokeWidth={2.5} />
-          </span>
-        </button>;
-    }
-    return null;
-  };
+  const mapCenter: LatLngTuple = filteredEvents.length
+    ? [filteredEvents[0].lat, filteredEvents[0].lng]
+    : [52.7, 6.2];
 
   if (loading) {
     return (
@@ -146,14 +144,58 @@ export function MapView() {
   }
 
   return <div className="relative w-full min-h-screen bg-[#E8E4D9] overflow-hidden">
-      {/* Map Background */}
-      <div className="absolute inset-0">
-        <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=6.1500%2C52.6800%2C6.2500%2C52.7200&layer=mapnik&marker=52.7000%2C6.2000" className="w-full h-full border-0 opacity-80" title="Meppel Map" />
-        <div className="absolute inset-0 bg-white/30 backdrop-blur-[0.5px]"></div>
-      </div>
+      <MapContainer
+        center={mapCenter}
+        zoom={13}
+        scrollWheelZoom
+        className="absolute inset-0 z-0"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <FitBounds events={filteredEvents} />
+        {filteredEvents.map((event) => {
+          const color = categoryColors[event.category];
+          const radius = event.type === 'anchor' ? 14 : event.type === 'fork' ? 10 : 12;
+          const fillOpacity = event.type === 'signal' ? 0.25 : 0.85;
 
-      {/* Event Pins */}
-      {filteredEvents.map((event, index) => renderPin(event, index))}
+          return (
+            <CircleMarker
+              key={event.id}
+              center={[event.lat, event.lng]}
+              radius={radius}
+              pathOptions={{
+                color,
+                fillColor: color,
+                fillOpacity,
+                weight: event.type === 'signal' ? 2 : 3,
+              }}
+              eventHandlers={{
+                click: () => setSelectedEvent(event),
+              }}
+            >
+              <Popup>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-zinc-900">{event.title}</p>
+                  <p className="text-xs text-zinc-600 flex items-center gap-1">
+                    <MapPin size={12} />
+                    {event.venue}
+                  </p>
+                  <p className="text-xs text-zinc-500">{event.time}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvent(event)}
+                    className="mt-2 w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800"
+                  >
+                    View details
+                  </button>
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
+      </MapContainer>
 
       {/* LCL 2.0: Enhanced header with improved glass effect */}
       <div className="absolute top-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 p-4 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">

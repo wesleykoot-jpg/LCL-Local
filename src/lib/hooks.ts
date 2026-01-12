@@ -153,13 +153,13 @@ export function useEvents(options?: {
         .select(`
           *,
           attendee_count:event_attendees(count),
-          attendees:event_attendees(
-            profile:profiles(
-              id,
-              avatar_url,
-              full_name
-            )
-          )
+           attendees:event_attendees(
+             profile:profiles(
+               id,
+               avatar_url,
+               full_name
+             )
+           )
         `)
         .order('event_date', { ascending: true });
 
