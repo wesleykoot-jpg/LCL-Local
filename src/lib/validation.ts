@@ -76,18 +76,6 @@ export const signUpSchema = z.object({
 export type SignUpInput = z.infer<typeof signUpSchema>;
 
 /**
- * Sanitizes HTML string to prevent XSS attacks
- * Uses a whitelist approach to allow only safe HTML
- * For production, consider using DOMPurify library instead
- */
-export function sanitizeHtml(html: string): string {
-  // Create a temporary div to parse HTML
-  const div = document.createElement('div');
-  div.textContent = html; // This escapes all HTML
-  return div.innerHTML;
-}
-
-/**
  * Validates and sanitizes user input
  * Removes potentially dangerous characters and limits length
  */

@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button';
 import { hapticImpact } from '@/lib/haptics';
 
 interface CategorySubscribeCardProps {
-  category: string;
   categoryLabel: string;
 }
 
 export const CategorySubscribeCard = memo(function CategorySubscribeCard({
-  category,
   categoryLabel,
 }: CategorySubscribeCardProps) {
   const handleSubscribe = async () => {

@@ -21,12 +21,3 @@ export async function hapticNotification(type: 'success' | 'warning' | 'error' =
     console.log('Haptics not available');
   }
 }
-
-export async function hapticSelection() {
-  try {
-    await Haptics.selectionStart();
-    setTimeout(() => Haptics.selectionEnd(), 100);
-  } catch (error) {
-    console.log('Haptics not available');
-  }
-}

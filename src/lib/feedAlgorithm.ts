@@ -280,11 +280,3 @@ export function rankEvents<T extends EventForRanking>(
   // Return just the events in ranked order
   return scoredEvents.map(scored => scored.event);
 }
-
-/**
- * Export for testing and documentation
- */
-export const algorithmConfig = {
-  weights: WEIGHTS,
-  config: CONFIG,
-} as const;
