@@ -259,6 +259,12 @@ const VIBE_HEADERS: Record<VibeType, VibeHeader> = {
   },
 };
 
+// Parse date string as local date (not UTC) - fixes timezone issues
+function parseLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
+}
+
 // Date helper functions
 function isSameDay(date1: Date, date2: Date): boolean {
   return date1.getFullYear() === date2.getFullYear() &&
@@ -293,8 +299,7 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
   switch (filter) {
     case 'tonight':
       return events.filter(e => {
-        const eventDay = new Date(e.event_date);
-        eventDay.setHours(0, 0, 0, 0);
+        const eventDay = parseLocalDate(e.event_date);
         return isSameDay(eventDay, today);
       });
       
@@ -302,16 +307,14 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
       return events.filter(e => {
-        const eventDay = new Date(e.event_date);
-        eventDay.setHours(0, 0, 0, 0);
+        const eventDay = parseLocalDate(e.event_date);
         return isSameDay(eventDay, tomorrow);
       });
       
     case 'weekend':
       const { friday, sunday } = getUpcomingWeekend(today);
       return events.filter(e => {
-        const eventDay = new Date(e.event_date);
-        eventDay.setHours(0, 0, 0, 0);
+        const eventDay = parseLocalDate(e.event_date);
         return isWithinWeekend(eventDay, friday, sunday);
       });
       
@@ -326,8 +329,7 @@ function getVibeType(eventDate: string): VibeType {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const eventDay = new Date(eventDate);
-  eventDay.setHours(0, 0, 0, 0);
+  const eventDay = parseLocalDate(eventDate);
   
   // Check if today or past (show as "tonight" for immediate relevance)
   if (eventDay.getTime() <= today.getTime()) {
