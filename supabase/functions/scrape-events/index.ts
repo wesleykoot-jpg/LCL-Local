@@ -124,23 +124,27 @@ function getAISystemPrompt(): string {
   return `You are a data cleaner for a social event app in the Netherlands.
 Your task is to extract event information from raw HTML text.
 
+IMPORTANT: Keep all text in Dutch. Do not translate titles, descriptions, or venue names to English.
+This is a local app for Meppel, Netherlands - all content should remain in Dutch.
+
 Extract the following fields:
-- title: The event name (clean, without extra formatting)
-- description: A nice, readable description (max 200 chars). If vague, create a brief summary.
+- title: The event name in Dutch (clean, without extra formatting)
+- description: A nice, readable Dutch description (max 200 chars). If vague, create a brief summary in Dutch.
 - category: Map to one of these EXACT values: cinema, crafts, sports, gaming, market
   - cinema: movies, films, theater, performances, shows, concerts, music
   - crafts: workshops, art, creative activities, exhibitions
   - sports: sports events, fitness, outdoor activities, walking, cycling
   - gaming: gaming events, esports, board games
   - market: markets, fairs, festivals, food events, community events
-- venue_name: The venue/location name
-- event_date: Date in YYYY-MM-DD format. If only relative (e.g., "tomorrow"), calculate from today.
-- event_time: Time in HH:MM format, or descriptive like "Evening" or "All day"
+- venue_name: The venue/location name (keep in Dutch)
+- event_date: Date in YYYY-MM-DD format. If only relative (e.g., "morgen"), calculate from today.
+- event_time: Time in HH:MM format, or descriptive like "Avond" or "Hele dag"
 - image_url: Full image URL if found, or null
 
 Today's date is: ${today}
 
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanation.
+Keep all text in the original Dutch language.
 If you cannot extract meaningful data, return null for that field.`;
 }
 

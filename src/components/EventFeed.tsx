@@ -40,27 +40,30 @@ interface VibeHeader {
 const VIBE_HEADERS: Record<VibeType, VibeHeader> = {
   tonight: {
     type: 'tonight',
-    label: 'Happening Tonight',
+    label: 'Vanavond',
     icon: Sparkles,
     className: 'text-primary',
   },
   weekend: {
     type: 'weekend',
-    label: 'This Weekend',
+    label: 'Dit weekend',
     icon: Calendar,
     className: 'text-accent-foreground',
   },
   later: {
     type: 'later',
-    label: 'Coming Up',
+    label: 'Binnenkort',
     icon: Clock,
     className: 'text-muted-foreground',
   },
 };
 
 // Parse date string as local date (not UTC) - fixes timezone issues
+// Handles both 'YYYY-MM-DD' and full ISO timestamps from Supabase
 function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split('-').map(Number);
+  // Extract just the date part (YYYY-MM-DD) from various formats
+  const datePart = dateString.split('T')[0].split(' ')[0];
+  const [year, month, day] = datePart.split('-').map(Number);
   return new Date(year, month - 1, day); // month is 0-indexed
 }
 
@@ -347,8 +350,8 @@ export const EventFeed = memo(function EventFeed({
                 animate={{ opacity: 1 }}
                 className="text-center py-12"
               >
-                <p className="text-muted-foreground text-lg">No events found for this time</p>
-                <p className="text-muted-foreground/60 text-sm mt-2">Try selecting a different filter</p>
+                <p className="text-muted-foreground text-lg">Geen evenementen gevonden</p>
+                <p className="text-muted-foreground/60 text-sm mt-2">Probeer een ander filter te selecteren</p>
               </motion.div>
             )}
           </motion.div>
