@@ -2,11 +2,12 @@ import React, { useState, createElement } from 'react';
 import { 
   MapPin, Shield, ChevronRight, Trophy, Star, Award, Users, 
   CheckCircle, Flame, LogOut, Loader2, Settings, Heart,
-  Calendar, Clock, Sparkles, BadgeCheck, Edit3, Share2, Camera
+  Calendar, Clock, Sparkles, BadgeCheck, Edit3, Share2, Camera, Link2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { usePersonaStats, usePersonaBadges, useUserCommitments } from '../lib/hooks';
+import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -105,6 +106,7 @@ export function ProfileView() {
   const { stats: personaStats, loading: statsLoading } = usePersonaStats(displayProfile.id);
   const { badges: personaBadges, loading: badgesLoading } = usePersonaBadges(displayProfile.id);
   const { commitments, loading: commitmentsLoading } = useUserCommitments(displayProfile.id);
+  const { isConnected: isCalendarConnected } = useGoogleCalendar();
 
   const memberDuration = getMemberDuration(displayProfile.created_at || new Date().toISOString());
   const groupedEvents = groupEventsByTimeframe(commitments);
@@ -386,6 +388,60 @@ export function ProfileView() {
         {/* Divider */}
         <div className="h-2 bg-muted" />
 
+        {/* Integrations Section - Elevated Google Calendar */}
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="py-6"
+        >
+          <div className="flex items-center gap-2 px-5 mb-4">
+            <Link2 size={20} className="text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Integrations</h3>
+          </div>
+          
+          <div className="px-5">
+            <button 
+              onClick={() => navigate('/profile/calendar')}
+              className="w-full bg-gradient-to-r from-blue-500/5 to-green-500/5 border border-primary/20 rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-4">
+                {/* Google Calendar Icon */}
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center shadow-md">
+                  <Calendar size={24} className="text-white" />
+                </div>
+                
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h4 className="font-semibold text-foreground">
+                      Google Calendar
+                    </h4>
+                    {isCalendarConnected ? (
+                      <span className="px-2 py-0.5 text-xs font-medium bg-green-500/10 text-green-600 rounded-full">
+                        Connected
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                        Recommended
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {isCalendarConnected 
+                      ? 'Events auto-sync to your calendar' 
+                      : 'Auto-sync events you join'}
+                  </p>
+                </div>
+                
+                <ChevronRight size={20} className="text-muted-foreground" />
+              </div>
+            </button>
+          </div>
+        </motion.section>
+
+        {/* Divider */}
+        <div className="h-2 bg-muted" />
+
         {/* My Calendar - Clean List View */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
@@ -510,7 +566,6 @@ export function ProfileView() {
               { label: 'Verification & Safety', icon: Shield, path: '/profile/verification-safety' },
               { label: 'Notification Preferences', icon: Heart, path: '/profile/notification-preferences' },
               { label: 'Privacy Settings', icon: CheckCircle, path: '/profile/privacy-settings' },
-              { label: 'Google Calendar', icon: Calendar, path: '/profile/calendar' },
               { label: 'Share Profile', icon: Share2, path: '/profile/share' },
             ].map((item) => (
               <button 
