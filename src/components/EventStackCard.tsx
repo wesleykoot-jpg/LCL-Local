@@ -183,11 +183,15 @@ const AnchorEventCard = memo(function AnchorEventCard({
         {/* Metadata Row - Time, Attendees, Join */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <Clock size={14} className="text-primary/70" />
-              {formatTime(event.event_time)}
-            </span>
-            <span className="opacity-50">·</span>
+            {formatTime(event.event_time) && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <Clock size={14} className="text-primary/70" />
+                  {formatTime(event.event_time)}
+                </span>
+                <span className="opacity-50">·</span>
+              </>
+            )}
             <span className="flex items-center gap-1">
               <Users size={14} className="text-primary/70" />
               <span className="font-medium">{event.attendee_count || 0}</span>
