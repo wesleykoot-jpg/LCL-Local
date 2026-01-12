@@ -26,6 +26,8 @@ export interface EventWithAttendees extends Event {
   parent_event?: Event | null;
 }
 
+const ATTENDEE_LIMIT = 4;
+
 export function useProfile(profileId?: string) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -153,7 +155,7 @@ export function useEvents(options?: {
       
       // Fetch events with attendees in a single query to solve N+1 problem
       // Limit attendees to first 4 per event to keep it light
-      const attendeesLimit = 4;
+      const attendeesLimit = ATTENDEE_LIMIT;
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
@@ -195,9 +197,8 @@ export function useEvents(options?: {
           ? event.attendee_count[0]?.count || 0
           : 0;
         
-        // Limit attendees to first 4
         const attendees = Array.isArray(event.attendees)
-          ? event.attendees.slice(0, attendeesLimit) as EventAttendee[]
+          ? event.attendees as EventAttendee[]
           : [];
 
         return {
