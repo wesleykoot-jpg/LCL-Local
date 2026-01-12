@@ -23,9 +23,12 @@ export const CONFIG_CHANGE_EVENT = 'google-calendar-config-changed';
 
 /**
  * Dispatch a custom event when configuration changes
+ * SSR-safe: Only dispatches if window is available
  */
 function notifyConfigChange(): void {
-  window.dispatchEvent(new Event(CONFIG_CHANGE_EVENT));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(CONFIG_CHANGE_EVENT));
+  }
 }
 
 /**

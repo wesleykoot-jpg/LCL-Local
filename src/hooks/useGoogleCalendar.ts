@@ -100,7 +100,7 @@ export function useGoogleCalendar(): UseGoogleCalendarResult {
       window.addEventListener(CONFIG_CHANGE_EVENT, handleConfigChange);
       return () => window.removeEventListener(CONFIG_CHANGE_EVENT, handleConfigChange);
     }
-  }, []);
+  }, []); // Empty deps - handler references stable functions only
 
   // Check connection status on mount and when profileId changes
   useEffect(() => {
