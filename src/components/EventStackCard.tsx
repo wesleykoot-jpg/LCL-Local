@@ -2,7 +2,6 @@ import { memo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CornerDownRight, Users, Clock, Loader2 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
-import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
@@ -96,13 +95,6 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
-  
-  // Create attendee display from nested data
-  const attendeeDisplay = event.attendees?.slice(0, 4).map(a => ({
-    id: a.profile?.id || '',
-    image: a.profile?.avatar_url || 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100',
-    alt: a.profile?.full_name || 'Attendee',
-  })) || [];
 
   return (
     <motion.div
@@ -155,16 +147,9 @@ const AnchorEventCard = memo(function AnchorEventCard({
 
         {/* Attendees & Action */}
         <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-3">
-            {attendeeDisplay.length > 0 && (
-              <Facepile 
-                users={attendeeDisplay} 
-                extraCount={Math.max(0, (event.attendee_count || 0) - attendeeDisplay.length)} 
-              />
-            )}
-            <span className="text-sm text-muted-foreground">
-              {event.attendee_count || 0} going
-            </span>
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Users size={16} className="text-primary/70" />
+            <span className="font-medium">{event.attendee_count || 0} going</span>
           </div>
 
           <button
@@ -212,12 +197,6 @@ const ForkEventCard = memo(function ForkEventCard({
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
-  
-  const attendeeDisplay = event.attendees?.slice(0, 3).map(a => ({
-    id: a.profile?.id || '',
-    image: a.profile?.avatar_url || 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100',
-    alt: a.profile?.full_name || 'Attendee',
-  })) || [];
 
   return (
     <div className="flex">
