@@ -329,19 +329,28 @@ function getVibeType(eventDate: string): VibeType {
   const eventDay = new Date(eventDate);
   eventDay.setHours(0, 0, 0, 0);
   
-  // Check if today
-  if (eventDay.getTime() === today.getTime()) {
+  // Check if today or past (show as "tonight" for immediate relevance)
+  if (eventDay.getTime() <= today.getTime()) {
     return 'tonight';
+  }
+  
+  // Check if tomorrow
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  if (eventDay.getTime() === tomorrow.getTime()) {
+    return 'tonight'; // Group tomorrow with tonight for urgency
   }
   
   // Check if this weekend (Friday-Sunday)
   const dayOfWeek = today.getDay();
   const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
   const friday = new Date(today);
-  friday.setDate(today.getDate() + daysUntilFriday);
+  friday.setDate(today.getDate() + (daysUntilFriday === 0 ? 0 : daysUntilFriday));
+  friday.setHours(0, 0, 0, 0);
   
   const sunday = new Date(friday);
   sunday.setDate(friday.getDate() + 2);
+  sunday.setHours(23, 59, 59, 999);
   
   if (eventDay >= friday && eventDay <= sunday) {
     return 'weekend';
@@ -417,10 +426,10 @@ export const EventFeed = memo(function EventFeed({
 
   // Combine real events with mock data
   const allEvents = useMemo(() => {
-    if (events.length === 0) {
-      return MOCK_MEPPEL_EVENTS;
-    }
-    return [...events, ...MOCK_MEPPEL_EVENTS.slice(0, Math.max(0, 8 - events.length))];
+    const combined = events.length === 0 
+      ? MOCK_MEPPEL_EVENTS 
+      : [...events, ...MOCK_MEPPEL_EVENTS.slice(0, Math.max(0, 8 - events.length))];
+    return combined;
   }, [events]);
 
   // Filter events by time first
@@ -432,7 +441,7 @@ export const EventFeed = memo(function EventFeed({
   const rankedEvents = useMemo(() => {
     return rankEvents(filteredEvents, userPreferences, {
       ensureDiversity: true,
-      debug: import.meta.env.DEV,
+      debug: false, // Disable debug logging
     });
   }, [filteredEvents, userPreferences]);
 
@@ -519,7 +528,7 @@ export const EventFeed = memo(function EventFeed({
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-6"
           >
-            {activeFilter === 'all' && vibeGroups ? (
+            {activeFilter === 'all' && vibeGroups && vibeGroups.length > 0 ? (
               // Render with vibe headers when "All" is selected
               vibeGroups.map(group => (
                 <Fragment key={group.vibe}>
@@ -534,24 +543,22 @@ export const EventFeed = memo(function EventFeed({
                   )}
                 </Fragment>
               ))
+            ) : eventStacks.length > 0 ? (
+              // Render without vibe headers (for filtered views or when vibeGroups is empty)
+              eventStacks.map((stack, index) => renderStackCard(stack, index))
             ) : (
-              // Render without vibe headers for filtered views
-              eventStacks.length > 0 ? (
-                eventStacks.map((stack, index) => renderStackCard(stack, index))
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-12"
-                >
-                  <p className="text-muted-foreground text-lg">
-                    No events found for this time
-                  </p>
-                  <p className="text-muted-foreground/60 text-sm mt-2">
-                    Try selecting a different filter
-                  </p>
-                </motion.div>
-              )
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-12"
+              >
+                <p className="text-muted-foreground text-lg">
+                  No events found for this time
+                </p>
+                <p className="text-muted-foreground/60 text-sm mt-2">
+                  Try selecting a different filter
+                </p>
+              </motion.div>
             )}
           </motion.div>
         </AnimatePresence>
