@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, Fragment } from 'react';
+import { memo, useMemo, useState, Fragment, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Calendar, Clock } from 'lucide-react';
 import { EventStackCard } from './EventStackCard';
@@ -7,6 +7,7 @@ import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
 import { groupEventsIntoStacks, type EventStack } from '@/lib/feedGrouping';
 import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 import { getCategoryConfig } from '@/lib/categories';
+import { useJoinEvent } from '@/lib/hooks';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 // Reliable Unsplash images for Meppel, Netherlands events
@@ -396,6 +397,8 @@ interface EventFeedProps {
   onEventClick?: (eventId: string) => void;
   userPreferences?: UserPreferences | null;
   showVibeHeaders?: boolean;
+  profileId?: string;
+  onEventsChange?: () => void;
 }
 
 // Vibe Header Component
@@ -422,9 +425,13 @@ export const EventFeed = memo(function EventFeed({
   onEventClick,
   userPreferences,
   showVibeHeaders = false,
+  profileId,
+  onEventsChange,
 }: EventFeedProps) {
-  const [joiningEventId, setJoiningEventId] = useState<string | undefined>();
   const [activeFilter, setActiveFilter] = useState<TimeFilter>('all');
+
+  // Use real Supabase join event hook
+  const { handleJoinEvent, isJoining } = useJoinEvent(profileId, onEventsChange);
 
   // Combine real events with mock data
   const allEvents = useMemo(() => {
@@ -441,7 +448,7 @@ export const EventFeed = memo(function EventFeed({
 
   // Apply smart ranking algorithm
   const rankedEvents = useMemo(() => {
-    return rankEvents(filteredEvents, userPreferences, {
+    return rankEvents(filteredEvents, userPreferences || null, {
       ensureDiversity: true,
       debug: false, // Disable debug logging
     });
@@ -458,18 +465,10 @@ export const EventFeed = memo(function EventFeed({
     return groupStacksByVibe(eventStacks);
   }, [eventStacks, showVibeHeaders, activeFilter]);
 
-  // Mock join handler
-  const handleJoinEvent = async (eventId: string) => {
-    setJoiningEventId(eventId);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setJoiningEventId(undefined);
-    console.log('Joined event:', eventId);
-  };
-
-  // Handler for category subscription
-  const handleCategorySubscribe = (category: string) => {
+  // Handler for category subscription (reserved for future use)
+  const _handleCategorySubscribe = useCallback((category: string) => {
     console.log('Subscribed to category:', category);
-  };
+  }, []);
 
   // Render a single stack card
   const renderStackCard = (stack: EventStack, index: number, injectSubscribeCard: boolean = false, totalInGroup: number = 0) => (
@@ -486,7 +485,7 @@ export const EventFeed = memo(function EventFeed({
           stack={stack}
           onEventClick={onEventClick}
           onJoinEvent={handleJoinEvent}
-          joiningEventId={joiningEventId}
+          joiningEventId={isJoining(stack.anchor.id) ? stack.anchor.id : undefined}
         />
       </motion.div>
       {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
