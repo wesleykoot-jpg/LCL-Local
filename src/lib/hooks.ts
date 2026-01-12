@@ -359,7 +359,10 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
 
   const handleJoinEvent = useCallback(
     async (eventId: string) => {
-      if (!profileId) return;
+      if (!profileId) {
+        toast.error('Please sign in to join events');
+        return;
+      }
 
       // Use state setter to check if already joining (avoids stale closure)
       let alreadyJoining = false;
