@@ -492,7 +492,6 @@ export const EventFeed = memo(function EventFeed({
       {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
       {injectSubscribeCard && index === 1 && totalInGroup > 2 && (
         <CategorySubscribeCard
-          category={stack.anchor.category}
           categoryLabel={getCategoryConfig(stack.anchor.category).label}
         />
       )}
