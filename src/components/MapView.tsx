@@ -1,4 +1,6 @@
-import React, { useState, Fragment, createElement, useMemo } from 'react';
+import React, { useState, Fragment, createElement, useMemo, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { MapPin, Users, Zap, Film, Palette, Trophy, Radio, Shield, Sparkles, X, Loader2 } from 'lucide-react';
 import { useEvents, useJoinEvent } from '../lib/hooks';
 import { useAuth } from '../contexts/useAuth';
@@ -52,6 +54,259 @@ const categoryConfig = {
     textColor: 'text-purple-500'
   }
 };
+
+// Component to auto-fit map bounds to show all events
+function FitBoundsToEvents({ events }: { events: MapEvent[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (events.length > 0) {
+      const bounds = L.latLngBounds(events.map(e => [e.lat, e.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  }, [events, map]);
+
+  return null;
+}
+
+// Component to show user location
+function UserLocationMarker() {
+  const [position, setPosition] = useState<[number, number] | null>(null);
+  const map = useMap();
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setPosition([pos.coords.latitude, pos.coords.longitude]);
+        },
+        (error) => {
+          console.log('Geolocation error:', error);
+        }
+      );
+    }
+  }, []);
+
+  if (!position) return null;
+
+  const userIcon = L.divIcon({
+    className: 'user-location-marker',
+    html: `
+      <div style="position: relative; width: 40px; height: 40px;">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 40px;
+          height: 40px;
+          background: rgba(59, 130, 246, 0.3);
+          border-radius: 50%;
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        "></div>
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 16px;
+          height: 16px;
+          background: rgb(59, 130, 246);
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        "></div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+
+  return <Marker position={position} icon={userIcon} />;
+}
+
+// Custom marker component for events
+function EventMarker({ 
+  event, 
+  onSelect,
+  isSelected 
+}: { 
+  event: MapEvent; 
+  onSelect: (event: MapEvent) => void;
+  isSelected: boolean;
+}) {
+  const config = categoryConfig[event.category];
+  const Icon = config.icon;
+
+  // Get color values for inline styles
+  const getColorValue = (colorClass: string) => {
+    const colorMap: Record<string, string> = {
+      'bg-blue-500': '#3b82f6',
+      'bg-amber-500': '#f59e0b',
+      'bg-yellow-500': '#eab308',
+      'bg-green-500': '#22c55e',
+      'bg-purple-500': '#a855f7',
+      'border-blue-500': '#3b82f6',
+      'border-amber-500': '#f59e0b',
+      'border-yellow-500': '#eab308',
+      'border-green-500': '#22c55e',
+      'border-purple-500': '#a855f7',
+    };
+    return colorMap[colorClass] || '#3b82f6';
+  };
+
+  const bgColor = getColorValue(config.color);
+  const borderColor = getColorValue(config.borderColor);
+
+  // Create custom icon based on event type
+  const createDivIcon = () => {
+    if (event.type === 'anchor') {
+      const iconHtml = `
+        <div style="
+          width: 64px;
+          height: 64px;
+          border-radius: 16px;
+          background-color: ${bgColor};
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          border: 4px solid white;
+          position: relative;
+          ${isSelected ? 'box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);' : ''}
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            ${Icon === Film ? '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>' : ''}
+            ${Icon === Palette ? '<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>' : ''}
+            ${Icon === Trophy ? '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>' : ''}
+            ${Icon === Radio ? '<circle cx="12" cy="12" r="2"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>' : ''}
+            ${Icon === MapPin ? '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>' : ''}
+          </svg>
+          <div style="
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 24px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 9999px;
+          "></div>
+        </div>
+      `;
+      return L.divIcon({
+        className: 'custom-marker-anchor',
+        html: iconHtml,
+        iconSize: [64, 64],
+        iconAnchor: [32, 32]
+      });
+    }
+
+    if (event.type === 'fork') {
+      const iconHtml = `
+        <div style="
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background-color: white;
+          border: 4px solid ${borderColor};
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          ${isSelected ? 'box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.4);' : ''}
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+      `;
+      return L.divIcon({
+        className: 'custom-marker-fork',
+        html: iconHtml,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24]
+      });
+    }
+
+    if (event.type === 'signal') {
+      const iconHtml = `
+        <div style="position: relative; width: 48px; height: 48px;">
+          <div style="
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: ${bgColor};
+            opacity: 0.3;
+            animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+          "></div>
+          <div style="
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: ${bgColor};
+            opacity: 0.2;
+            filter: blur(4px);
+          "></div>
+          <div style="
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: ${bgColor};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 2px solid white;
+            ${isSelected ? 'box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4);' : ''}
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              ${Icon === Film ? '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/>' : ''}
+              ${Icon === Palette ? '<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>' : ''}
+              ${Icon === Trophy ? '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M4 22h16"/>' : ''}
+              ${Icon === Radio ? '<circle cx="12" cy="12" r="2"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/>' : ''}
+              ${Icon === MapPin ? '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>' : ''}
+            </svg>
+          </div>
+        </div>
+      `;
+      return L.divIcon({
+        className: 'custom-marker-signal',
+        html: iconHtml,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24]
+      });
+    }
+
+    return L.divIcon({
+      className: 'custom-marker-default',
+      html: '<div></div>',
+      iconSize: [0, 0]
+    });
+  };
+
+  return (
+    <Marker
+      position={[event.lat, event.lng]}
+      icon={createDivIcon()}
+      eventHandlers={{
+        click: () => onSelect(event)
+      }}
+    />
+  );
+}
+
 export function MapView() {
   const [mapMode, setMapMode] = useState<MapMode>('safe');
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
@@ -91,51 +346,6 @@ export function MapView() {
       return ['gaming', 'sports', 'crafts'].includes(event.category);
     }
   });
-  const renderPin = (event: MapEvent, index: number) => {
-    const config = categoryConfig[event.category];
-    const Icon = config.icon;
-    const basePosition = {
-      top: `${30 + index * 12}%`,
-      left: `${35 + index * 10}%`
-    };
-    if (event.type === 'anchor') {
-      return <button key={event.id} onClick={() => setSelectedEvent(event)} className={`absolute w-16 h-16 rounded-2xl ${config.color} shadow-2xl flex items-center justify-center text-white transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-all duration-300 border-4 border-white z-20`} style={basePosition}>
-          <Icon size={28} strokeWidth={2.5} />
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-6 bg-white/50 rounded-full"></div>
-        </button>;
-    }
-    if (event.type === 'fork' && event.parentId) {
-      const parent = mapEvents.find(e => e.id === event.parentId);
-      if (!parent) return null;
-      return <Fragment key={event.id}>
-          <svg className="absolute inset-0 pointer-events-none z-10" style={{
-          width: '100%',
-          height: '100%'
-        }}>
-            <line x1={basePosition.left} y1={basePosition.top} x2={`${35 + mapEvents.findIndex(e => e.id === event.parentId) * 10}%`} y2={`${30 + mapEvents.findIndex(e => e.id === event.parentId) * 12}%`} stroke="white" strokeWidth="2" strokeDasharray="4 4" opacity="0.6" />
-          </svg>
-
-          <button onClick={() => setSelectedEvent(event)} className={`absolute w-12 h-12 rounded-full bg-white border-4 ${config.borderColor} shadow-xl flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-all duration-300 z-20`} style={{
-          top: `${parseFloat(basePosition.top) + 5}%`,
-          left: `${parseFloat(basePosition.left) + 3}%`
-        }}>
-            <Users size={20} className={config.textColor} strokeWidth={2.5} />
-          </button>
-        </Fragment>;
-    }
-    if (event.type === 'signal') {
-      return <button key={event.id} onClick={() => setSelectedEvent(event)} className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10" style={basePosition}>
-          <span className="absolute flex h-24 w-24">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${config.color} opacity-30`}></span>
-          </span>
-          <span className={`absolute flex h-16 w-16 rounded-full ${config.color} opacity-20 blur-sm`}></span>
-          <span className={`relative flex h-12 w-12 rounded-full ${config.color} items-center justify-center text-white shadow-lg border-2 border-white`}>
-            <Icon size={20} strokeWidth={2.5} />
-          </span>
-        </button>;
-    }
-    return null;
-  };
 
   if (loading) {
     return (
@@ -146,14 +356,63 @@ export function MapView() {
   }
 
   return <div className="relative w-full min-h-screen bg-[#E8E4D9] overflow-hidden">
-      {/* Map Background */}
-      <div className="absolute inset-0">
-        <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=6.1500%2C52.6800%2C6.2500%2C52.7200&layer=mapnik&marker=52.7000%2C6.2000" className="w-full h-full border-0 opacity-80" title="Meppel Map" />
-        <div className="absolute inset-0 bg-white/30 backdrop-blur-[0.5px]"></div>
-      </div>
-
-      {/* Event Pins */}
-      {filteredEvents.map((event, index) => renderPin(event, index))}
+      {/* Leaflet Map */}
+      <MapContainer 
+        center={[52.6912, 6.1927]} 
+        zoom={13} 
+        className="absolute inset-0 z-0"
+        zoomControl={false}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        
+        {/* Auto-fit bounds to show all events */}
+        <FitBoundsToEvents events={filteredEvents} />
+        
+        {/* User location marker */}
+        <UserLocationMarker />
+        
+        {/* Event markers */}
+        {filteredEvents.map((event) => (
+          <EventMarker
+            key={event.id}
+            event={event}
+            onSelect={setSelectedEvent}
+            isSelected={selectedEvent?.id === event.id}
+          />
+        ))}
+        
+        {/* Fork connection lines */}
+        {filteredEvents
+          .filter(event => event.type === 'fork' && event.parentId)
+          .map(forkEvent => {
+            const parent = mapEvents.find(e => e.id === forkEvent.parentId);
+            if (!parent) return null;
+            
+            // Show line when fork or parent is selected/hovered
+            const shouldShow = selectedEvent?.id === forkEvent.id || selectedEvent?.id === parent.id;
+            
+            if (!shouldShow) return null;
+            
+            return (
+              <Polyline
+                key={`line-${forkEvent.id}`}
+                positions={[
+                  [parent.lat, parent.lng],
+                  [forkEvent.lat, forkEvent.lng]
+                ]}
+                pathOptions={{
+                  color: 'white',
+                  weight: 2,
+                  opacity: 0.6,
+                  dashArray: '4, 4'
+                }}
+              />
+            );
+          })}
+      </MapContainer>
 
       {/* LCL 2.0: Enhanced header with improved glass effect */}
       <div className="absolute top-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 p-4 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
@@ -305,8 +564,41 @@ export function MapView() {
             opacity: 1;
           }
         }
+        
+        @keyframes ping {
+          75%, 100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+        
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;
+        }
+        
+        /* Custom marker styles */
+        :global(.custom-marker-anchor),
+        :global(.custom-marker-fork),
+        :global(.custom-marker-signal),
+        :global(.user-location-marker) {
+          background: transparent !important;
+          border: none !important;
+        }
+        
+        :global(.custom-marker-anchor):hover,
+        :global(.custom-marker-fork):hover,
+        :global(.custom-marker-signal):hover {
+          cursor: pointer;
+        }
+        
+        /* Pulse animation for user location */
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
         }
       `}</style>
     </div>;
