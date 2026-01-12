@@ -401,21 +401,21 @@ interface EventFeedProps {
   onEventsChange?: () => void;
 }
 
-// Vibe Header Component
+// Vibe Header Component - Centered divider style
 const VibeHeaderSection = memo(function VibeHeaderSection({ vibe }: { vibe: VibeType }) {
   const config = VIBE_HEADERS[vibe];
   const Icon = config.icon;
   
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="flex items-center gap-2.5 mt-6 mb-4 first:mt-0"
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="section-divider my-5 first:mt-0"
     >
-      <Icon size={20} className={config.className} />
-      <h3 className={`font-display text-xl font-bold ${config.className}`}>
+      <span className="section-divider-label">
+        <Icon size={14} />
         {config.label}
-      </h3>
+      </span>
     </motion.div>
   );
 });
@@ -508,7 +508,7 @@ export const EventFeed = memo(function EventFeed({
   return (
     <div className="flex flex-col gap-4">
       {/* Sticky Time Filter Pills */}
-      <div className="sticky top-[60px] z-30 bg-background/95 backdrop-blur-xl border-b border-border -mx-4 px-4 py-2">
+      <div className="sticky top-[60px] z-30 bg-background/80 backdrop-blur-xl -mx-4 px-4 py-3">
         <TimeFilterPills
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}
@@ -516,7 +516,7 @@ export const EventFeed = memo(function EventFeed({
       </div>
 
       <motion.div 
-        className="max-w-md mx-auto w-full flex flex-col gap-6 overflow-hidden"
+        className="max-w-md mx-auto w-full flex flex-col gap-5 overflow-hidden"
         initial="hidden"
         animate="visible"
         variants={{

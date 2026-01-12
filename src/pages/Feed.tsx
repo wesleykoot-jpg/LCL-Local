@@ -8,7 +8,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
-import { MapPin, Plus, Settings } from 'lucide-react';
+import { MapPin, Plus, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { motion } from 'framer-motion';
 
@@ -153,38 +153,38 @@ const Feed = () => {
         transition={{ duration: 0.2 }}
         className="pb-40"
       >
-        {/* Header - Clean, Airbnb-inspired */}
-        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
+        {/* Header - Location-first, Airbnb-inspired */}
+        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="px-5 py-4 flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-2xl text-foreground leading-none tracking-tight">
-                Explore
-              </h1>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-                <MapPin size={14} />
-                <span>{preferences?.zone || profile?.location_city || 'Meppel, NL'}</span>
-              </div>
-            </div>
+            {/* Location as primary element */}
+            <button className="flex items-center gap-2 hover:bg-muted/50 rounded-full py-1.5 px-3 -ml-3 transition-colors">
+              <MapPin size={18} className="text-primary" />
+              <span className="font-display text-lg text-foreground">
+                {preferences?.zone || profile?.location_city || 'Meppel, NL'}
+              </span>
+              <ChevronDown size={16} className="text-muted-foreground" />
+            </button>
             
+            {/* Filter button */}
             <button 
               onClick={() => setShowOnboarding(true)}
-              className="p-2.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors shadow-sm"
             >
-              <Settings size={20} />
+              <SlidersHorizontal size={18} />
             </button>
           </div>
         </header>
 
-        {/* Main Content - Instagram/Airbnb style feed */}
-        <main className="px-4 pt-6 overflow-x-hidden">
+        {/* Main Content - Warm, organized feed */}
+        <main className="px-4 pt-4 overflow-x-hidden">
           {loading ? (
-            <div className="max-w-md mx-auto flex flex-col gap-5">
-              {[1, 2, 3, 4].map(i => (
+            <div className="max-w-md mx-auto flex flex-col gap-4">
+              {[1, 2, 3].map(i => (
                 <motion.div
                   key={i}
-                  className="h-80 bg-muted rounded-3xl"
-                  animate={{ opacity: [0.5, 0.8, 0.5] }}
-                  transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.1 }}
+                  className="h-64 bg-muted/50 rounded-2xl"
+                  animate={{ opacity: [0.4, 0.6, 0.4] }}
+                  transition={{ repeat: Infinity, duration: 2, delay: i * 0.15 }}
                 />
               ))}
             </div>
