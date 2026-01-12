@@ -94,6 +94,10 @@ enabled = true
 # Use latest version
 version = "1.30.3"
 
+[functions.scrape-events]
+# Allow unauthenticated access - protected by service role key usage
+verify_jwt = false
+
 [db.seed]
 # Seed file to run on startup - automatically seeds dev data
 sql_paths = ["./seed.sql"]
