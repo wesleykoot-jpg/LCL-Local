@@ -6,6 +6,16 @@ import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useAuth } from '@/contexts/useAuth';
 import { GoogleCalendarSetupDialog } from '@/components/GoogleCalendarSetupDialog';
 import { clearUserProvidedClientId, getUserProvidedClientId } from '@/integrations/googleCalendar/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function GoogleCalendarSettings() {
   const navigate = useNavigate();
@@ -22,11 +32,13 @@ export function GoogleCalendarSettings() {
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [isUserConfigured, setIsUserConfigured] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [configKey, setConfigKey] = useState(0); // Used to force re-render
 
   // Check if user has configured their own Client ID
   useEffect(() => {
     setIsUserConfigured(Boolean(getUserProvidedClientId()));
-  }, [isConfigured]);
+  }, [isConfigured, configKey]); // Re-check when configKey changes
 
   // Handle OAuth callback on page load
   useEffect(() => {
@@ -61,9 +73,9 @@ export function GoogleCalendarSettings() {
   };
 
   const handleConfigured = () => {
-    // Refresh the page to pick up new configuration
+    // Update state to reflect new configuration
     setIsUserConfigured(true);
-    window.location.reload();
+    setConfigKey(prev => prev + 1); // Force re-render to pick up new config
   };
 
   const handleReconfigure = () => {
@@ -71,11 +83,14 @@ export function GoogleCalendarSettings() {
   };
 
   const handleClearConfig = () => {
-    if (confirm('Are you sure you want to remove your Google Calendar configuration? You will be disconnected.')) {
-      clearUserProvidedClientId();
-      setIsUserConfigured(false);
-      window.location.reload();
-    }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearConfig = () => {
+    clearUserProvidedClientId();
+    setIsUserConfigured(false);
+    setShowClearConfirm(false);
+    setConfigKey(prev => prev + 1); // Force re-render to pick up cleared config
   };
 
   return (
@@ -338,6 +353,24 @@ export function GoogleCalendarSettings() {
         onOpenChange={setShowSetupDialog}
         onConfigured={handleConfigured}
       />
+      
+      {/* Clear Configuration Confirmation Dialog */}
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Google Calendar Setup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove your Google Calendar configuration. If you're currently connected, you will be disconnected. You can always set it up again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClearConfig}>
+              Clear Setup
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
