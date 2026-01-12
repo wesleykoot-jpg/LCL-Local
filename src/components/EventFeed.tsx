@@ -530,38 +530,45 @@ export const EventFeed = memo(function EventFeed({
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-6"
           >
-            {activeFilter === 'all' && vibeGroups && vibeGroups.length > 0 ? (
-              // Render with vibe headers when "All" is selected
-              vibeGroups.map(group => (
-                <Fragment key={group.vibe}>
-                  <VibeHeaderSection vibe={group.vibe} />
-                  {group.stacks.map((stack, index) => 
-                    renderStackCard(
-                      stack, 
-                      index, 
-                      group.vibe === 'later', 
-                      group.stacks.length
-                    )
-                  )}
-                </Fragment>
-              ))
-            ) : eventStacks.length > 0 ? (
-              // Render without vibe headers (for filtered views or when vibeGroups is empty)
-              eventStacks.map((stack, index) => renderStackCard(stack, index))
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-12"
-              >
-                <p className="text-muted-foreground text-lg">
-                  No events found for this time
-                </p>
-                <p className="text-muted-foreground/60 text-sm mt-2">
-                  Try selecting a different filter
-                </p>
-              </motion.div>
-            )}
+            {(() => {
+              // When "All" is selected and we have vibe groups, show grouped view
+              if (activeFilter === 'all' && vibeGroups && vibeGroups.length > 0) {
+                return vibeGroups.map(group => (
+                  <Fragment key={group.vibe}>
+                    <VibeHeaderSection vibe={group.vibe} />
+                    {group.stacks.map((stack, index) => 
+                      renderStackCard(
+                        stack, 
+                        index, 
+                        group.vibe === 'later', 
+                        group.stacks.length
+                      )
+                    )}
+                  </Fragment>
+                ));
+              }
+              
+              // For filtered views OR when "All" has no vibe groups, show flat list
+              if (eventStacks.length > 0) {
+                return eventStacks.map((stack, index) => renderStackCard(stack, index));
+              }
+              
+              // Empty state
+              return (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12"
+                >
+                  <p className="text-muted-foreground text-lg">
+                    No events found for this time
+                  </p>
+                  <p className="text-muted-foreground/60 text-sm mt-2">
+                    Try selecting a different filter
+                  </p>
+                </motion.div>
+              );
+            })()}
           </motion.div>
         </AnimatePresence>
       </motion.div>
