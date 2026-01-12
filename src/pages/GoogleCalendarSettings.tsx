@@ -33,12 +33,11 @@ export function GoogleCalendarSettings() {
   const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [isUserConfigured, setIsUserConfigured] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [configKey, setConfigKey] = useState(0); // Used to force re-render
 
   // Check if user has configured their own Client ID
   useEffect(() => {
     setIsUserConfigured(Boolean(getUserProvidedClientId()));
-  }, [isConfigured, configKey]); // Re-check when configKey changes
+  }, [isConfigured]); // Re-check when isConfigured changes
 
   // Handle OAuth callback on page load
   useEffect(() => {
@@ -73,9 +72,8 @@ export function GoogleCalendarSettings() {
   };
 
   const handleConfigured = () => {
-    // Update state to reflect new configuration
-    setIsUserConfigured(true);
-    setConfigKey(prev => prev + 1); // Force re-render to pick up new config
+    // Configuration change event will trigger hook to update isConfigured
+    // which will then update isUserConfigured via useEffect
   };
 
   const handleReconfigure = () => {
@@ -88,9 +86,8 @@ export function GoogleCalendarSettings() {
 
   const confirmClearConfig = () => {
     clearUserProvidedClientId();
-    setIsUserConfigured(false);
+    // Configuration change event will trigger hook to update isConfigured
     setShowClearConfirm(false);
-    setConfigKey(prev => prev + 1); // Force re-render to pick up cleared config
   };
 
   return (
