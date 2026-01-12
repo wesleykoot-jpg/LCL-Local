@@ -77,6 +77,7 @@ interface RawEventCard {
   imageUrl: string | null;
   description: string;
   detailUrl: string | null;
+  detailPageTime?: string; // Time extracted from detail page
 }
 
 interface ParsedEvent {
@@ -264,8 +265,109 @@ function constructEventDateTime(eventDate: string, eventTime: string): string {
   return utcDate.toISOString();
 }
 
+/**
+ * Fetch event detail page and extract time from it
+ * This is a deep scraping feature to get precise times
+ */
+async function fetchEventDetailTime(detailUrl: string, baseUrl: string): Promise<string | null> {
+  try {
+    // Make absolute URL if relative
+    let fullUrl = detailUrl;
+    if (detailUrl.startsWith('/')) {
+      const urlObj = new URL(baseUrl);
+      fullUrl = `${urlObj.protocol}//${urlObj.host}${detailUrl}`;
+    } else if (!detailUrl.startsWith('http')) {
+      fullUrl = `${baseUrl.replace(/\/$/, '')}/${detailUrl}`;
+    }
+
+    console.log(`      🔍 Fetching detail page: ${fullUrl}`);
+    
+    const response = await fetch(fullUrl, { 
+      headers: DEFAULT_HEADERS,
+      signal: AbortSignal.timeout(10000), // 10 second timeout
+    });
+    
+    if (!response.ok) {
+      console.log(`      ⚠️ Detail page fetch failed: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    // Get all text from the page
+    const pageText = $('body').text();
+    
+    // Dutch time patterns to look for (ordered by specificity)
+    const timePatterns = [
+      // "Aanvang: 20:00" or "aanvang 19.30 uur"
+      /aanvang[:\s]*(\d{1,2})[.:h](\d{2})/i,
+      // "Start: 19:30" or "start om 20.00"
+      /start[:\s]*(?:om\s*)?(\d{1,2})[.:h](\d{2})/i,
+      // "Tijd: 14:00" or "tijd 15.30"
+      /tijd[:\s]*(\d{1,2})[.:h](\d{2})/i,
+      // "Deuren open: 18:00" or "deuren 19.00"
+      /deuren[:\s]*(?:open\s*)?(\d{1,2})[.:h](\d{2})/i,
+      // "Vanaf 20:00" or "vanaf 19.30 uur"
+      /vanaf\s+(\d{1,2})[.:h](\d{2})/i,
+      // "Om 20:00 uur" or "om 19.30"
+      /om\s+(\d{1,2})[.:h](\d{2})/i,
+      // "20:00 uur" or "19.30 uur" (standalone)
+      /(\d{1,2})[.:h](\d{2})\s*uur/i,
+      // "20:00 - 22:00" (time range, take first)
+      /(\d{1,2})[.:](\d{2})\s*[-–—]\s*\d{1,2}[.:]\d{2}/,
+      // Look for time in specific elements
+    ];
+    
+    // First check specific time-related elements
+    const timeElements = [
+      '.event-time', '.time', '[class*="time"]', '[class*="tijd"]',
+      '.event-details', '.details', 'meta[property="event:start_time"]',
+      '.aanvang', '[class*="aanvang"]',
+    ];
+    
+    for (const selector of timeElements) {
+      const el = $(selector);
+      if (el.length > 0) {
+        const elText = el.text() || el.attr('content') || '';
+        for (const pattern of timePatterns) {
+          const match = elText.match(pattern);
+          if (match) {
+            const hours = match[1].padStart(2, '0');
+            const minutes = match[2];
+            const time = `${hours}:${minutes}`;
+            console.log(`      ✅ Found time in element: ${time}`);
+            return time;
+          }
+        }
+      }
+    }
+    
+    // Fall back to searching full page text
+    for (const pattern of timePatterns) {
+      const match = pageText.match(pattern);
+      if (match) {
+        const hours = match[1].padStart(2, '0');
+        const minutes = match[2];
+        // Validate reasonable hours (0-23)
+        if (parseInt(hours) <= 23) {
+          const time = `${hours}:${minutes}`;
+          console.log(`      ✅ Found time in page text: ${time}`);
+          return time;
+        }
+      }
+    }
+    
+    console.log(`      ⚠️ No time found on detail page`);
+    return null;
+  } catch (error) {
+    console.log(`      ⚠️ Error fetching detail page: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
+}
+
 // Scraping function - now accepts source configuration
-async function scrapeEventCards(source: ScraperSource): Promise<RawEventCard[]> {
+async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boolean = true): Promise<RawEventCard[]> {
   console.log(`🌐 Fetching agenda from ${source.name} (${source.url})...`);
 
   const headers = source.config.headers || DEFAULT_HEADERS;
@@ -350,12 +452,42 @@ async function scrapeEventCards(source: ScraperSource): Promise<RawEventCard[]> 
   });
 
   console.log(`✅ Extracted ${events.length} event cards`);
+
+  // Deep scraping: fetch detail pages to extract times
+  if (enableDeepScraping && events.length > 0) {
+    console.log(`\n⏱️ Deep scraping: fetching ${events.length} detail pages for times...`);
+    const delayMs = source.config.rate_limit_ms || 300; // Slightly higher delay for detail pages
+    
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      if (event.detailUrl) {
+        console.log(`   [${i + 1}/${events.length}] ${event.title || 'Unknown'}...`);
+        const time = await fetchEventDetailTime(event.detailUrl, source.url);
+        if (time) {
+          event.detailPageTime = time;
+        }
+        // Rate limiting between detail page fetches
+        if (i < events.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+    
+    const timesFound = events.filter(e => e.detailPageTime).length;
+    console.log(`⏱️ Deep scraping complete: found times for ${timesFound}/${events.length} events`);
+  }
+
   return events;
 }
 
 // AI Parsing function using Google Gemini
 async function parseEventWithAI(apiKey: string, rawEvent: RawEventCard): Promise<ParsedEvent | null> {
   try {
+    // If we have a time from deep scraping, include it as a strong hint
+    const timeHint = rawEvent.detailPageTime 
+      ? `Time (from detail page): ${rawEvent.detailPageTime}` 
+      : "Time hint: not found on detail page";
+
     const userPrompt = `Parse this event data and return ONLY valid JSON:
 
 Title hint: ${rawEvent.title || "unknown"}
@@ -363,6 +495,7 @@ Date hint: ${rawEvent.date || "unknown"}
 Location hint: ${rawEvent.location || "unknown"}
 Description hint: ${rawEvent.description || "unknown"}
 Image URL hint: ${rawEvent.imageUrl || "none"}
+${timeHint}
 
 Raw HTML:
 ${rawEvent.rawHtml}
@@ -444,11 +577,19 @@ Return JSON with these fields:
       parsed.event_date = getTodayISO();
     }
 
-    if (parsed.event_time && /^\d{1,2}:\d{2}$/.test(parsed.event_time)) {
+    // Priority for event_time:
+    // 1. Deep-scraped time from detail page (most reliable)
+    // 2. AI-parsed time from HTML
+    // 3. Fallback to TBD
+    let finalTime = parsed.event_time || "TBD";
+    
+    // If we have a deep-scraped time, use it (it's from the actual detail page)
+    if (rawEvent.detailPageTime) {
+      finalTime = rawEvent.detailPageTime;
+      console.log(`   ⏱️ Using deep-scraped time: ${finalTime}`);
+    } else if (parsed.event_time && /^\d{1,2}:\d{2}$/.test(parsed.event_time)) {
       const [hours, mins] = parsed.event_time.split(":");
-      parsed.event_time = `${hours.padStart(2, "0")}:${mins}`;
-    } else if (!parsed.event_time) {
-      parsed.event_time = "TBD";
+      finalTime = `${hours.padStart(2, "0")}:${mins}`;
     }
 
     // Validate coordinates if provided by AI
@@ -470,7 +611,7 @@ Return JSON with these fields:
       venue_name: parsed.venue_name,
       venue_address: parsed.venue_address || undefined,
       event_date: parsed.event_date,
-      event_time: parsed.event_time,
+      event_time: finalTime,
       image_url: parsed.image_url || rawEvent.imageUrl || null,
       coordinates,
     };
