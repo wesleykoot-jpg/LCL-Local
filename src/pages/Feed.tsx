@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, useMemo } from 'react';
+import { useState, lazy, Suspense, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { EventFeed } from '@/components/EventFeed';
@@ -9,7 +9,7 @@ import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useAuth } from '@/contexts/useAuth';
 import { MapPin, Plus, Settings } from 'lucide-react';
-import { useEvents } from '@/lib/hooks';
+import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { motion } from 'framer-motion';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
@@ -74,10 +74,12 @@ const MOCK_MEPPEL_EVENTS = [
 const Feed = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { events: allEvents, loading } = useEvents();
+  const { events: allEvents, loading, refetch } = useEvents();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [isJoiningEvent, setIsJoiningEvent] = useState(false);
+  
+  // Use real Supabase join event hook
+  const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
   
   const {
     showOnboarding,
@@ -127,15 +129,13 @@ const Feed = () => {
     return null;
   }, [selectedEventId, allEvents]);
 
-  const handleJoinEvent = async () => {
+  // Handle joining event from detail modal using real Supabase API
+  const handleJoinEvent = useCallback(async () => {
     if (!selectedEventId) return;
-    setIsJoiningEvent(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsJoiningEvent(false);
-    console.log('Joined event:', selectedEventId);
-    // Could close modal or show success state here
-  };
+    await joinEvent(selectedEventId);
+    // Optionally close modal after successful join
+    setSelectedEventId(null);
+  }, [selectedEventId, joinEvent]);
 
   if (!isLoaded) {
     return (
@@ -194,6 +194,8 @@ const Feed = () => {
               onEventClick={handleEventClick}
               userPreferences={preferences}
               showVibeHeaders
+              profileId={profile?.id}
+              onEventsChange={refetch}
             />
           )}
         </main>
@@ -229,7 +231,7 @@ const Feed = () => {
               event={selectedEvent as any}
               onClose={handleCloseEventDetail}
               onJoin={handleJoinEvent}
-              isJoining={isJoiningEvent}
+              isJoining={isJoining(selectedEventId || '')}
             />
           </Suspense>
         </ErrorBoundary>

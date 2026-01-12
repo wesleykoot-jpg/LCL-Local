@@ -93,7 +93,8 @@ export function CreateEventModal({
         ...validatedData,
         description: validatedData.description || '',
         image_url: imageUrl,
-        location: `POINT(${profile.location_lng || 6.2} ${profile.location_lat || 52.7})`,
+        // Use default Meppel, NL coordinates since profile uses location_coordinates (PostGIS)
+        location: `POINT(6.2 52.7)`,
         creator_profile_id: profile.id,
       });
 
