@@ -12,6 +12,7 @@ import MyEvents from "./pages/MyEvents";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import CalendarCallback from "./pages/CalendarCallback";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,9 @@ const App = () => (
               <Route path="/feed" element={<Feed />} />
               <Route path="/my-events" element={<MyEvents />} />
               <Route path="/profile" element={<Profile />} />
+              
+              {/* Calendar OAuth callback */}
+              <Route path="/calendar/callback" element={<CalendarCallback />} />
               
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />

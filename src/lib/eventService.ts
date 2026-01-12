@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { createCalendarEvent, deleteCalendarEvent, getCalendarIntegration } from './googleCalendarService';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
@@ -80,6 +81,26 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
     if (error) throw error;
     if (!data) throw new Error('Failed to create attendance record');
 
+    // Sync to Google Calendar if integration is enabled
+    if (finalStatus === 'going') {
+      const integration = await getCalendarIntegration(profileId);
+      if (integration && integration.sync_enabled) {
+        // Get the full event data
+        const { data: fullEvent } = await supabase
+          .from('events')
+          .select('*')
+          .eq('id', eventId)
+          .single();
+        
+        if (fullEvent) {
+          // Sync to calendar (don't block on this)
+          createCalendarEvent(profileId, fullEvent).catch(err => 
+            console.error('Failed to sync to calendar:', err)
+          );
+        }
+      }
+    }
+
     return { data, error: null, waitlisted: wasWaitlisted };
   } catch (error) {
     console.error('Error joining event:', error);
@@ -102,6 +123,14 @@ export async function leaveEvent(eventId: string, profileId: string) {
       .eq('profile_id', profileId);
 
     if (error) throw error;
+
+    // Remove from Google Calendar if synced
+    const integration = await getCalendarIntegration(profileId);
+    if (integration && integration.sync_enabled) {
+      deleteCalendarEvent(profileId, eventId).catch(err =>
+        console.error('Failed to remove from calendar:', err)
+      );
+    }
 
     return { error: null };
   } catch (error) {

@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/useAuth';
 import { usePersonaStats, usePersonaBadges, useUserCommitments } from '../lib/hooks';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CalendarSettings } from './CalendarSettings';
 
 const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
   Shield,
@@ -481,6 +482,19 @@ export function ProfileView() {
               </div>
             )}
           </div>
+        </motion.section>
+
+        {/* Divider */}
+        <div className="h-2 bg-muted" />
+
+        {/* Calendar Integration Section */}
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="py-6 px-5"
+        >
+          <CalendarSettings />
         </motion.section>
 
         {/* Divider */}
