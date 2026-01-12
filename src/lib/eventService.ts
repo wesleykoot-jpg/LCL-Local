@@ -1,5 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  isCalendarConnected,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  storeSyncedEvent,
+  getSyncedEventId,
+  deleteSyncedEvent,
+} from '@/integrations/googleCalendar/service';
+import type { GoogleCalendarEventData } from '@/integrations/googleCalendar/client';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
@@ -224,5 +234,159 @@ export async function getEventAttendees(eventId: string) {
   } catch (error) {
     console.error('Error fetching attendees:', error);
     return { data: null, error: error as Error };
+  }
+}
+
+/**
+ * Convert event to Google Calendar format
+ */
+function convertEventToGoogleCalendarFormat(event: Event): GoogleCalendarEventData {
+  // Parse the date and time
+  const [year, month, day] = event.event_date.split('-').map(Number);
+  const [hours, minutes] = event.event_time.split(':').map(Number);
+  
+  // Create start datetime
+  const startDate = new Date(year, month - 1, day, hours, minutes);
+  
+  // Default event duration: 2 hours
+  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+  
+  return {
+    summary: event.title,
+    description: event.description || `Event from LCL Local`,
+    location: event.venue_name,
+    start: {
+      dateTime: startDate.toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
+    end: {
+      dateTime: endDate.toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 60 }, // 1 hour before
+        { method: 'popup', minutes: 1440 }, // 1 day before
+      ],
+    },
+  };
+}
+
+/**
+ * Sync an event to a user's Google Calendar
+ * @param eventId - ID of the LCL event
+ * @param profileId - ID of the user's profile
+ * @returns Object with success status and error (if any)
+ */
+export async function syncEventToGoogleCalendar(eventId: string, profileId: string) {
+  try {
+    // Check if user has connected Google Calendar
+    const connected = await isCalendarConnected(profileId);
+    if (!connected) {
+      return { success: false, error: 'Google Calendar not connected' };
+    }
+
+    // Fetch event details
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .maybeSingle();
+
+    if (eventError || !event) {
+      return { success: false, error: 'Event not found' };
+    }
+
+    // Convert to Google Calendar format
+    const googleEvent = convertEventToGoogleCalendarFormat(event);
+
+    // Check if event is already synced
+    const existingGoogleEventId = await getSyncedEventId(profileId, eventId);
+
+    if (existingGoogleEventId) {
+      // Update existing event
+      const result = await updateCalendarEvent(profileId, existingGoogleEventId, googleEvent);
+      return { success: result.success, error: result.error };
+    } else {
+      // Create new event
+      const result = await createCalendarEvent(profileId, googleEvent);
+      
+      if (result.success && result.googleEventId) {
+        await storeSyncedEvent(profileId, eventId, result.googleEventId);
+      }
+      
+      return { success: result.success, error: result.error };
+    }
+  } catch (error) {
+    console.error('Error syncing event to Google Calendar:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Sync failed' };
+  }
+}
+
+/**
+ * Sync event updates to all attendees' Google Calendars
+ * This should be called after updating an event
+ * @param eventId - ID of the updated event
+ */
+export async function syncEventUpdateToAllAttendees(eventId: string) {
+  try {
+    // Get all attendees of the event
+    const { data: attendees, error } = await getEventAttendees(eventId);
+    
+    if (error || !attendees) {
+      console.error('Error fetching attendees for calendar sync:', error);
+      return { success: false, error: 'Failed to fetch attendees' };
+    }
+
+    // Sync to each attendee's Google Calendar in parallel
+    const syncPromises = attendees.map(async (attendee) => {
+      try {
+        await syncEventToGoogleCalendar(eventId, attendee.profile_id);
+      } catch (err) {
+        // Log but don't fail the entire operation
+        console.error(`Failed to sync to attendee ${attendee.profile_id}:`, err);
+      }
+    });
+
+    await Promise.allSettled(syncPromises);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error syncing event update to attendees:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Sync failed' };
+  }
+}
+
+/**
+ * Remove an event from a user's Google Calendar
+ * @param eventId - ID of the LCL event
+ * @param profileId - ID of the user's profile
+ */
+export async function removeEventFromGoogleCalendar(eventId: string, profileId: string) {
+  try {
+    // Check if user has connected Google Calendar
+    const connected = await isCalendarConnected(profileId);
+    if (!connected) {
+      return { success: true }; // Nothing to remove
+    }
+
+    // Get the Google event ID
+    const googleEventId = await getSyncedEventId(profileId, eventId);
+    if (!googleEventId) {
+      return { success: true }; // Not synced, nothing to remove
+    }
+
+    // Delete from Google Calendar
+    const result = await deleteCalendarEvent(profileId, googleEventId);
+    
+    if (result.success) {
+      await deleteSyncedEvent(profileId, eventId);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error removing event from Google Calendar:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Remove failed' };
   }
 }

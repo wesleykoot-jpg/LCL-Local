@@ -17,6 +17,7 @@ import PersonalInformation from "./pages/PersonalInformation";
 import VerificationSafety from "./pages/VerificationSafety";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import ShareProfile from "./pages/ShareProfile";
+import GoogleCalendarSettings from "./pages/GoogleCalendarSettings";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/profile/verification-safety" element={<VerificationSafety />} />
               <Route path="/profile/notification-preferences" element={<NotificationPreferences />} />
               <Route path="/profile/share" element={<ShareProfile />} />
+              <Route path="/profile/calendar" element={<GoogleCalendarSettings />} />
               
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />
