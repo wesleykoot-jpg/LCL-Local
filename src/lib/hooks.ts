@@ -155,7 +155,6 @@ export function useEvents(options?: {
       
       // Fetch events with attendees in a single query to solve N+1 problem
       // Limit attendees to first 4 per event to keep it light
-      const attendeesLimit = ATTENDEE_LIMIT;
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
@@ -177,7 +176,7 @@ export function useEvents(options?: {
 
       query = query
         .order('joined_at', { foreignTable: 'attendees', ascending: false })
-        .limit(attendeesLimit, { foreignTable: 'attendees' });
+        .limit(ATTENDEE_LIMIT, { foreignTable: 'attendees' });
 
       if (options?.category && options.category.length > 0) {
         query = query.in('category', options.category);
