@@ -10,22 +10,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// ============================================
-// Event Type Detection
-// ============================================
-
-/** Prefix used to identify mock/demo events */
-export const MOCK_EVENT_ID_PREFIX = 'mock-';
-
-/**
- * Checks if an event is a mock/demo event
- * Mock events are used for demonstration purposes and cannot be joined
- * @param eventId - The event ID to check
- * @returns true if the event is a mock event
- */
-export function isMockEvent(eventId: string): boolean {
-  return eventId.startsWith(MOCK_EVENT_ID_PREFIX);
-}
 
 // ============================================
 // Google Calendar Integration Constants & Types

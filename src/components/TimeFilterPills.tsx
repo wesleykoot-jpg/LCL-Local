@@ -10,9 +10,9 @@ interface TimeFilterPillsProps {
 }
 
 const FILTERS: { id: TimeFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'tonight', label: 'Tonight' },
-  { id: 'tomorrow', label: 'Tomorrow' },
+  { id: 'all', label: 'Alles' },
+  { id: 'tonight', label: 'Vanavond' },
+  { id: 'tomorrow', label: 'Morgen' },
   { id: 'weekend', label: 'Weekend' },
 ];
 

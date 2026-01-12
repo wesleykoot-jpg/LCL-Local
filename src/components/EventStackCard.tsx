@@ -5,7 +5,6 @@ import { CategoryBadge } from './CategoryBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
-import { isMockEvent } from '@/lib/utils';
 
 // Fallback images by category - Dutch/Netherlands themed
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
@@ -62,9 +61,11 @@ const useImageFallback = (primaryUrl: string, category: string) => {
   return { src: currentSrc, onError: handleError };
 };
 
-// Format date as short pill text (e.g., "Sat 18" or "Tomorrow")
+// Format date as short pill text (e.g., "za 18" or "Morgen") - Dutch locale
 const formatDatePill = (dateStr: string) => {
-  const eventDate = new Date(dateStr + 'T00:00:00');
+  // Handle full ISO timestamps from Supabase
+  const datePart = dateStr.split('T')[0].split(' ')[0];
+  const eventDate = new Date(datePart + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -72,20 +73,19 @@ const formatDatePill = (dateStr: string) => {
   tomorrow.setDate(today.getDate() + 1);
   
   if (eventDate.getTime() === today.getTime()) {
-    return 'Today';
+    return 'Vandaag';
   } else if (eventDate.getTime() === tomorrow.getTime()) {
-    return 'Tomorrow';
+    return 'Morgen';
   }
   
-  return eventDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+  // Dutch locale: "za 18" instead of "Sat 18"
+  return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric' });
 };
 
+// Dutch 24-hour time format
 const formatTime = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(':');
-  const hour = parseInt(hours, 10);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${minutes} ${ampm}`;
+  return `${hours}:${minutes}`;
 };
 
 // Anchor Card - Compact Airbnb-inspired design
@@ -108,7 +108,6 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   
-  const isDemo = isMockEvent(event.id);
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
       attendee => attendee.profile?.id === currentUserProfileId
@@ -182,22 +181,22 @@ const AnchorEventCard = memo(function AnchorEventCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (!isDemo && !hasJoined) {
+              if (!hasJoined) {
                 onJoin?.();
               }
             }}
-            disabled={isJoining || isDemo || hasJoined}
+            disabled={isJoining || hasJoined}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-95 ${
               hasJoined 
                 ? 'bg-muted text-muted-foreground cursor-default' 
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
             }`}
-            title={isDemo ? 'Demo event' : hasJoined ? 'Already joined' : undefined}
+            title={hasJoined ? 'Je doet al mee' : undefined}
           >
             {isJoining ? (
               <Loader2 size={12} className="animate-spin" />
             ) : null}
-            <span>{isJoining ? 'Joining...' : hasJoined ? 'Joined' : isDemo ? 'Demo' : 'Join'}</span>
+            <span>{isJoining ? 'Aanmelden...' : hasJoined ? 'Aangemeld' : 'Meedoen'}</span>
           </button>
         </div>
       </div>
@@ -231,7 +230,6 @@ const ForkEventCard = memo(function ForkEventCard({
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   
-  const isDemo = isMockEvent(event.id);
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
       attendee => attendee.profile?.id === currentUserProfileId
@@ -290,19 +288,19 @@ const ForkEventCard = memo(function ForkEventCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (!isDemo && !hasJoined) {
+                if (!hasJoined) {
                   onJoin?.();
                 }
               }}
-              disabled={isJoining || isDemo || hasJoined}
+              disabled={isJoining || hasJoined}
               className={`px-2 py-1 rounded-md text-xs font-medium transition-all disabled:opacity-50 active:scale-95 ${
                 hasJoined 
                   ? 'bg-muted text-muted-foreground cursor-default' 
                   : 'bg-primary text-primary-foreground hover:bg-primary/90'
               }`}
-              title={isDemo ? 'Demo event' : hasJoined ? 'Already joined' : undefined}
+              title={hasJoined ? 'Je doet al mee' : undefined}
             >
-              {isJoining ? <Loader2 size={10} className="animate-spin" /> : hasJoined ? '✓' : isDemo ? '—' : '+'}
+              {isJoining ? <Loader2 size={10} className="animate-spin" /> : hasJoined ? '✓' : '+'}
             </button>
           </div>
         </div>

@@ -17,7 +17,6 @@ import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { getVenueCoordinates } from '@/lib/distance';
-import { isMockEvent } from '@/lib/utils';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 interface EventDetailModalProps {
@@ -42,9 +41,12 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
   default: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80',
 };
 
+// Dutch date format
 const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { 
+  // Handle full ISO timestamps from Supabase
+  const datePart = dateStr.split('T')[0].split(' ')[0];
+  const date = new Date(datePart + 'T00:00:00');
+  return date.toLocaleDateString('nl-NL', { 
     weekday: 'long', 
     month: 'long', 
     day: 'numeric',
@@ -52,12 +54,10 @@ const formatDate = (dateStr: string) => {
   });
 };
 
+// Dutch 24-hour time format
 const formatTime = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(':');
-  const hour = parseInt(hours, 10);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${minutes} ${ampm}`;
+  return `${hours}:${minutes}`;
 };
 
 /**
@@ -84,9 +84,6 @@ export const EventDetailModal = memo(function EventDetailModal({
 }: EventDetailModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [imageError, setImageError] = useState(false);
-  
-  // Check if this is a mock event (cannot be joined)
-  const isDemo = isMockEvent(event.id);
 
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const imageUrl = imageError 
@@ -225,13 +222,13 @@ export const EventDetailModal = memo(function EventDetailModal({
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                   
-                  {/* Open in Maps button */}
+                   {/* Open in Maps button */}
                   <div className="absolute bottom-3 right-3">
                     <button
                       className="flex items-center gap-2 px-3 py-2 rounded-xl bg-background/95 backdrop-blur-sm text-sm font-medium shadow-lg hover:bg-background transition-colors"
                     >
                       <Navigation size={14} className="text-primary" />
-                      Open in Maps
+                      Open in Kaarten
                       <ExternalLink size={12} className="opacity-60" />
                     </button>
                   </div>
@@ -249,11 +246,11 @@ export const EventDetailModal = memo(function EventDetailModal({
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-foreground">
-                    {event.attendee_count || 0} people going
+                    {event.attendee_count || 0} personen gaan
                   </span>
                   {event.max_attendees && (
                     <span className="text-xs text-muted-foreground">
-                      {event.max_attendees - (event.attendee_count || 0)} spots left
+                      {event.max_attendees - (event.attendee_count || 0)} plekken over
                     </span>
                   )}
                 </div>
@@ -291,29 +288,19 @@ export const EventDetailModal = memo(function EventDetailModal({
 
                 {/* Primary action */}
                 <button
-                  onClick={() => {
-                    if (!isDemo) {
-                      onJoin?.();
-                    }
-                  }}
-                  disabled={isJoining || isDemo}
+                  onClick={() => onJoin?.()}
+                  disabled={isJoining}
                   className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
-                  title={isDemo ? 'Demo event - cannot join' : undefined}
                 >
                   {isJoining ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      Joining...
-                    </>
-                  ) : isDemo ? (
-                    <>
-                      <Users size={18} />
-                      Demo Event
+                      Aanmelden...
                     </>
                   ) : (
                     <>
                       <Users size={18} />
-                      Join Event
+                      Meedoen
                     </>
                   )}
                 </button>
