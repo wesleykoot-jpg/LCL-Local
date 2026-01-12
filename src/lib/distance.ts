@@ -22,6 +22,15 @@ export const MEPPEL_VENUES: Record<string, { lat: number; lng: number }> = {
   'Schouwburg Ogterop': { lat: 52.6952, lng: 6.1972 },
   'Foyer Schouwburg': { lat: 52.6952, lng: 6.1972 },
   'Hoofdstraat Meppel': { lat: 52.6961, lng: 6.1944 },
+  'Luxor Cinema': { lat: 52.6968, lng: 6.192 },
+  'De Plataan': { lat: 52.6961, lng: 6.1944 },
+  'Café de Plataan': { lat: 52.6961, lng: 6.1944 },
+  'De Beurs': { lat: 52.6959, lng: 6.1931 },
+  'Reestkerk': { lat: 52.705, lng: 6.195 },
+  'Markt Meppel': { lat: 52.6958, lng: 6.1935 },
+  'Bibliotheek Meppel': { lat: 52.695, lng: 6.1905 },
+  'Alcides': { lat: 52.6898, lng: 6.2012 },
+  'Meppel Centrum': { lat: 52.696, lng: 6.192 },
 };
 
 /**
@@ -109,7 +118,22 @@ export function getDistanceDisplay(distanceKm: number): {
 
 /**
  * Get coordinates for a venue name, with fallback to Meppel center
+ * Supports fuzzy matching for venue names
  */
 export function getVenueCoordinates(venueName: string): { lat: number; lng: number } {
-  return MEPPEL_VENUES[venueName] || MEPPEL_CENTER;
+  // Try exact match first
+  if (MEPPEL_VENUES[venueName]) {
+    return MEPPEL_VENUES[venueName];
+  }
+  
+  // Try fuzzy match (case insensitive, partial match)
+  const lowerVenue = venueName.toLowerCase();
+  for (const [key, coords] of Object.entries(MEPPEL_VENUES)) {
+    if (lowerVenue.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerVenue)) {
+      return coords;
+    }
+  }
+  
+  // Default to Meppel center
+  return MEPPEL_CENTER;
 }

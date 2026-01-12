@@ -28,7 +28,7 @@
  * - Boosting underrepresented categories in the initial results
  */
 
-import { calculateDistanceKm, MEPPEL_CENTER } from './distance';
+import { calculateDistanceKm, getVenueCoordinates, MEPPEL_CENTER } from './distance';
 
 export interface EventForRanking {
   id: string;
@@ -179,7 +179,7 @@ function calculateDistanceScore(
   }
   
   // Get venue coordinates from known venues or default
-  const venueCoords = getVenueCoordinatesForScoring(venueName);
+  const venueCoords = getVenueCoordinates(venueName);
   
   // Calculate distance between user and venue
   const distanceKm = calculateDistanceKm(
@@ -201,49 +201,6 @@ function calculateDistanceScore(
   const score = 1 / (1 + distanceKm / (radiusKm * 0.5));
   
   return Math.max(CONFIG.DISTANCE_MIN_SCORE, Math.min(1.0, score));
-}
-
-/**
- * Get venue coordinates for scoring (uses known venues or Meppel center)
- */
-function getVenueCoordinatesForScoring(venueName: string): { lat: number; lng: number } {
-  // Known Meppel venues for accurate distance calculation
-  const venues: Record<string, { lat: number; lng: number }> = {
-    'Sportpark Ezinge, Meppel': { lat: 52.6985, lng: 6.1876 },
-    'Sportkantine Ezinge': { lat: 52.6985, lng: 6.1876 },
-    'Café De Kansel, Woldstraat': { lat: 52.6956, lng: 6.1944 },
-    'Wilhelminapark Meppel': { lat: 52.6923, lng: 6.1912 },
-    'Wilhelminapark grasveld': { lat: 52.6923, lng: 6.1912 },
-    'IJssalon op de Markt': { lat: 52.6961, lng: 6.1938 },
-    'Café 1761, Prinsengracht': { lat: 52.6961, lng: 6.1938 },
-    'Meppeler Haven (Stouwepad)': { lat: 52.6978, lng: 6.1891 },
-    'Schouwburg Ogterop': { lat: 52.6952, lng: 6.1972 },
-    'Foyer Schouwburg': { lat: 52.6952, lng: 6.1972 },
-    'Hoofdstraat Meppel': { lat: 52.6961, lng: 6.1944 },
-    'Luxor Cinema': { lat: 52.6968, lng: 6.192 },
-    'De Plataan': { lat: 52.6961, lng: 6.1944 },
-    'De Beurs': { lat: 52.6959, lng: 6.1931 },
-    'Reestkerk': { lat: 52.705, lng: 6.195 },
-    'Markt Meppel': { lat: 52.6958, lng: 6.1935 },
-    'Bibliotheek Meppel': { lat: 52.695, lng: 6.1905 },
-    'Alcides': { lat: 52.6898, lng: 6.2012 },
-  };
-  
-  // Try exact match first
-  if (venues[venueName]) {
-    return venues[venueName];
-  }
-  
-  // Try fuzzy match (case insensitive, partial match)
-  const lowerVenue = venueName.toLowerCase();
-  for (const [key, coords] of Object.entries(venues)) {
-    if (lowerVenue.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerVenue)) {
-      return coords;
-    }
-  }
-  
-  // Default to Meppel center
-  return MEPPEL_CENTER;
 }
 
 /**
