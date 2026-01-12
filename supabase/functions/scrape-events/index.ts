@@ -204,9 +204,10 @@ function constructEventDateTime(eventDate: string, eventTime: string): string {
   // Convert to UTC by subtracting the offset
   const localHours = parseInt(hours, 10);
   const localMinutes = parseInt(minutes, 10);
+  // Date.UTC automatically handles negative hours and day rollover
   const utcHours = localHours - utcOffset;
   
-  // Create a Date object in UTC
+  // Create a Date object in UTC (Date.UTC handles day rollover automatically)
   const utcDate = new Date(Date.UTC(year, month - 1, day, utcHours, localMinutes, 0));
   
   return utcDate.toISOString();
