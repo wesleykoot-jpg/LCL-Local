@@ -1,7 +1,8 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Calendar, Clock } from 'lucide-react';
 import { EventStackCard } from './EventStackCard';
-import { groupEventsIntoStacks } from '@/lib/feedGrouping';
+import { groupEventsIntoStacks, type EventStack } from '@/lib/feedGrouping';
 import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 import type { EventWithAttendees } from '@/lib/hooks';
 
@@ -229,16 +230,127 @@ const MOCK_MEPPEL_EVENTS: EventWithAttendees[] = [
   },
 ];
 
+// Vibe header configuration
+type VibeType = 'tonight' | 'weekend' | 'later';
+
+interface VibeHeader {
+  type: VibeType;
+  label: string;
+  icon: typeof Sparkles;
+  className: string;
+}
+
+const VIBE_HEADERS: Record<VibeType, VibeHeader> = {
+  tonight: {
+    type: 'tonight',
+    label: 'Happening Tonight',
+    icon: Sparkles,
+    className: 'text-primary',
+  },
+  weekend: {
+    type: 'weekend',
+    label: 'This Weekend',
+    icon: Calendar,
+    className: 'text-accent-foreground',
+  },
+  later: {
+    type: 'later',
+    label: 'Coming Up',
+    icon: Clock,
+    className: 'text-muted-foreground',
+  },
+};
+
+// Helper to determine vibe type for a date
+function getVibeType(eventDate: string): VibeType {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const eventDay = new Date(eventDate);
+  eventDay.setHours(0, 0, 0, 0);
+  
+  // Check if today
+  if (eventDay.getTime() === today.getTime()) {
+    return 'tonight';
+  }
+  
+  // Check if this weekend (Friday-Sunday)
+  const dayOfWeek = today.getDay();
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+  const friday = new Date(today);
+  friday.setDate(today.getDate() + daysUntilFriday);
+  
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+  
+  if (eventDay >= friday && eventDay <= sunday) {
+    return 'weekend';
+  }
+  
+  return 'later';
+}
+
+// Group stacks by vibe type
+interface VibeGroup {
+  vibe: VibeType;
+  stacks: EventStack[];
+}
+
+function groupStacksByVibe(stacks: EventStack[]): VibeGroup[] {
+  const groups: Map<VibeType, EventStack[]> = new Map();
+  
+  stacks.forEach(stack => {
+    const vibe = getVibeType(stack.anchor.event_date);
+    const existing = groups.get(vibe) || [];
+    existing.push(stack);
+    groups.set(vibe, existing);
+  });
+  
+  // Return in order: tonight, weekend, later
+  const result: VibeGroup[] = [];
+  const order: VibeType[] = ['tonight', 'weekend', 'later'];
+  
+  order.forEach(vibe => {
+    const stacks = groups.get(vibe);
+    if (stacks && stacks.length > 0) {
+      result.push({ vibe, stacks });
+    }
+  });
+  
+  return result;
+}
+
 interface EventFeedProps {
   events: EventWithAttendees[];
   onEventClick?: (eventId: string) => void;
   userPreferences?: UserPreferences | null;
+  showVibeHeaders?: boolean;
 }
+
+// Vibe Header Component
+const VibeHeaderSection = memo(function VibeHeaderSection({ vibe }: { vibe: VibeType }) {
+  const config = VIBE_HEADERS[vibe];
+  const Icon = config.icon;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="flex items-center gap-2.5 mt-6 mb-4 first:mt-0"
+    >
+      <Icon size={20} className={config.className} />
+      <h3 className={`font-display text-xl font-bold ${config.className}`}>
+        {config.label}
+      </h3>
+    </motion.div>
+  );
+});
 
 export const EventFeed = memo(function EventFeed({
   events,
   onEventClick,
   userPreferences,
+  showVibeHeaders = false,
 }: EventFeedProps) {
   const [joiningEventId, setJoiningEventId] = useState<string | undefined>();
 
@@ -263,6 +375,12 @@ export const EventFeed = memo(function EventFeed({
     return groupEventsIntoStacks(rankedEvents);
   }, [rankedEvents]);
 
+  // Group stacks by vibe if headers are enabled
+  const vibeGroups = useMemo(() => {
+    if (!showVibeHeaders) return null;
+    return groupStacksByVibe(eventStacks);
+  }, [eventStacks, showVibeHeaders]);
+
   // Mock join handler
   const handleJoinEvent = async (eventId: string) => {
     setJoiningEventId(eventId);
@@ -271,6 +389,26 @@ export const EventFeed = memo(function EventFeed({
     setJoiningEventId(undefined);
     console.log('Joined event:', eventId);
   };
+
+  // Render a single stack card
+  const renderStackCard = (stack: EventStack) => (
+    <motion.div
+      key={stack.anchor.id}
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0 }
+      }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      layout
+    >
+      <EventStackCard
+        stack={stack}
+        onEventClick={onEventClick}
+        onJoinEvent={handleJoinEvent}
+        joiningEventId={joiningEventId}
+      />
+    </motion.div>
+  );
 
   return (
     <motion.div 
@@ -286,24 +424,18 @@ export const EventFeed = memo(function EventFeed({
       }}
     >
       <AnimatePresence mode="popLayout">
-        {eventStacks.map((stack) => (
-          <motion.div
-            key={stack.anchor.id}
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0 }
-            }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            layout
-          >
-            <EventStackCard
-              stack={stack}
-              onEventClick={onEventClick}
-              onJoinEvent={handleJoinEvent}
-              joiningEventId={joiningEventId}
-            />
-          </motion.div>
-        ))}
+        {showVibeHeaders && vibeGroups ? (
+          // Render with vibe headers
+          vibeGroups.map(group => (
+            <Fragment key={group.vibe}>
+              <VibeHeaderSection vibe={group.vibe} />
+              {group.stacks.map(renderStackCard)}
+            </Fragment>
+          ))
+        ) : (
+          // Render without vibe headers
+          eventStacks.map(renderStackCard)
+        )}
       </AnimatePresence>
     </motion.div>
   );
