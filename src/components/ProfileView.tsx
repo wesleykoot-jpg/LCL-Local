@@ -2,7 +2,7 @@ import React, { useState, createElement } from 'react';
 import { 
   MapPin, Shield, ChevronRight, Trophy, Star, Award, Users, 
   CheckCircle, Flame, LogOut, Loader2, Settings,
-  Calendar, Clock, Heart, Sparkles, BadgeCheck, Edit3, Share2, Camera
+  Calendar, Clock, Sparkles, BadgeCheck, Edit3, Camera
 } from 'lucide-react';
 import { useAuth } from '../contexts/useAuth';
 import { usePersonaStats, usePersonaBadges, useUserCommitments } from '../lib/hooks';
@@ -18,7 +18,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
 
 // Mock profile for development mode
 const MOCK_PROFILE = {
-  id: 'dev-profile-001',
+  id: '00000000-0000-0000-0000-000000000001',
   user_id: 'dev-user-001',
   full_name: 'Demo User',
   location_city: 'Meppel',
