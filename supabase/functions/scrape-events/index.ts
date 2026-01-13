@@ -79,17 +79,19 @@ const PLATFORM_CONFIGS: Record<string, PlatformConfig> = {
     dateSelector: ".date p, .date",
     timeSelector: ".time",
   },
-  // "Visit" platform - tourism boards
+  // "Visit" platform - tourism boards (Plaece/ODP CMS)
   visit: {
     name: "Visit/VVV Platform",
     urlPatterns: [/visit[\w]+\.(nl|com)/i, /vvv[\w]+\.nl/i, /touristinfo[\w]+\.nl/i],
     selectors: [
-      "article.event",
-      ".event-item",
-      ".agenda-event",
-      '[class*="event-card"]',
-      ".card.event",
+      'li.tiles__tile[itemtype="http://schema.org/Event"]',
+      "li.tiles__tile",
+      ".tiles__tile",
+      '[itemtype="http://schema.org/Event"]',
+      ".odp-list-container li",
     ],
+    dateSelector: ".description__date",
+    timeSelector: ".description__time",
   },
   // "Uit" platform - cultural agendas
   uit: {
