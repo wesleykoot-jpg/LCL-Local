@@ -289,9 +289,16 @@ ${rawEvent.rawHtml}`;
 
   let cleaned = text.trim();
   cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
-  const parsed = JSON.parse(cleaned) as Partial<NormalizedEvent>;
+  
+  let parsed: Partial<NormalizedEvent>;
+  try {
+    parsed = JSON.parse(cleaned) as Partial<NormalizedEvent>;
+  } catch (e) {
+    console.warn("Failed to parse AI response as JSON:", e);
+    return null;
+  }
 
-  if (!parsed.title || !parsed.event_date) return null;
+  if (!parsed || !parsed.title || !parsed.event_date) return null;
   const isoDate = parseToISODate(parsed.event_date);
   if (!isoDate || !isTargetYear(isoDate)) return null;
 
