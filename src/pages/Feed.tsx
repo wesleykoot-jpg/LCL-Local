@@ -18,7 +18,6 @@ import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { hapticImpact } from '@/lib/haptics';
 import { groupEventsIntoStacks } from '@/lib/feedGrouping';
 import { rankEvents } from '@/lib/feedAlgorithm';
-import { CATEGORY_MAP } from '@/lib/categories';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
@@ -66,20 +65,6 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
     default:
       return events;
   }
-}
-
-// Group events by category for carousels
-function groupEventsByCategory(events: EventWithAttendees[]): Map<string, EventWithAttendees[]> {
-  const groups = new Map<string, EventWithAttendees[]>();
-  
-  events.forEach(event => {
-    const category = CATEGORY_MAP[event.category] || event.category;
-    const existing = groups.get(category) || [];
-    existing.push(event);
-    groups.set(category, existing);
-  });
-  
-  return groups;
 }
 
 // Get trending events (most attendees)

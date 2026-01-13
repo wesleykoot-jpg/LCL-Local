@@ -38,91 +38,93 @@ export interface CreateEventParams {
 }
 
 /**
- * Adds a user to an event as an attendee, with automatic waitlist handling
+ * Adds a user to an event as an attendee, with automatic waitlist handling.
+ * Uses atomic RPC to prevent race conditions when checking capacity.
  * @param eventId - ID of the event to join
  * @param profileId - ID of the user's profile
  * @param status - Attendance status (default: 'going', or 'waitlist' if full)
  * @returns Object with data, waitlisted flag, and error (if any)
  */
 export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams): Promise<JoinEventResult> {
+  // Use atomic RPC as primary method to prevent race conditions
   try {
-    // Check if event has capacity limit and current attendance
-    const { data: event, error: eventError } = await supabase
-      .from('events')
-      .select('max_attendees')
-      .eq('id', eventId)
-      .maybeSingle();
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
+      p_event_id: eventId,
+      p_profile_id: profileId,
+      p_status: status,
+    });
 
-    if (eventError) throw eventError;
-    if (!event) throw new Error('Event not found');
+    if (rpcError) throw rpcError;
 
-    let finalStatus = status;
-    let wasWaitlisted = false;
-
-    // If event has capacity limit and user wants to go, check if full
-    if (event.max_attendees && status === 'going') {
-      const { count, error: countError } = await supabase
-        .from('event_attendees')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'going');
-
-      if (countError) throw countError;
-
-      // If at capacity, automatically add to waitlist instead
-      if (count && count >= event.max_attendees) {
-        finalStatus = 'waitlist';
-        wasWaitlisted = true;
-      }
+    if (rpcResult?.status === 'exists') {
+      return { data: null, error: new Error('already_joined'), waitlisted: false };
     }
 
-    const attendee: EventAttendee = {
-      event_id: eventId,
-      profile_id: profileId,
-      status: finalStatus,
-      joined_at: new Date().toISOString(),
-    };
+    if (rpcResult?.status === 'full' && status === 'going') {
+      return { data: null, rpcResult, error: new Error('event_full'), waitlisted: true };
+    }
 
-    const { data, error } = await supabase
-      .from('event_attendees')
-      .insert(attendee)
-      .select()
-      .maybeSingle();
+    // Success path for RPC
+    if (rpcResult?.status === 'ok') {
+      return { data: null, rpcResult, error: null, waitlisted: false };
+    }
 
-    if (error) throw error;
-    if (!data) throw new Error('Failed to create attendance record');
-
-    return { data, error: null, waitlisted: wasWaitlisted };
+    // Unexpected RPC status
+    return { data: null, rpcResult, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
   } catch (error) {
-    console.error('Error joining event:', error);
+    console.error('Atomic RPC join failed, falling back to direct insert:', error);
 
-    // Fallback to atomic RPC to handle stricter RLS or race conditions in UAT
+    // Fallback to direct insert for environments where RPC is not available
     try {
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
-        p_event_id: eventId,
-        p_profile_id: profileId,
-        p_status: status,
-      });
+      // Check if event exists
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .select('max_attendees')
+        .eq('id', eventId)
+        .maybeSingle();
 
-      if (rpcError) throw rpcError;
+      if (eventError) throw eventError;
+      if (!event) throw new Error('Event not found');
 
-      if (rpcResult?.status === 'exists') {
-        return { data: null, error: new Error('already_joined'), waitlisted: false };
+      let finalStatus = status;
+      let wasWaitlisted = false;
+
+      // If event has capacity limit and user wants to go, check if full
+      if (event.max_attendees && status === 'going') {
+        const { count, error: countError } = await supabase
+          .from('event_attendees')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventId)
+          .eq('status', 'going');
+
+        if (countError) throw countError;
+
+        // If at capacity, automatically add to waitlist instead
+        if (count && count >= event.max_attendees) {
+          finalStatus = 'waitlist';
+          wasWaitlisted = true;
+        }
       }
 
-      if (rpcResult?.status === 'full' && status === 'going') {
-        return { data: null, rpcResult, error: new Error('event_full'), waitlisted: true };
-      }
+      const attendee: EventAttendee = {
+        event_id: eventId,
+        profile_id: profileId,
+        status: finalStatus,
+        joined_at: new Date().toISOString(),
+      };
 
-      // Success path for RPC
-      if (rpcResult?.status === 'ok') {
-        return { data: null, rpcResult, error: null, waitlisted: false };
-      }
+      const { data, error: insertError } = await supabase
+        .from('event_attendees')
+        .insert(attendee)
+        .select()
+        .maybeSingle();
 
-      // Unexpected RPC status
-      return { data: null, rpcResult, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
+      if (insertError) throw insertError;
+      if (!data) throw new Error('Failed to create attendance record');
+
+      return { data, error: null, waitlisted: wasWaitlisted };
     } catch (fallbackError) {
-      console.error('Fallback RPC join failed:', fallbackError);
+      console.error('Fallback direct insert failed:', fallbackError);
       return { data: null, error: fallbackError as Error, waitlisted: false };
     }
   }

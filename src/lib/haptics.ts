@@ -9,15 +9,15 @@ export async function hapticImpact(style: 'light' | 'medium' | 'heavy' = 'medium
     };
 
     await Haptics.impact({ style: impactStyles[style] });
-  } catch (error) {
-    console.log('Haptics not available');
+  } catch {
+    // Haptics not available (expected on web)
   }
 }
 
 export async function hapticNotification(type: 'success' | 'warning' | 'error' = 'success') {
   try {
     await Haptics.notification({ type });
-  } catch (error) {
-    console.log('Haptics not available');
+  } catch {
+    // Haptics not available (expected on web)
   }
 }
