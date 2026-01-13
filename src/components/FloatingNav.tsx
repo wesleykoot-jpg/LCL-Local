@@ -11,6 +11,12 @@ interface FloatingNavProps {
   onNavigate?: (view: NavView) => void;
 }
 
+const NAV_ITEMS: { id: NavView; icon: typeof Home; label: string }[] = [
+  { id: 'feed', icon: Home, label: 'Ontdek' },
+  { id: 'my-events', icon: CalendarCheck, label: 'Mijn' },
+  { id: 'profile', icon: User, label: 'Profiel' },
+];
+
 export function FloatingNav({
   activeView: activeViewProp,
   onNavigate
@@ -33,50 +39,59 @@ export function FloatingNav({
       navigate(`/${view}`);
     }
   };
+
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 pb-safe mb-2">
-      {/* 2026: Premium glass nav with refined blur and subtle shadow */}
-      <motion.div 
-        className="flex items-center gap-1 p-1.5 bg-zinc-900/90 backdrop-blur-2xl rounded-full shadow-nav border border-white/10"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      >
-        {/* Touch targets 48px minimum for better mobile UX */}
-        <motion.button 
-          onClick={() => handleNav('feed')} 
-          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all active:scale-[0.92] ${
-            activeView === 'feed' 
-              ? 'bg-white/20 text-white' 
-              : 'text-zinc-400 hover:text-white'
-          }`}
-          whileTap={{ scale: 0.92 }}
+    <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
+      {/* Airbnb-style clean tab bar */}
+      <div className="mx-4 mb-3">
+        <motion.nav 
+          className="flex items-center justify-around px-6 py-2 bg-background/95 backdrop-blur-2xl rounded-[2rem] border-[0.5px] border-border/30"
+          style={{
+            boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04)'
+          }}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          <Home size={22} strokeWidth={2} />
-        </motion.button>
-        <motion.button 
-          onClick={() => handleNav('my-events')} 
-          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all active:scale-[0.92] ${
-            activeView === 'my-events' 
-              ? 'bg-white/20 text-white' 
-              : 'text-zinc-400 hover:text-white'
-          }`}
-          whileTap={{ scale: 0.92 }}
-        >
-          <CalendarCheck size={22} strokeWidth={2} />
-        </motion.button>
-        <motion.button 
-          onClick={() => handleNav('profile')} 
-          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all active:scale-[0.92] ${
-            activeView === 'profile' 
-              ? 'bg-white/20 text-white' 
-              : 'text-zinc-400 hover:text-white'
-          }`}
-          whileTap={{ scale: 0.92 }}
-        >
-          <User size={22} strokeWidth={2} />
-        </motion.button>
-      </motion.div>
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeView === item.id;
+            const Icon = item.icon;
+            
+            return (
+              <motion.button
+                key={item.id}
+                onClick={() => handleNav(item.id)}
+                className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[52px] py-2 px-4 rounded-[1.25rem] transition-all active:scale-[0.92] ${
+                  isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                whileTap={{ scale: 0.92 }}
+              >
+                {/* Active indicator */}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNavIndicator"
+                    className="absolute inset-0 bg-primary/8 rounded-[1.25rem]"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                  />
+                )}
+                
+                <Icon 
+                  size={24} 
+                  strokeWidth={isActive ? 2.5 : 2} 
+                  className="relative z-10 transition-transform duration-200"
+                />
+                <span className={`relative z-10 text-[11px] mt-1 font-medium tracking-tight ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                }`}>
+                  {item.label}
+                </span>
+              </motion.button>
+            );
+          })}
+        </motion.nav>
+      </div>
     </div>
   );
 }
