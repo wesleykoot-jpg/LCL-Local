@@ -73,9 +73,6 @@ async function readMigrationSources(): Promise<ScraperSource[]> {
           typeof parsedConfig.requires_render === "boolean"
             ? (parsedConfig.requires_render as boolean)
             : /\brequires_render\b[^)]*true/i.test(match[0]),
-        default_coordinates: (parsedConfig.default_coordinates as { lat: number; lng: number } | undefined) ?? undefined,
-        language: (parsedConfig.language as string | undefined) ?? undefined,
-        country: (parsedConfig.country as string | undefined) ?? undefined,
         config: {
           selectors: (parsedConfig.selectors as string[] | undefined) ?? [],
           headers: (parsedConfig.headers as Record<string, string> | undefined) ?? {},
@@ -86,7 +83,6 @@ async function readMigrationSources(): Promise<ScraperSource[]> {
           dynamic_year: parsedConfig.dynamic_year as boolean | undefined,
           discoveryAnchors: (parsedConfig.discoveryAnchors as string[] | undefined) ?? undefined,
           alternatePaths: (parsedConfig.alternatePaths as string[] | undefined) ?? undefined,
-          requires_render: parsedConfig.requires_render as boolean | undefined,
         },
       });
     }
@@ -108,20 +104,23 @@ async function readMigrationSources(): Promise<ScraperSource[]> {
         url: "https://render.example/agenda",
         enabled: true,
         requires_render: true,
-        config: { selectors: [], headers: {}, requires_render: true },
+        config: { selectors: [], headers: {} },
       },
     ];
   }
 
   // Ensure a renderer case is covered
-  sources.push({
-    id: "render-mock",
-    name: "Render Mock Source",
+  const hasRenderMock = sources.some((s) => s.id === "render-mock");
+  if (!hasRenderMock) {
+    sources.push({
+      id: "render-mock",
+      name: "Render Mock Source",
     url: "https://render.example/agenda",
     enabled: true,
     requires_render: true,
-    config: { selectors: [], headers: {}, requires_render: true },
+    config: { selectors: [], headers: {} },
   });
+  }
 
   return sources;
 }
@@ -180,9 +179,10 @@ function buildSampleListing(source: ScraperSource) {
         <a href="/events/${events[1].slug}">Details</a>
       </div>
       <div class="agenda-item">
-        <span class="event-title">${events[1].title}</span>
-        <span class="date">${events[1].dateText}</span>
-        <a href="/events/${events[1].slug}">Duplicate</a>
+        <span class="event-title">${events[2].title}</span>
+        <span class="date">${events[2].dateText}</span>
+        <span class="location">${events[2].location}</span>
+        <a href="/events/${events[2].slug}">Duplicate</a>
       </div>
       <article class="agenda-item">
         <h3>${events[2].title}</h3>
@@ -216,9 +216,9 @@ function buildSampleListing(source: ScraperSource) {
 
 function makeDetailFetcher(detailPages: Record<string, string>): typeof fetch {
   return (input: RequestInfo | URL, _init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input.toString();
-    const normalized = url.replace(/\/$/, "");
-    const html = detailPages[normalized] ?? detailPages[new URL(url).toString()];
+    const resolved = new URL(typeof input === "string" ? input : input.toString());
+    const key = resolved.toString().replace(/\/$/, "");
+    const html = detailPages[key];
     if (html) {
       return Promise.resolve(new Response(html, { status: 200, headers: { "Content-Type": "text/html" } }));
     }
@@ -251,7 +251,7 @@ function geocodeStub(venue: string | null | undefined, source: ScraperSource) {
   if (venue && GEO_STUBS[venue]) {
     return GEO_STUBS[venue];
   }
-  return source.default_coordinates || source.config.default_coordinates || { lat: 0, lng: 0 };
+  return source.config.default_coordinates || { lat: 52.1, lng: 5.1 };
 }
 
 function assertAndRecord(
@@ -277,11 +277,11 @@ async function runSource(source: ScraperSource): Promise<SourceResult> {
   const strategy = new DefaultStrategy(source);
   await strategy
     .discoverListingUrls((_url: string, init?: RequestInit) => {
-      const resp = new Response("<a href=\"/agenda\">Agenda</a>", {
+      const html = `<html><head><base href="${source.url}" /></head><body><a href="/agenda">Agenda</a></body></html>`;
+      const resp = new Response(html, {
         status: 200,
         headers: { "Content-Type": "text/html" },
       });
-      Object.defineProperty(resp, "url", { value: source.url });
       return Promise.resolve(resp);
     })
     .catch(() => []);
@@ -337,15 +337,19 @@ async function runSource(source: ScraperSource): Promise<SourceResult> {
       source.language || "nl",
       source.default_coordinates || source.config.default_coordinates,
       {
-      callGeminiFn: async () => mockGeminiResponse(raw, source),
-    },
+        callGeminiFn: async () => mockGeminiResponse(raw, source),
+      },
     );
     if (!parsed) {
       failed.push(`ai-parse:${raw.title || "unknown"}`);
       continue;
     }
 
-    const dedupKey = `${parsed.title.toLowerCase()}|${parsed.event_date}|${raw.detailUrl || ""}`;
+    const dedupKey = JSON.stringify({
+      t: parsed.title.toLowerCase(),
+      d: parsed.event_date,
+      u: raw.detailUrl || "",
+    });
     if (seen.has(dedupKey)) {
       continue;
     }
