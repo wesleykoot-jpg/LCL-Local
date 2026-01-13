@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { hapticImpact } from '@/lib/haptics';
 
 export type TimeFilter = 'all' | 'tonight' | 'tomorrow' | 'weekend';
 
@@ -20,6 +21,11 @@ export const TimeFilterPills = memo(function TimeFilterPills({
   activeFilter,
   onFilterChange,
 }: TimeFilterPillsProps) {
+  const handleFilterChange = async (filter: TimeFilter) => {
+    await hapticImpact('light');
+    onFilterChange(filter);
+  };
+
   return (
     <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-full w-fit">
       {FILTERS.map((filter) => {
@@ -27,10 +33,11 @@ export const TimeFilterPills = memo(function TimeFilterPills({
         return (
           <button
             key={filter.id}
-            onClick={() => onFilterChange(filter.id)}
+            onClick={() => handleFilterChange(filter.id)}
             className={cn(
-              'relative px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
+              'relative px-4 py-3 min-h-[44px] text-sm font-medium rounded-full transition-all duration-200',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'active:scale-[0.97]',
               isActive
                 ? 'text-background'
                 : 'text-muted-foreground hover:text-foreground'

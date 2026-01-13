@@ -13,6 +13,7 @@ import { useLocation } from '@/contexts/LocationContext';
 import { MapPin, Plus, SlidersHorizontal, ChevronDown, Navigation } from 'lucide-react';
 import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { motion } from 'framer-motion';
+import { hapticImpact } from '@/lib/haptics';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 const EventDetailModal = lazy(() => import('@/components/EventDetailModal'));
@@ -98,13 +99,13 @@ const Feed = () => {
         transition={{ duration: 0.2 }}
         className="pb-40"
       >
-        {/* Header - Location-first, Airbnb-inspired */}
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        {/* Header - Location-first, Airbnb-inspired with safe area */}
+        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 pt-safe">
           <div className="px-5 py-4 flex items-center justify-between">
-            {/* Location as primary element */}
+            {/* Location as primary element - 44pt touch target */}
             <button 
               onClick={handleLocationClick}
-              className="flex items-center gap-2 hover:bg-muted/50 rounded-full py-1.5 px-3 -ml-3 transition-colors"
+              className="flex items-center gap-2 hover:bg-muted/50 rounded-full py-2 px-3 -ml-3 min-h-[44px] transition-all active:scale-[0.98]"
             >
               {permissionState === 'granted' && locationPrefs.useGPS ? (
                 <Navigation size={18} className="text-primary" />
@@ -119,10 +120,13 @@ const Feed = () => {
               <ChevronDown size={16} className="text-muted-foreground" />
             </button>
             
-            {/* Filter button */}
+            {/* Filter button - 44pt touch target */}
             <button 
-              onClick={() => setShowOnboarding(true)}
-              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors shadow-sm"
+              onClick={async () => {
+                await hapticImpact('light');
+                setShowOnboarding(true);
+              }}
+              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-all shadow-sm active:scale-[0.95]"
             >
               <SlidersHorizontal size={18} />
             </button>
@@ -156,10 +160,13 @@ const Feed = () => {
         </main>
       </motion.div>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - positioned above safe area */}
       <motion.button
-        onClick={() => setShowCreateModal(true)}
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full btn-action flex items-center justify-center shadow-lg"
+        onClick={async () => {
+          await hapticImpact('medium');
+          setShowCreateModal(true);
+        }}
+        className="fixed bottom-24 right-5 z-40 w-14 h-14 min-h-[44px] min-w-[44px] rounded-full btn-action flex items-center justify-center shadow-lg mb-safe"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >

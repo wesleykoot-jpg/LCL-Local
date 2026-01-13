@@ -17,6 +17,7 @@ import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { useLocation } from '@/contexts/LocationContext';
+import { hapticImpact } from '@/lib/haptics';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 interface EventDetailModalProps {
@@ -120,11 +121,13 @@ export const EventDetailModal = memo(function EventDetailModal({
     alt: a.profile?.full_name || 'Attendee',
   })) || [];
 
-  const handleOpenMaps = useCallback(() => {
+  const handleOpenMaps = useCallback(async () => {
+    await hapticImpact('light');
     openInMaps(venueCoords.lat, venueCoords.lng, event.venue_name);
   }, [venueCoords, event.venue_name]);
 
   const handleShare = useCallback(async () => {
+    await hapticImpact('light');
     if (navigator.share) {
       try {
         await navigator.share({
@@ -137,6 +140,21 @@ export const EventDetailModal = memo(function EventDetailModal({
       }
     }
   }, [event]);
+
+  const handleClose = useCallback(async () => {
+    await hapticImpact('light');
+    onClose();
+  }, [onClose]);
+
+  const handleSave = useCallback(async () => {
+    await hapticImpact('light');
+    setIsSaved(!isSaved);
+  }, [isSaved]);
+
+  const handleJoin = useCallback(async () => {
+    await hapticImpact('medium');
+    onJoin?.();
+  }, [onJoin]);
 
   return (
     <AnimatePresence>
@@ -168,12 +186,12 @@ export const EventDetailModal = memo(function EventDetailModal({
             <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
           </div>
 
-          {/* Close button */}
+          {/* Close button - 44pt touch target */}
           <button
-            onClick={onClose}
-            className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+            onClick={handleClose}
+            className="absolute top-4 right-4 z-10 w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-all active:scale-[0.95]"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
 
           <div className="overflow-y-auto max-h-[85vh]">
@@ -254,9 +272,9 @@ export const EventDetailModal = memo(function EventDetailModal({
                 </div>
               </div>
 
-              {/* Description */}
+              {/* Description - improved legibility (15px) */}
               {event.description && (
-                <p className="text-muted-foreground text-sm leading-relaxed">
+                <p className="text-muted-foreground text-[15px] leading-relaxed">
                   {event.description}
                 </p>
               )}
@@ -284,19 +302,19 @@ export const EventDetailModal = memo(function EventDetailModal({
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 pb-2">
-                {/* Secondary actions */}
+              {/* Action Buttons - with safe area padding */}
+              <div className="flex gap-3 pt-4 pb-2 pb-safe">
+                {/* Secondary actions - 44pt touch targets */}
                 <button
                   onClick={handleShare}
-                  className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+                  className="w-12 h-12 min-h-[44px] min-w-[44px] rounded-2xl bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all active:scale-[0.95]"
                 >
                   <Share2 size={20} />
                 </button>
                 
                 <button
-                  onClick={() => setIsSaved(!isSaved)}
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                  onClick={handleSave}
+                  className={`w-12 h-12 min-h-[44px] min-w-[44px] rounded-2xl flex items-center justify-center transition-all active:scale-[0.95] ${
                     isSaved 
                       ? 'bg-primary/10 text-primary' 
                       : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
@@ -305,11 +323,11 @@ export const EventDetailModal = memo(function EventDetailModal({
                   <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
                 </button>
 
-                {/* Primary action */}
+                {/* Primary action - rounded-2xl for squircle */}
                 <button
-                  onClick={() => onJoin?.()}
+                  onClick={handleJoin}
                   disabled={isJoining}
-                  className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
+                  className="flex-1 h-12 min-h-[44px] rounded-2xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-[0.97]"
                 >
                   {isJoining ? (
                     <>
