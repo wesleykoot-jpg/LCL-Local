@@ -14,12 +14,17 @@ import {
   ExternalLink,
   Zap,
   Settings,
-  Activity
+  Activity,
+  Clock,
+  Loader2,
+  ListChecks
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   getSources, 
   toggleSource, 
@@ -31,6 +36,28 @@ import {
   type ScrapeResult,
   type DryRunResult
 } from '@/lib/scraperService';
+
+interface ScrapeJob {
+  id: string;
+  source_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  attempts: number;
+  events_scraped: number;
+  events_inserted: number;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+  source_name?: string;
+}
+
+interface JobStats {
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+  total_scraped: number;
+  total_inserted: number;
+}
 
 type HealthStatus = 'healthy' | 'warning' | 'error';
 
@@ -78,6 +105,11 @@ export default function Admin() {
   const [testResults, setTestResults] = useState<Record<string, DryRunResult>>({});
   const [showResults, setShowResults] = useState(false);
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  
+  // Job queue state
+  const [jobs, setJobs] = useState<ScrapeJob[]>([]);
+  const [jobStats, setJobStats] = useState<JobStats>({ pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 });
+  const [showJobQueue, setShowJobQueue] = useState(true);
 
   // Check dev mode
   useEffect(() => {
@@ -87,10 +119,114 @@ export default function Admin() {
     }
   }, [navigate]);
 
-  // Load sources
+  // Load sources and jobs
   useEffect(() => {
     loadSources();
-  }, []);
+    loadJobs();
+    
+    // Poll jobs every 3 seconds when there are pending/processing jobs
+    const interval = setInterval(() => {
+      if (jobStats.pending > 0 || jobStats.processing > 0) {
+        loadJobs();
+      }
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [jobStats.pending, jobStats.processing]);
+
+  async function loadJobs() {
+    try {
+      // Get job stats
+      const { data: statsData } = await supabase
+        .from('scrape_jobs')
+        .select('status, events_scraped, events_inserted');
+      
+      if (statsData) {
+        const stats: JobStats = { pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 };
+        statsData.forEach((job: { status: string; events_scraped: number; events_inserted: number }) => {
+          if (job.status === 'pending') stats.pending++;
+          else if (job.status === 'processing') stats.processing++;
+          else if (job.status === 'completed') stats.completed++;
+          else if (job.status === 'failed') stats.failed++;
+          stats.total_scraped += job.events_scraped || 0;
+          stats.total_inserted += job.events_inserted || 0;
+        });
+        setJobStats(stats);
+      }
+
+      // Get recent jobs with source names
+      const { data: jobsData } = await supabase
+        .from('scrape_jobs')
+        .select(`
+          id,
+          source_id,
+          status,
+          attempts,
+          events_scraped,
+          events_inserted,
+          error_message,
+          created_at,
+          completed_at
+        `)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (jobsData) {
+        // Get source names
+        const sourceIds = [...new Set(jobsData.map((j: ScrapeJob) => j.source_id))];
+        const { data: sourcesData } = await supabase
+          .from('scraper_sources')
+          .select('id, name')
+          .in('id', sourceIds);
+        
+        const sourceMap = new Map(sourcesData?.map((s: { id: string; name: string }) => [s.id, s.name]) || []);
+        
+        setJobs(jobsData.map((j: ScrapeJob) => ({
+          ...j,
+          source_name: sourceMap.get(j.source_id) || 'Unknown'
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load jobs:', error);
+    }
+  }
+
+  async function triggerCoordinator() {
+    setScraping(true);
+    try {
+      const response = await fetch(
+        `https://mlpefjsbriqgxcaqxhic.supabase.co/functions/v1/scrape-coordinator`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+      const result = await response.json();
+      if (result.success) {
+        toast.success(`Queued ${result.jobsCreated} scrape jobs`);
+        await loadJobs();
+      } else {
+        toast.error(result.error || 'Failed to queue jobs');
+      }
+    } catch (error) {
+      toast.error('Failed to trigger coordinator');
+    } finally {
+      setScraping(false);
+    }
+  }
+
+  async function clearCompletedJobs() {
+    try {
+      await supabase
+        .from('scrape_jobs')
+        .delete()
+        .in('status', ['completed', 'failed']);
+      toast.success('Cleared completed jobs');
+      await loadJobs();
+    } catch (error) {
+      toast.error('Failed to clear jobs');
+    }
+  }
 
   async function loadSources() {
     try {
@@ -221,16 +357,145 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">Manage event sources</p>
             </div>
           </div>
-          <Button 
-            onClick={handleRunAll} 
-            disabled={scraping}
-            className="gap-2"
-          >
-            <RefreshCw size={16} className={scraping ? 'animate-spin' : ''} />
-            {scraping ? 'Running...' : 'Run All'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={triggerCoordinator} 
+              disabled={scraping || jobStats.pending > 0 || jobStats.processing > 0}
+              className="gap-2"
+              variant="default"
+            >
+              <ListChecks size={16} />
+              Queue All
+            </Button>
+            <Button 
+              onClick={handleRunAll} 
+              disabled={scraping}
+              className="gap-2"
+              variant="outline"
+            >
+              <RefreshCw size={16} className={scraping ? 'animate-spin' : ''} />
+              {scraping ? 'Running...' : 'Run Legacy'}
+            </Button>
+          </div>
         </div>
       </header>
+
+      {/* Job Queue Dashboard */}
+      <div className="px-4 py-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold flex items-center gap-2">
+            <ListChecks size={18} />
+            Scrape Job Queue
+          </h2>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={loadJobs} className="h-7 px-2">
+              <RefreshCw size={12} />
+            </Button>
+            {(jobStats.completed > 0 || jobStats.failed > 0) && (
+              <Button variant="ghost" size="sm" onClick={clearCompletedJobs} className="h-7 px-2 text-muted-foreground">
+                Clear Done
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        {/* Progress bar */}
+        {(jobStats.pending > 0 || jobStats.processing > 0 || jobStats.completed > 0) && (
+          <div className="mb-3">
+            <Progress 
+              value={jobStats.completed + jobStats.failed} 
+              max={jobStats.pending + jobStats.processing + jobStats.completed + jobStats.failed} 
+              className="h-2"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {jobStats.completed + jobStats.failed} / {jobStats.pending + jobStats.processing + jobStats.completed + jobStats.failed} jobs complete
+            </p>
+          </div>
+        )}
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-4 gap-3 mb-3">
+          <div className="bg-background rounded-lg p-3 text-center border border-border">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Clock size={14} className="text-amber-500" />
+              <span className="text-2xl font-bold">{jobStats.pending}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Pending</p>
+          </div>
+          <div className="bg-background rounded-lg p-3 text-center border border-border">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Loader2 size={14} className={`text-blue-500 ${jobStats.processing > 0 ? 'animate-spin' : ''}`} />
+              <span className="text-2xl font-bold">{jobStats.processing}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Processing</p>
+          </div>
+          <div className="bg-background rounded-lg p-3 text-center border border-border">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <CheckCircle2 size={14} className="text-green-500" />
+              <span className="text-2xl font-bold text-green-600">{jobStats.completed}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Completed</p>
+          </div>
+          <div className="bg-background rounded-lg p-3 text-center border border-border">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <XCircle size={14} className="text-red-500" />
+              <span className="text-2xl font-bold text-red-600">{jobStats.failed}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Failed</p>
+          </div>
+        </div>
+
+        {/* Totals */}
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-muted-foreground">
+            Total scraped: <strong>{jobStats.total_scraped}</strong>
+          </span>
+          <span className="text-green-600">
+            New events: <strong>{jobStats.total_inserted}</strong>
+          </span>
+        </div>
+
+        {/* Recent Jobs List */}
+        {showJobQueue && jobs.length > 0 && (
+          <div className="mt-4 space-y-1 max-h-48 overflow-y-auto">
+            {jobs.slice(0, 10).map(job => (
+              <div 
+                key={job.id} 
+                className={`flex items-center justify-between py-1.5 px-2 rounded text-xs ${
+                  job.status === 'processing' ? 'bg-blue-500/10' : 
+                  job.status === 'completed' ? 'bg-green-500/5' : 
+                  job.status === 'failed' ? 'bg-red-500/10' : 'bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {job.status === 'pending' && <Clock size={12} className="text-amber-500 flex-shrink-0" />}
+                  {job.status === 'processing' && <Loader2 size={12} className="text-blue-500 animate-spin flex-shrink-0" />}
+                  {job.status === 'completed' && <CheckCircle2 size={12} className="text-green-500 flex-shrink-0" />}
+                  {job.status === 'failed' && <XCircle size={12} className="text-red-500 flex-shrink-0" />}
+                  <span className="truncate">{job.source_name}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {job.status === 'completed' && (
+                    <span className="text-muted-foreground">
+                      {job.events_scraped} scraped, {job.events_inserted} new
+                    </span>
+                  )}
+                  {job.status === 'failed' && job.error_message && (
+                    <span className="text-red-500 truncate max-w-32" title={job.error_message}>
+                      {job.error_message.slice(0, 30)}...
+                    </span>
+                  )}
+                  {job.attempts > 1 && (
+                    <Badge variant="outline" className="text-[10px] h-4">
+                      Attempt {job.attempts}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Stats Bar */}
       <div className="px-4 py-3 bg-muted/30 border-b border-border">
