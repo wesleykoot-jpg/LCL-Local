@@ -519,10 +519,9 @@ export async function handleRequest(req: Request): Promise<Response> {
           const eventInsert = {
             title: normalized.title,
             description: normalized.description || "",
-            internal_category: normalized.internal_category,
+            category: normalized.internal_category,
             event_type: DEFAULT_EVENT_TYPE,
             venue_name: normalized.venue_name || source.name,
-            venue_address: normalized.venue_address || null,
             location: point,
             event_date: normalizedDate.timestamp,
             event_time: normalized.event_time,
