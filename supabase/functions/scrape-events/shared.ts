@@ -1,4 +1,5 @@
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
+import type { RawEventCard as StrategyRawEventCard } from "../../strategies/BaseStrategy.ts";
 
 export interface ScraperSource {
   id: string;
@@ -24,16 +25,7 @@ export interface ScraperSource {
   };
 }
 
-export interface RawEventCard {
-  rawHtml: string;
-  title: string;
-  date: string;
-  location: string;
-  imageUrl: string | null;
-  description: string;
-  detailUrl: string | null;
-  detailPageTime?: string;
-}
+export type RawEventCard = StrategyRawEventCard;
 
 export const DEFAULT_HEADERS = {
   "User-Agent": "LCL-EventScraper/1.0 (Event aggregator for local social app)",

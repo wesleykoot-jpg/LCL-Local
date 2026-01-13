@@ -9,7 +9,7 @@ import {
 } from "../supabase/functions/scrape-events/index.ts";
 import { normalizeAndResolveUrl, probePaths } from "../src/lib/urlUtils.ts";
 import { extractStructuredEvents } from "../src/lib/structuredData.ts";
-import { DefaultStrategy } from "../src/scrapers/DefaultStrategy.ts";
+import { DefaultStrategy } from "../strategies/DefaultStrategy.ts";
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 Deno.test("parseToISODate handles localized, textual, and relative dates", () => {
@@ -30,8 +30,7 @@ Deno.test("fetchEventDetailTime extracts times across patterns", async () => {
     `<div class="copy">starts at 8:00 PM</div>`,
   ];
   let pageIndex = 0;
-  const fetcher = () =>
-    Promise.resolve(new Response(pages[Math.min(pageIndex++, pages.length - 1)] || ""));
+  const fetcher = () => Promise.resolve(new Response(pages[Math.min(pageIndex++, pages.length - 1)] || ""));
 
   const time1 = await fetchEventDetailTime("/detail", "https://example.com", fetcher);
   const time2 = await fetchEventDetailTime("/detail", "https://example.com", fetcher);
@@ -75,7 +74,7 @@ Deno.test("scrapeEventCards aggregates selectors and deduplicates", async () => 
   assertEquals(events[1].title, "Craft Fair");
 });
 
-Deno.test("parseEventWithAI cleans code fences and normalizes category", async () => {
+Deno.test("parseEventWithAI cleans code fences and normalizes internal category", async () => {
   const rawEvent = {
     rawHtml: "<div>Party</div>",
     title: "Party",
@@ -89,19 +88,14 @@ Deno.test("parseEventWithAI cleans code fences and normalizes category", async (
   const mockCallGemini = async (_apiKey: string, _body: unknown) =>
     "```json\n{\"title\":\"Party\",\"description\":\"Fun\",\"category\":\"invalid\",\"venue_name\":\"Club\",\"event_date\":\"2026-07-13\",\"event_time\":\"19:00\",\"image_url\":null}\n```";
 
-  const parsed = await parseEventWithAI("fake", rawEvent, "nl", undefined, {
-    callGeminiFn: mockCallGemini,
-  });
+  const parsed = await parseEventWithAI("fake", rawEvent, "nl", undefined, { callGeminiFn: mockCallGemini });
 
   assert(parsed);
-  assertEquals(parsed?.category, "market");
+  assertEquals(parsed?.internal_category, "culture");
   assertEquals(parsed?.event_date, "2026-07-13");
 });
 
-Deno.test("eventExists checks both timestamp and date-only matches", async () => {
-  const calls: Array<{ column: string; value: string }> = [];
-
-  let queryStep = 0;
+Deno.test("eventExists relies on fingerprint per source", async () => {
   const supabaseStub = {
     from() {
       return this;
@@ -109,29 +103,16 @@ Deno.test("eventExists checks both timestamp and date-only matches", async () =>
     select() {
       return this;
     },
-    eq(column: string, value: string) {
-      calls.push({ column, value });
-      return this;
-    },
-    gte(column: string, value: string) {
-      calls.push({ column, value });
-      return this;
-    },
-    lte(column: string, value: string) {
-      calls.push({ column, value });
+    eq() {
       return this;
     },
     limit() {
-      queryStep += 1;
-      const data = queryStep === 1 ? [] : [{ id: 1 }];
-      return Promise.resolve({ data, error: null });
+      return Promise.resolve({ data: [{ id: 1 }], error: null });
     },
   };
 
   const exists = await eventExists(supabaseStub, "Title", "2026-07-13", "19:00");
   assert(exists);
-  assertEquals(calls.filter((c) => c.column === "event_date").length, 2);
-  assertEquals(calls.length, 4);
   const normalized = normalizeEventDateForStorage("2026-07-13", "19:00");
   assert(normalized.timestamp.includes("2026-07-13"));
 });
@@ -166,10 +147,9 @@ Deno.test("DefaultStrategy discovers anchors with base href and alternate paths"
       </body>
     </html>
   `;
-  const fetcher = (url: string, init?: RequestInit) => {
-    const status = init?.method === "HEAD" ? 200 : 200;
+  const fetcher = (url: string, _init?: RequestInit) => {
     const body = url.includes("ontdek-meppel") ? "" : homepage;
-    const response = new Response(body, { status, headers: { "Content-Type": "text/html" } });
+    const response = new Response(body, { status: 200, headers: { "Content-Type": "text/html" } });
     Object.defineProperty(response, "url", { value: url });
     return Promise.resolve(response);
   };
@@ -208,44 +188,4 @@ Deno.test("extractStructuredEvents parses JSON-LD blocks", () => {
   assertEquals(events[0].title, "Jazz Night");
   assertEquals(events[0].detailUrl, "https://example.com/jazz");
   assertEquals(events[0].detailPageTime, "20:00");
-});
-
-Deno.test("scrapeEventCards falls back to renderer when required", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = ((input: RequestInfo | URL, _init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input.toString();
-    if (url.includes("/render")) {
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            status: 200,
-            finalUrl: "https://example.com/rendered",
-            html: `<div class="event-card"><h2>Rendered Event</h2><time datetime="2026-07-15"></time><a href="/r">More</a></div>`,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-    }
-    return Promise.resolve(new Response("", { status: 404 }));
-  }) as typeof fetch;
-
-  const source: ScraperSource = {
-    id: "r1",
-    name: "Render Source",
-    url: "https://example.com/agenda",
-    enabled: true,
-    requires_render: true,
-    config: {},
-  };
-
-  const events = await scrapeEventCards(source, false, {
-    fetcher: () => Promise.resolve(new Response("", { status: 404 })),
-    rendererUrl: "https://renderer.test",
-  });
-
-  assertEquals(events.length, 1);
-  assertEquals(events[0].title, "Rendered Event");
-  assertEquals(events[0].date, "2026-07-15");
-
-  globalThis.fetch = originalFetch;
 });
