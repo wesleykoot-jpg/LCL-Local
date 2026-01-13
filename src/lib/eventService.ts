@@ -39,14 +39,15 @@ export interface CreateEventParams {
 
 /**
  * Adds a user to an event as an attendee, with automatic waitlist handling.
- * Uses atomic RPC to prevent race conditions when checking capacity.
+ * Uses atomic RPC as the primary method to prevent race conditions when checking capacity.
+ * Falls back to direct insert if RPC is unavailable.
  * @param eventId - ID of the event to join
  * @param profileId - ID of the user's profile
  * @param status - Attendance status (default: 'going', or 'waitlist' if full)
  * @returns Object with data, waitlisted flag, and error (if any)
  */
 export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams): Promise<JoinEventResult> {
-  // Use atomic RPC as primary method to prevent race conditions
+  // Primary method: atomic RPC to prevent race conditions
   try {
     const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
       p_event_id: eventId,
@@ -72,7 +73,7 @@ export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEv
     // Unexpected RPC status
     return { data: null, rpcResult, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
   } catch (error) {
-    console.error('Atomic RPC join failed, falling back to direct insert:', error);
+    console.error('Primary RPC join failed, falling back to direct insert:', error);
 
     // Fallback to direct insert for environments where RPC is not available
     try {
