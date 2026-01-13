@@ -18,7 +18,7 @@ export const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
   entertainment: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80',
   nightlife: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80',
   food: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=80',
-  sports: 'https://images.unsplash.com/photo-1461896836934- voices-of-youth?auto=format&fit=crop&w=900&q=80',
+  sports: 'https://images.unsplash.com/photo-1461896836934-80cf83f14a8f?auto=format&fit=crop&w=900&q=80',
   culture: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?auto=format&fit=crop&w=900&q=80',
   wellness: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=900&q=80',
   default: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80',

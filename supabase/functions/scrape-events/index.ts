@@ -57,10 +57,16 @@ export function normalizeEventDateForStorage(
 
 /**
  * Parses raw date/time strings into a structured date object.
+ * 
+ * Note: This function stores the parsed local time as-is in UTC format.
+ * This is intentional because scraped events typically display times in the
+ * local timezone (Europe/Amsterdam), and we want to preserve that display time.
+ * The timezone field is stored for future use if proper timezone conversion is needed.
+ * 
  * @param dateStr - Raw date string (e.g., "vandaag", "za 18 mei", "2026-01-15")
  * @param timeStr - Raw time string (e.g., "20:00", "hele dag", "TBD")
- * @param timezone - IANA timezone identifier (default: Europe/Amsterdam)
- * @returns StructuredDate object with UTC times
+ * @param timezone - IANA timezone identifier stored for reference (default: Europe/Amsterdam)
+ * @returns StructuredDate object with times stored as UTC (representing local display time)
  */
 export function parseDate(
   dateStr: string,
@@ -101,6 +107,8 @@ export function parseDate(
     }
   }
 
+  // Store the local time as UTC - the timezone field indicates the original timezone
+  // This preserves the display time while providing timezone context
   const [year, month, day] = isoDate.split("-").map(Number);
   const utcStart = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0)).toISOString();
 
