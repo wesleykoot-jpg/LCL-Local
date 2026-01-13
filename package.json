@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "npx vite",
-    "build": "npx vite build",
+    "build": "npx vite build && tsc -p tsconfig.cli.json",
+    "build:cli": "tsc -p tsconfig.cli.json",
     "build:dev": "vite build --mode development",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "vitest run",
     "preview": "npx vite preview",
-    "scrape:meppel": "npx tsx scripts/scrape-meppel.ts"
+    "scrape:meppel": "npx tsx scripts/scrape-meppel.ts",
+    "scrape:dry-run": "npm run build:cli && node dist/cli.js --dry-run",
+    "scrape:run": "npm run build:cli && node dist/cli.js"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.0",
@@ -52,9 +55,9 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/supabase-js": "^2.90.1",
     "@tanstack/react-query": "^5.90.16",
-    "qrcode.react": "^3.1.0",
     "@vitejs/plugin-react-swc": "^4.2.2",
     "axios": "^1.13.2",
+    "bottleneck": "^2.19.5",
     "cheerio": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -63,16 +66,20 @@
     "lovable-tagger": "^1.1.13",
     "lucide-react": "0.522.0",
     "openai": "^6.16.0",
+    "qrcode.react": "^3.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.12.0",
+    "robots-parser": "^3.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
     "@types/node": "^20.11.18",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
@@ -83,15 +90,13 @@
     "eslint": "^8.50.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.1",
+    "jsdom": "^26.0.0",
     "postcss": "latest",
     "tailwindcss": "3.4.17",
     "terser": "^5.44.1",
     "tsx": "^4.21.0",
     "typescript": "^5.5.4",
-    "@testing-library/react": "^16.2.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "jsdom": "^26.0.0",
-    "vitest": "^2.1.4",
-    "vite": "^5.2.0"
+    "vite": "^5.2.0",
+    "vitest": "^2.1.4"
   }
 }

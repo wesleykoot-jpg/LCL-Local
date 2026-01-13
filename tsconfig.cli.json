@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": false,
+    "sourceMap": false,
+    "types": ["node"]
+  },
+  "include": [
+    "src/cli.ts",
+    "src/config/**/*.ts",
+    "src/lib/backoff.ts",
+    "src/lib/robots.ts",
+    "src/lib/supabase.ts",
+    "src/lib/alert/**/*.ts",
+    "src/scraper/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/__tests__",
+    "src/components",
+    "src/pages",
+    "src/contexts",
+    "src/hooks",
+    "src/integrations"
+  ]
+}
