@@ -8,41 +8,14 @@ import { CATEGORY_MAP } from '@/lib/categories';
 import { hapticImpact } from '@/lib/haptics';
 import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
+import { formatEventDate, formatEventTime, getEventCoordinates } from '@/lib/formatters';
+import { 
+  useImageFallback, 
+  getEventImage, 
+  GREY_PATTERN_FALLBACK 
+} from '@/lib/hooks/useImageFallback';
 
-// Fallback images by category - Dutch/Netherlands themed
-const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
-  active: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=900&q=80',
-  gaming: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=900&q=80',
-  family: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80',
-  social: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
-  outdoors: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80',
-  music: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?auto=format&fit=crop&w=900&q=80',
-  workshops: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=900&q=80',
-  foodie: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80',
-  community: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',
-  entertainment: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80',
-  default: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80',
-};
-
-const GREY_PATTERN_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Cpath fill="%23d1d5db" d="M0 0h50v50H0zM50 50h50v50H50z"/%3E%3C/svg%3E';
 const DEFAULT_AVATAR_URL = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100';
-
-const parseEventCoordinates = (location: unknown): { lat: number; lng: number } | null => {
-  if (!location) return null;
-  if (typeof location === 'string') {
-    const match = location.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
-    if (match) {
-      return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
-    }
-  }
-  if (typeof location === 'object' && (location as { coordinates?: number[] }).coordinates) {
-    const coords = (location as { coordinates?: number[] }).coordinates;
-    if (Array.isArray(coords) && coords.length >= 2) {
-      return { lng: Number(coords[0]), lat: Number(coords[1]) };
-    }
-  }
-  return null;
-};
 
 const openInMaps = (venue: string, coords?: { lat: number; lng: number } | null) => {
   const query = coords ? `${coords.lat},${coords.lng}` : venue;
@@ -58,75 +31,6 @@ interface EventStackCardProps {
   currentUserProfileId?: string;
   userLocation?: { lat: number; lng: number } | null;
 }
-
-const getEventImage = (event: EventWithAttendees): string => {
-  if (event.image_url) return event.image_url;
-  const category = CATEGORY_MAP[event.category] || event.category;
-  return CATEGORY_FALLBACK_IMAGES[category] || GREY_PATTERN_FALLBACK;
-};
-
-const getCategoryFallback = (category: string): string => {
-  const mappedCategory = CATEGORY_MAP[category] || category;
-  return CATEGORY_FALLBACK_IMAGES[mappedCategory] || CATEGORY_FALLBACK_IMAGES.default;
-};
-
-const useImageFallback = (primaryUrl: string, category: string) => {
-  const [currentSrc, setCurrentSrc] = useState(primaryUrl);
-  const [errorCount, setErrorCount] = useState(0);
-
-  const handleError = useCallback(() => {
-    setErrorCount(prev => {
-      const newCount = prev + 1;
-      if (newCount === 1) {
-        setCurrentSrc(getCategoryFallback(category));
-      } else {
-        setCurrentSrc(GREY_PATTERN_FALLBACK);
-      }
-      return newCount;
-    });
-  }, [category]);
-
-  return { src: currentSrc, onError: handleError };
-};
-
-// Format date as short pill text (e.g., "za 18" or "Morgen") - Dutch locale
-const formatDatePill = (dateStr: string) => {
-  const datePart = dateStr.split('T')[0].split(' ')[0];
-  const eventDate = new Date(datePart + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  
-  if (eventDate.getTime() === today.getTime()) {
-    return 'Vandaag';
-  } else if (eventDate.getTime() === tomorrow.getTime()) {
-    return 'Morgen';
-  }
-  
-  return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric' });
-};
-
-// Dutch 24-hour time format
-const formatTime = (timeStr: string) => {
-  if (!timeStr) return '';
-  
-  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-    const [hours, minutes] = timeStr.split(':');
-    return `${hours.padStart(2, '0')}:${minutes}`;
-  }
-  
-  const descriptiveMap: Record<string, string> = {
-    'TBD': '',
-    'Hele dag': 'Hele dag',
-    'Avond': 'Avond',
-    'Middag': 'Middag',
-    'Ochtend': 'Ochtend',
-  };
-  
-  return descriptiveMap[timeStr] ?? timeStr;
-};
 
 // Netflix-style Billboard Card - Full-bleed with gradient overlay
 const AnchorEventCard = memo(function AnchorEventCard({
@@ -147,10 +51,10 @@ const AnchorEventCard = memo(function AnchorEventCard({
   userLocation?: { lat: number; lng: number } | null;
 }) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
-  const primaryImageUrl = getEventImage(event);
+  const primaryImageUrl = getEventImage(event.image_url, event.category);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   const [isSaved, setIsSaved] = useState(false);
-  const venueCoords = parseEventCoordinates(event.location_coordinates) || parseEventCoordinates(event.location) || null;
+  const venueCoords = getEventCoordinates(event.location) || null;
   
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
@@ -237,7 +141,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
           
           {/* Date pill - Airbnb style */}
           <div className="px-3 py-1.5 rounded-[1rem] bg-background/95 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
-            {formatDatePill(event.event_date)}
+            {formatEventDate(event.event_date)}
           </div>
         </div>
 
@@ -245,10 +149,10 @@ const AnchorEventCard = memo(function AnchorEventCard({
         <div className="absolute bottom-0 left-0 right-0 p-5 pt-16">
           {/* Time & Distance pills */}
           <div className="flex items-center gap-2 mb-3">
-            {formatTime(event.event_time) && (
+            {formatEventTime(event.event_time) && (
               <span className="px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground flex items-center gap-1.5 border-[0.5px] border-white/10">
                 <Clock size={13} className="text-primary" />
-                {formatTime(event.event_time)}
+                {formatEventTime(event.event_time)}
               </span>
             )}
             <DistanceBadge
@@ -377,7 +281,7 @@ const ForkEventCard = memo(function ForkEventCard({
   currentUserProfileId?: string;
 }) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
-  const primaryImageUrl = getEventImage(event);
+  const primaryImageUrl = getEventImage(event.image_url, event.category);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   
   const hasJoined = Boolean(
@@ -425,7 +329,7 @@ const ForkEventCard = memo(function ForkEventCard({
               {event.title}
             </h4>
             <div className="flex items-center gap-2 mt-1 text-[13px] text-muted-foreground">
-              <span className="font-medium">{formatTime(event.event_time)}</span>
+              <span className="font-medium">{formatEventTime(event.event_time)}</span>
               <span className="opacity-40">·</span>
               <CategoryBadge category={categoryLabel} size="sm" />
             </div>

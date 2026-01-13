@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Clock, Users, ChevronRight } from 'lucide-react';
-import { CATEGORIES } from '@/lib/categories';
+import { getCategoryConfig } from '@/lib/categories';
+import { formatEventTime, formatEventLocation } from '@/lib/formatters';
+import { getEventImage, CATEGORY_FALLBACK_IMAGES } from '@/lib/hooks/useImageFallback';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 interface TimelineEventCardProps {
@@ -9,21 +11,9 @@ interface TimelineEventCardProps {
   isPast?: boolean;
 }
 
-// Fallback images for timeline cards
-const TIMELINE_FALLBACK_IMAGES: Record<string, string> = {
-  nightlife: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
-  food: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=400&fit=crop',
-  sports: 'https://images.unsplash.com/photo-1461896836934- voices-of-youth?w=400&h=400&fit=crop',
-  family: 'https://images.unsplash.com/photo-1536940385103-c729049165e6?w=400&h=400&fit=crop',
-  culture: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?w=400&h=400&fit=crop',
-  wellness: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=400&h=400&fit=crop',
-  gaming: 'https://images.unsplash.com/photo-1493711662062-fa541f7f39d8?w=400&h=400&fit=crop',
-  default: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=400&fit=crop',
-};
-
 export function TimelineEventCard({ event, isPast }: TimelineEventCardProps) {
-  const categoryConfig = CATEGORIES[event.category] || CATEGORIES.nightlife;
-  const imageUrl = event.image_url || TIMELINE_FALLBACK_IMAGES[event.category] || TIMELINE_FALLBACK_IMAGES.default;
+  const categoryConfig = getCategoryConfig(event.category);
+  const imageUrl = getEventImage(event.image_url, event.category);
 
   return (
     <motion.div
@@ -41,14 +31,14 @@ export function TimelineEventCard({ event, isPast }: TimelineEventCardProps) {
             className="w-full h-full object-cover"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = TIMELINE_FALLBACK_IMAGES.default;
+              target.src = CATEGORY_FALLBACK_IMAGES.default;
             }}
           />
           {/* Category badge overlay */}
           <div
             className={`absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${categoryConfig.bgClass} ${categoryConfig.textClass}`}
           >
-            {categoryConfig.icon}
+            {categoryConfig.label}
           </div>
         </div>
 
@@ -60,7 +50,7 @@ export function TimelineEventCard({ event, isPast }: TimelineEventCardProps) {
             </h3>
             <div className="flex items-center gap-1 mt-1 text-muted-foreground">
               <MapPin className="w-3 h-3 flex-shrink-0" />
-              <span className="text-xs truncate">{event.venue_name}</span>
+              <span className="text-xs truncate">{formatEventLocation(event.venue_name)}</span>
             </div>
           </div>
 
@@ -68,7 +58,7 @@ export function TimelineEventCard({ event, isPast }: TimelineEventCardProps) {
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                <span>{formatTime(event.event_time)}</span>
+                <span>{formatEventTime(event.event_time)}</span>
               </div>
               {(event.attendee_count ?? 0) > 0 && (
                 <div className="flex items-center gap-1">
@@ -99,10 +89,4 @@ export function TimelineEventCard({ event, isPast }: TimelineEventCardProps) {
       )}
     </motion.div>
   );
-}
-
-function formatTime(time: string): string {
-  // Use 24-hour format for Dutch/European locale
-  const [hours, minutes] = time.split(':');
-  return `${hours}:${minutes}`;
 }

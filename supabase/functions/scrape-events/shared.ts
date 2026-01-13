@@ -13,6 +13,39 @@ export interface RawEventCard {
   detailPageTime?: string;
 }
 
+/**
+ * Structured date/time representation for events.
+ * Stores dates in UTC for consistent handling across timezones.
+ */
+export interface StructuredDate {
+  /** ISO 8601 string for the start time, in UTC */
+  utc_start: string;
+  /** ISO 8601 string for the end time (optional), in UTC */
+  utc_end?: string;
+  /** IANA timezone identifier (e.g., 'Europe/Amsterdam') */
+  timezone?: string;
+  /** Whether this is an all-day event */
+  all_day?: boolean;
+}
+
+/**
+ * Structured location representation for events.
+ * Stores both human-readable name and machine-readable coordinates.
+ */
+export interface StructuredLocation {
+  /** Human-readable location/venue name */
+  name: string;
+  /** Geographic coordinates */
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  /** Full address if available */
+  address?: string;
+  /** Reference to a venue ID if stored separately */
+  venue_id?: string;
+}
+
 export interface ScraperSource {
   id: string;
   name: string;
