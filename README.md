@@ -109,6 +109,9 @@ Multi-factor scoring system:
 - Uses OpenAI to extract structured event data
 - Geocodes venues via Nominatim with caching
 - Handles Dutch CMS platforms (Ontdek, Beleef, Visit, Uit)
+- Strategy-driven discovery: sources define discovery anchors/alternate paths and the scraper probes candidates before parsing.
+- URL normalization utilities resolve against the final URL/base href and strip tracking parameters before deduplication.
+- Optional external renderer: set `RENDER_SERVICE_URL` and flag `requires_render` on a source to render JS-heavy listings; probe results persist to `last_probe_urls` for debugging.
 
 ### Haptics (`src/lib/haptics.ts`)
 Native iOS feedback for:

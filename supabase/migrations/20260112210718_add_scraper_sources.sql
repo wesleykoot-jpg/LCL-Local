@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS scraper_sources (
   -- Scraping configuration (stored as JSONB for flexibility)
   -- Can include: selectors, headers, rate limits, etc.
   config jsonb DEFAULT '{}'::jsonb,
+  requires_render boolean DEFAULT false,
+  last_probe_urls jsonb DEFAULT '{}'::jsonb,
+  language text DEFAULT 'nl-NL',
+  country text DEFAULT 'NL',
+  default_coordinates jsonb DEFAULT NULL,
   
   -- Quality metrics for future ranking
   quality_score numeric DEFAULT 50 CHECK (quality_score >= 0 AND quality_score <= 100),
@@ -56,7 +61,7 @@ CREATE POLICY "Anyone can view scraper sources"
 -- SEED DATA: Add the existing source
 -- =====================================================
 
-INSERT INTO scraper_sources (name, description, url, enabled, config) 
+INSERT INTO scraper_sources (name, description, url, enabled, config, requires_render, language, country, default_coordinates) 
 VALUES (
   'Ontdek Meppel',
   'Official Meppel city event agenda',
@@ -73,13 +78,20 @@ VALUES (
       "article",
       ".agenda-event"
     ],
-    "headers": {
-      "User-Agent": "LCL-Meppel-Scraper/1.0 (Event aggregator for local social app)",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8"
-    },
-    "rate_limit_ms": 200
-  }'::jsonb
+     "headers": {
+       "User-Agent": "LCL-Meppel-Scraper/1.0 (Event aggregator for local social app)",
+       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+       "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8"
+     },
+     "rate_limit_ms": 200,
+     "discoveryAnchors": ["agenda", "ontdek", "activiteiten"],
+     "alternatePaths": ["/agenda", "/agenda/"],
+     "requires_render": false
+   }'::jsonb,
+   false,
+   'nl-NL',
+   'NL',
+   NULL
 )
 ON CONFLICT (url) DO NOTHING;
 
@@ -106,6 +118,23 @@ BEGIN
   RETURNING id INTO v_id;
   
   RETURN v_id;
+END;
+$$;
+
+-- Function to record probe results for operators
+CREATE OR REPLACE FUNCTION update_scraper_source_probe(
+  p_source_id uuid,
+  p_probe jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE scraper_sources
+  SET last_probe_urls = p_probe,
+      updated_at = now()
+  WHERE id = p_source_id;
 END;
 $$;
 
