@@ -39,8 +39,31 @@ const corsHeaders = {
 const INTERNAL_CATEGORIES = ["nightlife", "food", "culture", "active", "family"] as const;
 type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 
-const TARGET_YEAR = 2026;
+// Dynamically calculate target year (current year, or configurable via env)
+function getTargetYear(): number {
+  const envYear = Deno.env.get("TARGET_EVENT_YEAR");
+  if (envYear) {
+    const parsed = parseInt(envYear, 10);
+    if (!isNaN(parsed) && parsed >= 2020 && parsed <= 2100) {
+      return parsed;
+    }
+  }
+  return new Date().getFullYear();
+}
+
 const DEFAULT_EVENT_TYPE = "anchor";
+
+// Gemini API request payload interface
+interface GeminiRequestPayload {
+  contents: Array<{
+    role: string;
+    parts: Array<{ text: string }>;
+  }>;
+  generationConfig: {
+    temperature: number;
+    maxOutputTokens: number;
+  };
+}
 
 // ============ Helper Functions ============
 
@@ -104,7 +127,8 @@ function mapToInternalCategory(input?: string): InternalCategory {
 }
 
 function isTargetYear(isoDate: string | null): boolean {
-  return !!isoDate && isoDate.startsWith(`${TARGET_YEAR}-`);
+  const targetYear = getTargetYear();
+  return !!isoDate && isoDate.startsWith(`${targetYear}-`);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -216,7 +240,7 @@ async function exponentialBackoff(attempt: number, baseMs: number = 1000): Promi
 
 async function callGemini(
   apiKey: string,
-  body: unknown,
+  payload: GeminiRequestPayload,
   fetcher: typeof fetch,
   maxRetries: number = 3
 ): Promise<string | null> {
@@ -230,7 +254,7 @@ async function callGemini(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       }
     );
 
@@ -267,9 +291,10 @@ async function parseEventWithAI(
   fetcher: typeof fetch
 ): Promise<NormalizedEvent | null> {
   const today = new Date().toISOString().split("T")[0];
+  const targetYear = getTargetYear();
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
 - Retourneer uitsluitend geldige JSON.
-- Weiger evenementen die niet in 2026 plaatsvinden.
+- Weiger evenementen die niet in ${targetYear} plaatsvinden.
 - Houd tekst in originele taal (${language}).
 - velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name, venue_address, image_url`;
 
@@ -280,7 +305,7 @@ Bron hint locatie: ${rawEvent.location}
 HTML:
 ${rawEvent.rawHtml}`;
 
-  const payload = {
+  const payload: GeminiRequestPayload = {
     contents: [
       { role: "user", parts: [{ text: systemPrompt }] },
       { role: "user", parts: [{ text: userPrompt }] },
@@ -565,12 +590,55 @@ async function runScraper(
   return stats;
 }
 
+// Validate and sanitize scrape options
+function validateScrapeOptions(input: unknown): ScrapeOptions {
+  if (!input || typeof input !== "object") {
+    return {};
+  }
+
+  const obj = input as Record<string, unknown>;
+  const validated: ScrapeOptions = {};
+
+  // Validate sourceId (should be a UUID string)
+  if (typeof obj.sourceId === "string" && obj.sourceId.length > 0 && obj.sourceId.length <= 100) {
+    validated.sourceId = obj.sourceId;
+  }
+
+  // Validate dryRun (should be a boolean)
+  if (typeof obj.dryRun === "boolean") {
+    validated.dryRun = obj.dryRun;
+  }
+
+  // Validate enableDeepScraping (should be a boolean)
+  if (typeof obj.enableDeepScraping === "boolean") {
+    validated.enableDeepScraping = obj.enableDeepScraping;
+  }
+
+  // Validate limit (should be a positive integer)
+  if (typeof obj.limit === "number" && Number.isInteger(obj.limit) && obj.limit > 0 && obj.limit <= 1000) {
+    validated.limit = obj.limit;
+  }
+
+  return validated;
+}
+
 // ============ HTTP Handler ============
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Only accept POST requests
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Method not allowed. Use POST to invoke the scraper.",
+      }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
@@ -591,15 +659,22 @@ serve(async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse request options
+    // Parse and validate request options
     let options: ScrapeOptions = {};
-    if (req.method === "POST") {
-      try {
-        const body = await req.text();
-        options = body ? JSON.parse(body) : {};
-      } catch {
-        options = {};
+    try {
+      const body = await req.text();
+      if (body) {
+        const parsed = JSON.parse(body);
+        options = validateScrapeOptions(parsed);
       }
+    } catch (parseError) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid JSON in request body",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const runId = generateRunId();
