@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-net --allow-env --unstable
+#!/usr/bin/env -S deno run --allow-net --allow-env
 /**
  * Live demo scraper.
  *
@@ -6,7 +6,7 @@
  * and prints a validation report plus a short human-readable summary.
  *
  * Usage:
- *   deno run --allow-net --allow-env --unstable demo_scrape.ts
+ *   deno run --allow-net --allow-env demo_scrape.ts
  */
 import * as cheerio from "cheerio";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
@@ -67,10 +67,11 @@ const DEFAULT_SOURCES = [
 ];
 
 const TARGET_EVENT_YEAR = Deno.env.get("TARGET_EVENT_YEAR") || "2026";
+const SNIPPET_LIMIT = 3000;
 
 const DEFENSIVE_HEADERS: Record<string, string> = {
   "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.70 Safari/537.36",
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9",
   "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
   Referer: "",
@@ -252,7 +253,7 @@ function mapJsonLdEvent(node: Record<string, JsonValue>, baseUrl: string): { raw
   const rawUrl = typeof node.url === "string" ? node.url : "";
   const detailUrl = rawUrl ? new URL(rawUrl, baseUrl).toString() : baseUrl;
 
-  const raw_html = JSON.stringify(node).slice(0, 3000);
+  const raw_html = JSON.stringify(node).slice(0, SNIPPET_LIMIT);
   return {
     raw: {
       source: new URL(baseUrl).host,
@@ -388,10 +389,13 @@ async function callOpenAILLM(prompt: string, apiKey: string): Promise<string | n
 async function callGeminiLLM(prompt: string, apiKey: string): Promise<string | null> {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: `${LLM_INSTRUCTIONS}\n\n${prompt}` }] }],
           generationConfig: { temperature: 0.1, maxOutputTokens: 512 },
@@ -447,7 +451,7 @@ async function parseLLMEvent(snippet: string, pageUrl: string) {
       currency: null,
       categories: [],
       image,
-      raw_html: snippet.slice(0, 3000),
+      raw_html: snippet.slice(0, SNIPPET_LIMIT),
       json_ld: null,
       dedup_hash,
       extracted_at: new Date().toISOString(),
@@ -562,7 +566,7 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
       extracted_count_total: 0,
       extracted_examples: [],
       supabase_inserts,
-      duplicates_skipped,
+      duplicates_skipped: duplicates_local + duplicates_db,
       errors,
       suggestions,
       debug: { html_preview },
@@ -582,7 +586,7 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
       extracted_count_total: 0,
       extracted_examples: [],
       supabase_inserts,
-      duplicates_skipped,
+      duplicates_skipped: duplicates_local + duplicates_db,
       errors,
       suggestions,
       debug: { html_preview },
