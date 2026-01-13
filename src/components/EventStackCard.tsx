@@ -1,6 +1,6 @@
 import { memo, useState, useCallback, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Clock, Loader2, MapPin, Share2, Bookmark, Navigation, ShieldCheck } from 'lucide-react';
+import { Users, Clock, Loader2, MapPin, Share2, Bookmark, Navigation, ShieldCheck, ChevronRight } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
@@ -91,7 +91,6 @@ const useImageFallback = (primaryUrl: string, category: string) => {
 
 // Format date as short pill text (e.g., "za 18" or "Morgen") - Dutch locale
 const formatDatePill = (dateStr: string) => {
-  // Handle full ISO timestamps from Supabase
   const datePart = dateStr.split('T')[0].split(' ')[0];
   const eventDate = new Date(datePart + 'T00:00:00');
   const today = new Date();
@@ -106,21 +105,18 @@ const formatDatePill = (dateStr: string) => {
     return 'Morgen';
   }
   
-  // Dutch locale: "za 18" instead of "Sat 18"
   return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric' });
 };
 
-// Dutch 24-hour time format - handles both HH:MM and descriptive times
+// Dutch 24-hour time format
 const formatTime = (timeStr: string) => {
   if (!timeStr) return '';
   
-  // If it's a proper HH:MM time format
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
     const [hours, minutes] = timeStr.split(':');
     return `${hours.padStart(2, '0')}:${minutes}`;
   }
   
-  // Handle descriptive Dutch time values
   const descriptiveMap: Record<string, string> = {
     'TBD': '',
     'Hele dag': 'Hele dag',
@@ -132,7 +128,7 @@ const formatTime = (timeStr: string) => {
   return descriptiveMap[timeStr] ?? timeStr;
 };
 
-// Anchor Card - Compact Airbnb-inspired design
+// Netflix-style Billboard Card - Full-bleed with gradient overlay
 const AnchorEventCard = memo(function AnchorEventCard({
   event,
   onClick,
@@ -212,29 +208,46 @@ const AnchorEventCard = memo(function AnchorEventCard({
 
   return (
     <motion.div
-      className="relative w-full rounded-2xl overflow-hidden bg-card shadow-card-warm cursor-pointer group"
-      whileHover={{ y: -2, boxShadow: '0 4px 16px rgba(180,120,60,0.1), 0 16px 40px rgba(180,120,60,0.12)' }}
-      whileTap={{ scale: 0.98 }}
+      className="relative w-full rounded-[2.5rem] overflow-hidden bg-card cursor-pointer group border-[0.5px] border-border/30"
+      style={{
+        boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.08), 0 16px 64px -16px rgba(0, 0, 0, 0.06)'
+      }}
+      whileHover={{ y: -4, boxShadow: '0 12px 40px -8px rgba(0, 0, 0, 0.12), 0 20px 70px -16px rgba(0, 0, 0, 0.1)' }}
+      whileTap={{ scale: 0.985 }}
       onClick={onClick}
       layout
     >
-      {/* Image Section - Compact */}
-      <div className="relative h-44 overflow-hidden bg-muted">
+      {/* Netflix Billboard Image - Taller aspect ratio */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         <img 
           src={imageUrl} 
           alt={event.title}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={handleImageError}
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/70 via-zinc-900/20 to-transparent" />
+        {/* Cinematic gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
         
-        {/* Top info rail */}
-        <div className="absolute top-12 left-3 right-3 flex items-start justify-between gap-2">
+        {/* Top metadata rail */}
+        <div className="absolute top-4 left-4 right-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
+            <CategoryBadge category={categoryLabel} variant="glass" />
+          </div>
+          
+          {/* Date pill - Airbnb style */}
+          <div className="px-3 py-1.5 rounded-[1rem] bg-background/95 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
+            {formatDatePill(event.event_date)}
+          </div>
+        </div>
+
+        {/* Bottom content overlay - Netflix style */}
+        <div className="absolute bottom-0 left-0 right-0 p-5 pt-16">
+          {/* Time & Distance pills */}
+          <div className="flex items-center gap-2 mb-3">
             {formatTime(event.event_time) && (
-              <span className="px-2.5 py-1 rounded-full bg-background/90 backdrop-blur-sm text-xs font-semibold text-foreground flex items-center gap-1">
-                <Clock size={12} className="text-primary" />
+              <span className="px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground flex items-center gap-1.5 border-[0.5px] border-white/10">
+                <Clock size={13} className="text-primary" />
                 {formatTime(event.event_time)}
               </span>
             )}
@@ -242,65 +255,51 @@ const AnchorEventCard = memo(function AnchorEventCard({
               venueCoordinates={venueCoords}
               userLocation={userLocation || null}
               size="sm"
-              className="px-2.5 py-1 rounded-full bg-background/80 backdrop-blur-sm"
+              className="px-3 py-1.5 rounded-[1rem] bg-background/80 backdrop-blur-xl border-[0.5px] border-white/10"
             />
+            {trustLabel && (
+              <div className="px-3 py-1.5 rounded-[1rem] bg-primary/90 backdrop-blur-xl text-[13px] font-semibold text-primary-foreground flex items-center gap-1.5">
+                <ShieldCheck size={13} />
+                {trustLabel}
+              </div>
+            )}
           </div>
-          {trustLabel && (
-            <div className="px-2.5 py-1 rounded-full bg-background/85 backdrop-blur-sm text-xs font-semibold text-foreground flex items-center gap-1">
-              <ShieldCheck size={12} className="text-primary" />
-              {trustLabel}
-            </div>
-          )}
-        </div>
-        
-        {/* Category Badge - Top Left */}
-        <div className="absolute top-3 left-3">
-          <CategoryBadge category={categoryLabel} variant="glass" />
-        </div>
-
-        {/* Date Pill - Top Right */}
-        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-background/90 backdrop-blur-sm text-xs font-semibold text-foreground">
-          {formatDatePill(event.event_date)}
-        </div>
-
-        {/* Match percentage if available */}
-        {event.match_percentage && (
-          <div className="absolute bottom-3 left-3 px-2 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-bold">
-            {event.match_percentage}% Match
-          </div>
-        )}
-      </div>
-
-      {/* Content Section - Compact */}
-      <div className="p-4 space-y-3">
-        <div className="space-y-1.5">
-          <h3 className="text-lg font-semibold text-foreground leading-snug line-clamp-2">
+          
+          {/* Title - iOS 17pt body scale equivalent */}
+          <h3 className="text-[22px] font-semibold text-white leading-tight line-clamp-2 mb-1.5 tracking-tight">
             {event.title}
           </h3>
-          {event.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {event.description}
-            </p>
-          )}
           
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <MapPin size={14} className="text-primary/70 flex-shrink-0" />
+          {/* Venue with icon */}
+          <div className="flex items-center gap-1.5 text-[15px] text-white/80">
+            <MapPin size={14} className="text-white/60 flex-shrink-0" />
             <span className="truncate">{event.venue_name}</span>
           </div>
         </div>
+      </div>
 
-        {/* Metadata Row - Time, Attendees, Join */}
-        <div className="flex items-center justify-between pt-1 gap-3">
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Users size={14} className="text-primary/70" />
-              <span className="font-medium">{event.attendee_count || 0} gaan</span>
+      {/* Content Section - Generous padding, iOS spacing */}
+      <div className="p-5 pt-4 space-y-4">
+        {/* Description if available */}
+        {event.description && (
+          <p className="text-[15px] text-muted-foreground leading-relaxed line-clamp-2">
+            {event.description}
+          </p>
+        )}
+
+        {/* Attendee row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Facepile users={attendeeFaces} extraCount={extraAttendees} />
+            <span className="text-[15px] text-muted-foreground font-medium">
+              {event.attendee_count || 0} gaan
             </span>
           </div>
-          <Facepile users={attendeeFaces} extraCount={extraAttendees} />
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
+        {/* Action buttons - Thumb zone optimized */}
+        <div className="flex items-center gap-3 pt-1">
+          {/* Primary CTA - Squircle geometry */}
           <button
             onClick={async (e) => {
               e.stopPropagation();
@@ -310,41 +309,43 @@ const AnchorEventCard = memo(function AnchorEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`flex-1 px-4 py-3 min-h-[44px] rounded-2xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.95] ${
+            className={`flex-1 px-6 py-4 min-h-[52px] rounded-[1.5rem] text-[17px] font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.97] border-[0.5px] ${
               hasJoined 
-                ? 'bg-muted text-muted-foreground cursor-default' 
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                ? 'bg-muted text-muted-foreground border-border/30 cursor-default' 
+                : 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20'
             }`}
             title={hasJoined ? 'Je doet al mee' : undefined}
           >
             {isJoining ? (
-              <Loader2 size={14} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin" />
             ) : null}
             <span>{isJoining ? 'Aanmelden...' : hasJoined ? 'Aangemeld' : 'Meedoen'}</span>
           </button>
-          <div className="flex items-center gap-1.5">
+          
+          {/* Secondary actions - 44pt minimum */}
+          <div className="flex items-center gap-2">
             <button
               onClick={handleSave}
-              className={`w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl border border-border flex items-center justify-center transition-all active:scale-[0.95] ${
-                isSaved ? 'bg-primary/10 text-primary border-primary/30' : 'bg-card text-muted-foreground'
+              className={`w-[52px] h-[52px] min-h-[44px] min-w-[44px] rounded-[1.5rem] border-[0.5px] flex items-center justify-center transition-all active:scale-[0.95] ${
+                isSaved ? 'bg-primary/10 text-primary border-primary/30' : 'bg-card text-muted-foreground border-border/50 hover:border-border'
               }`}
               title={isSaved ? 'Opgeslagen' : 'Sla op'}
             >
-              <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+              <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
             </button>
             <button
               onClick={handleShare}
-              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
+              className="w-[52px] h-[52px] min-h-[44px] min-w-[44px] rounded-[1.5rem] border-[0.5px] border-border/50 bg-card text-muted-foreground hover:text-foreground hover:border-border transition-all active:scale-[0.95]"
               title="Deel"
             >
-              <Share2 size={16} />
+              <Share2 size={20} />
             </button>
             <button
               onClick={handleDirections}
-              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
+              className="w-[52px] h-[52px] min-h-[44px] min-w-[44px] rounded-[1.5rem] border-[0.5px] border-border/50 bg-card text-muted-foreground hover:text-foreground hover:border-border transition-all active:scale-[0.95]"
               title="Route"
             >
-              <Navigation size={16} />
+              <Navigation size={20} />
             </button>
           </div>
         </div>
@@ -352,13 +353,13 @@ const AnchorEventCard = memo(function AnchorEventCard({
 
       {/* Thread indicator for stacks */}
       {hasForks && (
-        <div className="absolute -bottom-3 left-8 w-0.5 h-6 border-l-2 border-dashed border-border" />
+        <div className="absolute -bottom-4 left-10 w-[2px] h-8 bg-border/40 rounded-full" />
       )}
     </motion.div>
   );
 });
 
-// Fork Card - Compact horizontal Reddit-style
+// Fork Card - Compact horizontal with squircle geometry
 const ForkEventCard = memo(function ForkEventCard({
   event,
   onClick,
@@ -387,25 +388,28 @@ const ForkEventCard = memo(function ForkEventCard({
 
   return (
     <div className="flex">
-      {/* Dotted thread line connector */}
-      <div className="w-5 flex-shrink-0 relative">
-        <div className={`absolute top-0 left-0 border-l-2 border-dashed border-border ${isLast ? 'h-5' : 'h-full'}`} />
-        <div className="absolute top-5 left-0 h-0.5 w-4 border-t-2 border-dashed border-border" />
+      {/* Thread connector */}
+      <div className="w-6 flex-shrink-0 relative">
+        <div className={`absolute top-0 left-[3px] w-[2px] bg-border/40 ${isLast ? 'h-6' : 'h-full'} rounded-full`} />
+        <div className="absolute top-6 left-[3px] h-[2px] w-5 bg-border/40 rounded-full" />
       </div>
 
-      {/* Fork card content - Horizontal compact - rounded-2xl for squircle */}
+      {/* Fork card - Squircle geometry */}
       <motion.div
-        className="flex-1 min-w-0 overflow-hidden rounded-2xl bg-card border border-border p-3 cursor-pointer hover:shadow-card-warm transition-all"
+        className="flex-1 min-w-0 overflow-hidden rounded-[1.5rem] bg-card border-[0.5px] border-border/40 p-4 cursor-pointer hover:border-border/60 transition-all"
+        style={{
+          boxShadow: '0 4px 16px -4px rgba(0, 0, 0, 0.05)'
+        }}
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        whileHover={{ y: -1 }}
+        whileHover={{ y: -2, boxShadow: '0 6px 20px -4px rgba(0, 0, 0, 0.08)' }}
         whileTap={{ scale: 0.98 }}
         onClick={onClick}
       >
-        <div className="flex gap-2.5 items-center">
-          {/* Smaller Thumbnail */}
-          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+        <div className="flex gap-3 items-center">
+          {/* Thumbnail - Squircle */}
+          <div className="w-14 h-14 rounded-[1rem] overflow-hidden flex-shrink-0 bg-muted">
             <img 
               src={imageUrl} 
               alt={event.title}
@@ -415,23 +419,23 @@ const ForkEventCard = memo(function ForkEventCard({
             />
           </div>
 
-          {/* Content - improved typography */}
+          {/* Content - iOS typography */}
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-base text-foreground leading-tight line-clamp-1">
+            <h4 className="font-semibold text-[17px] text-foreground leading-tight line-clamp-1 tracking-tight">
               {event.title}
             </h4>
-            <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-              <span>{formatTime(event.event_time)}</span>
-              <span className="opacity-50">·</span>
+            <div className="flex items-center gap-2 mt-1 text-[13px] text-muted-foreground">
+              <span className="font-medium">{formatTime(event.event_time)}</span>
+              <span className="opacity-40">·</span>
               <CategoryBadge category={categoryLabel} size="sm" />
             </div>
           </div>
 
-          {/* Right side - Attendees & Action */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Users size={12} />
-              <span>{event.attendee_count || 0}</span>
+          {/* Right side */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+              <Users size={14} />
+              <span className="font-medium">{event.attendee_count || 0}</span>
             </div>
             
             <button
@@ -443,14 +447,19 @@ const ForkEventCard = memo(function ForkEventCard({
                 }
               }}
               disabled={isJoining || hasJoined}
-              className={`w-10 h-10 min-h-[44px] min-w-[44px] rounded-xl text-sm font-medium transition-all disabled:opacity-50 active:scale-[0.95] flex items-center justify-center ${
+              className={`min-h-[44px] min-w-[44px] px-4 py-2.5 rounded-[1rem] text-[15px] font-semibold transition-all flex items-center justify-center gap-1.5 active:scale-[0.95] border-[0.5px] ${
                 hasJoined 
-                  ? 'bg-muted text-muted-foreground cursor-default' 
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  ? 'bg-muted text-muted-foreground border-border/30' 
+                  : 'bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90'
               }`}
-              title={hasJoined ? 'Je doet al mee' : undefined}
             >
-              {isJoining ? <Loader2 size={14} className="animate-spin" /> : hasJoined ? '✓' : '+'}
+              {isJoining ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : hasJoined ? (
+                <span>✓</span>
+              ) : (
+                <span>Meedoen</span>
+              )}
             </button>
           </div>
         </div>
@@ -459,6 +468,7 @@ const ForkEventCard = memo(function ForkEventCard({
   );
 });
 
+// Main EventStackCard component
 export const EventStackCard = memo(function EventStackCard({
   stack,
   onEventClick,
@@ -467,45 +477,68 @@ export const EventStackCard = memo(function EventStackCard({
   currentUserProfileId,
   userLocation,
 }: EventStackCardProps) {
-  const { anchor, forks } = stack;
+  const [showForks, setShowForks] = useState(true);
+  const hasForks = stack.forks.length > 0;
+
+  const handleToggleForks = useCallback(async () => {
+    await hapticImpact('light');
+    setShowForks(prev => !prev);
+  }, []);
 
   return (
-    <div className="space-y-0">
-      {/* Anchor Event */}
+    <div className="space-y-2">
       <AnchorEventCard
-        event={anchor}
-        onClick={() => onEventClick?.(anchor.id)}
-        onJoin={() => onJoinEvent?.(anchor.id)}
-        isJoining={joiningEventId === anchor.id}
-        hasForks={forks.length > 0}
+        event={stack.anchor}
+        onClick={() => onEventClick?.(stack.anchor.id)}
+        onJoin={() => onJoinEvent?.(stack.anchor.id)}
+        isJoining={joiningEventId === stack.anchor.id}
+        hasForks={hasForks}
         currentUserProfileId={currentUserProfileId}
         userLocation={userLocation}
       />
 
-      {/* Fork Events */}
-      <AnimatePresence>
-        {forks.length > 0 && (
-          <motion.div
-            className="space-y-2 pt-5 pl-3"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
+      {hasForks && (
+        <div className="pl-4 space-y-2">
+          {/* Forks toggle button */}
+          <button
+            onClick={handleToggleForks}
+            className="flex items-center gap-2 text-[13px] text-muted-foreground font-medium hover:text-foreground transition-colors py-2 px-1 min-h-[44px] active:opacity-70"
           >
-            {forks.map((fork, index) => (
-              <ForkEventCard
-                key={fork.id}
-                event={fork}
-                parentTitle={anchor.title}
-                onClick={() => onEventClick?.(fork.id)}
-                onJoin={() => onJoinEvent?.(fork.id)}
-                isJoining={joiningEventId === fork.id}
-                isLast={index === forks.length - 1}
-                currentUserProfileId={currentUserProfileId}
-              />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <motion.div
+              animate={{ rotate: showForks ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronRight size={14} />
+            </motion.div>
+            <span>{stack.forks.length} alternatieve{stack.forks.length !== 1 ? 'n' : ''}</span>
+          </button>
+
+          <AnimatePresence>
+            {showForks && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-2 overflow-hidden"
+              >
+                {stack.forks.map((fork, index) => (
+                  <ForkEventCard
+                    key={fork.id}
+                    event={fork}
+                    parentTitle={stack.anchor.title}
+                    onClick={() => onEventClick?.(fork.id)}
+                    onJoin={() => onJoinEvent?.(fork.id)}
+                    isJoining={joiningEventId === fork.id}
+                    isLast={index === stack.forks.length - 1}
+                    currentUserProfileId={currentUserProfileId}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 });
