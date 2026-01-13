@@ -1,8 +1,7 @@
-import React from 'react';
+import { Home, Calendar, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Home, CalendarCheck, User } from 'lucide-react';
 import { hapticImpact } from '@/lib/haptics';
+import { motion } from 'framer-motion';
 
 type NavView = 'feed' | 'my-events' | 'profile';
 
@@ -11,87 +10,77 @@ interface FloatingNavProps {
   onNavigate?: (view: NavView) => void;
 }
 
-const NAV_ITEMS: { id: NavView; icon: typeof Home; label: string }[] = [
-  { id: 'feed', icon: Home, label: 'Ontdek' },
-  { id: 'my-events', icon: CalendarCheck, label: 'Mijn' },
-  { id: 'profile', icon: User, label: 'Profiel' },
+const NAV_ITEMS: { id: NavView; icon: typeof Home; label: string; path: string }[] = [
+  { id: 'feed', icon: Home, label: 'Home', path: '/feed' },
+  { id: 'my-events', icon: Calendar, label: 'My Events', path: '/my-events' },
+  { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
 ];
 
-export function FloatingNav({
-  activeView: activeViewProp,
-  onNavigate
-}: FloatingNavProps) {
+export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Determine active view from URL if not provided
-  const activeView: NavView = activeViewProp || (() => {
-    if (location.pathname === '/my-events') return 'my-events';
-    if (location.pathname === '/profile') return 'profile';
-    return 'feed';
-  })();
+  // Derive active view from route if not provided
+  const currentPath = location.pathname;
+  const derivedActiveView = activeView || 
+    (currentPath.includes('my-events') ? 'my-events' : 
+     currentPath.includes('profile') ? 'profile' : 'feed');
 
-  const handleNav = async (view: NavView) => {
+  const handleNav = async (view: NavView, path: string) => {
     await hapticImpact('light');
     if (onNavigate) {
       onNavigate(view);
     } else {
-      navigate(`/${view}`);
+      navigate(path);
     }
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
-      {/* Airbnb-style clean tab bar */}
-      <div className="mx-4 mb-2">
-        <motion.nav 
-          className="flex items-center justify-around px-6 py-2 bg-background/95 backdrop-blur-2xl rounded-[2rem] border-[0.5px] border-border/30"
-          style={{
-            boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04)'
-          }}
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        >
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeView === item.id;
-            const Icon = item.icon;
-            
-            return (
-              <motion.button
-                key={item.id}
-                onClick={() => handleNav(item.id)}
-                className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[52px] py-2 px-4 rounded-[1.25rem] transition-all active:scale-[0.92] ${
-                  isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                whileTap={{ scale: 0.92 }}
-              >
-                {/* Active indicator - increased opacity */}
-                {isActive && (
-                  <motion.div
-                    layoutId="activeNavIndicator"
-                    className="absolute inset-0 bg-primary/10 rounded-[1.25rem]"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                  />
-                )}
-                
+    <motion.nav 
+      className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border pb-safe"
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      style={{
+        boxShadow: '0 -1px 0 0 hsl(var(--border))'
+      }}
+    >
+      <div className="flex items-center justify-around h-[52px] max-w-lg mx-auto px-2">
+        {NAV_ITEMS.map((item) => {
+          const isActive = derivedActiveView === item.id;
+          const Icon = item.icon;
+          
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNav(item.id, item.path)}
+              className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
+            >
+              <div className="relative">
                 <Icon 
                   size={24} 
-                  strokeWidth={isActive ? 2.5 : 2} 
-                  className="relative z-10 transition-transform duration-200"
+                  strokeWidth={isActive ? 2.5 : 1.5}
+                  className={`transition-colors ${
+                    isActive 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground'
+                  }`}
+                  fill={isActive ? 'currentColor' : 'none'}
                 />
-                <span className={`relative z-10 text-[11px] mt-0.5 font-medium tracking-tight ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`}>
-                  {item.label}
-                </span>
-              </motion.button>
-            );
-          })}
-        </motion.nav>
+              </div>
+              <span 
+                className={`text-[10px] font-medium transition-colors ${
+                  isActive 
+                    ? 'text-primary' 
+                    : 'text-muted-foreground'
+                }`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
-    </div>
+    </motion.nav>
   );
 }
