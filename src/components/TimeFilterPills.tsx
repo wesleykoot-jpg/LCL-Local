@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { hapticImpact } from '@/lib/haptics';
@@ -21,6 +21,23 @@ export const TimeFilterPills = memo(function TimeFilterPills({
   activeFilter,
   onFilterChange,
 }: TimeFilterPillsProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showFade, setShowFade] = useState(false);
+  
+  // Check if content is scrollable
+  useEffect(() => {
+    const checkScrollable = () => {
+      if (containerRef.current) {
+        const { scrollWidth, clientWidth } = containerRef.current;
+        setShowFade(scrollWidth > clientWidth);
+      }
+    };
+    
+    checkScrollable();
+    window.addEventListener('resize', checkScrollable);
+    return () => window.removeEventListener('resize', checkScrollable);
+  }, []);
+
   const handleFilterChange = async (filter: TimeFilter) => {
     await hapticImpact('light');
     onFilterChange(filter);
@@ -29,6 +46,7 @@ export const TimeFilterPills = memo(function TimeFilterPills({
   return (
     <div className="relative">
       <div 
+        ref={containerRef}
         className="flex items-center gap-2 p-1.5 bg-muted/50 rounded-[1.5rem] border-[0.5px] border-border/20 overflow-x-auto scrollbar-hide"
         style={{
           boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.04)'
@@ -65,11 +83,13 @@ export const TimeFilterPills = memo(function TimeFilterPills({
           );
         })}
       </div>
-      {/* Right fade indicator for scroll */}
-      <div 
-        className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none rounded-r-[1.5rem]"
-        aria-hidden="true"
-      />
+      {/* Right fade indicator for scroll - only shown when content is scrollable */}
+      {showFade && (
+        <div 
+          className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none rounded-r-[1.5rem]"
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 });
