@@ -1,6 +1,21 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 
-export function LoadingSkeleton() {
+interface LoadingSkeletonProps {
+  className?: string;
+}
+
+export function LoadingSkeleton({ className }: LoadingSkeletonProps) {
+  if (className) {
+    return (
+      <div
+        role="status"
+        aria-busy="true"
+        className={cn('animate-pulse bg-muted rounded-xl', className)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
       <div className="text-center">

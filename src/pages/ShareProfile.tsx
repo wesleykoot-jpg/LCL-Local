@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Share2, Copy, QrCode, Mail, MessageSquare, Facebook, Twitter, Link2, CheckCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { ChevronLeft, Share2, Copy, QrCode, Mail, MessageSquare, Facebook, Twitter, CheckCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/useAuth';
+import { createPortal } from 'react-dom';
+
+const QRCodeCanvas = lazy(() => import('qrcode.react').then((mod) => ({ default: mod.QRCodeCanvas })));
 
 export function ShareProfile() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+  const motionProps = (delay = 0) =>
+    prefersReducedMotion
+      ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
+      : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { delay } };
   
   // TODO: Use environment variable for base URL to support different environments
   // e.g., const baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://lcl-local.com';
@@ -26,7 +35,33 @@ export function ShareProfile() {
     }
   };
 
+  const handleNativeShare = async () => {
+    const text = `Check out my profile on LCL Local!`;
+    const url = profileUrl;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: profile?.full_name || 'Profile', text, url });
+        toast.success('Shared!');
+        return;
+      } catch (e) {
+        // fall back to copy + web share
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Profile link copied to clipboard');
+    } catch {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+      toast.success('Opening share options...');
+    }
+  };
+
   const handleShare = (platform: string) => {
+    if (platform === 'native') {
+      void handleNativeShare();
+      return;
+    }
     const text = `Check out my profile on LCL Local!`;
     const encodedText = encodeURIComponent(text);
     const encodedUrl = encodeURIComponent(profileUrl);
@@ -56,17 +91,18 @@ export function ShareProfile() {
   };
 
   const handleShowQR = () => {
-    toast.success('QR Code feature coming soon!');
+    setShowQr(true);
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans pb-8">
+    <div className="min-h-screen bg-background text-foreground font-sans pb-8 pb-safe">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border pt-safe">
         <div className="max-w-lg mx-auto px-5 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Go back"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] -ml-2 rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronLeft size={24} />
           </button>
@@ -82,12 +118,23 @@ export function ShareProfile() {
       <div className="max-w-lg mx-auto px-5 py-6 space-y-6">
         {/* Profile Preview */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          {...motionProps()}
           className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-5 text-center"
         >
-          <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-lg mb-3">
-            {profile?.full_name?.charAt(0).toUpperCase() || 'D'}
+          <div
+            role="img"
+            aria-label={`Avatar of ${profile?.full_name || 'Demo User'}`}
+            className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-lg mb-3 overflow-hidden"
+          >
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={`Avatar of ${profile.full_name || 'Demo User'}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              profile?.full_name?.charAt(0).toUpperCase() || 'D'
+            )}
           </div>
           <h2 className="text-xl font-bold text-foreground mb-1">
             {profile?.full_name || 'Demo User'}
@@ -99,9 +146,7 @@ export function ShareProfile() {
 
         {/* Copy Link */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          {...motionProps(0.1)}
           className="bg-card border border-border rounded-2xl p-4"
         >
           <label className="block text-sm font-medium text-foreground mb-2">
@@ -112,8 +157,17 @@ export function ShareProfile() {
               {profileUrl}
             </div>
             <button
+              onClick={() => void handleNativeShare()}
+              aria-label="Share profile link"
+              className="px-4 py-2.5 min-h-[44px] bg-secondary text-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2 flex-shrink-0 border border-border"
+            >
+              <Share2 size={16} />
+              Share
+            </button>
+            <button
               onClick={handleCopyLink}
-              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2 flex-shrink-0"
+              aria-label="Copy profile link"
+              className="px-4 py-2.5 min-h-[44px] bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2 flex-shrink-0"
             >
               {copied ? (
                 <>
@@ -132,12 +186,11 @@ export function ShareProfile() {
 
         {/* QR Code */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          {...motionProps(0.2)}
         >
           <button
             onClick={handleShowQR}
+            aria-label="Show QR code"
             className="w-full bg-card border border-border rounded-2xl p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
           >
             <div className="flex items-center gap-3">
@@ -155,9 +208,7 @@ export function ShareProfile() {
 
         {/* Share Options */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          {...motionProps(0.3)}
           className="bg-card border border-border rounded-2xl overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
@@ -221,9 +272,7 @@ export function ShareProfile() {
 
         {/* Privacy Note */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          {...motionProps(0.4)}
           className="bg-muted/50 rounded-lg p-4"
         >
           <p className="text-xs text-muted-foreground">
@@ -231,8 +280,134 @@ export function ShareProfile() {
             will be visible to people who view your profile link. You can change your visibility settings at any time.
           </p>
         </motion.div>
+
+        <QrModal
+          open={showQr}
+          profileUrl={profileUrl}
+          onClose={() => setShowQr(false)}
+          onCopy={handleCopyLink}
+          onShare={handleNativeShare}
+        />
       </div>
     </div>
+  );
+}
+
+interface QrModalProps {
+  open: boolean;
+  profileUrl: string;
+  onClose: () => void;
+  onCopy: () => Promise<void>;
+  onShare: () => Promise<void> | void;
+}
+
+function QrModal({ open, onClose, profileUrl, onCopy, onShare }: QrModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    previouslyFocused.current = document.activeElement as HTMLElement;
+    const dialog = dialogRef.current;
+    const focusable = dialog?.querySelectorAll<HTMLElement>(
+      'button, [href], [tabindex]:not([tabindex="-1"])'
+    );
+
+    focusable?.[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+
+      if (event.key === 'Tab' && focusable && focusable.length > 0) {
+        const elements = Array.from(focusable);
+        const currentIndex = elements.indexOf(document.activeElement as HTMLElement);
+        let nextIndex = currentIndex + (event.shiftKey ? -1 : 1);
+        if (nextIndex >= elements.length) nextIndex = 0;
+        if (nextIndex < 0) nextIndex = elements.length - 1;
+        event.preventDefault();
+        elements[nextIndex]?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused.current?.focus();
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="qr-modal-title"
+        className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-lg p-5 focus:outline-none"
+        tabIndex={-1}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 id="qr-modal-title" className="text-lg font-semibold text-foreground">
+              Share QR Code
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Scan or share this code to open your profile.
+            </p>
+          </div>
+          <button
+            aria-label="Close QR modal"
+            className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center">
+          <Suspense
+            fallback={<div className="w-56 h-56 rounded-2xl bg-muted animate-pulse" aria-busy="true" />}
+          >
+            <QRCodeCanvas value={profileUrl} size={224} includeMargin />
+          </Suspense>
+          <p className="text-xs text-muted-foreground mt-3 text-center break-words">
+            {profileUrl}
+          </p>
+          <div className="mt-4 flex w-full gap-2">
+            <button
+              aria-label="Copy profile link from QR modal"
+              onClick={onCopy}
+              className="flex-1 min-h-[44px] rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              Copy Link
+            </button>
+            <button
+              aria-label="Share profile"
+              onClick={() => void onShare()}
+              className="flex-1 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              Share
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
