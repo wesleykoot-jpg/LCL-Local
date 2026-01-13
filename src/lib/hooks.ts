@@ -115,20 +115,15 @@ export function useEvents(options?: {
   // Stabilize dependency keys to prevent re-renders from reference changes
   const categoryKey = options?.category?.join(',') ?? '';
   const eventTypeKey = options?.eventType?.join(',') ?? '';
-  const page = Math.max(1, options?.page ?? 1);
-  const pageSize = options?.pageSize ?? 10;
-  const paginationKey = `${page}-${pageSize}`;
   const currentUserProfileId = options?.currentUserProfileId ?? '';
 
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Fetch events with attendees in a single query to solve N+1 problem
+      // Fetch all events with attendees in a single query to solve N+1 problem
       // Limit attendees to first 4 per event to keep it light
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
+      // Supabase default limit is 1000 rows which is sufficient for our use case
       let query = supabase
         .from('events')
         .select(`
@@ -143,7 +138,6 @@ export function useEvents(options?: {
           )
         `)
         .order('event_date', { ascending: true })
-        .range(from, to)
         .limit(ATTENDEE_LIMIT, { foreignTable: 'event_attendees' });
 
       if (options?.category && options.category.length > 0) {
@@ -219,7 +213,7 @@ export function useEvents(options?: {
     } finally {
       setLoading(false);
     }
-  }, [categoryKey, eventTypeKey, paginationKey, currentUserProfileId]);
+  }, [categoryKey, eventTypeKey, currentUserProfileId]);
 
   useEffect(() => {
     fetchEvents();
