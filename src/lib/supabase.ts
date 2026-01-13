@@ -111,12 +111,17 @@ export async function getScrapeState(source_id: string): Promise<ScrapeState | n
 
 /**
  * Load sources from sources.json
+ * Looks for the file relative to the current working directory
+ * Note: Expects to be run from the project root
  */
 export function listSources(): Source[] {
   const sourcesPath = path.join(process.cwd(), 'src/config/sources.json');
   
   if (!fs.existsSync(sourcesPath)) {
-    throw new Error(`Sources file not found at ${sourcesPath}`);
+    throw new Error(
+      `Sources file not found at ${sourcesPath}. ` +
+      `Make sure to run the scraper from the project root directory.`
+    );
   }
   
   const sourcesJson = fs.readFileSync(sourcesPath, 'utf-8');

@@ -1,6 +1,7 @@
 {
   "// NOTE": "This uses CommonJS for Node.js compatibility with tsx runtime",
   "// REASON": "The CLI needs to work with tsx for development and node for production. CommonJS is more reliable for CLI tools.",
+  "// STRICT": "Strict mode is disabled to avoid conflicts with existing loosely-typed dependencies (robots-parser, bottleneck)",
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",

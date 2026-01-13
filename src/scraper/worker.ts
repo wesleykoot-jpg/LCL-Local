@@ -257,7 +257,11 @@ export async function runScraper(
   await Promise.all(
     sources.map(source =>
       globalLimiter.schedule(async () => {
-        const limiter = limiters.get(source.domain)!;
+        const limiter = limiters.get(source.domain);
+        if (!limiter) {
+          console.error(`No rate limiter found for domain: ${source.domain}`);
+          return;
+        }
         const summary = await scrapeSource(source, options, limiter);
         results.push(summary);
       })
