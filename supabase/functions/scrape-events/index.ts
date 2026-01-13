@@ -1,6 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
+import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import * as cheerio from "npm:cheerio@1.0.0-rc.12";
+import { parseToISODate } from "./dateUtils.ts";
+import { RawEventCard, ScraperSource, fetchEventDetailTime } from "./shared.ts";
+import type { BaseStrategy } from "../../../src/scrapers/BaseStrategy.ts";
+import { DefaultStrategy } from "../../../src/scrapers/DefaultStrategy.ts";
+import { renderPage } from "../../../src/lib/rendererClient.ts";
+export { parseToISODate } from "./dateUtils.ts";
+export type { RawEventCard, ScraperSource } from "./shared.ts";
+export { fetchEventDetailTime } from "./shared.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,27 +21,6 @@ export type Category = (typeof VALID_CATEGORIES)[number];
 
 // Default event type for scraped events
 const DEFAULT_EVENT_TYPE = "anchor";
-
-// Interface for scraper source from database
-export interface ScraperSource {
-  id: string;
-  name: string;
-  url: string;
-  enabled: boolean;
-  config: {
-    selectors?: string[];
-    headers?: Record<string, string>;
-    rate_limit_ms?: number;
-    /** Default coordinates for events from this source (fallback when venue can't be geocoded) */
-    default_coordinates?: { lat: number; lng: number };
-    /** Language for AI parsing (e.g., 'nl', 'de', 'en') */
-    language?: string;
-    /** Country code for this source (e.g., 'NL', 'AT', 'DE') */
-    country?: string;
-    /** Enable dynamic year replacement in URLs */
-    dynamic_year?: boolean;
-  };
-}
 
 /**
  * Platform detection patterns.
@@ -193,25 +180,6 @@ const TITLE_BLOCKLIST = [
   'sluiten', 'close', 'open', 'terug', 'back', 'next', 'previous',
   'volgende', 'vorige', 'laden', 'loading',
 ];
-
-// Default headers for scraping (language-neutral)
-const DEFAULT_HEADERS = {
-  "User-Agent": "LCL-EventScraper/1.0 (Event aggregator for local social app)",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en,nl;q=0.9,de;q=0.8",
-};
-
-// Interfaces
-export interface RawEventCard {
-  rawHtml: string;
-  title: string;
-  date: string;
-  location: string;
-  imageUrl: string | null;
-  description: string;
-  detailUrl: string | null;
-  detailPageTime?: string; // Time extracted from detail page
-}
 
 export interface ParsedEvent {
   title: string;
@@ -463,92 +431,6 @@ function applyDynamicYear(url: string, useDynamicYear: boolean): string {
   return updatedUrl;
 }
 
-// Utility functions
-export function parseToISODate(dateStr: string, today?: Date): string | null {
-  if (!dateStr || typeof dateStr !== "string") {
-    return null;
-  }
-
-  const todayDate = today ? new Date(today) : new Date();
-  const safeYear = (year: number) => year >= 2020 && year <= 2030;
-  const cleaned = dateStr.trim().toLowerCase();
-  if (!cleaned) return null;
-
-  const relativeMap: Record<string, number> = {
-    vandaag: 0,
-    today: 0,
-    morgen: 1,
-    tomorrow: 1,
-    overmorgen: 2,
-    "day after tomorrow": 2,
-  };
-
-  if (relativeMap[cleaned] !== undefined) {
-    const target = new Date(todayDate);
-    target.setDate(target.getDate() + relativeMap[cleaned]);
-    return target.toISOString().split("T")[0];
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
-    const [year, month, day] = cleaned.split("-").map(Number);
-    if (safeYear(year) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      return cleaned;
-    }
-    return null;
-  }
-
-  const isoMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})T/);
-  if (isoMatch) {
-    const year = Number(isoMatch[1]);
-    if (!safeYear(year)) return null;
-    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-  }
-
-  const MONTHS: Record<string, number> = {
-    januari: 1, jan: 1, january: 1,
-    februari: 2, feb: 2, february: 2, februar: 2,
-    maart: 3, mrt: 3, march: 3, märz: 3, maerz: 3,
-    april: 4, apr: 4,
-    mei: 5, may: 5, mai: 5,
-    juni: 6, jun: 6, june: 6,
-    juli: 7, jul: 7, july: 7,
-    augustus: 8, aug: 8, august: 8,
-    september: 9, sep: 9, sept: 9,
-    oktober: 10, okt: 10, october: 10,
-    november: 11, nov: 11,
-    december: 12, dec: 12,
-  };
-
-  const textual = cleaned
-    .replace(/,/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const dayNamePattern = "(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|monday|tuesday|wednesday|thursday|friday|saturday|sunday)?";
-  // Allow optional localized day name + day + month name (+ optional year) with Unicode characters.
-  const textualMatch = textual.match(new RegExp(`^${dayNamePattern}\\s*(\\d{1,2})\\s*([\\p{L}.]+)\\s*(\\d{2,4})?$`, "iu"));
-  if (textualMatch) {
-    const day = parseInt(textualMatch[2], 10);
-    const monthNameRaw = textualMatch[3].replace(/\./g, "");
-    const yearMatch = textualMatch[4] ? parseInt(textualMatch[4], 10) : todayDate.getFullYear();
-    const month = MONTHS[monthNameRaw] || MONTHS[monthNameRaw.slice(0, 3)];
-    if (month && day >= 1 && day <= 31 && safeYear(yearMatch)) {
-      return `${yearMatch}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
-  }
-
-  const europeanMatch = textual.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
-  if (europeanMatch) {
-    const [, dayRaw, monthRaw, yearRaw] = europeanMatch;
-    const centuryPrefix = String(todayDate.getFullYear()).slice(0, 2);
-    const yearNum = parseInt(yearRaw.length === 2 ? `${centuryPrefix}${yearRaw}` : yearRaw, 10);
-    if (!safeYear(yearNum)) return null;
-    return `${yearNum}-${monthRaw.padStart(2, "0")}-${dayRaw.padStart(2, "0")}`;
-  }
-
-  return null;
-}
-
 function getTodayISO(): string {
   return new Date().toISOString().split("T")[0];
 }
@@ -671,113 +553,6 @@ export function normalizeEventDateForStorage(
   };
 }
 
-function normalizeMatchedTime(hours: string, minutes: string, ampm?: string): string | null {
-  let hourNum = parseInt(hours, 10);
-  if (ampm) {
-    const lower = ampm.toLowerCase();
-    if (lower === "pm" && hourNum < 12) hourNum += 12;
-    if (lower === "am" && hourNum === 12) hourNum = 0;
-  }
-  if (hourNum > 23) return null;
-  return `${String(hourNum).padStart(2, "0")}:${minutes.padStart(2, "0")}`;
-}
-
-/**
- * Fetch event detail page and extract time from it
- */
-export async function fetchEventDetailTime(
-  detailUrl: string,
-  baseUrl: string,
-  fetcher: typeof fetch = fetch
-): Promise<string | null> {
-  try {
-    let fullUrl = detailUrl;
-    if (detailUrl.startsWith('/')) {
-      const urlObj = new URL(baseUrl);
-      fullUrl = `${urlObj.protocol}//${urlObj.host}${detailUrl}`;
-    } else if (!detailUrl.startsWith('http')) {
-      fullUrl = `${baseUrl.replace(/\/$/, '')}/${detailUrl}`;
-    }
-
-    console.log(`      🔍 Fetching detail page: ${fullUrl}`);
-    
-    const response = await fetcher(fullUrl, { 
-      headers: DEFAULT_HEADERS,
-      signal: AbortSignal.timeout(10000),
-    });
-    
-    if (!response.ok) {
-      console.log(`      ⚠️ Detail page fetch failed: ${response.status}`);
-      return null;
-    }
-
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const pageText = $('body').text();
-    
-    // Multi-language time patterns
-    const timePatterns = [
-      // Dutch patterns
-      /aanvang[:\s]*(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /vanaf\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /(\d{1,2})[.:h](\d{2})\s*uur/i,
-      // German patterns
-      /beginn[:\s]*(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /ab\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /(\d{1,2})[.:h](\d{2})\s*uhr/i,
-      // English patterns
-      /starts?\s*(?:at\s*)?(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /from\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /doors?\s*(?:open\s*)?(?:at\s*)?(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      // Generic patterns
-      /start[:\s]*(?:om\s*)?(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /time[:\s]*(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /om\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
-      /(\d{1,2})[.:](\d{2})\s*[-–—]\s*\d{1,2}[.:]\d{2}(?:\s*(am|pm))?/i,
-    ];
-    
-    const timeElements = [
-      '.event-time', '.time', '[class*="time"]', '[class*="tijd"]',
-      '.event-details', '.details', 'meta[property="event:start_time"]',
-      '.aanvang', '[class*="aanvang"]', '.beginn', '[class*="beginn"]',
-    ];
-    
-    for (const selector of timeElements) {
-      const el = $(selector);
-      if (el.length > 0) {
-        const elText = el.text() || el.attr('content') || '';
-        for (const pattern of timePatterns) {
-          const match = elText.match(pattern);
-          if (match) {
-            const time = normalizeMatchedTime(match[1], match[2], match[3]);
-            if (time) {
-              console.log(`      ✅ Found time in element: ${time}`);
-              return time;
-            }
-          }
-        }
-      }
-    }
-    
-    for (const pattern of timePatterns) {
-      const match = pageText.match(pattern);
-      if (match) {
-        const time = normalizeMatchedTime(match[1], match[2], match[3]);
-        if (time) {
-          console.log(`      ✅ Found time in page text: ${time}`);
-          return time;
-        }
-      }
-    }
-    
-    console.log(`      ⚠️ No time found on detail page`);
-    return null;
-  } catch (error) {
-    console.log(`      ⚠️ Error fetching detail page: ${error instanceof Error ? error.message : 'Unknown'}`);
-    return null;
-  }
-}
-
 // Scraping function
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -818,200 +593,90 @@ function buildElementDedupKey($el: cheerio.Cheerio<cheerio.AnyNode>, $: cheerio.
   return `${link.toLowerCase()}|${title.toLowerCase()}`;
 }
 
+export interface ScrapeOptions {
+  fetcher?: typeof fetch;
+  rendererUrl?: string;
+  enableDebug?: boolean;
+  detailFetcher?: typeof fetch;
+  strategy?: BaseStrategy;
+  listingHtml?: string;
+  listingUrl?: string;
+  probeLog?: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }>;
+}
+
 export async function scrapeEventCards(
   source: ScraperSource,
   enableDeepScraping: boolean = true,
-  options: { fetcher?: typeof fetch; enableDebug?: boolean; detailFetcher?: typeof fetch } = {}
+  options: ScrapeOptions = {}
 ): Promise<RawEventCard[]> {
   const fetcher = options.fetcher || fetch;
-  const detailFetcher = options.detailFetcher || fetcher;
+  const normalizedSource: ScraperSource = { ...source, url: applyDynamicYear(source.url, source.config.dynamic_year === true) };
+  const strategy = options.strategy || new DefaultStrategy(normalizedSource);
   const enableDebug = options.enableDebug === true;
-  // Apply dynamic year replacement if configured
-  const actualUrl = applyDynamicYear(source.url, source.config.dynamic_year === true);
-  
-  // Detect platform for optimization
-  const platform = detectPlatform(actualUrl);
-  if (platform) {
-    console.log(`🔧 Using optimized config for: ${platform.name}`);
-  }
-  
-  console.log(`🌐 Fetching agenda from ${source.name} (${actualUrl})...`);
+  const probeLog = options.probeLog;
 
-  const headers = source.config.headers || DEFAULT_HEADERS;
-  const response = await fetcher(actualUrl, { headers });
+  let listingHtml = options.listingHtml;
+  let listingUrl = options.listingUrl;
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${source.name}: ${response.status} ${response.statusText}`);
-  }
-
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  const events: RawEventCard[] = [];
-
-  const selectors = getOptimizedSelectors(source);
-
-  const collectedElements: cheerio.AnyNode[] = [];
-  const seenKeys = new Set<string>();
-
-  for (const selector of selectors) {
-    const elements = $(selector);
-    if (elements.length > 0) {
-      console.log(`Found ${elements.length} elements with selector: ${selector}`);
-    }
-    elements.each((_, el) => {
-      const $el = $(el);
-      const key = buildElementDedupKey($el, $);
-      if (!key) {
+  if (!listingHtml) {
+    const candidates = await strategy.discoverListingUrls(fetcher);
+    for (const candidate of candidates) {
+      try {
+        const resp = await strategy.fetchListing(candidate, fetcher);
+        probeLog?.push({
+          candidate,
+          status: resp.status,
+          finalUrl: resp.finalUrl,
+          ok: resp.status >= 200 && resp.status < 300,
+        });
+        if (resp.status === 200 && resp.html.trim().length > 0) {
+          listingHtml = resp.html;
+          listingUrl = resp.finalUrl || candidate;
+          break;
+        }
+      } catch (error) {
+        probeLog?.push({
+          candidate,
+          status: 0,
+          finalUrl: candidate,
+          ok: false,
+        });
         if (enableDebug) {
-          console.log("  ⏭️ Skipped element without dedup key");
+          console.log(`Probe failed for ${candidate}: ${error instanceof Error ? error.message : error}`);
         }
-        return;
       }
-      if (seenKeys.has(key)) return;
-      seenKeys.add(key);
-      collectedElements.push(el);
+    }
+  }
+
+  if (!listingHtml && (normalizedSource.requires_render || normalizedSource.config.requires_render) && options.rendererUrl) {
+    const rendered = await renderPage(options.rendererUrl, {
+      url: normalizedSource.url,
+      headers: normalizedSource.config.headers,
     });
-  }
-
-  // Filter out elements inside excluded containers
-  const excludedSelector = EXCLUDED_CONTAINERS.join(', ');
-  let foundElements = $(collectedElements).filter((_: number, el: cheerio.AnyNode) => {
-    const isInExcluded = $(el).parents(excludedSelector).length > 0;
-    if (isInExcluded) {
-      console.log(`  ⏭️ Skipped element inside excluded container`);
-    }
-    return !isInExcluded;
-  });
-
-  if (foundElements.length === 0) {
-    console.log("⚠️ No event elements found with common selectors. Trying generic approach...");
-    foundElements = $("main article, main .card, .content article, .events article")
-      .not(excludedSelector)
-      .filter((_: number, el: cheerio.AnyNode) => {
-        const $el = $(el);
-        const text = $el.text();
-        const hasDate = $el.find('time, [class*="date"], [datetime]').length > 0;
-        const hasTitle = $el.find('h1, h2, h3, h4').length > 0;
-        const hasDatePattern = /\d{1,2}[\s\-./]\w{3,}|\d{1,2}[\s\-./]\d{1,2}/i.test(text);
-        return text.length > 50 && text.length < 5000 && (hasDate || hasTitle || hasDatePattern);
-      });
-  }
-
-  console.log(`Processing ${foundElements.length} potential event cards...`);
-  const eventKeys = new Set<string>();
-
-  // deno-lint-ignore no-explicit-any
-  foundElements.each((_: number, element: any) => {
-    const $el = $(element);
-    const rawHtml = $el.html() || "";
-    const title = extractTitle($el, $);
-
-    // Skip if title is blocklisted (exact match only)
-    const titleLower = title.toLowerCase().trim();
-    if (TITLE_BLOCKLIST.some(blocked => titleLower === blocked)) {
-      console.log(`  ⏭️ Skipped blocklisted title: "${title}"`);
-      return;
-    }
-
-    // Skip if title is too short or empty
-    if (!title || title.length < 4) {
-      console.log(`  ⏭️ Skipped empty/short title: "${title}"`);
-      return;
-    }
-
-    // Skip if title looks like navigation (single word, all caps, etc.)
-    if (title.length < 15 && !/\d/.test(title) && !title.includes(' ')) {
-      // Single word without numbers - likely navigation unless it has date patterns nearby
-      const hasDateNearby = /\d{1,2}[\s\-./]\w{3,}|\d{1,2}[\s\-./]\d{1,2}/i.test(rawHtml);
-      if (!hasDateNearby) {
-        console.log(`  ⏭️ Skipped likely navigation item: "${title}"`);
-        return;
-      }
-    }
-
-    const dataDateEl = $el.find("[data-event-date], [data-date]").first();
-    const dateAttr =
-      dataDateEl.attr("data-event-date") ||
-      dataDateEl.attr("data-date") ||
-      $el.attr("data-event-date") ||
-      $el.attr("data-date") ||
-      "";
-
-    const date =
-      $el.find("time, .date, [class*=\"date\"], .event-date").first().text().trim() ||
-      $el.find("[datetime]").first().attr("datetime") ||
-      dateAttr;
-
-    const location =
-      $el.find(".location, .venue, [class*=\"location\"], [class*=\"venue\"]").first().text().trim() ||
-      $el.find("address").first().text().trim();
-
-    const imageUrl =
-      $el.find("img").first().attr("src") ||
-      $el
-        .find('[style*="background-image"]')
-        .first()
-        .attr("style")
-        ?.match(/url\(['"]?([^'"]+)['"]?\)/)?.[1] ||
-      null;
-
-    const description = $el.find(".description, .excerpt, .summary, p").first().text().trim();
-    const detailUrl = $el.find("a").first().attr("href") || null;
-
-    // Final validation: must have date OR date-like patterns in HTML
-    const hasDate = date && date.length > 0;
-    const hasDatePattern = /\d{1,2}[\s\-./](jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2})[\s\-./]?\d{0,4}/i.test(rawHtml);
-    
-    if (!hasDate && !hasDatePattern) {
-      console.log(`  ⏭️ Skipped no date indicator: "${title}"`);
-      return;
-    }
-
-    const dedupKey = `${(detailUrl || '').toLowerCase()}|${titleLower}`;
-    if (eventKeys.has(dedupKey)) {
-      if (enableDebug) {
-        console.log(`  ⏭️ Deduped event: "${title}"`);
-      }
-      return;
-    }
-    eventKeys.add(dedupKey);
-
-    console.log(`  ✅ Valid event: "${title}"`);
-    events.push({
-      rawHtml: rawHtml.substring(0, 3000),
-      title,
-      date,
-      location,
-      imageUrl,
-      description,
-      detailUrl,
+    probeLog?.push({
+      candidate: "renderer",
+      status: rendered.status,
+      finalUrl: rendered.finalUrl,
+      ok: rendered.status >= 200 && rendered.status < 400,
     });
-  });
-
-  console.log(`✅ Extracted ${events.length} event cards`);
-
-  // Deep scraping: fetch detail pages to extract times
-  if (enableDeepScraping && events.length > 0) {
-    console.log(`\n⏱️ Deep scraping: fetching ${events.length} detail pages for times...`);
-    const delayMs = source.config.rate_limit_ms || 300;
-    
-    for (let i = 0; i < events.length; i++) {
-      const event = events[i];
-      if (event.detailUrl) {
-        console.log(`   [${i + 1}/${events.length}] ${event.title || 'Unknown'}...`);
-        const time = await fetchEventDetailTime(event.detailUrl, actualUrl, detailFetcher);
-        if (time) {
-          event.detailPageTime = time;
-        }
-        if (i < events.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
-      }
+    if (rendered.html) {
+      listingHtml = rendered.html;
+      listingUrl = rendered.finalUrl;
     }
-    
-    const timesFound = events.filter(e => e.detailPageTime).length;
-    console.log(`⏱️ Deep scraping complete: found times for ${timesFound}/${events.length} events`);
   }
+
+  if (!listingHtml) {
+    if (enableDebug) {
+      console.log(`⚠️ No listing HTML found for ${normalizedSource.name}`);
+    }
+    return [];
+  }
+
+  const events = await strategy.parseListing(listingHtml, listingUrl || normalizedSource.url, {
+    fetcher: options.detailFetcher || fetcher,
+    enableDeepScraping,
+    enableDebug,
+  });
 
   return events;
 }
@@ -1234,6 +899,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const renderServiceUrl = Deno.env.get("RENDER_SERVICE_URL");
 
     // Parse request body for options
     let options: { 
@@ -1312,13 +978,22 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       try {
         // Scrape events from source
-        const rawEvents = await scrapeEventCards(source, enableDeepScraping, { enableDebug });
+        const probeLog: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }> = [];
+        const rawEvents = await scrapeEventCards(source, enableDeepScraping, { enableDebug, rendererUrl: renderServiceUrl, probeLog });
         sourceStats.scraped = rawEvents.length;
         stats.totalEventsScraped += rawEvents.length;
 
+        if (probeLog.length > 0) {
+          try {
+            await supabase.from("scraper_sources").update({ last_probe_urls: probeLog }).eq("id", source.id);
+          } catch (error) {
+            console.warn("Failed to persist probe log", error);
+          }
+        }
+
         // Parse and insert each event
-        const language = source.config.language || 'en';
-        const defaultCoords = source.config.default_coordinates;
+        const language = source.language || source.config.language || 'en';
+        const defaultCoords = source.default_coordinates || source.config.default_coordinates;
         
         for (const rawEvent of rawEvents) {
           console.log(`\n  Processing: ${rawEvent.title || "Unknown title"}`);
@@ -1351,7 +1026,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           }
 
           // Get venue coordinates via geocoding (with caching)
-          const venueCountry = source.config.country || "NL";
+          const venueCountry = source.country || source.config.country || "NL";
           const municipality = source.name.replace(/^(Ontdek|Bezoek|Visit)\s*/i, "");
           
           const coords = await getVenueCoordinates(
