@@ -9,8 +9,10 @@ import { useAuth } from '../contexts/useAuth';
 import { usePersonaStats, usePersonaBadges, useUserCommitments } from '../lib/hooks';
 import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { hapticImpact } from '@/lib/haptics';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
   Shield,
@@ -99,6 +101,8 @@ export function ProfileView() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   // Use mock profile if not authenticated (for development)
   const displayProfile = profile || MOCK_PROFILE;
@@ -111,20 +115,34 @@ export function ProfileView() {
 
   const memberDuration = getMemberDuration(displayProfile.created_at || new Date().toISOString());
   const groupedEvents = groupEventsByTimeframe(commitments);
+  const avatarInitial = displayProfile.full_name
+    ? displayProfile.full_name.charAt(0).toUpperCase()
+    : 'U';
+  const motionProps = (delay = 0, offset = 20) =>
+    prefersReducedMotion
+      ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
+      : { initial: { opacity: 0, y: offset }, animate: { opacity: 1, y: 0 }, transition: { delay } };
 
-  const handleSignOut = async () => {
+  const handleSignOutClick = async () => {
     if (isDemoMode) {
       toast('Demo mode - no account to sign out from', { icon: 'ℹ️' });
       return;
     }
     await hapticImpact('medium');
+    setShowSignOutConfirm(true);
+  };
+
+  const confirmSignOut = async () => {
     setIsSigningOut(true);
     try {
       await signOut();
       toast.success('Signed out successfully');
+      setShowSignOutConfirm(false);
+      navigate('/login');
     } catch (error) {
       console.error('Sign out error:', error);
       toast.error('Failed to sign out. Please try again.');
+    } finally {
       setIsSigningOut(false);
     }
   };
@@ -140,14 +158,17 @@ export function ProfileView() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans pb-32">
+    <div
+      className="min-h-screen bg-background text-foreground font-sans pb-32"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8rem)' }}
+    >
       {/* Demo Mode Banner */}
-      <AnimatePresence>
+      <AnimatePresence initial={!prefersReducedMotion}>
         {isDemoMode && (
           <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { height: 'auto', opacity: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
             className="bg-primary text-primary-foreground text-center py-2.5 text-sm font-medium"
           >
             Demo Mode — Sign in for your real profile
@@ -165,6 +186,7 @@ export function ProfileView() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => handleSettingsClick('Edit Profile')}
+              aria-label="Edit profile"
               className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
               title="Edit Profile"
             >
@@ -172,14 +194,16 @@ export function ProfileView() {
             </button>
             <button
               onClick={() => handleSettingsClick('Settings')}
+              aria-label="Open settings"
               className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
               title="Settings"
             >
               <Settings size={20} />
             </button>
             <button
-              onClick={handleSignOut}
+              onClick={handleSignOutClick}
               disabled={isSigningOut}
+              aria-label="Sign out"
               className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-all disabled:opacity-50 active:scale-[0.95]"
               title="Sign Out"
             >
@@ -196,20 +220,31 @@ export function ProfileView() {
       <div className="max-w-lg mx-auto">
         {/* Hero Profile Section - Clean centered layout */}
         <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          {...motionProps()}
           className="px-5 pt-8 pb-6 text-center"
         >
           {/* Large Avatar */}
           <div className="relative inline-block mb-4">
-            <div className="w-28 h-28 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-4xl font-bold shadow-lg ring-4 ring-background">
-              {displayProfile.full_name.charAt(0).toUpperCase()}
+            <div
+              role="img"
+              aria-label={`Avatar of ${displayProfile.full_name || 'Demo User'}`}
+              className="w-28 h-28 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-4xl font-bold shadow-lg ring-4 ring-background overflow-hidden"
+            >
+              {displayProfile.avatar_url ? (
+                <img
+                  src={displayProfile.avatar_url}
+                  alt={`Avatar of ${displayProfile.full_name || 'Demo User'}`}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                avatarInitial
+              )}
             </div>
             {displayProfile.verified_resident && (
               <motion.div 
-                initial={{ scale: 0 }}
+                initial={prefersReducedMotion ? false : { scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: 'spring' }}
+                transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.2, type: 'spring' }}
                 className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center border-4 border-background shadow-md"
               >
                 <BadgeCheck size={16} className="text-primary-foreground" />
@@ -217,6 +252,7 @@ export function ProfileView() {
             )}
             <button 
               onClick={() => handleSettingsClick('Change Photo')}
+              aria-label="Change profile photo"
               className="absolute bottom-0 left-0 w-10 h-10 min-h-[44px] min-w-[44px] bg-muted rounded-full flex items-center justify-center border-4 border-background shadow-md hover:bg-muted/80 transition-all active:scale-[0.95]"
             >
               <Camera size={16} className="text-muted-foreground" />
@@ -256,9 +292,7 @@ export function ProfileView() {
 
         {/* Verification Badges - Horizontal scroll */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          {...motionProps(0.1, 10)}
           className="px-5 pb-6"
         >
           <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
@@ -280,9 +314,7 @@ export function ProfileView() {
 
         {/* Achievements/Badges Section - Unified grid */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
+          {...motionProps(0.15, 10)}
           className="py-6"
         >
           <div className="flex items-center justify-between px-5 mb-4">
@@ -298,7 +330,7 @@ export function ProfileView() {
           {badgesLoading ? (
             <div className="flex gap-3 px-5 overflow-x-auto">
               {[1, 2, 3].map(i => (
-                <div key={i} className="w-24 h-28 bg-muted rounded-2xl animate-pulse flex-shrink-0" />
+                <LoadingSkeleton key={i} className="w-24 h-28 rounded-2xl flex-shrink-0" />
               ))}
             </div>
           ) : personaBadges.length > 0 ? (
@@ -306,9 +338,9 @@ export function ProfileView() {
               {personaBadges.map((badge, index) => (
                 <motion.div 
                   key={badge.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15 + index * 0.1 }}
+                  initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                  transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.15 + index * 0.1 }}
                   className="w-24 flex-shrink-0 text-center"
                 >
                   <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground mb-2 shadow-md">
@@ -340,9 +372,7 @@ export function ProfileView() {
 
         {/* Community Stats */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          {...motionProps(0.2, 10)}
           className="px-5 py-6"
         >
           <div className="flex items-center gap-2 mb-4">
@@ -351,7 +381,7 @@ export function ProfileView() {
           </div>
           
           {statsLoading ? (
-            <div className="h-24 bg-muted rounded-2xl animate-pulse" />
+            <LoadingSkeleton className="h-24 w-full rounded-2xl" />
           ) : personaStats ? (
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-muted/50 rounded-2xl p-4 text-center">
@@ -394,9 +424,7 @@ export function ProfileView() {
 
         {/* Integrations Section - Elevated Google Calendar */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22 }}
+          {...motionProps(0.22, 10)}
           className="py-6"
         >
           <div className="flex items-center gap-2 px-5 mb-4">
@@ -451,9 +479,7 @@ export function ProfileView() {
 
         {/* My Calendar - Clean List View */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
+          {...motionProps(0.25, 10)}
           className="py-6"
         >
           <div className="flex items-center justify-between px-5 mb-4">
@@ -470,7 +496,7 @@ export function ProfileView() {
             {commitmentsLoading ? (
               <div className="space-y-3">
                 {[1, 2].map(i => (
-                  <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
+                  <LoadingSkeleton key={i} className="h-16 w-full rounded-xl" />
                 ))}
               </div>
             ) : commitments.length > 0 ? (
@@ -557,9 +583,7 @@ export function ProfileView() {
 
         {/* Settings Section - Airbnb list style */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          {...motionProps(0.3, 10)}
           className="py-6"
         >
           <div className="flex items-center gap-2 px-5 mb-4">
@@ -597,6 +621,17 @@ export function ProfileView() {
           <p className="text-xs text-muted-foreground">LCL · Version 1.0.0</p>
         </div>
       </div>
+
+      <ConfirmModal
+        open={showSignOutConfirm}
+        title="Sign out?"
+        description="You will need to sign in again to access your profile."
+        confirmText={isSigningOut ? 'Signing out…' : 'Sign out'}
+        cancelText="Stay"
+        confirmDisabled={isSigningOut}
+        onConfirm={confirmSignOut}
+        onCancel={() => setShowSignOutConfirm(false)}
+      />
     </div>
   );
 }
@@ -615,6 +650,7 @@ interface CalendarListItemProps {
 }
 
 function CalendarListItem({ event, index, isToday }: CalendarListItemProps) {
+  const prefersReducedMotion = useReducedMotion();
   const handleClick = async () => {
     await hapticImpact('light');
     toast(`Viewing ${event.title}`, { icon: '📅' });
@@ -622,9 +658,9 @@ function CalendarListItem({ event, index, isToday }: CalendarListItemProps) {
 
   return (
     <motion.button 
-      initial={{ opacity: 0, y: 10 }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.25 + index * 0.05 }}
+      transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.25 + index * 0.05 }}
       onClick={handleClick}
       className="w-full bg-card rounded-xl border border-border p-3.5 min-h-[44px] flex items-center gap-3 hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99]"
     >
