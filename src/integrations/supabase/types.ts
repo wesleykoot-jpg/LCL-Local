@@ -307,6 +307,62 @@ export type Database = {
         }
         Relationships: []
       }
+      scrape_jobs: {
+        Row: {
+          attempts: number | null
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          events_inserted: number | null
+          events_scraped: number | null
+          id: string
+          max_attempts: number | null
+          priority: number | null
+          source_id: string
+          started_at: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          events_inserted?: number | null
+          events_scraped?: number | null
+          id?: string
+          max_attempts?: number | null
+          priority?: number | null
+          source_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          events_inserted?: number | null
+          events_scraped?: number | null
+          id?: string
+          max_attempts?: number | null
+          priority?: number | null
+          source_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scrape_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "scraper_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scraper_sources: {
         Row: {
           auto_disabled: boolean | null

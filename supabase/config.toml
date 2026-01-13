@@ -102,6 +102,14 @@ verify_jwt = false
 # Allow unauthenticated access - we handle auth validation in the function
 verify_jwt = false
 
+[functions.scrape-coordinator]
+# Enqueues scrape jobs - protected by service role key usage
+verify_jwt = false
+
+[functions.scrape-worker]
+# Processes one source per invocation - protected by service role key usage
+verify_jwt = false
+
 [db.seed]
 # Seed file to run on startup - automatically seeds dev data
 sql_paths = ["./seed.sql"]

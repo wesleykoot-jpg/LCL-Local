@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { parseToISODate } from "./dateUtils.ts";
-import type { ScraperSource, RawEventCard } from "./shared.ts";
+import { parseToISODate } from "../_shared/dateUtils.ts";
+import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "./strategies.ts";
 
 const corsHeaders = {
