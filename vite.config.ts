@@ -35,7 +35,7 @@ export default defineConfig({
     include: ['react', 'react-dom', '@supabase/supabase-js', 'lucide-react'],
   },
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 8080,
   },
 })
