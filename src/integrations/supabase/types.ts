@@ -296,10 +296,13 @@ export type Database = {
       }
       scraper_sources: {
         Row: {
+          auto_disabled: boolean | null
           config: Json
+          consecutive_failures: number | null
           created_at: string
           enabled: boolean
           id: string
+          last_error: string | null
           last_scraped_at: string | null
           last_success: boolean | null
           name: string
@@ -308,10 +311,13 @@ export type Database = {
           url: string
         }
         Insert: {
+          auto_disabled?: boolean | null
           config?: Json
+          consecutive_failures?: number | null
           created_at?: string
           enabled?: boolean
           id?: string
+          last_error?: string | null
           last_scraped_at?: string | null
           last_success?: boolean | null
           name: string
@@ -320,10 +326,13 @@ export type Database = {
           url: string
         }
         Update: {
+          auto_disabled?: boolean | null
           config?: Json
+          consecutive_failures?: number | null
           created_at?: string
           enabled?: boolean
           id?: string
+          last_error?: string | null
           last_scraped_at?: string | null
           last_success?: boolean | null
           name?: string
