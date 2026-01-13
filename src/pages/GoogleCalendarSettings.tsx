@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Calendar, Check, Loader2, AlertCircle, ExternalLink, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronLeft, Calendar, Check, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
@@ -153,16 +153,16 @@ export function GoogleCalendarSettings() {
                   )}
                 </div>
 
-                {!isConfigured ? (
+            {!isConfigured ? (
                   <div className="space-y-4">
-                    <div className="bg-blue-500/10 rounded-xl p-4 flex gap-3">
-                      <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="bg-primary/5 rounded-xl p-4 flex gap-3">
+                      <Calendar size={20} className="text-primary flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm text-blue-700 font-medium">
-                          Setup Required
+                        <p className="text-sm text-foreground font-medium">
+                          Connect your calendar
                         </p>
-                        <p className="text-xs text-blue-600 mt-1">
-                          Configure Google Calendar integration with your own Google Cloud credentials to start syncing events.
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Events you join will automatically appear on your Google Calendar.
                         </p>
                       </div>
                     </div>
@@ -171,13 +171,13 @@ export function GoogleCalendarSettings() {
                       onClick={handleSetupClick}
                       className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                     >
-                      <SettingsIcon size={18} />
-                      Setup Google Calendar
+                      <Calendar size={18} />
+                      Connect Google Calendar
                     </button>
                     
                     <div className="bg-muted/50 rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">
-                        <strong>What you'll need:</strong> A free Google Cloud account to create OAuth credentials. Setup takes about 5 minutes.
+                        <strong>⏱ About 5 minutes</strong> — You'll create a free connection key in Google's settings. We'll guide you through each step.
                       </p>
                     </div>
                   </div>
@@ -241,24 +241,24 @@ export function GoogleCalendarSettings() {
                 {isConfigured && isUserConfigured && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium text-muted-foreground">Configuration</p>
+                      <p className="text-xs font-medium text-muted-foreground">Your connection</p>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={handleReconfigure}
                         className="flex-1 py-2 px-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm text-foreground"
                       >
-                        Reconfigure
+                        Change Key
                       </button>
                       <button
                         onClick={handleClearConfig}
-                        className="flex-1 py-2 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors text-sm text-red-600"
+                        className="flex-1 py-2 px-3 rounded-lg bg-destructive/10 hover:bg-destructive/20 transition-colors text-sm text-destructive"
                       >
-                        Clear Setup
+                        Remove
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      You configured this integration with your own credentials
+                      Connected with your personal key
                     </p>
                   </div>
                 )}
@@ -357,15 +357,15 @@ export function GoogleCalendarSettings() {
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear Google Calendar Setup?</AlertDialogTitle>
+            <AlertDialogTitle>Remove calendar connection?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove your Google Calendar configuration. If you're currently connected, you will be disconnected. You can always set it up again later.
+              This will disconnect your Google Calendar. Future events won't sync until you connect again. You can always reconnect later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Keep Connected</AlertDialogCancel>
             <AlertDialogAction onClick={confirmClearConfig}>
-              Clear Setup
+              Remove Connection
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
