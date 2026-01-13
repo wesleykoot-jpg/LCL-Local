@@ -1,164 +1,170 @@
 # LCL - Local Social Events App
 
+> **AI Context**: LCL is a React/TypeScript/Supabase social events app for discovering local events globally. Core model: Anchors (official events) → Forks (user meetups attached) → Signals (standalone events). Events stored with PostGIS coordinates. Internal team use only.
+
 A modern, iOS-optimized social events platform built with React, TypeScript, and Supabase. Discover, create, and join local events in your community.
 
-Original design by [Magic Patterns](https://www.magicpatterns.com/c/8f2shdlz13fzkpqwd74ds3)
+## Quick Context (for AI assistants)
+
+```
+Stack: React 18, TypeScript, Vite, Tailwind, Capacitor (iOS), Supabase, Framer Motion
+
+Database: profiles, events, event_attendees, persona_stats, persona_badges, scraper_sources, geocode_cache
+All tables have RLS enabled. Events use PostGIS geography(POINT, 4326).
+
+Key files:
+- src/lib/feedAlgorithm.ts: Smart ranking (category 35%, time 20%, social 15%, match 10%, distance 20%)
+- src/lib/eventService.ts: CRUD operations for events
+- src/lib/hooks.ts: Data fetching hooks (useEvents, useProfile, etc.)
+- supabase/functions/scrape-events/: AI-powered event scraper with OpenAI
+
+See AI_CONTEXT.md for comprehensive AI context.
+```
+
+---
 
 ## Features
 
-- 🎉 **Event Discovery** - Browse local events and tribe gatherings
-- 🤖 **Smart Feed Algorithm** - Personalized ranking based on preferences, time, and popularity
+- 🎉 **Event Discovery** - Browse local events with smart feed algorithm
+- 🤖 **AI Event Scraper** - Automatically scrape events from configured websites
 - ➕ **Create Events** - Host your own events with image uploads
 - 📱 **iOS-Optimized** - Native haptics, gestures, and smooth animations
 - ⚡ **Real-time Updates** - Live event changes via Supabase Realtime
 - 🔐 **Secure Auth** - Email/password authentication with Supabase
-- 📸 **Image Upload** - Automatic compression and optimization
-- 🗺️ **Interactive Map** - Visualize events in your area
-- 🎯 **Smart Matching** - Personalized event recommendations
-- 💬 **Toast Notifications** - Clear user feedback for all actions
-- 🎨 **Beautiful UI** - Modern design with smooth animations
+- 🗺️ **Location-Agnostic** - Works globally with any coordinates
+
+## Architecture
+
+### Sidecar Event Model
+| Type | Description | Example |
+|------|-------------|---------|
+| **Anchor** | Official/scraped events | Cinema screening, festival, sports match |
+| **Fork** | User meetup attached to anchor | Pre-movie drinks, post-game hangout |
+| **Signal** | Standalone user event | Gaming session, casual meetup |
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed system design.
 
 ## Tech Stack
 
-- **Frontend**: React 18 + TypeScript
-- **Build Tool**: Vite with optimized production build
-- **Mobile**: Capacitor (iOS native features)
-- **Backend**: Supabase (PostgreSQL + Auth + Storage + Realtime)
-- **Styling**: Tailwind CSS
-- **State**: React Context + Hooks
-- **Animations**: Framer Motion + Native Haptics
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Framer Motion |
+| Mobile | Capacitor (iOS native features, haptics) |
+| Backend | Supabase (PostgreSQL + PostGIS, Auth, Storage, Edge Functions) |
+| State | React Context + TanStack Query |
+| AI | OpenAI (event extraction from scraped HTML) |
 
-## Getting Started
+## Database Schema
 
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Xcode (for iOS development)
-- Supabase account
-
-### Installation
-
-```bash
-# Install dependencies
-npm install
-
-# Set up environment variables
-# Copy .env.example to .env and add your Supabase credentials
-
-# Run development server
-npm run dev
-```
-
-### Building for Production
-
-```bash
-# Build web assets
-npm run build
-
-# Sync to iOS
-npx cap sync ios
-
-# Open in Xcode
-npx cap open ios
-```
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `profiles` | User data | `reliability_score`, `verified_resident`, `location_coordinates` |
+| `events` | All events | `location` (PostGIS), `category`, `event_type` (anchor/fork/signal) |
+| `event_attendees` | Participation | `status` (going/interested/waitlist), `profile_id`, `event_id` |
+| `persona_stats` | Gamification | `rallies_hosted`, `newcomers_welcomed`, `host_rating` |
+| `persona_badges` | Achievements | `badge_name`, `badge_level`, `persona_type` |
+| `scraper_sources` | Scraping config | `url`, `config`, `enabled`, `last_success` |
+| `geocode_cache` | Coordinate cache | `venue_key`, `lat`, `lng` |
 
 ## Project Structure
 
 ```
 src/
-├── components/        # React components
-├── contexts/         # React Context providers
-├── lib/             # Utilities and services
-│   ├── feedAlgorithm.ts  # Smart feed ranking algorithm
-│   ├── eventService.ts
-│   ├── storageService.ts
-│   ├── haptics.ts
-│   └── supabase.ts
-├── App.tsx          # Main app component
-└── index.tsx        # Entry point
+├── components/           # React components
+│   ├── ui/              # shadcn/ui components
+│   ├── EventFeed.tsx    # Main feed component
+│   ├── EventStackCard.tsx
+│   └── ...
+├── contexts/            # React Context providers
+│   ├── AuthContext.tsx  # Authentication state
+│   └── LocationContext.tsx
+├── lib/                 # Core utilities
+│   ├── feedAlgorithm.ts # Smart ranking algorithm
+│   ├── eventService.ts  # Event CRUD operations
+│   ├── hooks.ts         # Data fetching hooks
+│   ├── haptics.ts       # iOS haptic feedback
+│   └── ...
+├── pages/               # Route components
+└── integrations/        # Supabase client
+
+supabase/
+├── functions/
+│   └── scrape-events/   # AI event scraper
+├── migrations/          # Database migrations
+└── config.toml          # Supabase config
 ```
 
 ## Key Services
 
 ### Feed Algorithm (`src/lib/feedAlgorithm.ts`)
-- Smart event ranking based on user preferences
-- Multi-factor scoring (category match, time, social proof, compatibility)
-- Diversity enforcement to prevent monotonous feeds
-- See [FEED_ALGORITHM.md](./FEED_ALGORITHM.md) for detailed documentation
+Multi-factor scoring system:
+- **Category Match**: 35% weight - matches user's preferred categories
+- **Time Relevance**: 20% weight - prioritizes upcoming events
+- **Social Proof**: 15% weight - attendee count and velocity
+- **Compatibility**: 10% weight - profile match percentage
+- **Distance**: 20% weight - proximity to user location
 
-### Event Service (`src/lib/eventService.ts`)
-- Create, update, delete events
-- Join/leave events
-- Get attendee lists
-- Check attendance status
-
-### Storage Service (`src/lib/storageService.ts`)
-- Image upload with compression
-- Public URL generation
-- File deletion
+### Event Scraper (`supabase/functions/scrape-events/`)
+- Fetches HTML from configured sources
+- Uses OpenAI to extract structured event data
+- Geocodes venues via Nominatim with caching
+- Handles Dutch CMS platforms (Ontdek, Beleef, Visit, Uit)
 
 ### Haptics (`src/lib/haptics.ts`)
-- Impact feedback
-- Notification feedback
-- Selection feedback
+Native iOS feedback for:
+- Impact (light, medium, heavy)
+- Notification (success, warning, error)
+- Selection changes
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Supabase project with PostGIS enabled
+- OpenAI API key (for scraper)
+
+### Installation
+
+```bash
+npm install
+cp .env.example .env  # Add Supabase credentials
+npm run dev
+```
+
+### iOS Build
+
+```bash
+npm run build
+npx cap sync ios
+npx cap open ios
+```
 
 ## Documentation
 
-- [Feed Algorithm](./FEED_ALGORITHM.md) - Smart ranking algorithm documentation
-- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - Complete iOS App Store deployment guide
-- [Implementation Summary](./IMPLEMENTATION_SUMMARY.md) - Detailed feature list
-- [Backend Setup](./BACKEND_SETUP.md) - Database configuration
+| Document | Purpose |
+|----------|---------|
+| [AI_CONTEXT.md](./AI_CONTEXT.md) | Concise context for AI assistants |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture and diagrams |
+| [FEED_ALGORITHM.md](./FEED_ALGORITHM.md) | Feed ranking algorithm details |
+| [BACKEND_SETUP.md](./BACKEND_SETUP.md) | Database configuration |
+| [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | iOS App Store deployment |
 
-## Performance
+## Current Status
 
-- **Bundle Size**: 471 KB gzipped
-- **Code Split**: 3 vendor bundles
-- **Build Time**: ~17 seconds
-- **Lighthouse Ready**: Optimized for 90+ score
-
-## Environment Variables
-
-```env
-VITE_SUPABASE_URL=your-project-url
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
+- **Events**: ~94 in database (mostly scraped from Dutch sources)
+- **Users**: Internal team only
+- **Scraper Sources**: 5 configured (2 working, 3 need URL updates)
+- **Location**: Global support (no hardcoded regions)
 
 ## Scripts
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run preview  # Preview production build
-npm run lint     # Run ESLint
+npm run dev      # Development server
+npm run build    # Production build
+npm run preview  # Preview build
+npm run lint     # ESLint
 ```
-
-## iOS Deployment
-
-1. Build the app: `npm run build`
-2. Sync to iOS: `npx cap sync ios`
-3. Open Xcode: `npx cap open ios`
-4. Configure signing & capabilities
-5. Build and archive for App Store
-
-See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for complete instructions.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
-## License
-
-Private - All rights reserved
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
 
 ---
 
-Built with ❤️ following 2025-2026 best practices
+Built with ❤️ using React, TypeScript, and Supabase
