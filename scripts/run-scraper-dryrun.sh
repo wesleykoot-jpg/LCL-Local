@@ -17,8 +17,10 @@ if [[ -z "$SOURCE_ID" ]]; then
 fi
 
 PAYLOAD="{\"sourceId\":\"$SOURCE_ID\",\"dryRun\":true,\"enableDeepScraping\":true}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OUTPUT_FILE="${SCRIPT_DIR}/dryrun-${SOURCE_ID}.json"
 
 curl -s -X POST "${SUPABASE_URL}/functions/v1/scrape-events" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-  -d "$PAYLOAD" | tee "scripts/dryrun-${SOURCE_ID}.json"
+  -d "$PAYLOAD" | tee "${OUTPUT_FILE}"

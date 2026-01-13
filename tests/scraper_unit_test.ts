@@ -25,7 +25,9 @@ Deno.test("fetchEventDetailTime extracts times across patterns", async () => {
     `<div class="info">vanaf 21.30 uur</div>`,
     `<div class="copy">starts at 8:00 PM</div>`,
   ];
-  const fetcher = () => Promise.resolve(new Response(pages.shift() || ""));
+  let pageIndex = 0;
+  const fetcher = () =>
+    Promise.resolve(new Response(pages[Math.min(pageIndex++, pages.length - 1)] || ""));
 
   const time1 = await fetchEventDetailTime("/detail", "https://example.com", fetcher);
   const time2 = await fetchEventDetailTime("/detail", "https://example.com", fetcher);
@@ -82,11 +84,11 @@ Deno.test("parseEventWithAI cleans code fences and normalizes category", async (
     detailUrl: null,
   };
 
-  const mockCallGemini = async () =>
+  const mockCallGemini = async (_apiKey: string, _body: unknown) =>
     "```json\n{\"title\":\"Party\",\"description\":\"Fun\",\"category\":\"invalid\",\"venue_name\":\"Club\",\"event_date\":\"2026-07-13\",\"event_time\":\"19:00\",\"image_url\":null}\n```";
 
   const parsed = await parseEventWithAI("fake", rawEvent, "nl", undefined, {
-    callGeminiFn: mockCallGemini as any,
+    callGeminiFn: mockCallGemini,
   });
 
   assert(parsed);
@@ -97,6 +99,7 @@ Deno.test("parseEventWithAI cleans code fences and normalizes category", async (
 Deno.test("eventExists checks both timestamp and date-only matches", async () => {
   const calls: Array<{ column: string; value: string }> = [];
 
+  let queryStep = 0;
   const supabaseStub = {
     from() {
       return this;
@@ -109,10 +112,9 @@ Deno.test("eventExists checks both timestamp and date-only matches", async () =>
       return this;
     },
     limit() {
-      if (calls.length <= 2) {
-        return Promise.resolve({ data: [], error: null });
-      }
-      return Promise.resolve({ data: [{ id: 1 }], error: null });
+      queryStep += 1;
+      const data = queryStep === 1 ? [] : [{ id: 1 }];
+      return Promise.resolve({ data, error: null });
     },
   };
 

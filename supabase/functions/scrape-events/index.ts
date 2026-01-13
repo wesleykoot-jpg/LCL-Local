@@ -448,11 +448,12 @@ function applyDynamicYear(url: string, useDynamicYear: boolean): string {
 }
 
 // Utility functions
-export function parseToISODate(dateStr: string, today: Date = new Date()): string | null {
+export function parseToISODate(dateStr: string, today?: Date): string | null {
   if (!dateStr || typeof dateStr !== "string") {
     return null;
   }
 
+  const todayDate = today ? new Date(today) : new Date();
   const safeYear = (year: number) => year >= 2020 && year <= 2030;
   const cleaned = dateStr.trim().toLowerCase();
   if (!cleaned) return null;
@@ -467,7 +468,7 @@ export function parseToISODate(dateStr: string, today: Date = new Date()): strin
   };
 
   if (relativeMap[cleaned] !== undefined) {
-    const target = new Date(today);
+    const target = new Date(todayDate);
     target.setDate(target.getDate() + relativeMap[cleaned]);
     return target.toISOString().split("T")[0];
   }
@@ -508,12 +509,13 @@ export function parseToISODate(dateStr: string, today: Date = new Date()): strin
     .trim();
 
   const dayNamePattern = "(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|monday|tuesday|wednesday|thursday|friday|saturday|sunday)?";
+  // Allow optional localized day name + day + month name (+ optional year) with Unicode characters.
   const textualMatch = textual.match(new RegExp(`^${dayNamePattern}\\s*(\\d{1,2})\\s*([\\p{L}.]+)\\s*(\\d{2,4})?$`, "iu"));
   if (textualMatch) {
     const day = parseInt(textualMatch[2], 10);
     const monthNameRaw = textualMatch[3].replace(/\./g, "");
-    const yearMatch = textualMatch[4] ? parseInt(textualMatch[4], 10) : today.getFullYear();
-    const month = MONTHS[monthNameRaw] ?? MONTHS[monthNameRaw.slice(0, 3)];
+    const yearMatch = textualMatch[4] ? parseInt(textualMatch[4], 10) : todayDate.getFullYear();
+    const month = MONTHS[monthNameRaw] || MONTHS[monthNameRaw.slice(0, 3)];
     if (month && day >= 1 && day <= 31 && safeYear(yearMatch)) {
       return `${yearMatch}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
@@ -522,7 +524,8 @@ export function parseToISODate(dateStr: string, today: Date = new Date()): strin
   const europeanMatch = textual.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
   if (europeanMatch) {
     const [, dayRaw, monthRaw, yearRaw] = europeanMatch;
-    const yearNum = parseInt(yearRaw.length === 2 ? `20${yearRaw}` : yearRaw, 10);
+    const centuryPrefix = String(todayDate.getFullYear()).slice(0, 2);
+    const yearNum = parseInt(yearRaw.length === 2 ? `${centuryPrefix}${yearRaw}` : yearRaw, 10);
     if (!safeYear(yearNum)) return null;
     return `${yearNum}-${monthRaw.padStart(2, "0")}-${dayRaw.padStart(2, "0")}`;
   }
@@ -652,6 +655,17 @@ export function normalizeEventDateForStorage(
   };
 }
 
+function normalizeMatchedTime(hours: string, minutes: string, ampm?: string): string | null {
+  let hourNum = parseInt(hours, 10);
+  if (ampm) {
+    const lower = ampm.toLowerCase();
+    if (lower === "pm" && hourNum < 12) hourNum += 12;
+    if (lower === "am" && hourNum === 12) hourNum = 0;
+  }
+  if (hourNum > 23) return null;
+  return `${String(hourNum).padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+}
+
 /**
  * Fetch event detail page and extract time from it
  */
@@ -686,17 +700,6 @@ export async function fetchEventDetailTime(
     const pageText = $('body').text();
     
     // Multi-language time patterns
-    const normalizeTime = (hours: string, minutes: string, ampm?: string): string | null => {
-      let hourNum = parseInt(hours, 10);
-      if (ampm) {
-        const lower = ampm.toLowerCase();
-        if (lower === "pm" && hourNum < 12) hourNum += 12;
-        if (lower === "am" && hourNum === 12) hourNum = 0;
-      }
-      if (hourNum > 23) return null;
-      return `${String(hourNum).padStart(2, "0")}:${minutes.padStart(2, "0")}`;
-    };
-
     const timePatterns = [
       // Dutch patterns
       /aanvang[:\s]*(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
@@ -730,7 +733,7 @@ export async function fetchEventDetailTime(
         for (const pattern of timePatterns) {
           const match = elText.match(pattern);
           if (match) {
-            const time = normalizeTime(match[1], match[2], match[3]);
+            const time = normalizeMatchedTime(match[1], match[2], match[3]);
             if (time) {
               console.log(`      ✅ Found time in element: ${time}`);
               return time;
@@ -743,7 +746,7 @@ export async function fetchEventDetailTime(
     for (const pattern of timePatterns) {
       const match = pageText.match(pattern);
       if (match) {
-        const time = normalizeTime(match[1], match[2], match[3]);
+        const time = normalizeMatchedTime(match[1], match[2], match[3]);
         if (time) {
           console.log(`      ✅ Found time in page text: ${time}`);
           return time;
@@ -790,7 +793,12 @@ function extractTitle($el: cheerio.Cheerio, $: cheerio.CheerioAPI): string {
 function buildElementDedupKey($el: cheerio.Cheerio, $: cheerio.CheerioAPI): string | null {
   const link = $el.find("a").first().attr("href") || "";
   const title = extractTitle($el, $);
-  if (!link && !title) return null;
+  if (!link && !title) {
+    const textContent = normalizeWhitespace($el.text() || "");
+    if (textContent.length > 200) return null;
+    const textSnippet = textContent.slice(0, 80);
+    return textSnippet ? `text:${textSnippet.toLowerCase()}` : null;
+  }
   return `${link.toLowerCase()}|${title.toLowerCase()}`;
 }
 
@@ -827,7 +835,6 @@ export async function scrapeEventCards(
   const selectors = getOptimizedSelectors(source);
 
   const collectedElements: cheerio.Element[] = [];
-  const seenElements = new Set<cheerio.Element>();
   const seenKeys = new Set<string>();
 
   for (const selector of selectors) {
@@ -836,11 +843,16 @@ export async function scrapeEventCards(
       console.log(`Found ${elements.length} elements with selector: ${selector}`);
     }
     elements.each((_, el) => {
-      if (seenElements.has(el)) return;
-      const key = buildElementDedupKey($(el), $);
-      if (key && seenKeys.has(key)) return;
-      seenElements.add(el);
-      if (key) seenKeys.add(key);
+      const $el = $(el);
+      const key = buildElementDedupKey($el, $);
+      if (!key) {
+        if (enableDebug) {
+          console.log("  ⏭️ Skipped element without dedup key");
+        }
+        return;
+      }
+      if (seenKeys.has(key)) return;
+      seenKeys.add(key);
       collectedElements.push(el);
     });
   }
@@ -901,14 +913,18 @@ export async function scrapeEventCards(
       }
     }
 
+    const dataDateEl = $el.find("[data-event-date], [data-date]").first();
+    const dateAttr =
+      dataDateEl.attr("data-event-date") ||
+      dataDateEl.attr("data-date") ||
+      $el.attr("data-event-date") ||
+      $el.attr("data-date") ||
+      "";
+
     const date =
       $el.find("time, .date, [class*=\"date\"], .event-date").first().text().trim() ||
       $el.find("[datetime]").first().attr("datetime") ||
-      $el.attr("data-event-date") ||
-      $el.attr("data-date") ||
-      $el.find("[data-event-date]").first().attr("data-event-date") ||
-      $el.find("[data-date]").first().attr("data-date") ||
-      "";
+      dateAttr;
 
     const location =
       $el.find(".location, .venue, [class*=\"location\"], [class*=\"venue\"]").first().text().trim() ||
@@ -1109,9 +1125,10 @@ export async function eventExists(
   supabase: any,
   title: string,
   eventDate: string,
-  eventTime: string
+  eventTime: string,
+  normalized?: { timestamp: string; dateOnly: string | null }
 ): Promise<boolean> {
-  const { timestamp, dateOnly } = normalizeEventDateForStorage(eventDate, eventTime);
+  const { timestamp, dateOnly } = normalized || normalizeEventDateForStorage(eventDate, eventTime);
 
   const primaryCheck = await supabase
     .from("events")
@@ -1302,8 +1319,14 @@ export async function handleRequest(req: Request): Promise<Response> {
           console.log(`  ✅ Parsed: ${parsed.title} | ${parsed.event_date} | ${parsed.event_time}`);
 
           // Check for duplicate using normalized storage format
-          const { timestamp: eventDateTime } = normalizeEventDateForStorage(parsed.event_date, parsed.event_time);
-          const exists = await eventExists(supabase, parsed.title, parsed.event_date, parsed.event_time);
+          const normalizedDate = normalizeEventDateForStorage(parsed.event_date, parsed.event_time);
+          const exists = await eventExists(
+            supabase,
+            parsed.title,
+            parsed.event_date,
+            parsed.event_time,
+            normalizedDate
+          );
 
           if (exists) {
             console.log("  ⏭️ Duplicate, skipping");
@@ -1337,7 +1360,7 @@ export async function handleRequest(req: Request): Promise<Response> {
             event_type: DEFAULT_EVENT_TYPE,
             venue_name: parsed.venue_name || source.name,
             location: `POINT(${coords.lng} ${coords.lat})`,
-            event_date: eventDateTime,
+            event_date: normalizedDate.timestamp,
             event_time: parsed.event_time || "TBD",
             image_url: parsed.image_url,
             created_by: null,
