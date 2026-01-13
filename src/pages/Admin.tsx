@@ -403,8 +403,7 @@ export default function Admin() {
         {(jobStats.pending > 0 || jobStats.processing > 0 || jobStats.completed > 0) && (
           <div className="mb-3">
             <Progress 
-              value={jobStats.completed + jobStats.failed} 
-              max={jobStats.pending + jobStats.processing + jobStats.completed + jobStats.failed} 
+              value={((jobStats.completed + jobStats.failed) / Math.max(1, jobStats.pending + jobStats.processing + jobStats.completed + jobStats.failed)) * 100} 
               className="h-2"
             />
             <p className="text-xs text-muted-foreground mt-1">
