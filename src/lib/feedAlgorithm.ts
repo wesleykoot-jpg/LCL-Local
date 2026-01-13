@@ -67,6 +67,8 @@ interface ScoredEvent<T extends EventForRanking> {
     socialScore: number;
     matchScore: number;
     distanceScore: number;
+    urgencyBoost: number;
+    trendingBoost: number;
   };
 }
 
@@ -208,6 +210,33 @@ function calculateDistanceScore(
 }
 
 /**
+ * Boost events that are happening soon (within the next 72 hours)
+ * to surface "tonight" and "this weekend" items first.
+ */
+function calculateUrgencyBoost(eventDate: string): number {
+  const now = Date.now();
+  const eventTime = new Date(eventDate).getTime();
+  const hoursUntilEvent = (eventTime - now) / (1000 * 60 * 60);
+
+  if (hoursUntilEvent < 0) return 0.1;
+  if (hoursUntilEvent <= 6) return 1.2;
+  if (hoursUntilEvent <= 24) return 1.15;
+  if (hoursUntilEvent <= 72) return 1.1;
+  return 1.0;
+}
+
+/**
+ * Boost trending events with strong social proof.
+ */
+function calculateTrendingBoost(attendeeCount: number = 0): number {
+  if (attendeeCount >= 100) return 1.2;
+  if (attendeeCount >= 50) return 1.15;
+  if (attendeeCount >= 20) return 1.1;
+  if (attendeeCount >= 10) return 1.05;
+  return 1.0;
+}
+
+/**
  * Calculates a composite score for an event based on multiple factors
  */
 function scoreEvent<T extends EventForRanking>(
@@ -225,12 +254,17 @@ function scoreEvent<T extends EventForRanking>(
   const distanceScore = calculateDistanceScore(event.coordinates, userLocation, radiusKm);
   
   // Weighted sum of all factors
-  const totalScore = 
+  const baseScore = 
     categoryScore * WEIGHTS.CATEGORY +
     timeScore * WEIGHTS.TIME +
     socialScore * WEIGHTS.SOCIAL +
     matchScore * WEIGHTS.MATCH +
     distanceScore * WEIGHTS.DISTANCE;
+
+  const urgencyBoost = calculateUrgencyBoost(event.event_date);
+  const trendingBoost = calculateTrendingBoost(event.attendee_count);
+  const boostMultiplier = Math.min(urgencyBoost * trendingBoost, 1.5);
+  const totalScore = baseScore * boostMultiplier;
   
   return {
     event,
@@ -241,6 +275,8 @@ function scoreEvent<T extends EventForRanking>(
       socialScore,
       matchScore,
       distanceScore,
+      urgencyBoost,
+      trendingBoost,
     },
   };
 }

@@ -200,6 +200,7 @@ interface EventFeedProps {
   showVibeHeaders?: boolean;
   profileId?: string;
   onEventsChange?: () => void;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 // Vibe Header Component - Centered divider style
@@ -228,6 +229,7 @@ export const EventFeed = memo(function EventFeed({
   showVibeHeaders = false,
   profileId,
   onEventsChange,
+  userLocation,
 }: EventFeedProps) {
   const [activeFilter, setActiveFilter] = useState<TimeFilter>('all');
 
@@ -289,6 +291,7 @@ export const EventFeed = memo(function EventFeed({
             onJoinEvent={handleJoinEvent}
             joiningEventId={joiningId}
             currentUserProfileId={profileId}
+            userLocation={userLocation}
           />
         </motion.div>
         {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
