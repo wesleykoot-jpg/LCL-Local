@@ -12,7 +12,6 @@ import {
   parseOAuthCallback,
   validateOAuthState,
   type GoogleCalendarEventData,
-  CONFIG_CHANGE_EVENT,
 } from '@/integrations/googleCalendar/client';
 import {
   exchangeCodeForTokens,
@@ -86,21 +85,9 @@ export function useGoogleCalendar(): UseGoogleCalendarResult {
   const { profile } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConfigured, setIsConfigured] = useState(isGoogleCalendarConfigured());
+  const [isConfigured] = useState(isGoogleCalendarConfigured());
   
   const profileId = profile?.id;
-
-  // Listen for configuration changes
-  useEffect(() => {
-    const handleConfigChange = () => {
-      setIsConfigured(isGoogleCalendarConfigured());
-    };
-    
-    if (typeof window !== 'undefined') {
-      window.addEventListener(CONFIG_CHANGE_EVENT, handleConfigChange);
-      return () => window.removeEventListener(CONFIG_CHANGE_EVENT, handleConfigChange);
-    }
-  }, []); // Empty deps - handler references stable functions only
 
   // Check connection status on mount and when profileId changes
   useEffect(() => {

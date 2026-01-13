@@ -4,18 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useAuth } from '@/contexts/useAuth';
-import { GoogleCalendarSetupDialog } from '@/components/GoogleCalendarSetupDialog';
-import { clearUserProvidedClientId, getUserProvidedClientId } from '@/integrations/googleCalendar/client';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 export function GoogleCalendarSettings() {
   const navigate = useNavigate();
@@ -30,25 +18,15 @@ export function GoogleCalendarSettings() {
   } = useGoogleCalendar();
   
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
-  const [showSetupDialog, setShowSetupDialog] = useState(false);
-  const [isUserConfigured, setIsUserConfigured] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-
-  // Check if user has configured their own Client ID
-  useEffect(() => {
-    setIsUserConfigured(Boolean(getUserProvidedClientId()));
-  }, [isConfigured]); // Re-check when isConfigured changes
 
   // Handle OAuth callback on page load
   useEffect(() => {
     async function processCallback() {
-      // Check if this is an OAuth callback
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has('code')) {
         setIsProcessingCallback(true);
         const success = await handleOAuthCallback();
         
-        // Clear URL parameters after processing
         if (success) {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -65,31 +43,6 @@ export function GoogleCalendarSettings() {
 
   const handleDisconnect = async () => {
     await disconnectCalendar();
-  };
-
-  const handleSetupClick = () => {
-    setShowSetupDialog(true);
-  };
-
-  const handleConfigured = () => {
-    // Close the setup dialog
-    setShowSetupDialog(false);
-    // Configuration change event will trigger hook to update isConfigured
-    // which will then update isUserConfigured via useEffect
-  };
-
-  const handleReconfigure = () => {
-    setShowSetupDialog(true);
-  };
-
-  const handleClearConfig = () => {
-    setShowClearConfirm(true);
-  };
-
-  const confirmClearConfig = () => {
-    clearUserProvidedClientId();
-    // Configuration change event will trigger hook to update isConfigured
-    setShowClearConfirm(false);
   };
 
   return (
@@ -153,31 +106,15 @@ export function GoogleCalendarSettings() {
                   )}
                 </div>
 
-            {!isConfigured ? (
-                  <div className="space-y-4">
-                    <div className="bg-primary/5 rounded-xl p-4 flex gap-3">
-                      <Calendar size={20} className="text-primary flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-foreground font-medium">
-                          Connect your calendar
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Events you join will automatically appear on your Google Calendar.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={handleSetupClick}
-                      className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Calendar size={18} />
-                      Connect Google Calendar
-                    </button>
-                    
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">
-                        <strong>⏱ About 5 minutes</strong> — You'll create a free connection key in Google's settings. We'll guide you through each step.
+                {!isConfigured ? (
+                  <div className="bg-amber-500/10 rounded-xl p-4 flex gap-3">
+                    <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-amber-700 font-medium">
+                        Integration Not Available
+                      </p>
+                      <p className="text-xs text-amber-600 mt-1">
+                        Google Calendar integration is not configured for this app.
                       </p>
                     </div>
                   </div>
@@ -229,37 +166,11 @@ export function GoogleCalendarSettings() {
                         ) : (
                           <>
                             <Calendar size={18} />
-                            Connect Google Calendar
+                            Connect with Google
                           </>
                         )}
                       </button>
                     )}
-                  </div>
-                )}
-                
-                {/* Configuration Management - shown only when user has configured */}
-                {isConfigured && isUserConfigured && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium text-muted-foreground">Your connection</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleReconfigure}
-                        className="flex-1 py-2 px-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm text-foreground"
-                      >
-                        Change Key
-                      </button>
-                      <button
-                        onClick={handleClearConfig}
-                        className="flex-1 py-2 px-3 rounded-lg bg-destructive/10 hover:bg-destructive/20 transition-colors text-sm text-destructive"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Connected with your personal key
-                    </p>
                   </div>
                 )}
               </div>
@@ -345,31 +256,6 @@ export function GoogleCalendarSettings() {
           </>
         )}
       </div>
-      
-      {/* Setup Dialog */}
-      <GoogleCalendarSetupDialog
-        open={showSetupDialog}
-        onOpenChange={setShowSetupDialog}
-        onConfigured={handleConfigured}
-      />
-      
-      {/* Clear Configuration Confirmation Dialog */}
-      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove calendar connection?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will disconnect your Google Calendar. Future events won't sync until you connect again. You can always reconnect later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Connected</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmClearConfig}>
-              Remove Connection
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

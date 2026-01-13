@@ -98,6 +98,10 @@ version = "1.30.3"
 # Allow unauthenticated access - protected by service role key usage
 verify_jwt = false
 
+[functions.google-calendar-auth]
+# Allow unauthenticated access - we handle auth validation in the function
+verify_jwt = false
+
 [db.seed]
 # Seed file to run on startup - automatically seeds dev data
 sql_paths = ["./seed.sql"]
