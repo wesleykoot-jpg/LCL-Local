@@ -224,44 +224,41 @@ const Feed = () => {
         transition={{ duration: 0.2 }}
         className="pb-32"
       >
-        {/* Header - Airbnb-inspired with safe area */}
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-2xl border-b border-[0.5px] border-border/30 pt-safe">
+        {/* Header - Airbnb-style clean */}
+        <header className="sticky top-0 z-40 bg-card border-b border-border pt-safe">
           {/* Location row */}
           <div className="px-5 py-3 flex items-center justify-between">
-            {/* Location as primary element - 44pt touch target */}
+            {/* Location as primary element */}
             <button 
               onClick={handleLocationClick}
-              className="flex items-center gap-2.5 hover:bg-muted/50 rounded-[1.25rem] py-2.5 px-3.5 -ml-3.5 min-h-[48px] transition-all active:scale-[0.98]"
+              className="flex items-center gap-2 hover:bg-muted rounded-xl py-2 px-3 -ml-3 min-h-[44px] transition-all active:scale-[0.98]"
             >
               {permissionState === 'granted' && locationPrefs.useGPS ? (
-                <Navigation size={20} className="text-primary" />
+                <Navigation size={18} className="text-primary" />
               ) : (
-                <MapPin size={20} className="text-primary" />
+                <MapPin size={18} className="text-primary" />
               )}
-              <span className="text-[17px] font-semibold text-foreground tracking-tight">
+              <span className="text-[15px] font-semibold text-foreground">
                 {locationPrefs.useGPS && permissionState === 'granted' 
-                  ? 'Huidige locatie' 
+                  ? 'Current location' 
                   : preferences?.zone || locationPrefs.manualZone || profile?.location_city || 'Meppel, NL'}
               </span>
-              <ChevronDown size={18} className="text-muted-foreground" />
+              <ChevronDown size={16} className="text-muted-foreground" />
             </button>
             
-            {/* Filter button - 44pt touch target with squircle */}
+            {/* Filter button */}
             <button 
               onClick={async () => {
                 await hapticImpact('light');
                 setShowOnboarding(true);
               }}
-              className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-card border-[0.5px] border-border/40 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-border transition-all active:scale-[0.95]"
-              style={{
-                boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.06)'
-              }}
+              className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-[0.95]"
             >
-              <SlidersHorizontal size={20} />
+              <SlidersHorizontal size={18} />
             </button>
           </div>
           
-          {/* Filter pills - part of header, no gap */}
+          {/* Filter pills */}
           <div className="px-4 pb-3">
             <TimeFilterPills
               activeFilter={activeFilter}

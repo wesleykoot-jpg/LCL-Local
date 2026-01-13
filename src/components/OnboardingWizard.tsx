@@ -34,6 +34,12 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
     }
   };
 
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+    }
+  };
+
   const handleFinish = () => {
     onComplete(Array.from(selectedCategories), zone.trim());
   };
@@ -49,51 +55,60 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-xl"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
     >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-lg bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="relative w-full max-w-lg bg-background rounded-t-3xl sm:rounded-3xl overflow-hidden max-h-[90vh] flex flex-col"
+        style={{
+          boxShadow: '0 -8px 40px -8px rgba(0, 0, 0, 0.2)'
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              {step === 1 && 'Curate Your Feed'}
-              {step === 2 && 'Set Your Zone'}
-              {step === 3 && 'You\'re All Set!'}
-            </h2>
-            <p className="text-sm text-zinc-400 mt-1">
-              {step === 1 && 'Select the tribes you want to join'}
-              {step === 2 && 'Enter your city or postcode'}
-              {step === 3 && 'Your personalized feed is ready'}
-            </p>
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-4">
+            {step > 1 && (
+              <button
+                onClick={handleBack}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+              >
+                <ChevronRight size={20} className="rotate-180 text-foreground" />
+              </button>
+            )}
+            <div>
+              <p className="text-[13px] text-muted-foreground font-medium">
+                Step {step} of 3
+              </p>
+              <h2 className="text-[20px] font-bold text-foreground">
+                {step === 1 && 'What are you interested in?'}
+                {step === 2 && 'Where are you located?'}
+                {step === 3 && 'All set!'}
+              </h2>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors text-zinc-400 hover:text-white"
+            className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
           >
-            <X size={20} />
+            <X size={16} className="text-foreground" />
           </button>
         </div>
 
-        {/* Progress */}
-        <div className="px-6 py-3 flex gap-2">
-          {[1, 2, 3].map(s => (
-            <div
-              key={s}
-              className={cn(
-                'h-1 flex-1 rounded-full transition-colors',
-                s <= step ? 'bg-white' : 'bg-white/20'
-              )}
-            />
-          ))}
+        {/* Progress bar */}
+        <div className="h-1 bg-muted">
+          <motion.div
+            className="h-full bg-primary"
+            initial={{ width: '33%' }}
+            animate={{ width: `${(step / 3) * 100}%` }}
+            transition={{ duration: 0.3 }}
+          />
         </div>
 
         {/* Content */}
-        <div className="p-6 min-h-[400px]">
+        <div className="flex-1 overflow-y-auto p-5">
           <AnimatePresence mode="wait">
             {step === 1 && (
               <motion.div
@@ -111,18 +126,18 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                       key={cat.id}
                       onClick={() => toggleCategory(cat.id)}
                       className={cn(
-                        'relative p-4 rounded-2xl transition-all text-left',
+                        'relative p-4 rounded-2xl transition-all text-left min-h-[80px]',
                         'hover:scale-[1.02] active:scale-[0.98]',
                         'border-2',
                         isSelected
-                          ? cn('bg-white/5', cat.borderClass.replace('/20', '/60'))
-                          : 'bg-white/5 border-white/10 hover:border-white/20'
+                          ? 'bg-primary/5 border-primary'
+                          : 'bg-card border-border hover:border-muted-foreground/30'
                       )}
                     >
                       {/* Check mark for selected */}
                       {isSelected && (
-                        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-white flex items-center justify-center">
-                          <Check size={12} className="text-zinc-900" />
+                        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                          <Check size={14} className="text-primary-foreground" />
                         </div>
                       )}
                       
@@ -133,8 +148,8 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                       
                       {/* Label */}
                       <div className={cn(
-                        'text-base font-semibold transition-colors',
-                        isSelected ? 'text-white' : 'text-zinc-300'
+                        'text-[15px] font-semibold transition-colors',
+                        isSelected ? 'text-foreground' : 'text-muted-foreground'
                       )}>
                         {cat.label}
                       </div>
@@ -150,21 +165,26 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex flex-col items-center justify-center h-[360px]"
+                className="flex flex-col items-center justify-center py-12"
               >
-                <div className="w-20 h-20 rounded-3xl bg-white/10 flex items-center justify-center mb-6">
-                  <MapPin size={40} className="text-white" />
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                  <MapPin size={36} className="text-primary" />
                 </div>
-                <input
-                  type="text"
-                  value={zone}
-                  onChange={(e) => setZone(e.target.value)}
-                  placeholder="Enter city or postcode..."
-                  className="w-full max-w-sm px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-zinc-500 text-center text-lg font-medium focus:outline-none focus:border-white/30 transition-colors"
-                  autoFocus
-                />
-                <p className="text-zinc-500 text-sm mt-4">
-                  We'll show events near this location
+                <div className="w-full max-w-sm">
+                  <label className="block text-[13px] text-muted-foreground font-medium mb-2">
+                    City or postcode
+                  </label>
+                  <input
+                    type="text"
+                    value={zone}
+                    onChange={(e) => setZone(e.target.value)}
+                    placeholder="e.g., Amsterdam, 1012 AB"
+                    className="w-full px-4 py-4 bg-card border-2 border-border rounded-xl text-foreground placeholder:text-muted-foreground text-[16px] focus:outline-none focus:border-primary transition-colors"
+                    autoFocus
+                  />
+                </div>
+                <p className="text-muted-foreground text-[13px] mt-4 text-center">
+                  We'll show events happening near this location
                 </p>
               </motion.div>
             )}
@@ -175,40 +195,36 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex flex-col items-center justify-center h-[360px] text-center"
+                className="flex flex-col items-center justify-center py-12 text-center"
               >
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.2 }}
-                  className="w-24 h-24 rounded-full bg-emerald-500/20 flex items-center justify-center mb-6"
+                  className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-6"
                 >
-                  <Check size={48} className="text-emerald-400" />
+                  <Check size={40} className="text-green-600" />
                 </motion.div>
-                <h3 className="text-2xl font-bold text-white mb-2">Perfect!</h3>
-                <p className="text-zinc-400 max-w-xs">
-                  Your feed will now show {selectedCategories.size} categories near {zone}
+                <h3 className="text-[24px] font-bold text-foreground mb-2">Perfect!</h3>
+                <p className="text-muted-foreground text-[15px] max-w-xs mb-6">
+                  Your personalized feed is ready with {selectedCategories.size} categories near {zone}
                 </p>
-                <div className="flex flex-wrap justify-center gap-2 mt-6 max-w-sm">
+                <div className="flex flex-wrap justify-center gap-2 max-w-sm">
                   {Array.from(selectedCategories).slice(0, 5).map(catId => {
                     const cat = CATEGORIES.find(c => c.id === catId);
                     if (!cat) return null;
                     return (
                       <span 
                         key={catId} 
-                        className={cn(
-                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full',
-                          'text-xs font-semibold uppercase tracking-wide border',
-                          cat.bgClass, cat.textClass, cat.borderClass
-                        )}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[13px] font-medium text-foreground"
                       >
-                        <span className={cn('w-1.5 h-1.5 rounded-full', cat.dotClass)} />
+                        <span className={cn('w-2 h-2 rounded-full', cat.dotClass)} />
                         {cat.label}
                       </span>
                     );
                   })}
                   {selectedCategories.size > 5 && (
-                    <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/20">
+                    <span className="px-3 py-1.5 rounded-full text-[13px] font-medium bg-muted text-muted-foreground">
                       +{selectedCategories.size - 5} more
                     </span>
                   )}
@@ -219,16 +235,16 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-white/10">
+        <div className="p-5 border-t border-border pb-safe">
           <button
             onClick={step === 3 ? handleFinish : handleNext}
             disabled={!canProceed}
             className={cn(
-              'w-full py-4 rounded-2xl font-semibold text-base transition-all',
+              'w-full py-4 rounded-xl font-semibold text-[16px] transition-all min-h-[52px]',
               'flex items-center justify-center gap-2',
               canProceed
-                ? 'bg-white text-zinc-900 hover:bg-zinc-100 active:scale-[0.98]'
-                : 'bg-white/10 text-zinc-500 cursor-not-allowed'
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
             )}
           >
             <span>{step === 3 ? 'Start Exploring' : 'Continue'}</span>
