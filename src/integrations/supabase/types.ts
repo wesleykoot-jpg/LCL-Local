@@ -134,6 +134,33 @@ export type Database = {
           },
         ]
       }
+      geocode_cache: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          id: string
+          lat: number
+          lng: number
+          venue_key: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          lat: number
+          lng: number
+          venue_key: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          venue_key?: string
+        }
+        Relationships: []
+      }
       persona_badges: {
         Row: {
           badge_icon: string

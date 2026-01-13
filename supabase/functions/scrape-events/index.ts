@@ -225,6 +225,190 @@ interface EventInsert {
 }
 
 /**
+ * Create a unique key for geocode caching
+ */
+function createVenueKey(venueName: string, country: string = "NL"): string {
+  return `${venueName.toLowerCase().trim()}|${country.toUpperCase()}`;
+}
+
+/**
+ * Check geocode cache for existing coordinates
+ */
+// deno-lint-ignore no-explicit-any
+async function getCachedGeocode(
+  supabase: any,
+  venueName: string,
+  country: string = "NL"
+): Promise<{ lat: number; lng: number } | null> {
+  const venueKey = createVenueKey(venueName, country);
+  
+  const { data, error } = await supabase
+    .from("geocode_cache")
+    .select("lat, lng")
+    .eq("venue_key", venueKey)
+    .limit(1);
+  
+  if (error || !data || data.length === 0) {
+    return null;
+  }
+  
+  console.log(`    📍 Cache hit for "${venueName}"`);
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lng) };
+}
+
+/**
+ * Store geocoded coordinates in cache
+ */
+// deno-lint-ignore no-explicit-any
+async function cacheGeocode(
+  supabase: any,
+  venueName: string,
+  country: string,
+  coords: { lat: number; lng: number },
+  displayName?: string
+): Promise<void> {
+  const venueKey = createVenueKey(venueName, country);
+  
+  try {
+    await supabase.from("geocode_cache").upsert({
+      venue_key: venueKey,
+      lat: coords.lat,
+      lng: coords.lng,
+      display_name: displayName,
+    }, { onConflict: "venue_key" });
+  } catch (error) {
+    console.warn(`    ⚠️ Failed to cache geocode: ${error}`);
+  }
+}
+
+/**
+ * Geocode a venue using Nominatim (OpenStreetMap) API
+ * Rate limited to 1 request per second as per Nominatim usage policy
+ */
+async function geocodeVenue(
+  venueName: string,
+  country: string = "NL",
+  municipality?: string
+): Promise<{ lat: number; lng: number; displayName: string } | null> {
+  try {
+    // Build search query - include municipality if available for better accuracy
+    const searchParts = [venueName];
+    if (municipality) {
+      searchParts.push(municipality);
+    }
+    searchParts.push(country);
+    
+    const query = encodeURIComponent(searchParts.join(", "));
+    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&addressdetails=1`;
+    
+    console.log(`    🌍 Geocoding: "${venueName}"...`);
+    
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "LCL-EventScraper/1.0 (https://github.com/lcl-app; Event aggregator)",
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    
+    if (!response.ok) {
+      console.log(`    ⚠️ Nominatim error: ${response.status}`);
+      return null;
+    }
+    
+    const results = await response.json();
+    
+    if (results && results.length > 0) {
+      const result = results[0];
+      const coords = {
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lon),
+        displayName: result.display_name,
+      };
+      console.log(`    ✅ Geocoded to: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+      return coords;
+    }
+    
+    // If first query fails and we had municipality, try without it
+    if (municipality) {
+      const simpleQuery = encodeURIComponent(`${venueName}, ${country}`);
+      const simpleUrl = `https://nominatim.openstreetmap.org/search?q=${simpleQuery}&format=json&limit=1`;
+      
+      // Rate limit
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const simpleResponse = await fetch(simpleUrl, {
+        headers: {
+          "User-Agent": "LCL-EventScraper/1.0 (https://github.com/lcl-app; Event aggregator)",
+          "Accept": "application/json",
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      
+      if (simpleResponse.ok) {
+        const simpleResults = await simpleResponse.json();
+        if (simpleResults && simpleResults.length > 0) {
+          const result = simpleResults[0];
+          const coords = {
+            lat: parseFloat(result.lat),
+            lng: parseFloat(result.lon),
+            displayName: result.display_name,
+          };
+          console.log(`    ✅ Geocoded (simple) to: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+          return coords;
+        }
+      }
+    }
+    
+    console.log(`    ⚠️ No geocode results for "${venueName}"`);
+    return null;
+  } catch (error) {
+    console.log(`    ⚠️ Geocoding error: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
+}
+
+/**
+ * Get coordinates for a venue, using cache first, then geocoding, then fallback
+ */
+// deno-lint-ignore no-explicit-any
+async function getVenueCoordinates(
+  supabase: any,
+  venueName: string,
+  country: string = "NL",
+  municipality?: string,
+  defaultCoords?: { lat: number; lng: number }
+): Promise<{ lat: number; lng: number }> {
+  // Skip geocoding for generic/empty venue names
+  if (!venueName || venueName.length < 3 || venueName.toLowerCase() === "unknown") {
+    console.log(`    ⏭️ Skipping geocode for generic venue: "${venueName}"`);
+    return defaultCoords || { lat: 0, lng: 0 };
+  }
+  
+  // 1. Check cache first
+  const cached = await getCachedGeocode(supabase, venueName, country);
+  if (cached) {
+    return cached;
+  }
+  
+  // 2. Rate limit before geocoding (1 req/sec for Nominatim)
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // 3. Try geocoding
+  const geocoded = await geocodeVenue(venueName, country, municipality);
+  
+  if (geocoded) {
+    // Cache the result
+    await cacheGeocode(supabase, venueName, country, geocoded, geocoded.displayName);
+    return { lat: geocoded.lat, lng: geocoded.lng };
+  }
+  
+  // 4. Fall back to default coordinates
+  console.log(`    📍 Using default coordinates for "${venueName}"`);
+  return defaultCoords || { lat: 0, lng: 0 };
+}
+
+/**
  * Replaces year patterns in URLs with the current year.
  * Handles formats like:
  * - evenementenkalender-2026 -> evenementenkalender-2027 (when current year is 2027)
@@ -958,14 +1142,23 @@ serve(async (req) => {
             continue;
           }
 
+          // Get venue coordinates via geocoding (with caching)
+          const venueCountry = source.config.country || "NL";
+          const municipality = source.name.replace(/^(Ontdek|Bezoek|Visit)\s*/i, "");
+          
+          const coords = await getVenueCoordinates(
+            supabase,
+            parsed.venue_name || source.name,
+            venueCountry,
+            municipality,
+            defaultCoords
+          );
+
           if (dryRun) {
-            console.log("  🧪 Dry run, would insert");
+            console.log(`  🧪 Dry run, would insert at ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
             sourceStats.inserted++;
             continue;
           }
-
-          // Get coordinates - use parsed or default
-          const coords = parsed.coordinates || defaultCoords || { lat: 0, lng: 0 };
 
           // Insert event
           const eventInsert: EventInsert = {
