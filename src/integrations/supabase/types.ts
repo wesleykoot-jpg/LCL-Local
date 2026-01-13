@@ -66,6 +66,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           event_date: string
+          event_fingerprint: string | null
           event_time: string
           event_type: string
           id: string
@@ -74,6 +75,7 @@ export type Database = {
           match_percentage: number | null
           max_attendees: number | null
           parent_event_id: string | null
+          source_id: string | null
           status: string | null
           title: string
           updated_at: string | null
@@ -85,6 +87,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           event_date: string
+          event_fingerprint?: string | null
           event_time: string
           event_type: string
           id?: string
@@ -93,6 +96,7 @@ export type Database = {
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
+          source_id?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
@@ -104,6 +108,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           event_date?: string
+          event_fingerprint?: string | null
           event_time?: string
           event_type?: string
           id?: string
@@ -112,6 +117,7 @@ export type Database = {
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
+          source_id?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
@@ -130,6 +136,13 @@ export type Database = {
             columns: ["parent_event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "scraper_sources"
             referencedColumns: ["id"]
           },
         ]
