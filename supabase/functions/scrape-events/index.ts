@@ -54,7 +54,7 @@ const PLATFORM_CONFIGS: Record<string, PlatformConfig> = {
   // "Ontdek" platform - used by many Dutch municipalities
   ontdek: {
     name: "Ontdek Platform",
-    urlPatterns: [/ontdek[\w]+\.nl/i, /beleef[\w]+\.nl/i, /bezoek[\w]+\.nl/i],
+    urlPatterns: [/ontdek[\w]+\.nl/i, /bezoek[\w]+\.nl/i],
     selectors: [
       ".agenda-item",
       ".event-card",
@@ -64,6 +64,20 @@ const PLATFORM_CONFIGS: Record<string, PlatformConfig> = {
     ],
     dateSelector: ".event-date, .date, time",
     timeSelector: ".event-time, .time",
+  },
+  // "Beleef" platform - WordPress-based event sites (Paviljoen/venue style)
+  beleef: {
+    name: "Beleef WordPress Platform",
+    urlPatterns: [/beleef[\w]+\.nl/i, /paviljoen[\w]+\.nl/i],
+    selectors: [
+      ".archive-item-wrapper",
+      ".archive-item",
+      ".block-item",
+      'a.block-item',
+      '[class*="archive-item"]',
+    ],
+    dateSelector: ".date p, .date",
+    timeSelector: ".time",
   },
   // "Visit" platform - tourism boards
   visit: {
@@ -767,7 +781,7 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function extractTitle($el: cheerio.Cheerio, $: cheerio.CheerioAPI): string {
+function extractTitle($el: cheerio.Cheerio<cheerio.AnyNode>, $: cheerio.CheerioAPI): string {
   const selectors = [
     "h1, h2, h3, h4",
     ".title",
@@ -790,7 +804,7 @@ function extractTitle($el: cheerio.Cheerio, $: cheerio.CheerioAPI): string {
   return normalizeWhitespace(firstLinkText || "");
 }
 
-function buildElementDedupKey($el: cheerio.Cheerio, $: cheerio.CheerioAPI): string | null {
+function buildElementDedupKey($el: cheerio.Cheerio<cheerio.AnyNode>, $: cheerio.CheerioAPI): string | null {
   const link = $el.find("a").first().attr("href") || "";
   const title = extractTitle($el, $);
   if (!link && !title) {
@@ -834,7 +848,7 @@ export async function scrapeEventCards(
 
   const selectors = getOptimizedSelectors(source);
 
-  const collectedElements: cheerio.Element[] = [];
+  const collectedElements: cheerio.AnyNode[] = [];
   const seenKeys = new Set<string>();
 
   for (const selector of selectors) {
@@ -859,7 +873,7 @@ export async function scrapeEventCards(
 
   // Filter out elements inside excluded containers
   const excludedSelector = EXCLUDED_CONTAINERS.join(', ');
-  let foundElements = $(collectedElements).filter((_: number, el: cheerio.Element) => {
+  let foundElements = $(collectedElements).filter((_: number, el: cheerio.AnyNode) => {
     const isInExcluded = $(el).parents(excludedSelector).length > 0;
     if (isInExcluded) {
       console.log(`  ⏭️ Skipped element inside excluded container`);
@@ -871,7 +885,7 @@ export async function scrapeEventCards(
     console.log("⚠️ No event elements found with common selectors. Trying generic approach...");
     foundElements = $("main article, main .card, .content article, .events article")
       .not(excludedSelector)
-      .filter((_: number, el: cheerio.Element) => {
+      .filter((_: number, el: cheerio.AnyNode) => {
         const $el = $(el);
         const text = $el.text();
         const hasDate = $el.find('time, [class*="date"], [datetime]').length > 0;
