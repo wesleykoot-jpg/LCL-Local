@@ -2,9 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "./dateUtils.ts";
-import type { ScraperSource } from "./shared.ts";
-import { createSpoofedFetch, resolveStrategy } from "../../../strategies/index.ts";
-import type { RawEventCard } from "../../../strategies/index.ts";
+import type { ScraperSource, RawEventCard } from "./shared.ts";
+import { createSpoofedFetch, resolveStrategy } from "./strategies.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -326,7 +325,7 @@ export async function scrapeEventCards(
   enableDeepScraping: boolean = true,
   options: ScrapeEventCardOptions = {}
 ): Promise<RawEventCard[]> {
-  const strategy = resolveStrategy((source as Record<string, unknown>)["strategy"] as string, source);
+  const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
   const fetcher = options.fetcher || createSpoofedFetch({ headers: source.config.headers });
   const rateLimit = source.config.rate_limit_ms ?? 150;
 
@@ -448,7 +447,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     };
 
     for (const source of sources as ScraperSource[]) {
-      const strategy = resolveStrategy((source as Record<string, unknown>)["strategy"] as string, source);
+      const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
       const fetcher = createSpoofedFetch({ headers: source.config.headers });
       const probeLog: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }> = [];
       const rateLimit = source.config.rate_limit_ms ?? 200;

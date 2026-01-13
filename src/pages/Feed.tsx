@@ -271,7 +271,7 @@ const Feed = () => {
         </header>
 
         {/* Main Content - Netflix/Airbnb hybrid layout */}
-        <main className="px-4 pt-4 space-y-8 overflow-x-hidden">
+        <main className="px-4 pt-4 space-y-6 overflow-x-hidden">
 
           {loading ? (
             <div className="max-w-md mx-auto flex flex-col gap-5">
@@ -380,7 +380,7 @@ const Feed = () => {
           await hapticImpact('medium');
           setShowCreateModal(true);
         }}
-        className="fixed bottom-28 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-[1.5rem] bg-primary text-primary-foreground flex items-center justify-center mb-safe border-[0.5px] border-primary/20"
+        className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-[1.5rem] bg-primary text-primary-foreground flex items-center justify-center mb-safe border-[0.5px] border-primary/20"
         style={{
           boxShadow: '0 8px 24px -4px rgba(var(--primary) / 0.3), 0 16px 40px -8px rgba(0, 0, 0, 0.15)'
         }}

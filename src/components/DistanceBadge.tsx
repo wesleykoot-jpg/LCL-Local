@@ -45,20 +45,23 @@ export const DistanceBadge = memo(function DistanceBadge({
 
   const isVeryClose = distanceKm < 0.1;
   const isWalkable = distanceKm < 2;
+  
+  // Consistent icon sizes
+  const iconSize = size === 'sm' ? 12 : 14;
 
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 text-muted-foreground',
-        size === 'sm' ? 'text-xs' : 'text-sm',
+        size === 'sm' ? 'text-[13px]' : 'text-[14px]',
         isVeryClose && 'text-primary',
         className
       )}
     >
       {isWalkable ? (
-        <Navigation size={size === 'sm' ? 10 : 12} className={cn(isVeryClose && 'text-primary')} />
+        <Navigation size={iconSize} className={cn(isVeryClose && 'text-primary')} />
       ) : (
-        <MapPin size={size === 'sm' ? 10 : 12} />
+        <MapPin size={iconSize} />
       )}
       <span className={cn('font-medium', isVeryClose && 'text-primary')}>
         {display.primary}

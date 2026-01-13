@@ -79,7 +79,7 @@ const CarouselEventCard = memo(function CarouselEventCard({
 
   return (
     <motion.div
-      className="flex-shrink-0 w-[280px] rounded-[1.5rem] overflow-hidden bg-card cursor-pointer group border-[0.5px] border-border/30"
+      className="flex-shrink-0 w-[min(280px,75vw)] rounded-[1.5rem] overflow-hidden bg-card cursor-pointer group border-[0.5px] border-border/30"
       style={{
         boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.08)'
       }}
@@ -99,11 +99,11 @@ const CarouselEventCard = memo(function CarouselEventCard({
         
         {/* Category badge */}
         <div className="absolute top-3 left-3">
-          <CategoryBadge category={categoryLabel} variant="glass" />
+          <CategoryBadge category={categoryLabel} variant="glass" size="sm" />
         </div>
         
         {/* Date */}
-        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-[0.75rem] bg-background/90 backdrop-blur-sm text-[12px] font-semibold text-foreground">
+        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-[0.75rem] bg-background/90 backdrop-blur-sm text-[13px] font-semibold text-foreground">
           {formatDateShort(event.event_date)}
         </div>
         
@@ -118,7 +118,7 @@ const CarouselEventCard = memo(function CarouselEventCard({
       {/* Content */}
       <div className="p-4 space-y-3">
         {/* Metadata */}
-        <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
           {formatTime(event.event_time) && (
             <span className="flex items-center gap-1">
               <Clock size={12} />
@@ -147,14 +147,14 @@ const CarouselEventCard = memo(function CarouselEventCard({
             }
           }}
           disabled={isJoining || hasJoined}
-          className={`w-full py-3 min-h-[44px] rounded-[1rem] text-[15px] font-semibold transition-all active:scale-[0.97] border-[0.5px] ${
+          className={`w-full h-[44px] rounded-[1rem] text-[15px] font-semibold transition-all active:scale-[0.97] border-[0.5px] flex items-center justify-center ${
             hasJoined
               ? 'bg-muted text-muted-foreground border-border/30'
               : 'bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90'
           }`}
         >
           {isJoining ? (
-            <Loader2 size={16} className="animate-spin mx-auto" />
+            <Loader2 size={16} className="animate-spin" />
           ) : hasJoined ? (
             'Aangemeld'
           ) : (
@@ -202,10 +202,10 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
         )}
       </div>
       
-      {/* Horizontal scroll */}
+      {/* Horizontal scroll - proper padding */}
       <div 
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide snap-x snap-mandatory"
+        className="flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 -ml-4 -mr-4 scrollbar-hide snap-x snap-mandatory scroll-pl-4"
         style={{ scrollSnapType: 'x mandatory' }}
       >
         {events.map((event) => {

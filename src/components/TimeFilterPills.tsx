@@ -44,7 +44,7 @@ export const TimeFilterPills = memo(function TimeFilterPills({
   };
 
   return (
-    <div className="relative">
+    <div className="relative pl-1">
       <div 
         ref={containerRef}
         className="flex items-center gap-2 p-1.5 bg-muted/50 rounded-[1.5rem] border-[0.5px] border-border/20 overflow-x-auto scrollbar-hide"
@@ -59,7 +59,7 @@ export const TimeFilterPills = memo(function TimeFilterPills({
               key={filter.id}
               onClick={() => handleFilterChange(filter.id)}
               className={cn(
-                'relative px-4 py-3 min-h-[48px] text-[15px] font-semibold rounded-[1.25rem] transition-all duration-200 whitespace-nowrap shrink-0',
+                'relative px-5 py-2.5 min-h-[44px] text-[15px] font-semibold rounded-[1.25rem] transition-all duration-200 whitespace-nowrap shrink-0',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 'active:scale-[0.97]',
                 isActive
@@ -83,10 +83,10 @@ export const TimeFilterPills = memo(function TimeFilterPills({
           );
         })}
       </div>
-      {/* Right fade indicator for scroll - only shown when content is scrollable */}
+      {/* Right fade indicator - matches muted/50 background */}
       {showFade && (
         <div 
-          className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none rounded-r-[1.5rem]"
+          className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-muted/50 to-transparent pointer-events-none rounded-r-[1.5rem]"
           aria-hidden="true"
         />
       )}
