@@ -112,6 +112,40 @@
 }
 
 @layer utilities {
+  /* iOS Safe Area Insets */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .px-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .py-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mt-safe {
+    margin-top: env(safe-area-inset-top, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  /* Minimum touch target (44pt iOS HIG) */
+  .min-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
   /* Typography - Neo-Grotesque Bold */
   .font-display {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;

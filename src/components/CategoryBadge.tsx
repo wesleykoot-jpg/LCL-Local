@@ -28,8 +28,8 @@ export const CategoryBadge = memo(function CategoryBadge({
         'inline-flex items-center rounded-full',
         'font-semibold uppercase tracking-wide',
         'border',
-        // Size variants
-        size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs',
+        // Size variants - improved legibility (min 11px)
+        size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs',
         // Style variants
         variant === 'glass' 
           ? 'bg-black/40 backdrop-blur-sm text-white border-white/20' 

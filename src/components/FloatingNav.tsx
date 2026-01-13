@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, CalendarCheck, User } from 'lucide-react';
+import { hapticImpact } from '@/lib/haptics';
 
 type NavView = 'feed' | 'my-events' | 'profile';
 
@@ -24,7 +25,8 @@ export function FloatingNav({
     return 'feed';
   })();
 
-  const handleNav = (view: NavView) => {
+  const handleNav = async (view: NavView) => {
+    await hapticImpact('light');
     if (onNavigate) {
       onNavigate(view);
     } else {
@@ -32,7 +34,7 @@ export function FloatingNav({
     }
   };
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 pb-safe mb-2">
       {/* 2026: Premium glass nav with refined blur and subtle shadow */}
       <motion.div 
         className="flex items-center gap-1 p-1.5 bg-zinc-900/90 backdrop-blur-2xl rounded-full shadow-nav border border-white/10"
@@ -43,34 +45,34 @@ export function FloatingNav({
         {/* Touch targets 48px minimum for better mobile UX */}
         <motion.button 
           onClick={() => handleNav('feed')} 
-          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
+          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all active:scale-[0.92] ${
             activeView === 'feed' 
               ? 'bg-white/20 text-white' 
               : 'text-zinc-400 hover:text-white'
           }`}
-          whileTap={{ scale: 0.9 }}
+          whileTap={{ scale: 0.92 }}
         >
           <Home size={22} strokeWidth={2} />
         </motion.button>
         <motion.button 
           onClick={() => handleNav('my-events')} 
-          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
+          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all active:scale-[0.92] ${
             activeView === 'my-events' 
               ? 'bg-white/20 text-white' 
               : 'text-zinc-400 hover:text-white'
           }`}
-          whileTap={{ scale: 0.9 }}
+          whileTap={{ scale: 0.92 }}
         >
           <CalendarCheck size={22} strokeWidth={2} />
         </motion.button>
         <motion.button 
           onClick={() => handleNav('profile')} 
-          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all ${
+          className={`min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full transition-all active:scale-[0.92] ${
             activeView === 'profile' 
               ? 'bg-white/20 text-white' 
               : 'text-zinc-400 hover:text-white'
           }`}
-          whileTap={{ scale: 0.9 }}
+          whileTap={{ scale: 0.92 }}
         >
           <User size={22} strokeWidth={2} />
         </motion.button>

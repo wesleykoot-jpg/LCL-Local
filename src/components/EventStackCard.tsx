@@ -5,6 +5,7 @@ import { CategoryBadge } from './CategoryBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
+import { hapticImpact } from '@/lib/haptics';
 
 // Fallback images by category - Dutch/Netherlands themed
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
@@ -199,14 +200,15 @@ const AnchorEventCard = memo(function AnchorEventCard({
           </div>
 
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
               if (!hasJoined) {
+                await hapticImpact('medium');
                 onJoin?.();
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-95 ${
+            className={`px-4 py-2 min-h-[44px] rounded-2xl text-sm font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-[0.95] ${
               hasJoined 
                 ? 'bg-muted text-muted-foreground cursor-default' 
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -214,7 +216,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
             title={hasJoined ? 'Je doet al mee' : undefined}
           >
             {isJoining ? (
-              <Loader2 size={12} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : null}
             <span>{isJoining ? 'Aanmelden...' : hasJoined ? 'Aangemeld' : 'Meedoen'}</span>
           </button>
@@ -264,9 +266,9 @@ const ForkEventCard = memo(function ForkEventCard({
         <div className="absolute top-5 left-0 h-0.5 w-4 border-t-2 border-dashed border-border" />
       </div>
 
-      {/* Fork card content - Horizontal compact */}
+      {/* Fork card content - Horizontal compact - rounded-2xl for squircle */}
       <motion.div
-        className="flex-1 min-w-0 overflow-hidden rounded-xl bg-card border border-border p-2.5 cursor-pointer hover:shadow-card-warm transition-all"
+        className="flex-1 min-w-0 overflow-hidden rounded-2xl bg-card border border-border p-3 cursor-pointer hover:shadow-card-warm transition-all"
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -286,9 +288,9 @@ const ForkEventCard = memo(function ForkEventCard({
             />
           </div>
 
-          {/* Content */}
+          {/* Content - improved typography */}
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm text-foreground leading-tight line-clamp-1">
+            <h4 className="font-medium text-base text-foreground leading-tight line-clamp-1">
               {event.title}
             </h4>
             <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
@@ -306,21 +308,22 @@ const ForkEventCard = memo(function ForkEventCard({
             </div>
             
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
                 if (!hasJoined) {
+                  await hapticImpact('medium');
                   onJoin?.();
                 }
               }}
               disabled={isJoining || hasJoined}
-              className={`px-2 py-1 rounded-md text-xs font-medium transition-all disabled:opacity-50 active:scale-95 ${
+              className={`w-10 h-10 min-h-[44px] min-w-[44px] rounded-xl text-sm font-medium transition-all disabled:opacity-50 active:scale-[0.95] flex items-center justify-center ${
                 hasJoined 
                   ? 'bg-muted text-muted-foreground cursor-default' 
                   : 'bg-primary text-primary-foreground hover:bg-primary/90'
               }`}
               title={hasJoined ? 'Je doet al mee' : undefined}
             >
-              {isJoining ? <Loader2 size={10} className="animate-spin" /> : hasJoined ? '✓' : '+'}
+              {isJoining ? <Loader2 size={14} className="animate-spin" /> : hasJoined ? '✓' : '+'}
             </button>
           </div>
         </div>
