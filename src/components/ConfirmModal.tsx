@@ -26,6 +26,7 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElement = useRef<HTMLElement | null>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -47,8 +48,8 @@ export function ConfirmModal({
       }
 
       if (event.key === 'Enter') {
-        event.preventDefault();
-        if (!confirmDisabled) {
+        if (document.activeElement === confirmButtonRef.current && !confirmDisabled) {
+          event.preventDefault();
           onConfirm();
         }
       }
@@ -129,6 +130,7 @@ export function ConfirmModal({
             aria-label={confirmText}
             onClick={onConfirm}
             disabled={confirmDisabled}
+            ref={confirmButtonRef}
             className={cn(
               'w-full min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold transition-colors',
               'hover:opacity-90 disabled:opacity-60'

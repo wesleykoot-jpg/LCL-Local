@@ -4,6 +4,13 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import { ShareProfile } from '../ShareProfile';
 
+const mockProfile = {
+  id: 'user-123',
+  full_name: 'Test User',
+  location_city: 'Test City',
+  location_country: 'Testland',
+};
+
 vi.mock('react-hot-toast', () => ({
   __esModule: true,
   default: Object.assign(() => {}, {
@@ -14,12 +21,7 @@ vi.mock('react-hot-toast', () => ({
 
 vi.mock('../../contexts/useAuth', () => ({
   useAuth: () => ({
-    profile: {
-      id: 'user-123',
-      full_name: 'Test User',
-      location_city: 'Test City',
-      location_country: 'Testland',
-    },
+    profile: mockProfile,
   }),
 }));
 
@@ -63,6 +65,7 @@ describe('ShareProfile', () => {
     (navigator as any).share = undefined;
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
+    const expectedUrl = `https://lcl-local.com/profile/${mockProfile.id}`;
 
     render(
       <MemoryRouter>
@@ -73,7 +76,7 @@ describe('ShareProfile', () => {
     fireEvent.click(screen.getByLabelText(/share profile link/i));
 
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith('https://lcl-local.com/profile/user-123');
+      expect(writeText).toHaveBeenCalledWith(expectedUrl);
     });
   });
 });

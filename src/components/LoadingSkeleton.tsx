@@ -6,18 +6,26 @@ interface LoadingSkeletonProps {
 }
 
 export function LoadingSkeleton({ className }: LoadingSkeletonProps) {
+  const skeletonProps = {
+    role: 'status' as const,
+    'aria-busy': 'true',
+    'aria-label': 'Loading',
+  };
+
   if (className) {
     return (
       <div
-        role="status"
-        aria-busy="true"
+        {...skeletonProps}
         className={cn('animate-pulse bg-muted rounded-xl', className)}
       />
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+    <div
+      {...skeletonProps}
+      className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"
+    >
       <div className="text-center">
         <div className="inline-block bg-[#B4FF39] rounded-2xl px-6 py-3 mb-4">
           <h1 className="text-3xl font-bold text-zinc-900">LCL</h1>

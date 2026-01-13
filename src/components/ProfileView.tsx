@@ -156,7 +156,10 @@ export function ProfileView() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans pb-32 pb-safe">
+    <div
+      className="min-h-screen bg-background text-foreground font-sans pb-32"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8rem)' }}
+    >
       {/* Demo Mode Banner */}
       <AnimatePresence initial={!prefersReducedMotion}>
         {isDemoMode && (

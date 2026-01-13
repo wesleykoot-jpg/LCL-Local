@@ -19,9 +19,8 @@ export function ShareProfile() {
       ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
       : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { delay } };
   
-  // TODO: Use environment variable for base URL to support different environments
-  // e.g., const baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://lcl-local.com';
-  const profileUrl = `https://lcl-local.com/profile/${profile?.id || 'demo-user'}`;
+  const baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://lcl-local.com';
+  const profileUrl = `${baseUrl}/profile/${profile?.id || 'demo-user'}`;
 
   const handleCopyLink = async () => {
     try {
@@ -44,7 +43,7 @@ export function ShareProfile() {
         toast.success('Shared!');
         return;
       } catch (e) {
-        // fall back to copy + web share
+        // User cancelled share or share failed; fall back to clipboard/Twitter
       }
     }
 
@@ -95,7 +94,10 @@ export function ShareProfile() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans pb-8 pb-safe">
+    <div
+      className="min-h-screen bg-background text-foreground font-sans pb-8"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+    >
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border pt-safe">
         <div className="max-w-lg mx-auto px-5 py-4 flex items-center gap-3">
@@ -381,7 +383,13 @@ function QrModal({ open, onClose, profileUrl, onCopy, onShare }: QrModalProps) {
 
         <div className="flex flex-col items-center">
           <Suspense
-            fallback={<div className="w-56 h-56 rounded-2xl bg-muted animate-pulse" aria-busy="true" />}
+            fallback={
+              <div
+                className="w-56 h-56 rounded-2xl bg-muted animate-pulse"
+                aria-busy="true"
+                aria-label="Loading QR code"
+              />
+            }
           >
             <QRCodeCanvas value={profileUrl} size={224} includeMargin />
           </Suspense>
