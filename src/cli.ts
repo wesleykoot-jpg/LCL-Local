@@ -91,21 +91,23 @@ Examples:
  */
 function validateConfig(dryRun: boolean): boolean {
   const config = getConfig();
+  const effectiveDryRun = dryRun || config.dryRun;
   const errors: string[] = [];
+  const missingSupabaseCredentials = !config.supabaseUrl || !config.supabaseKey;
   
-  if (!dryRun) {
-    if (!config.supabaseUrl) {
-      errors.push('SUPABASE_URL environment variable is required');
+  if (missingSupabaseCredentials) {
+    if (effectiveDryRun) {
+      console.log('ℹ️  Running in dry-run without Supabase credentials; skipping Supabase writes.');
+    } else {
+      const supabaseErrors = [
+        !config.supabaseUrl && 'SUPABASE_URL environment variable is required',
+        !config.supabaseKey && 'SUPABASE_KEY environment variable is required',
+      ].filter(Boolean) as string[];
+      errors.push(...supabaseErrors);
     }
-    
-    if (!config.supabaseKey) {
-      errors.push('SUPABASE_KEY environment variable is required');
-    }
-  } else if (!config.supabaseUrl || !config.supabaseKey) {
-    console.log('ℹ️  Running in dry-run without Supabase credentials; skipping Supabase writes.');
   }
   
-  if (!config.slackWebhookUrl && !dryRun) {
+  if (!config.slackWebhookUrl && !effectiveDryRun) {
     console.warn('⚠️  SLACK_WEBHOOK_URL not set - alerts will be skipped');
   }
   
