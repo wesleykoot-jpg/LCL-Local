@@ -1,4 +1,4 @@
-import type { ScraperSource, RawEventCard } from "./shared.ts";
+import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 
 const DEFAULT_HEADERS = {
