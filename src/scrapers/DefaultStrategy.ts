@@ -25,6 +25,39 @@ const DEFAULT_ALTERNATE_PATHS = [
   "/agenda/",
 ];
 
+const PLATFORM_SELECTOR_PRESETS = [
+  {
+    name: "Beleef platform",
+    patterns: [/beleef[\w]+\.nl/i, /paviljoen[\w]+\.nl/i],
+    selectors: [".archive-item-wrapper", ".archive-item", ".block-item", "a.block-item"],
+  },
+  {
+    name: "Visit/VVV platform",
+    patterns: [/visit[\w]+\.(nl|com)/i, /vvv[\w]+\.nl/i],
+    selectors: [
+      'li.tiles__tile[itemtype="http://schema.org/Event"]',
+      "li.tiles__tile",
+      ".tiles__tile",
+    ],
+  },
+  {
+    name: "Municipality agenda",
+    patterns: [/\.nl\/agenda/i, /\.nl\/evenement/i],
+    selectors: ["article.event-card", ".agenda-item", ".event-item", '[class*="agenda"]'],
+  },
+];
+
+const FALLBACK_SELECTORS = [
+  "article.event-card",
+  "article.agenda-item",
+  ".event-card",
+  ".event-item",
+  ".agenda-event",
+  ".card.event",
+  ".agenda-item",
+  "article",
+];
+
 export class DefaultStrategy extends BaseStrategy {
   async discoverListingUrls(fetcher: typeof fetch = fetch): Promise<string[]> {
     const anchors = this.source.config.discoveryAnchors || DEFAULT_DISCOVERY_ANCHORS;
@@ -87,12 +120,21 @@ export class DefaultStrategy extends BaseStrategy {
     }
 
     const $ = cheerio.load(html);
-    const selectors = this.source.config.selectors && this.source.config.selectors.length > 0
-      ? this.source.config.selectors
-      : ["article", ".agenda-item", ".event-card", ".event", ".card"];
+    const preset = PLATFORM_SELECTOR_PRESETS.find((platform) =>
+      platform.patterns.some((pattern) => pattern.test(this.source.url))
+    );
+    const selectors =
+      (this.source.config.selectors && this.source.config.selectors.length > 0
+        ? this.source.config.selectors
+        : preset?.selectors) || FALLBACK_SELECTORS;
+
+    if (enableDebug && preset) {
+      console.log(`  Using platform selectors for ${preset.name}`);
+    }
 
     const dedup = new Set<string>();
     const events: RawEventCard[] = [];
+    const selectorCounts: Record<string, number> = {};
 
     for (const selector of selectors) {
       $(selector).each((_, el) => {
@@ -124,6 +166,7 @@ export class DefaultStrategy extends BaseStrategy {
         const dedupKey = `${title.toLowerCase()}|${isoDate}|${resolvedDetail || ""}`;
         if (dedup.has(dedupKey)) return;
         dedup.add(dedupKey);
+        selectorCounts[selector] = (selectorCounts[selector] || 0) + 1;
 
         events.push({
           rawHtml: $el.html() || "",
@@ -135,6 +178,12 @@ export class DefaultStrategy extends BaseStrategy {
           detailUrl: resolvedDetail,
         });
       });
+    }
+
+    if (enableDebug) {
+      for (const selector of selectors) {
+        console.log(`  Selector "${selector}": ${selectorCounts[selector] || 0} matches`);
+      }
     }
 
     if (enableDeepScraping && events.length > 0) {

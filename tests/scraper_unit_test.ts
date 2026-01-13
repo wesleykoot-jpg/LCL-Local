@@ -113,6 +113,14 @@ Deno.test("eventExists checks both timestamp and date-only matches", async () =>
       calls.push({ column, value });
       return this;
     },
+    gte(column: string, value: string) {
+      calls.push({ column, value });
+      return this;
+    },
+    lte(column: string, value: string) {
+      calls.push({ column, value });
+      return this;
+    },
     limit() {
       queryStep += 1;
       const data = queryStep === 1 ? [] : [{ id: 1 }];

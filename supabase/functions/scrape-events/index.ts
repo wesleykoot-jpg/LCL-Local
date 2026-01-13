@@ -205,6 +205,7 @@ interface EventInsert {
   image_url: string | null;
   created_by: string | null;
   status: string;
+  source_id?: string;
   [key: string]: unknown;
 }
 
@@ -629,6 +630,9 @@ export async function scrapeEventCards(
           finalUrl: resp.finalUrl,
           ok: resp.status >= 200 && resp.status < 300,
         });
+        if (enableDebug) {
+          console.log(`Probe ${candidate} -> ${resp.status}`);
+        }
         if (resp.status === 200 && resp.html.trim().length > 0) {
           listingHtml = resp.html;
           listingUrl = resp.finalUrl || candidate;
@@ -662,6 +666,8 @@ export async function scrapeEventCards(
     if (rendered.html) {
       listingHtml = rendered.html;
       listingUrl = rendered.finalUrl;
+    } else if (enableDebug) {
+      console.log(`Renderer failed with status ${rendered.status}`);
     }
   }
 
@@ -807,16 +813,22 @@ export async function eventExists(
   title: string,
   eventDate: string,
   eventTime: string,
-  normalized?: { timestamp: string; dateOnly: string | null }
+  normalized?: { timestamp: string; dateOnly: string | null },
+  sourceId?: string
 ): Promise<boolean> {
   const { timestamp, dateOnly } = normalized || normalizeEventDateForStorage(eventDate, eventTime);
 
-  const primaryCheck = await supabase
+  let primaryQuery = supabase
     .from("events")
     .select("id")
     .eq("title", title)
-    .eq("event_date", timestamp)
-    .limit(1);
+    .eq("event_date", timestamp);
+
+  if (sourceId) {
+    primaryQuery = primaryQuery.eq("source_id", sourceId);
+  }
+
+  const primaryCheck = await primaryQuery.limit(1);
 
   if (primaryCheck.error) {
     console.error("Error checking for duplicate:", primaryCheck.error);
@@ -828,14 +840,38 @@ export async function eventExists(
   }
 
   if (dateOnly) {
-    const dateOnlyCheck = await supabase
+    let dateOnlyQuery = supabase
       .from("events")
       .select("id")
       .eq("title", title)
-      .eq("event_date", dateOnly)
-      .limit(1);
+      .eq("event_date", dateOnly);
+
+    if (sourceId) {
+      dateOnlyQuery = dateOnlyQuery.eq("source_id", sourceId);
+    }
+
+    const dateOnlyCheck = await dateOnlyQuery.limit(1);
 
     if (!dateOnlyCheck.error && dateOnlyCheck.data && dateOnlyCheck.data.length > 0) {
+      return true;
+    }
+
+    const startOfDay = `${dateOnly}T00:00:00Z`;
+    const endOfDay = `${dateOnly}T23:59:59Z`;
+
+    let dayRangeQuery = supabase
+      .from("events")
+      .select("id")
+      .eq("title", title)
+      .gte("event_date", startOfDay)
+      .lte("event_date", endOfDay);
+
+    if (sourceId) {
+      dayRangeQuery = dayRangeQuery.eq("source_id", sourceId);
+    }
+
+    const dayRange = await dayRangeQuery.limit(1);
+    if (!dayRange.error && dayRange.data && dayRange.data.length > 0) {
       return true;
     }
   }
@@ -865,13 +901,15 @@ async function updateSourceStats(
   supabase: any,
   sourceId: string,
   eventsScraped: number,
-  success: boolean
+  success: boolean,
+  lastError?: string | null
 ): Promise<void> {
   try {
     await supabase.rpc("update_scraper_source_stats", {
       p_source_id: sourceId,
       p_events_scraped: eventsScraped,
       p_success: success,
+      p_last_error: success ? null : (lastError || (eventsScraped === 0 ? "No events found" : "Scrape failed")),
     });
   } catch (error) {
     console.warn("Failed to update source stats:", error);
@@ -975,6 +1013,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         duplicates: 0,
         failed: 0,
       };
+      let lastErrorMessage: string | null = null;
 
       try {
         // Scrape events from source
@@ -982,6 +1021,16 @@ export async function handleRequest(req: Request): Promise<Response> {
         const rawEvents = await scrapeEventCards(source, enableDeepScraping, { enableDebug, rendererUrl: renderServiceUrl, probeLog });
         sourceStats.scraped = rawEvents.length;
         stats.totalEventsScraped += rawEvents.length;
+
+        if (rawEvents.length === 0) {
+          const probeSummary = probeLog
+            .slice(0, 3)
+            .map((p) => `${p.status || 0}:${p.finalUrl || p.candidate}`)
+            .join(", ");
+          lastErrorMessage = probeLog.length > 0
+            ? `No events found; probes tried ${probeLog.length} (${probeSummary})`
+            : "No events found";
+        }
 
         if (probeLog.length > 0) {
           try {
@@ -1004,6 +1053,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           if (!parsed) {
             console.log("  ❌ Failed to parse event");
             sourceStats.failed++;
+            lastErrorMessage = lastErrorMessage || "Failed to parse events";
             continue;
           }
 
@@ -1016,7 +1066,8 @@ export async function handleRequest(req: Request): Promise<Response> {
             parsed.title,
             parsed.event_date,
             parsed.event_time,
-            normalizedDate
+            normalizedDate,
+            source.id
           );
 
           if (exists) {
@@ -1056,6 +1107,7 @@ export async function handleRequest(req: Request): Promise<Response> {
             image_url: parsed.image_url,
             created_by: null,
             status: "published",
+            source_id: source.id,
           };
 
           const inserted = await insertEvent(supabase, eventInsert);
@@ -1072,11 +1124,13 @@ export async function handleRequest(req: Request): Promise<Response> {
         }
 
         // Update source stats
-        await updateSourceStats(supabase, source.id, sourceStats.scraped, true);
+        const success = sourceStats.scraped > 0;
+        await updateSourceStats(supabase, source.id, sourceStats.scraped, success, lastErrorMessage);
 
       } catch (error) {
         console.error(`Error processing source ${source.name}:`, error);
-        await updateSourceStats(supabase, source.id, 0, false);
+        lastErrorMessage = error instanceof Error ? error.message : "Unknown error";
+        await updateSourceStats(supabase, source.id, 0, false, lastErrorMessage);
       }
 
       stats.sourceResults.push(sourceStats);
