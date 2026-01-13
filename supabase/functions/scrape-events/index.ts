@@ -15,6 +15,8 @@ const corsHeaders = {
 export const INTERNAL_CATEGORIES = ["nightlife", "food", "culture", "active", "family"] as const;
 export type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 
+const TARGET_YEAR = 2026;
+
 const DEFAULT_EVENT_TYPE = "anchor";
 
 function normalizeWhitespace(value: string): string {
@@ -76,6 +78,10 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   if (["sports"].includes(value)) return "active";
 
   return "culture";
+}
+
+function isTargetYear(isoDate: string | null): boolean {
+  return !!isoDate && isoDate.startsWith(`${TARGET_YEAR}-`);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -161,7 +167,7 @@ interface NormalizedEvent {
 function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): NormalizedEvent | null {
   if (!raw.title) return null;
   const isoDate = parseToISODate(raw.date);
-  if (!isoDate || !isoDate.startsWith("2026-")) return null;
+  if (!isoDate || !isTargetYear(isoDate)) return null;
 
   const time =
     raw.detailPageTime ||
@@ -213,15 +219,10 @@ export async function parseEventWithAI(
   apiKey: string,
   rawEvent: RawEventCard,
   language: string = "nl",
-  fetcherOrOpts?: typeof fetch | { callGeminiFn?: typeof callGemini },
-  opts: { callGeminiFn?: typeof callGemini } = {}
+  options: { fetcher?: typeof fetch; callGeminiFn?: typeof callGemini } = {}
 ): Promise<NormalizedEvent | null> {
-  let fetcher = createSpoofedFetch();
-  if (typeof fetcherOrOpts === "function") {
-    fetcher = fetcherOrOpts;
-  } else if (fetcherOrOpts && typeof fetcherOrOpts === "object") {
-    opts = { ...opts, ...fetcherOrOpts };
-  }
+  const fetcher = options.fetcher || createSpoofedFetch();
+  const callFn = options.callGeminiFn || callGemini;
 
   const today = new Date().toISOString().split("T")[0];
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
@@ -245,7 +246,7 @@ ${rawEvent.rawHtml}`;
     generationConfig: { temperature: 0.1, maxOutputTokens: 768 },
   };
 
-  const text = await (opts.callGeminiFn || callGemini)(apiKey, payload, fetcher);
+  const text = await callFn(apiKey, payload, fetcher);
   if (!text) return null;
 
   let cleaned = text.trim();
@@ -254,7 +255,7 @@ ${rawEvent.rawHtml}`;
 
   if (!parsed.title || !parsed.event_date) return null;
   const isoDate = parseToISODate(parsed.event_date);
-  if (!isoDate || !isoDate.startsWith("2026-")) return null;
+  if (!isoDate || !isTargetYear(isoDate)) return null;
 
   return {
     title: normalizeWhitespace(parsed.title),
@@ -490,7 +491,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         for (const raw of rawEvents) {
           let normalized = cheapNormalizeEvent(raw, source);
           if ((!normalized || normalized.event_time === "TBD" || !normalized.description) && geminiApiKey) {
-            const aiResult = await parseEventWithAI(geminiApiKey, raw, source.language || "nl", fetcher);
+            const aiResult = await parseEventWithAI(geminiApiKey, raw, source.language || "nl", { fetcher });
             if (aiResult) normalized = aiResult;
           }
 

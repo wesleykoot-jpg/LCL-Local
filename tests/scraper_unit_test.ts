@@ -88,7 +88,7 @@ Deno.test("parseEventWithAI cleans code fences and normalizes internal category"
   const mockCallGemini = async (_apiKey: string, _body: unknown) =>
     "```json\n{\"title\":\"Party\",\"description\":\"Fun\",\"category\":\"invalid\",\"venue_name\":\"Club\",\"event_date\":\"2026-07-13\",\"event_time\":\"19:00\",\"image_url\":null}\n```";
 
-  const parsed = await parseEventWithAI("fake", rawEvent, "nl", undefined, { callGeminiFn: mockCallGemini });
+  const parsed = await parseEventWithAI("fake", rawEvent, "nl", { callGeminiFn: mockCallGemini });
 
   assert(parsed);
   assertEquals(parsed?.internal_category, "culture");

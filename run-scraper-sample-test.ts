@@ -335,7 +335,6 @@ async function runSource(source: ScraperSource): Promise<SourceResult> {
       "mock-key",
       raw,
       source.language || "nl",
-      source.default_coordinates || source.config.default_coordinates,
       {
         callGeminiFn: async () => mockGeminiResponse(raw, source),
       },

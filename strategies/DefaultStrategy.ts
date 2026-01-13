@@ -5,6 +5,7 @@ import {
   RawEventCard,
   ScraperStrategy,
   StrategyContext,
+  FetchListingResult,
   createSpoofedFetch,
   generatePathFallbacks,
 } from "./BaseStrategy.ts";
