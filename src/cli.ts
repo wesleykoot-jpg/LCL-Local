@@ -89,19 +89,25 @@ Examples:
 /**
  * Validate configuration
  */
-function validateConfig(): boolean {
+function validateConfig(dryRun: boolean): boolean {
   const config = getConfig();
+  const effectiveDryRun = dryRun || config.dryRun;
   const errors: string[] = [];
+  const missingSupabaseCredentials = !config.supabaseUrl || !config.supabaseKey;
   
-  if (!config.supabaseUrl) {
-    errors.push('SUPABASE_URL environment variable is required');
+  if (missingSupabaseCredentials) {
+    if (effectiveDryRun) {
+      console.log('ℹ️  Running in dry-run without Supabase credentials; skipping Supabase writes.');
+    } else {
+      const supabaseErrors = [
+        !config.supabaseUrl && 'SUPABASE_URL environment variable is required',
+        !config.supabaseKey && 'SUPABASE_KEY environment variable is required',
+      ].filter(Boolean) as string[];
+      errors.push(...supabaseErrors);
+    }
   }
   
-  if (!config.supabaseKey) {
-    errors.push('SUPABASE_KEY environment variable is required');
-  }
-  
-  if (!config.slackWebhookUrl && !config.dryRun) {
+  if (!config.slackWebhookUrl && !effectiveDryRun) {
     console.warn('⚠️  SLACK_WEBHOOK_URL not set - alerts will be skipped');
   }
   
@@ -137,7 +143,7 @@ async function main(): Promise<void> {
   }
   
   // Validate configuration
-  if (!validateConfig()) {
+  if (!validateConfig(dryRun)) {
     process.exit(1);
   }
   
@@ -191,9 +197,11 @@ async function main(): Promise<void> {
 
 // Auto-execute when run directly with tsx or node
 // This is the main entry point for the scraper CLI
-main().catch(error => {
-  console.error('Unhandled error:', error);
-  process.exit(2);
-});
+if (process.env.VITEST !== 'true') {
+  main().catch(error => {
+    console.error('Unhandled error:', error);
+    process.exit(2);
+  });
+}
 
-export { main };
+export { main, validateConfig };
