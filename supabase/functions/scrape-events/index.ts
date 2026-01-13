@@ -190,28 +190,67 @@ function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): Normaliz
   };
 }
 
+// Jittered delay helper (100-300ms random delay)
+function jitteredDelay(baseMs: number = 100, jitterMs: number = 200): Promise<void> {
+  const delay = baseMs + Math.random() * jitterMs;
+  return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
+// Exponential backoff with jitter for retries
+async function exponentialBackoff(attempt: number, baseMs: number = 1000): Promise<void> {
+  const delay = Math.min(baseMs * Math.pow(2, attempt), 30000); // cap at 30s
+  const jitter = delay * 0.2 * Math.random(); // 20% jitter
+  console.log(`Backoff: waiting ${Math.round(delay + jitter)}ms before retry ${attempt + 1}`);
+  await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+}
+
 async function callGemini(
   apiKey: string,
   body: unknown,
-  fetcher: typeof fetch
+  fetcher: typeof fetch,
+  maxRetries: number = 3
 ): Promise<string | null> {
-  const response = await fetcher(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    // Add jittered delay before each request (except first if it's after a backoff)
+    if (attempt === 0) {
+      await jitteredDelay(100, 200); // 100-300ms jitter before first call
+    }
 
-  if (!response.ok) {
+    const response = await fetcher(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    }
+
     const text = await response.text();
+    
+    // Handle rate limiting with exponential backoff
+    if (response.status === 429) {
+      console.warn(`Gemini 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`);
+      if (attempt < maxRetries) {
+        await exponentialBackoff(attempt);
+        continue; // retry
+      }
+    }
+
     console.error("Gemini error", response.status, text);
-    return null;
+    
+    // Don't retry on non-429 errors
+    if (response.status !== 429) {
+      return null;
+    }
   }
 
-  const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  console.error("Gemini: max retries exceeded");
+  return null;
 }
 
 export async function parseEventWithAI(
