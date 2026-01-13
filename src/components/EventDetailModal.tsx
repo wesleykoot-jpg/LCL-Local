@@ -8,9 +8,10 @@ import {
   Users, 
   Share2, 
   Bookmark,
-  ExternalLink,
+  Navigation,
   Loader2,
-  Navigation
+  ShieldCheck,
+  ChevronDown
 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import { Facepile } from './Facepile';
@@ -25,26 +26,26 @@ interface EventDetailModalProps {
   onClose: () => void;
   onJoin?: () => Promise<void>;
   isJoining?: boolean;
+  hasJoined?: boolean;
 }
 
 // Fallback images by category
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
-  active: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=900&q=80',
-  gaming: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=900&q=80',
-  family: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80',
-  social: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
-  outdoors: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80',
-  music: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?auto=format&fit=crop&w=900&q=80',
-  workshops: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=900&q=80',
-  foodie: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=900&q=80',
-  community: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',
-  entertainment: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80',
-  default: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=900&q=80',
+  active: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1200&q=80',
+  gaming: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=1200&q=80',
+  family: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80',
+  social: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80',
+  outdoors: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=1200&q=80',
+  music: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?auto=format&fit=crop&w=1200&q=80',
+  workshops: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=1200&q=80',
+  foodie: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=80',
+  community: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80',
+  entertainment: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+  default: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?auto=format&fit=crop&w=1200&q=80',
 };
 
 // Dutch date format
 const formatDate = (dateStr: string) => {
-  // Handle full ISO timestamps from Supabase
   const datePart = dateStr.split('T')[0].split(' ')[0];
   const date = new Date(datePart + 'T00:00:00');
   return date.toLocaleDateString('nl-NL', { 
@@ -55,24 +56,42 @@ const formatDate = (dateStr: string) => {
   });
 };
 
+// Short date for pills
+const formatDateShort = (dateStr: string) => {
+  const datePart = dateStr.split('T')[0].split(' ')[0];
+  const eventDate = new Date(datePart + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  
+  if (eventDate.getTime() === today.getTime()) return 'Vandaag';
+  if (eventDate.getTime() === tomorrow.getTime()) return 'Morgen';
+  
+  return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+};
+
 // Dutch 24-hour time format
 const formatTime = (timeStr: string) => {
-  const [hours, minutes] = timeStr.split(':');
-  return `${hours}:${minutes}`;
+  if (!timeStr) return '';
+  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+    const [hours, minutes] = timeStr.split(':');
+    return `${hours.padStart(2, '0')}:${minutes}`;
+  }
+  return timeStr;
 };
 
 /**
- * Open location in native maps app (iOS Maps or Google Maps)
+ * Open location in native maps app
  */
 function openInMaps(lat: number, lng: number, label: string) {
   const encodedLabel = encodeURIComponent(label);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   
   if (isIOS) {
-    // iOS Maps URL scheme
     window.open(`maps://maps.apple.com/?q=${encodedLabel}&ll=${lat},${lng}`, '_blank');
   } else {
-    // Google Maps URL for Android/Web
     window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
   }
 }
@@ -83,7 +102,6 @@ function openInMaps(lat: number, lng: number, label: string) {
 function parseEventLocation(location: unknown): { lat: number; lng: number } | null {
   if (!location) return null;
   
-  // Handle string format: "POINT(lng lat)"
   if (typeof location === 'string') {
     const match = location.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
     if (match) {
@@ -99,6 +117,7 @@ export const EventDetailModal = memo(function EventDetailModal({
   onClose,
   onJoin,
   isJoining = false,
+  hasJoined = false,
 }: EventDetailModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -109,17 +128,21 @@ export const EventDetailModal = memo(function EventDetailModal({
     ? (CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default)
     : (event.image_url || CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default);
 
-  // Get coordinates from event's location column (PostGIS)
   const venueCoords = parseEventLocation(event.location) || { lat: 52.5, lng: 6.0 };
   
-  // Static map using OpenStreetMap
   const staticMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`;
 
-  const attendeeDisplay = event.attendees?.slice(0, 6).map(a => ({
+  const attendeeDisplay = event.attendees?.slice(0, 8).map(a => ({
     id: a.profile?.id || '',
     image: a.profile?.avatar_url || 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100',
     alt: a.profile?.full_name || 'Attendee',
   })) || [];
+
+  const trustLabel = event.match_percentage && event.match_percentage >= 70
+    ? `${event.match_percentage}% match`
+    : event.created_by
+      ? 'Actieve host'
+      : null;
 
   const handleOpenMaps = useCallback(async () => {
     await hapticImpact('light');
@@ -152,9 +175,10 @@ export const EventDetailModal = memo(function EventDetailModal({
   }, [isSaved]);
 
   const handleJoin = useCallback(async () => {
+    if (hasJoined) return;
     await hapticImpact('medium');
     onJoin?.();
-  }, [onJoin]);
+  }, [onJoin, hasJoined]);
 
   return (
     <AnimatePresence>
@@ -166,130 +190,149 @@ export const EventDetailModal = memo(function EventDetailModal({
       >
         {/* Backdrop */}
         <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/70 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         />
 
-        {/* Modal Content */}
+        {/* Modal Content - Squircle geometry */}
         <motion.div
-          className="relative w-full max-w-lg bg-background rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-hidden"
+          className="relative w-full max-w-lg bg-background rounded-t-[2.5rem] sm:rounded-[2.5rem] max-h-[92vh] overflow-hidden border-[0.5px] border-border/20"
+          style={{
+            boxShadow: '0 -8px 40px -8px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.1)'
+          }}
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         >
           {/* Drag handle for mobile */}
-          <div className="flex justify-center pt-3 pb-2 sm:hidden">
-            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          <div className="flex justify-center pt-3 pb-1 sm:hidden">
+            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/20" />
           </div>
 
-          {/* Close button - 44pt touch target */}
+          {/* Close button - 48pt touch target with squircle */}
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 z-10 w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-all active:scale-[0.95]"
+            className="absolute top-4 right-4 z-20 w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-[0.95] border-[0.5px] border-white/10"
           >
-            <X size={20} />
+            <X size={22} strokeWidth={2.5} />
           </button>
 
-          <div className="overflow-y-auto max-h-[85vh]">
-            {/* Hero Image */}
-            <div className="relative h-56 overflow-hidden">
+          <div className="overflow-y-auto max-h-[88vh]">
+            {/* Netflix-style Hero Image - Full bleed, taller */}
+            <div className="relative aspect-[16/10] overflow-hidden">
               <img
                 src={imageUrl}
                 alt={event.title}
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              {/* Cinematic gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-background/40 via-transparent to-transparent" />
               
-              {/* Category Badge */}
-              <div className="absolute bottom-4 left-4">
+              {/* Top badges */}
+              <div className="absolute top-4 left-4 flex items-center gap-2">
                 <CategoryBadge category={categoryLabel} variant="glass" />
+                {trustLabel && (
+                  <div className="px-3 py-1.5 rounded-[1rem] bg-primary/90 backdrop-blur-xl text-[13px] font-semibold text-primary-foreground flex items-center gap-1.5">
+                    <ShieldCheck size={13} />
+                    {trustLabel}
+                  </div>
+                )}
               </div>
 
-              {/* Match percentage */}
-              {event.match_percentage && (
-                <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-full bg-primary/90 text-primary-foreground text-xs font-bold">
-                  {event.match_percentage}% Match
-                </div>
-              )}
-            </div>
+              {/* Date pill */}
+              <div className="absolute top-4 right-16 px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
+                {formatDateShort(event.event_date)}
+              </div>
 
-            {/* Content */}
-            <div className="p-5 space-y-5">
-              {/* Title & Distance */}
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-foreground leading-tight">
+              {/* Title overlay - Bottom of hero */}
+              <div className="absolute bottom-0 left-0 right-0 p-5 pt-16">
+                <h2 className="text-[26px] font-bold text-foreground leading-tight tracking-tight line-clamp-2">
                   {event.title}
                 </h2>
-                <DistanceBadge venueName={event.venue_name} userLocation={userLocation} />
               </div>
+            </div>
 
-              {/* Date & Time */}
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-2">
-                  <Calendar size={16} className="text-primary" />
+            {/* Content - iOS spacing */}
+            <div className="p-5 pt-3 space-y-5">
+              {/* Quick info pills */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
+                  <Calendar size={15} className="text-primary" />
                   {formatDate(event.event_date)}
-                </span>
-                <span className="flex items-center gap-2">
-                  <Clock size={16} className="text-primary" />
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
+                  <Clock size={15} className="text-primary" />
                   {formatTime(event.event_time)}
-                </span>
+                </div>
+                <DistanceBadge 
+                  venueName={event.venue_name} 
+                  userLocation={userLocation}
+                  className="px-3 py-2 rounded-[1rem] bg-muted/50"
+                />
               </div>
 
-              {/* Location with Static Map */}
+              {/* Location with Map - Squircle */}
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-2 text-[15px]">
                   <MapPin size={16} className="text-primary flex-shrink-0" />
                   <span className="text-foreground font-medium">{event.venue_name}</span>
                 </div>
 
-                {/* Static Map */}
-                <div 
-                  className="relative h-40 rounded-2xl overflow-hidden bg-muted cursor-pointer group"
+                {/* Static Map - Squircle geometry */}
+                <motion.div 
+                  className="relative h-44 rounded-[1.5rem] overflow-hidden bg-muted cursor-pointer group border-[0.5px] border-border/30"
                   onClick={handleOpenMaps}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                 >
                   <iframe
                     src={staticMapUrl}
                     className="w-full h-full border-0 pointer-events-none"
                     title="Event location map"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
                   
-                   {/* Open in Maps button */}
+                  {/* Open in Maps button - Squircle */}
                   <div className="absolute bottom-3 right-3">
-                    <button
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl bg-background/95 backdrop-blur-sm text-sm font-medium shadow-lg hover:bg-background transition-colors"
+                    <div
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95 backdrop-blur-xl text-[14px] font-semibold border-[0.5px] border-border/30"
+                      style={{
+                        boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.12)'
+                      }}
                     >
-                      <Navigation size={14} className="text-primary" />
-                      Open in Kaarten
-                      <ExternalLink size={12} className="opacity-60" />
-                    </button>
+                      <Navigation size={15} className="text-primary" />
+                      Route
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               </div>
 
-              {/* Description - improved legibility (15px) */}
+              {/* Description - iOS 17pt equivalent */}
               {event.description && (
-                <p className="text-muted-foreground text-[15px] leading-relaxed">
-                  {event.description}
-                </p>
+                <div className="space-y-2">
+                  <h3 className="text-[15px] font-semibold text-foreground">Over dit evenement</h3>
+                  <p className="text-muted-foreground text-[16px] leading-relaxed">
+                    {event.description}
+                  </p>
+                </div>
               )}
 
-              {/* Attendees */}
-              <div className="space-y-3 pt-2">
+              {/* Attendees section */}
+              <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">
-                    {event.attendee_count || 0} personen gaan
+                  <h3 className="text-[15px] font-semibold text-foreground">
+                    Wie gaan er?
+                  </h3>
+                  <span className="text-[14px] text-muted-foreground font-medium">
+                    {event.attendee_count || 0} personen
+                    {event.max_attendees && ` · ${event.max_attendees - (event.attendee_count || 0)} plekken over`}
                   </span>
-                  {event.max_attendees && (
-                    <span className="text-xs text-muted-foreground">
-                      {event.max_attendees - (event.attendee_count || 0)} plekken over
-                    </span>
-                  )}
                 </div>
                 
                 {attendeeDisplay.length > 0 && (
@@ -302,46 +345,70 @@ export const EventDetailModal = memo(function EventDetailModal({
                 )}
               </div>
 
-              {/* Action Buttons - with safe area padding */}
-              <div className="flex gap-3 pt-4 pb-2 pb-safe">
-                {/* Secondary actions - 44pt touch targets */}
-                <button
-                  onClick={handleShare}
-                  className="w-12 h-12 min-h-[44px] min-w-[44px] rounded-2xl bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all active:scale-[0.95]"
-                >
-                  <Share2 size={20} />
-                </button>
-                
-                <button
-                  onClick={handleSave}
-                  className={`w-12 h-12 min-h-[44px] min-w-[44px] rounded-2xl flex items-center justify-center transition-all active:scale-[0.95] ${
-                    isSaved 
-                      ? 'bg-primary/10 text-primary' 
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                  }`}
-                >
-                  <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
-                </button>
-
-                {/* Primary action - rounded-2xl for squircle */}
-                <button
-                  onClick={handleJoin}
-                  disabled={isJoining}
-                  className="flex-1 h-12 min-h-[44px] rounded-2xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-[0.97]"
-                >
-                  {isJoining ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Aanmelden...
-                    </>
-                  ) : (
-                    <>
-                      <Users size={18} />
-                      Meedoen
-                    </>
-                  )}
-                </button>
+              {/* Scroll indicator */}
+              <div className="flex justify-center py-2">
+                <ChevronDown size={20} className="text-muted-foreground/40 animate-bounce" />
               </div>
+            </div>
+          </div>
+
+          {/* Fixed Bottom Action Bar - Thumb zone optimized */}
+          <div 
+            className="sticky bottom-0 left-0 right-0 p-4 pb-safe bg-background/95 backdrop-blur-xl border-t border-[0.5px] border-border/30"
+            style={{
+              boxShadow: '0 -4px 20px -4px rgba(0, 0, 0, 0.08)'
+            }}
+          >
+            <div className="flex gap-3 items-center">
+              {/* Secondary actions - 52pt squircle buttons */}
+              <button
+                onClick={handleShare}
+                className="w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[1.5rem] bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-[0.95] border-[0.5px] border-border/30"
+              >
+                <Share2 size={22} />
+              </button>
+              
+              <button
+                onClick={handleSave}
+                className={`w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[1.5rem] flex items-center justify-center transition-all active:scale-[0.95] border-[0.5px] ${
+                  isSaved 
+                    ? 'bg-primary/10 text-primary border-primary/30' 
+                    : 'bg-muted/60 text-muted-foreground border-border/30 hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <Bookmark size={22} fill={isSaved ? 'currentColor' : 'none'} />
+              </button>
+
+              {/* Primary CTA - Squircle, full height */}
+              <button
+                onClick={handleJoin}
+                disabled={isJoining || hasJoined}
+                className={`flex-1 h-[52px] min-h-[48px] rounded-[1.5rem] text-[17px] font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.97] border-[0.5px] ${
+                  hasJoined
+                    ? 'bg-muted text-muted-foreground border-border/30'
+                    : 'bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90'
+                }`}
+                style={{
+                  boxShadow: hasJoined ? 'none' : '0 4px 12px -2px rgba(var(--primary) / 0.25)'
+                }}
+              >
+                {isJoining ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    <span>Aanmelden...</span>
+                  </>
+                ) : hasJoined ? (
+                  <>
+                    <span>✓</span>
+                    <span>Je bent aangemeld</span>
+                  </>
+                ) : (
+                  <>
+                    <Users size={20} />
+                    <span>Meedoen</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </motion.div>
