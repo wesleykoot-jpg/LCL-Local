@@ -8,14 +8,14 @@ const corsHeaders = {
 };
 
 // Valid categories for the events table
-const VALID_CATEGORIES = ["cinema", "crafts", "sports", "gaming", "market"] as const;
-type Category = (typeof VALID_CATEGORIES)[number];
+export const VALID_CATEGORIES = ["cinema", "crafts", "sports", "gaming", "market"] as const;
+export type Category = (typeof VALID_CATEGORIES)[number];
 
 // Default event type for scraped events
 const DEFAULT_EVENT_TYPE = "anchor";
 
 // Interface for scraper source from database
-interface ScraperSource {
+export interface ScraperSource {
   id: string;
   name: string;
   url: string;
@@ -119,7 +119,7 @@ function detectPlatform(url: string): PlatformConfig | null {
 /**
  * Get optimized selectors for a source, using platform detection if no custom selectors provided.
  */
-function getOptimizedSelectors(source: ScraperSource): string[] {
+export function getOptimizedSelectors(source: ScraperSource): string[] {
   // Use custom selectors if provided
   if (source.config.selectors && source.config.selectors.length > 0) {
     return source.config.selectors;
@@ -186,7 +186,7 @@ const DEFAULT_HEADERS = {
 };
 
 // Interfaces
-interface RawEventCard {
+export interface RawEventCard {
   rawHtml: string;
   title: string;
   date: string;
@@ -197,7 +197,7 @@ interface RawEventCard {
   detailPageTime?: string; // Time extracted from detail page
 }
 
-interface ParsedEvent {
+export interface ParsedEvent {
   title: string;
   description: string;
   category: Category;
@@ -448,28 +448,83 @@ function applyDynamicYear(url: string, useDynamicYear: boolean): string {
 }
 
 // Utility functions
-function parseToISODate(dateStr: string): string | null {
+export function parseToISODate(dateStr: string, today: Date = new Date()): string | null {
   if (!dateStr || typeof dateStr !== "string") {
     return null;
   }
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    if (year >= 2020 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      return dateStr;
+  const safeYear = (year: number) => year >= 2020 && year <= 2030;
+  const cleaned = dateStr.trim().toLowerCase();
+  if (!cleaned) return null;
+
+  const relativeMap: Record<string, number> = {
+    vandaag: 0,
+    today: 0,
+    morgen: 1,
+    tomorrow: 1,
+    overmorgen: 2,
+    "day after tomorrow": 2,
+  };
+
+  if (relativeMap[cleaned] !== undefined) {
+    const target = new Date(today);
+    target.setDate(target.getDate() + relativeMap[cleaned]);
+    return target.toISOString().split("T")[0];
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    const [year, month, day] = cleaned.split("-").map(Number);
+    if (safeYear(year) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return cleaned;
     }
     return null;
   }
 
-  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  const isoMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})T/);
   if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    if (!safeYear(year)) return null;
     return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
   }
 
-  const europeanMatch = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  const MONTHS: Record<string, number> = {
+    januari: 1, jan: 1, january: 1,
+    februari: 2, feb: 2, february: 2, februar: 2,
+    maart: 3, mrt: 3, march: 3, märz: 3, maerz: 3,
+    april: 4, apr: 4,
+    mei: 5, may: 5, mai: 5,
+    juni: 6, jun: 6, june: 6,
+    juli: 7, jul: 7, july: 7,
+    augustus: 8, aug: 8, august: 8,
+    september: 9, sep: 9, sept: 9,
+    oktober: 10, okt: 10, october: 10,
+    november: 11, nov: 11,
+    december: 12, dec: 12,
+  };
+
+  const textual = cleaned
+    .replace(/,/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const dayNamePattern = "(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|monday|tuesday|wednesday|thursday|friday|saturday|sunday)?";
+  const textualMatch = textual.match(new RegExp(`^${dayNamePattern}\\s*(\\d{1,2})\\s*([\\p{L}.]+)\\s*(\\d{2,4})?$`, "iu"));
+  if (textualMatch) {
+    const day = parseInt(textualMatch[2], 10);
+    const monthNameRaw = textualMatch[3].replace(/\./g, "");
+    const yearMatch = textualMatch[4] ? parseInt(textualMatch[4], 10) : today.getFullYear();
+    const month = MONTHS[monthNameRaw] ?? MONTHS[monthNameRaw.slice(0, 3)];
+    if (month && day >= 1 && day <= 31 && safeYear(yearMatch)) {
+      return `${yearMatch}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+
+  const europeanMatch = textual.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
   if (europeanMatch) {
-    const [, day, month, year] = europeanMatch;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    const [, dayRaw, monthRaw, yearRaw] = europeanMatch;
+    const yearNum = parseInt(yearRaw.length === 2 ? `20${yearRaw}` : yearRaw, 10);
+    if (!safeYear(yearNum)) return null;
+    return `${yearNum}-${monthRaw.padStart(2, "0")}-${dayRaw.padStart(2, "0")}`;
   }
 
   return null;
@@ -568,7 +623,7 @@ function getLastSundayOfMonth(year: number, month: number): number {
  * Construct event datetime in UTC.
  * Assumes Central European timezone for now (can be extended with timezone config per source).
  */
-function constructEventDateTime(eventDate: string, eventTime: string): string {
+export function constructEventDateTime(eventDate: string, eventTime: string): string {
   const timeMatch = eventTime.match(/^(\d{2}):(\d{2})$/);
   const hours = timeMatch ? timeMatch[1] : "12";
   const minutes = timeMatch ? timeMatch[2] : "00";
@@ -580,15 +635,31 @@ function constructEventDateTime(eventDate: string, eventTime: string): string {
   const localHours = parseInt(hours, 10);
   const localMinutes = parseInt(minutes, 10);
   const utcHours = localHours - utcOffset;
-  
+
   const utcDate = new Date(Date.UTC(year, month - 1, day, utcHours, localMinutes, 0));
   return utcDate.toISOString();
+}
+
+export function normalizeEventDateForStorage(
+  eventDate: string,
+  eventTime: string
+): { timestamp: string; dateOnly: string | null } {
+  const isoDate = parseToISODate(eventDate);
+  const dateForStorage = isoDate || eventDate;
+  return {
+    timestamp: constructEventDateTime(dateForStorage, eventTime),
+    dateOnly: isoDate,
+  };
 }
 
 /**
  * Fetch event detail page and extract time from it
  */
-async function fetchEventDetailTime(detailUrl: string, baseUrl: string): Promise<string | null> {
+export async function fetchEventDetailTime(
+  detailUrl: string,
+  baseUrl: string,
+  fetcher: typeof fetch = fetch
+): Promise<string | null> {
   try {
     let fullUrl = detailUrl;
     if (detailUrl.startsWith('/')) {
@@ -600,7 +671,7 @@ async function fetchEventDetailTime(detailUrl: string, baseUrl: string): Promise
 
     console.log(`      🔍 Fetching detail page: ${fullUrl}`);
     
-    const response = await fetch(fullUrl, { 
+    const response = await fetcher(fullUrl, { 
       headers: DEFAULT_HEADERS,
       signal: AbortSignal.timeout(10000),
     });
@@ -615,24 +686,35 @@ async function fetchEventDetailTime(detailUrl: string, baseUrl: string): Promise
     const pageText = $('body').text();
     
     // Multi-language time patterns
+    const normalizeTime = (hours: string, minutes: string, ampm?: string): string | null => {
+      let hourNum = parseInt(hours, 10);
+      if (ampm) {
+        const lower = ampm.toLowerCase();
+        if (lower === "pm" && hourNum < 12) hourNum += 12;
+        if (lower === "am" && hourNum === 12) hourNum = 0;
+      }
+      if (hourNum > 23) return null;
+      return `${String(hourNum).padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+    };
+
     const timePatterns = [
       // Dutch patterns
-      /aanvang[:\s]*(\d{1,2})[.:h](\d{2})/i,
-      /vanaf\s+(\d{1,2})[.:h](\d{2})/i,
+      /aanvang[:\s]*(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
+      /vanaf\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
       /(\d{1,2})[.:h](\d{2})\s*uur/i,
       // German patterns
-      /beginn[:\s]*(\d{1,2})[.:h](\d{2})/i,
-      /ab\s+(\d{1,2})[.:h](\d{2})/i,
+      /beginn[:\s]*(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
+      /ab\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
       /(\d{1,2})[.:h](\d{2})\s*uhr/i,
       // English patterns
-      /starts?\s*(?:at\s*)?(\d{1,2})[.:h](\d{2})/i,
-      /from\s+(\d{1,2})[.:h](\d{2})/i,
-      /doors?\s*(?:open\s*)?(?:at\s*)?(\d{1,2})[.:h](\d{2})/i,
+      /starts?\s*(?:at\s*)?(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
+      /from\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
+      /doors?\s*(?:open\s*)?(?:at\s*)?(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
       // Generic patterns
-      /start[:\s]*(?:om\s*)?(\d{1,2})[.:h](\d{2})/i,
-      /time[:\s]*(\d{1,2})[.:h](\d{2})/i,
-      /om\s+(\d{1,2})[.:h](\d{2})/i,
-      /(\d{1,2})[.:](\d{2})\s*[-–—]\s*\d{1,2}[.:]\d{2}/,
+      /start[:\s]*(?:om\s*)?(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
+      /time[:\s]*(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
+      /om\s+(\d{1,2})[.:h](\d{2})(?:\s*(am|pm))?/i,
+      /(\d{1,2})[.:](\d{2})\s*[-–—]\s*\d{1,2}[.:]\d{2}(?:\s*(am|pm))?/i,
     ];
     
     const timeElements = [
@@ -648,11 +730,11 @@ async function fetchEventDetailTime(detailUrl: string, baseUrl: string): Promise
         for (const pattern of timePatterns) {
           const match = elText.match(pattern);
           if (match) {
-            const hours = match[1].padStart(2, '0');
-            const minutes = match[2];
-            const time = `${hours}:${minutes}`;
-            console.log(`      ✅ Found time in element: ${time}`);
-            return time;
+            const time = normalizeTime(match[1], match[2], match[3]);
+            if (time) {
+              console.log(`      ✅ Found time in element: ${time}`);
+              return time;
+            }
           }
         }
       }
@@ -661,10 +743,8 @@ async function fetchEventDetailTime(detailUrl: string, baseUrl: string): Promise
     for (const pattern of timePatterns) {
       const match = pageText.match(pattern);
       if (match) {
-        const hours = match[1].padStart(2, '0');
-        const minutes = match[2];
-        if (parseInt(hours) <= 23) {
-          const time = `${hours}:${minutes}`;
+        const time = normalizeTime(match[1], match[2], match[3]);
+        if (time) {
           console.log(`      ✅ Found time in page text: ${time}`);
           return time;
         }
@@ -680,7 +760,48 @@ async function fetchEventDetailTime(detailUrl: string, baseUrl: string): Promise
 }
 
 // Scraping function
-async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boolean = true): Promise<RawEventCard[]> {
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function extractTitle($el: cheerio.Cheerio, $: cheerio.CheerioAPI): string {
+  const selectors = [
+    "h1, h2, h3, h4",
+    ".title",
+    '[class*="title"]',
+    'span[class*="title"]',
+    'div[class*="title"]',
+    "[data-event-title]",
+    '[aria-label*="event"]',
+    '[class*="event-title"]',
+  ];
+
+  for (const selector of selectors) {
+    const text = $el.find(selector).first().text();
+    if (text && normalizeWhitespace(text).length > 0) {
+      return normalizeWhitespace(text);
+    }
+  }
+
+  const firstLinkText = $el.find("a").first().text();
+  return normalizeWhitespace(firstLinkText || "");
+}
+
+function buildElementDedupKey($el: cheerio.Cheerio, $: cheerio.CheerioAPI): string | null {
+  const link = $el.find("a").first().attr("href") || "";
+  const title = extractTitle($el, $);
+  if (!link && !title) return null;
+  return `${link.toLowerCase()}|${title.toLowerCase()}`;
+}
+
+export async function scrapeEventCards(
+  source: ScraperSource,
+  enableDeepScraping: boolean = true,
+  options: { fetcher?: typeof fetch; enableDebug?: boolean; detailFetcher?: typeof fetch } = {}
+): Promise<RawEventCard[]> {
+  const fetcher = options.fetcher || fetch;
+  const detailFetcher = options.detailFetcher || fetcher;
+  const enableDebug = options.enableDebug === true;
   // Apply dynamic year replacement if configured
   const actualUrl = applyDynamicYear(source.url, source.config.dynamic_year === true);
   
@@ -693,7 +814,7 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
   console.log(`🌐 Fetching agenda from ${source.name} (${actualUrl})...`);
 
   const headers = source.config.headers || DEFAULT_HEADERS;
-  const response = await fetch(actualUrl, { headers });
+  const response = await fetcher(actualUrl, { headers });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch ${source.name}: ${response.status} ${response.statusText}`);
@@ -703,25 +824,30 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
   const $ = cheerio.load(html);
   const events: RawEventCard[] = [];
 
-  // Use optimized selectors based on platform detection
   const selectors = getOptimizedSelectors(source);
 
-  // deno-lint-ignore no-explicit-any
-  let foundElements: any = $([]);
+  const collectedElements: cheerio.Element[] = [];
+  const seenElements = new Set<cheerio.Element>();
+  const seenKeys = new Set<string>();
 
   for (const selector of selectors) {
     const elements = $(selector);
     if (elements.length > 0) {
       console.log(`Found ${elements.length} elements with selector: ${selector}`);
-      foundElements = elements;
-      break;
     }
+    elements.each((_, el) => {
+      if (seenElements.has(el)) return;
+      const key = buildElementDedupKey($(el), $);
+      if (key && seenKeys.has(key)) return;
+      seenElements.add(el);
+      if (key) seenKeys.add(key);
+      collectedElements.push(el);
+    });
   }
 
   // Filter out elements inside excluded containers
   const excludedSelector = EXCLUDED_CONTAINERS.join(', ');
-  foundElements = foundElements.filter((_: number, el: cheerio.Element) => {
-    // Check if this element is inside any excluded container
+  let foundElements = $(collectedElements).filter((_: number, el: cheerio.Element) => {
     const isInExcluded = $(el).parents(excludedSelector).length > 0;
     if (isInExcluded) {
       console.log(`  ⏭️ Skipped element inside excluded container`);
@@ -731,7 +857,6 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
 
   if (foundElements.length === 0) {
     console.log("⚠️ No event elements found with common selectors. Trying generic approach...");
-    // Smarter fallback: require structural markers like dates or proper titles
     foundElements = $("main article, main .card, .content article, .events article")
       .not(excludedSelector)
       .filter((_: number, el: cheerio.Element) => {
@@ -745,15 +870,13 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
   }
 
   console.log(`Processing ${foundElements.length} potential event cards...`);
+  const eventKeys = new Set<string>();
 
   // deno-lint-ignore no-explicit-any
   foundElements.each((_: number, element: any) => {
     const $el = $(element);
     const rawHtml = $el.html() || "";
-
-    const title =
-      $el.find("h1, h2, h3, h4, .title, [class*=\"title\"]").first().text().trim() ||
-      $el.find("a").first().text().trim();
+    const title = extractTitle($el, $);
 
     // Skip if title is blocklisted (exact match only)
     const titleLower = title.toLowerCase().trim();
@@ -781,6 +904,10 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
     const date =
       $el.find("time, .date, [class*=\"date\"], .event-date").first().text().trim() ||
       $el.find("[datetime]").first().attr("datetime") ||
+      $el.attr("data-event-date") ||
+      $el.attr("data-date") ||
+      $el.find("[data-event-date]").first().attr("data-event-date") ||
+      $el.find("[data-date]").first().attr("data-date") ||
       "";
 
     const location =
@@ -808,6 +935,15 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
       return;
     }
 
+    const dedupKey = `${(detailUrl || '').toLowerCase()}|${titleLower}`;
+    if (eventKeys.has(dedupKey)) {
+      if (enableDebug) {
+        console.log(`  ⏭️ Deduped event: "${title}"`);
+      }
+      return;
+    }
+    eventKeys.add(dedupKey);
+
     console.log(`  ✅ Valid event: "${title}"`);
     events.push({
       rawHtml: rawHtml.substring(0, 3000),
@@ -831,7 +967,7 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
       const event = events[i];
       if (event.detailUrl) {
         console.log(`   [${i + 1}/${events.length}] ${event.title || 'Unknown'}...`);
-        const time = await fetchEventDetailTime(event.detailUrl, actualUrl);
+        const time = await fetchEventDetailTime(event.detailUrl, actualUrl, detailFetcher);
         if (time) {
           event.detailPageTime = time;
         }
@@ -848,12 +984,37 @@ async function scrapeEventCards(source: ScraperSource, enableDeepScraping: boole
   return events;
 }
 
+export async function callGemini(
+  apiKey: string,
+  body: unknown,
+  fetcher: typeof fetch = fetch
+): Promise<string | null> {
+  const response = await fetcher(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Gemini API error: ${response.status} - ${errorText}`);
+    return null;
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+}
+
 // AI Parsing function using Google Gemini
-async function parseEventWithAI(
+export async function parseEventWithAI(
   apiKey: string, 
   rawEvent: RawEventCard, 
   language: string = 'en',
-  defaultCoords?: { lat: number; lng: number }
+  defaultCoords?: { lat: number; lng: number },
+  opts: { callGeminiFn?: typeof callGemini } = {}
 ): Promise<ParsedEvent | null> {
   try {
     const timeHint = rawEvent.detailPageTime 
@@ -871,33 +1032,20 @@ Image URL: ${rawEvent.imageUrl || "none"}
 Raw HTML content:
 ${rawEvent.rawHtml}`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            { role: "user", parts: [{ text: getAISystemPrompt(language, defaultCoords) }] },
-            { role: "model", parts: [{ text: "I understand. I will parse event data and return clean JSON." }] },
-            { role: "user", parts: [{ text: userPrompt }] },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 1024,
-          },
-        }),
-      }
-    );
+    const payload = {
+      contents: [
+        { role: "user", parts: [{ text: getAISystemPrompt(language, defaultCoords) }] },
+        { role: "model", parts: [{ text: "I understand. I will parse event data and return clean JSON." }] },
+        { role: "user", parts: [{ text: userPrompt }] },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 1024,
+      },
+    };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Gemini API error: ${response.status} - ${errorText}`);
-      return null;
-    }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const geminiCaller = opts.callGeminiFn || callGemini;
+    const text = await geminiCaller(apiKey, payload);
 
     if (!text) {
       console.error("No text in Gemini response");
@@ -957,24 +1105,44 @@ ${rawEvent.rawHtml}`;
 
 // Check for duplicate events
 // deno-lint-ignore no-explicit-any
-async function eventExists(
+export async function eventExists(
   supabase: any,
   title: string,
-  eventDate: string
+  eventDate: string,
+  eventTime: string
 ): Promise<boolean> {
-  const { data, error } = await supabase
+  const { timestamp, dateOnly } = normalizeEventDateForStorage(eventDate, eventTime);
+
+  const primaryCheck = await supabase
     .from("events")
     .select("id")
     .eq("title", title)
-    .eq("event_date", eventDate)
+    .eq("event_date", timestamp)
     .limit(1);
 
-  if (error) {
-    console.error("Error checking for duplicate:", error);
+  if (primaryCheck.error) {
+    console.error("Error checking for duplicate:", primaryCheck.error);
     return false;
   }
 
-  return data && data.length > 0;
+  if (primaryCheck.data && primaryCheck.data.length > 0) {
+    return true;
+  }
+
+  if (dateOnly) {
+    const dateOnlyCheck = await supabase
+      .from("events")
+      .select("id")
+      .eq("title", title)
+      .eq("event_date", dateOnly)
+      .limit(1);
+
+    if (!dateOnlyCheck.error && dateOnlyCheck.data && dateOnlyCheck.data.length > 0) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // Insert event into database
@@ -1013,7 +1181,7 @@ async function updateSourceStats(
 }
 
 // Main handler
-serve(async (req) => {
+export async function handleRequest(req: Request): Promise<Response> {
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -1040,6 +1208,7 @@ serve(async (req) => {
       dryRun?: boolean; 
       enableDeepScraping?: boolean;
       limit?: number;
+      enableDebug?: boolean;
     } = {};
     
     try {
@@ -1053,7 +1222,7 @@ serve(async (req) => {
       // Ignore parsing errors, use defaults
     }
 
-    const { sourceId, dryRun = false, enableDeepScraping = true, limit } = options;
+    const { sourceId, dryRun = false, enableDeepScraping = true, limit, enableDebug = false } = options;
 
     // Get enabled scraper sources
     let query = supabase.from("scraper_sources").select("*").eq("enabled", true);
@@ -1110,7 +1279,7 @@ serve(async (req) => {
 
       try {
         // Scrape events from source
-        const rawEvents = await scrapeEventCards(source, enableDeepScraping);
+        const rawEvents = await scrapeEventCards(source, enableDeepScraping, { enableDebug });
         sourceStats.scraped = rawEvents.length;
         stats.totalEventsScraped += rawEvents.length;
 
@@ -1132,9 +1301,9 @@ serve(async (req) => {
 
           console.log(`  ✅ Parsed: ${parsed.title} | ${parsed.event_date} | ${parsed.event_time}`);
 
-          // Check for duplicate
-          const eventDateTime = constructEventDateTime(parsed.event_date, parsed.event_time);
-          const exists = await eventExists(supabase, parsed.title, eventDateTime);
+          // Check for duplicate using normalized storage format
+          const { timestamp: eventDateTime } = normalizeEventDateForStorage(parsed.event_date, parsed.event_time);
+          const exists = await eventExists(supabase, parsed.title, parsed.event_date, parsed.event_time);
 
           if (exists) {
             console.log("  ⏭️ Duplicate, skipping");
@@ -1226,4 +1395,8 @@ serve(async (req) => {
       }
     );
   }
-});
+}
+
+if (import.meta.main) {
+  serve(handleRequest);
+}
