@@ -1,9 +1,7 @@
-import React from 'react';
+import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Users, ChevronRight } from 'lucide-react';
-import { getCategoryConfig } from '@/lib/categories';
-import { formatEventTime, formatEventLocation } from '@/lib/formatters';
-import { getEventImage, CATEGORY_FALLBACK_IMAGES } from '@/lib/hooks/useImageFallback';
+import { MapPin, Users, Ticket } from 'lucide-react';
+import { CATEGORY_MAP } from '@/lib/categories';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 interface TimelineEventCardProps {
@@ -11,82 +9,76 @@ interface TimelineEventCardProps {
   isPast?: boolean;
 }
 
-export function TimelineEventCard({ event, isPast }: TimelineEventCardProps) {
-  const categoryConfig = getCategoryConfig(event.category);
-  const imageUrl = getEventImage(event.image_url, event.category);
+// Format time like "7:00 PM"
+function formatTime(timeStr: string): string {
+  if (!timeStr) return '';
+  
+  // Handle HH:MM format
+  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  }
+  
+  return timeStr;
+}
+
+export const TimelineEventCard = memo(function TimelineEventCard({
+  event,
+  isPast = false,
+}: TimelineEventCardProps) {
+  const categoryLabel = CATEGORY_MAP[event.category] || event.category;
+  const attendeeCount = event.attendee_count || 0;
 
   return (
     <motion.div
-      whileTap={{ scale: 0.98 }}
-      className={`bg-card rounded-xl border border-border overflow-hidden shadow-bento transition-all hover:shadow-bento-hover ${
-        isPast ? 'opacity-60' : ''
+      className={`relative rounded-2xl border-2 bg-card p-4 transition-all ${
+        isPast 
+          ? 'border-border/50 opacity-60' 
+          : 'border-border hover:border-primary/30 hover:shadow-sm'
       }`}
+      whileTap={{ scale: 0.98 }}
     >
-      <div className="flex">
-        {/* Image */}
-        <div className="relative w-24 h-24 flex-shrink-0">
-          <img
-            src={imageUrl}
-            alt={event.title}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = CATEGORY_FALLBACK_IMAGES.default;
-            }}
-          />
-          {/* Category badge overlay */}
-          <div
-            className={`absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${categoryConfig.bgClass} ${categoryConfig.textClass}`}
-          >
-            {categoryConfig.label}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 p-3 min-w-0 flex flex-col justify-between">
-          <div>
-            <h3 className="font-semibold text-foreground text-sm leading-tight line-clamp-1">
-              {event.title}
-            </h3>
-            <div className="flex items-center gap-1 mt-1 text-muted-foreground">
-              <MapPin className="w-3 h-3 flex-shrink-0" />
-              <span className="text-xs truncate">{formatEventLocation(event.venue_name)}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                <span>{formatEventTime(event.event_time)}</span>
-              </div>
-              {(event.attendee_count ?? 0) > 0 && (
-                <div className="flex items-center gap-1">
-                  <Users className="w-3 h-3" />
-                  <span>{event.attendee_count} going</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Chevron */}
-        <div className="flex items-center pr-3">
-          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+      {/* Row 1: Time + Attendee Count */}
+      <div className="flex items-center justify-between mb-1">
+        <span className={`text-[15px] font-semibold ${
+          isPast ? 'text-muted-foreground' : 'text-foreground'
+        }`}>
+          {formatTime(event.event_time)}
+        </span>
+        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+          <Users size={14} />
+          <span className="font-medium">{attendeeCount} going</span>
         </div>
       </div>
 
-      {/* Ticket number (if available) */}
+      {/* Row 2: Event Title */}
+      <h4 className={`text-[17px] font-semibold leading-tight line-clamp-1 mb-1 ${
+        isPast ? 'text-muted-foreground' : 'text-foreground'
+      }`}>
+        {event.title}
+      </h4>
+
+      {/* Row 3: Location + Category */}
+      <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          <MapPin size={12} className="flex-shrink-0" />
+          <span className="truncate">{event.venue_name}</span>
+        </div>
+        <span className="text-border">•</span>
+        <span className="flex-shrink-0 capitalize">{categoryLabel}</span>
+      </div>
+
+      {/* Optional: Ticket Number Badge */}
       {event.ticket_number && (
-        <div className="px-3 py-2 bg-muted/50 border-t border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Ticket</span>
-            <span className="text-xs font-mono font-medium text-foreground">
-              #{event.ticket_number}
-            </span>
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            <Ticket size={12} />
+            <span className="font-mono font-medium">{event.ticket_number}</span>
           </div>
         </div>
       )}
     </motion.div>
   );
-}
+});

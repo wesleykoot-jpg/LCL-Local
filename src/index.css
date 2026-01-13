@@ -20,92 +20,97 @@
 
 @layer base {
   :root {
-    /* Warm, Organized - Airbnb/Reddit Inspired */
-    --background: 40 33% 98%;
-    --foreground: 24 10% 15%;
+    /* Airbnb-Inspired Design System */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 24 10% 15%;
+    --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 24 10% 15%;
-    --primary: 24 94% 50%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 350 100% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 35 30% 96%;
-    --secondary-foreground: 24 10% 15%;
-    --muted: 35 20% 95%;
-    --muted-foreground: 24 10% 46%;
-    --accent: 35 30% 96%;
-    --accent-foreground: 24 10% 15%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 35 15% 90%;
-    --input: 35 15% 90%;
-    --ring: 24 94% 50%;
-    --radius: 0.875rem;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 350 100% 60%;
+    --radius: 0.75rem;
     
-    /* Warm Action Color - Sunset Orange */
-    --action: 24 94% 50%;
+    /* Airbnb Action Color - Rausch Red */
+    --action: 350 100% 60%;
     --action-foreground: 0 0% 100%;
     
-    /* Warm Surface Colors */
-    --surface-base: 40 30% 97%;
+    /* Clean Surface Colors */
+    --surface-base: 0 0% 97%;
     --surface-elevated: 0 0% 100%;
-    --surface-overlay: 35 25% 95%;
+    --surface-overlay: 0 0% 95%;
     
-    /* Warm Shadows */
-    --shadow-warm: 30 20% 10%;
-    --shadow-warm-glow: 24 100% 50%;
+    /* Hairline Border for iOS feel */
+    --border-hairline: 0 0% 88%;
+    
+    /* Shadows */
+    --shadow-warm: 0 0% 10%;
+    --shadow-warm-glow: 350 100% 60%;
     
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 24 10% 46%;
-    --sidebar-primary: 24 94% 50%;
+    --sidebar-foreground: 0 0% 45%;
+    --sidebar-primary: 350 100% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 35 30% 96%;
-    --sidebar-accent-foreground: 24 10% 15%;
-    --sidebar-border: 35 15% 90%;
-    --sidebar-ring: 24 94% 50%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 350 100% 60%;
   }
 
   .dark {
-    /* Dark Mode - Warm undertones */
-    --background: 30 15% 7%;
-    --foreground: 35 20% 95%;
-    --card: 30 15% 10%;
-    --card-foreground: 35 20% 95%;
-    --popover: 30 15% 10%;
-    --popover-foreground: 35 20% 95%;
-    --primary: 24 90% 55%;
+    /* Dark Mode - Clean & Modern */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 350 100% 65%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 15% 15%;
-    --secondary-foreground: 35 20% 95%;
-    --muted: 30 15% 15%;
-    --muted-foreground: 35 15% 55%;
-    --accent: 30 15% 15%;
-    --accent-foreground: 35 20% 95%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
-    --border: 30 15% 18%;
-    --input: 30 15% 18%;
-    --ring: 24 90% 55%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 350 100% 65%;
     
-    --action: 24 90% 55%;
+    --action: 350 100% 65%;
     --action-foreground: 0 0% 100%;
     
-    --surface-base: 30 15% 8%;
-    --surface-elevated: 30 15% 12%;
-    --surface-overlay: 30 15% 15%;
+    --surface-base: 0 0% 8%;
+    --surface-elevated: 0 0% 12%;
+    --surface-overlay: 0 0% 15%;
     
-    --shadow-warm: 30 20% 5%;
-    --shadow-warm-glow: 24 100% 40%;
+    --border-hairline: 0 0% 20%;
     
-    --sidebar-background: 30 15% 10%;
-    --sidebar-foreground: 35 15% 55%;
-    --sidebar-primary: 24 90% 55%;
+    --shadow-warm: 0 0% 5%;
+    --shadow-warm-glow: 350 100% 50%;
+    
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 0 0% 55%;
+    --sidebar-primary: 350 100% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 15% 15%;
-    --sidebar-accent-foreground: 35 20% 95%;
-    --sidebar-border: 30 15% 18%;
-    --sidebar-ring: 24 90% 55%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 350 100% 65%;
   }
 }
 
