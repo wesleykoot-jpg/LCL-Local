@@ -10,6 +10,7 @@ import { usePersonaStats, usePersonaBadges, useUserCommitments } from '../lib/ho
 import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { hapticImpact } from '@/lib/haptics';
 
 const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
   Shield,
@@ -116,6 +117,7 @@ export function ProfileView() {
       toast('Demo mode - no account to sign out from', { icon: 'ℹ️' });
       return;
     }
+    await hapticImpact('medium');
     setIsSigningOut(true);
     try {
       await signOut();
@@ -127,11 +129,13 @@ export function ProfileView() {
     }
   };
 
-  const handleSettingsClick = (setting: string) => {
+  const handleSettingsClick = async (setting: string) => {
+    await hapticImpact('light');
     toast(`${setting} coming soon!`, { icon: '🚧' });
   };
 
-  const handleNavigateToSettings = (path: string) => {
+  const handleNavigateToSettings = async (path: string) => {
+    await hapticImpact('light');
     navigate(path);
   };
 
@@ -151,8 +155,8 @@ export function ProfileView() {
         )}
       </AnimatePresence>
       
-      {/* Header - Minimal Airbnb style */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
+      {/* Header - Minimal Airbnb style with safe area */}
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border pt-safe">
         <div className="max-w-lg mx-auto px-5 py-4 flex items-center justify-between">
           <h1 className="font-display text-xl text-foreground tracking-tight">
             Profile
@@ -161,14 +165,14 @@ export function ProfileView() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => handleSettingsClick('Edit Profile')}
-              className="p-2.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
               title="Edit Profile"
             >
               <Edit3 size={20} />
             </button>
             <button
               onClick={() => handleSettingsClick('Settings')}
-              className="p-2.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
               title="Settings"
             >
               <Settings size={20} />
@@ -176,7 +180,7 @@ export function ProfileView() {
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="p-2.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-all disabled:opacity-50 active:scale-[0.95]"
               title="Sign Out"
             >
               {isSigningOut ? (
@@ -213,9 +217,9 @@ export function ProfileView() {
             )}
             <button 
               onClick={() => handleSettingsClick('Change Photo')}
-              className="absolute bottom-0 left-0 w-8 h-8 bg-muted rounded-full flex items-center justify-center border-4 border-background shadow-md hover:bg-muted/80 transition-colors"
+              className="absolute bottom-0 left-0 w-10 h-10 min-h-[44px] min-w-[44px] bg-muted rounded-full flex items-center justify-center border-4 border-background shadow-md hover:bg-muted/80 transition-all active:scale-[0.95]"
             >
-              <Camera size={14} className="text-muted-foreground" />
+              <Camera size={16} className="text-muted-foreground" />
             </button>
           </div>
 
@@ -286,7 +290,7 @@ export function ProfileView() {
               <Award size={20} className="text-primary" />
               <h3 className="text-lg font-semibold text-foreground">Achievements</h3>
             </div>
-            <button className="text-sm font-medium text-primary">
+            <button className="text-sm font-medium text-primary min-h-[44px] px-3 flex items-center active:scale-[0.97] transition-transform">
               View All
             </button>
           </div>
@@ -402,7 +406,10 @@ export function ProfileView() {
           
           <div className="px-5">
             <button 
-              onClick={() => navigate('/profile/calendar')}
+              onClick={async () => {
+                await hapticImpact('light');
+                navigate('/profile/calendar');
+              }}
               className="w-full bg-gradient-to-r from-blue-500/5 to-green-500/5 border border-primary/20 rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.99]"
             >
               <div className="flex items-center gap-4">
@@ -526,7 +533,7 @@ export function ProfileView() {
                 )}
 
                 {commitments.length > 3 && (
-                  <button className="w-full py-3 text-sm font-medium text-primary">
+                  <button className="w-full py-3 min-h-[44px] text-sm font-medium text-primary active:scale-[0.98] transition-transform">
                     View all {commitments.length} events
                   </button>
                 )}
@@ -537,7 +544,7 @@ export function ProfileView() {
                 <p className="text-sm text-muted-foreground mb-3">
                   No upcoming events
                 </p>
-                <button className="px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium">
+                <button className="px-4 py-2.5 min-h-[44px] bg-primary text-primary-foreground rounded-full text-sm font-medium active:scale-[0.97] transition-transform">
                   Explore Events
                 </button>
               </div>
@@ -571,7 +578,7 @@ export function ProfileView() {
               <button 
                 key={item.label}
                 onClick={() => handleNavigateToSettings(item.path)}
-                className="w-full px-5 py-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                className="w-full px-5 py-4 min-h-[44px] flex items-center justify-between hover:bg-muted/50 transition-all active:bg-muted/70"
               >
                 <div className="flex items-center gap-3">
                   <item.icon size={20} className="text-muted-foreground" />
@@ -608,13 +615,18 @@ interface CalendarListItemProps {
 }
 
 function CalendarListItem({ event, index, isToday }: CalendarListItemProps) {
+  const handleClick = async () => {
+    await hapticImpact('light');
+    toast(`Viewing ${event.title}`, { icon: '📅' });
+  };
+
   return (
     <motion.button 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.25 + index * 0.05 }}
-      onClick={() => toast(`Viewing ${event.title}`, { icon: '📅' })}
-      className="w-full bg-card rounded-xl border border-border p-3.5 flex items-center gap-3 hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99]"
+      onClick={handleClick}
+      className="w-full bg-card rounded-xl border border-border p-3.5 min-h-[44px] flex items-center gap-3 hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99]"
     >
       {/* Calendar Icon */}
       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
