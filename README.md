@@ -179,6 +179,7 @@ A robust, polite web scraper that runs daily to fetch events from configured sou
    - `SUPABASE_KEY`: Supabase service role key
    - `SLACK_WEBHOOK_URL`: Slack incoming webhook for alerts
    - `SCRAPER_USER_AGENT` (optional): Custom user agent string
+   - For **local dry runs** you can omit these secrets; they are required for real runs that write to Supabase or send alerts.
 
 2. **Configure sources** in `src/config/sources.json`:
    ```json
