@@ -49,6 +49,8 @@ export function ConfirmModal({
 
       if (event.key === 'Enter') {
         if (document.activeElement === cancelButtonRef.current) {
+          event.preventDefault();
+          onCancel();
           return;
         }
 

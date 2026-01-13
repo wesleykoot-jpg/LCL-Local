@@ -44,6 +44,7 @@ export function ShareProfile() {
         toast.success('Shared!');
         return;
       } catch (e) {
+        console.warn('Native share failed, falling back', e);
         // User cancelled share or share failed; fall back to copying the link, then Twitter if needed
       }
     }
@@ -59,7 +60,7 @@ export function ShareProfile() {
 
   const handleShare = (platform: string) => {
     if (platform === 'native') {
-      void handleNativeShare();
+      handleNativeShare().catch((error) => console.error('Share failed', error));
       return;
     }
     const text = `Check out my profile on LCL Local!`;
@@ -93,6 +94,8 @@ export function ShareProfile() {
   const handleShowQR = () => {
     setShowQr(true);
   };
+
+  const triggerNativeShare = () => handleNativeShare().catch((error) => console.error('Share failed', error));
 
   return (
     <div
@@ -160,7 +163,7 @@ export function ShareProfile() {
               {profileUrl}
             </div>
             <button
-              onClick={() => void handleNativeShare()}
+              onClick={triggerNativeShare}
               aria-label="Share profile link"
               className="px-4 py-2.5 min-h-[44px] bg-secondary text-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2 flex-shrink-0 border border-border"
             >
@@ -289,7 +292,7 @@ export function ShareProfile() {
           profileUrl={profileUrl}
           onClose={() => setShowQr(false)}
           onCopy={handleCopyLink}
-          onShare={handleNativeShare}
+          onShare={triggerNativeShare}
         />
       </div>
     </div>
@@ -407,7 +410,7 @@ function QrModal({ open, onClose, profileUrl, onCopy, onShare }: QrModalProps) {
             </button>
             <button
               aria-label="Share profile"
-              onClick={() => void onShare()}
+              onClick={onShare}
               className="flex-1 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               Share

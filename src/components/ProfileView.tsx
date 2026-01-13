@@ -117,7 +117,7 @@ export function ProfileView() {
   const groupedEvents = groupEventsByTimeframe(commitments);
   const avatarInitial = displayProfile.full_name
     ? displayProfile.full_name.charAt(0).toUpperCase()
-    : 'DU';
+    : 'U';
   const motionProps = (delay = 0, offset = 20) =>
     prefersReducedMotion
       ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
