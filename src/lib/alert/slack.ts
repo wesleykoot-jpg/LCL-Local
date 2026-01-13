@@ -145,13 +145,24 @@ function determineCauseAndSuggestion(context: AlertContext): {
   };
 }
 
+export interface SlackMessagePayload {
+  text: string;
+  blocks?: Array<{
+    type: string;
+    text?: {
+      type: string;
+      text: string;
+    };
+  }>;
+}
+
 /**
  * Format Slack message payload
  */
 function formatSlackMessage(
   context: AlertContext,
   supabaseProjectUrl?: string
-): Record<string, any> {
+): SlackMessagePayload {
   const { cause, suggestion } = determineCauseAndSuggestion(context);
   
   const statusSummary = Object.entries(context.http_statuses)

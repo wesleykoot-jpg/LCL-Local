@@ -117,6 +117,7 @@ function validateConfig(): boolean {
 
 /**
  * Main function
+ * Note: When using tsx, the file is always executed as the main module
  */
 async function main(): Promise<void> {
   const args = parseArgs();
@@ -188,19 +189,11 @@ async function main(): Promise<void> {
   }
 }
 
-// Run if called directly
-// In ES modules, check if this is the main module using import.meta.url
-const isMainModule = process.argv[1] && (
-  process.argv[1].endsWith('/cli.ts') || 
-  process.argv[1].endsWith('/cli.js') ||
-  process.argv[1].endsWith('/cli.cjs')
-);
-
-if (isMainModule) {
-  main().catch(error => {
-    console.error('Unhandled error:', error);
-    process.exit(2);
-  });
-}
+// Auto-execute when run directly with tsx or node
+// This is the main entry point for the scraper CLI
+main().catch(error => {
+  console.error('Unhandled error:', error);
+  process.exit(2);
+});
 
 export { main };

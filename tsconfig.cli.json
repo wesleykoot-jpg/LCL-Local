@@ -1,4 +1,6 @@
 {
+  "// NOTE": "This uses CommonJS for Node.js compatibility with tsx runtime",
+  "// REASON": "The CLI needs to work with tsx for development and node for production. CommonJS is more reliable for CLI tools.",
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
