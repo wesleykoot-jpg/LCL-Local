@@ -19,7 +19,8 @@ export function ShareProfile() {
       ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
       : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { delay } };
   
-  const baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://lcl-local.com';
+  const DEFAULT_BASE_URL = 'https://lcl-local.com';
+  const baseUrl = import.meta.env.VITE_APP_BASE_URL || DEFAULT_BASE_URL;
   const profileUrl = `${baseUrl}/profile/${profile?.id || 'demo-user'}`;
 
   const handleCopyLink = async () => {
@@ -43,7 +44,7 @@ export function ShareProfile() {
         toast.success('Shared!');
         return;
       } catch (e) {
-        // User cancelled share or share failed; fall back to clipboard/Twitter
+        // User cancelled share or share failed; fall back to copying the link, then Twitter if needed
       }
     }
 
