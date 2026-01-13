@@ -13,6 +13,7 @@ dist-ssr
 *.local
 *.tsbuildinfo
 vite.config.d.ts
+results/
 
 # Environment files (use .env.example as template)
 .env
