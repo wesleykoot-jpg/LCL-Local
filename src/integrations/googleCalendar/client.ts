@@ -1,8 +1,8 @@
 /**
  * Google Calendar Integration Client
  * 
- * Handles OAuth 2.0 authentication flow with Google Calendar API
- * using the implicit grant flow suitable for client-side applications.
+ * Handles OAuth 2.0 authentication flow with Google Calendar API.
+ * Client ID is configured at the app level - users just click "Connect".
  */
 
 // Google API scopes needed for calendar integration
@@ -13,75 +13,25 @@ export const GOOGLE_CALENDAR_SCOPES = [
 
 // Google OAuth configuration
 const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
-const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
-// LocalStorage key for user-provided Google Client ID
-const USER_CLIENT_ID_KEY = 'google_calendar_client_id';
-
-// Custom event name for configuration changes
-export const CONFIG_CHANGE_EVENT = 'google-calendar-config-changed';
+// Edge function URL for secure token operations
+const EDGE_FUNCTION_URL = 'https://mlpefjsbriqgxcaqxhic.supabase.co/functions/v1/google-calendar-auth';
 
 /**
- * Dispatch a custom event when configuration changes
- * SSR-safe: Only dispatches if window is available
- */
-function notifyConfigChange(): void {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event(CONFIG_CHANGE_EVENT));
-  }
-}
-
-/**
- * Get user-provided Google Client ID from localStorage
- * SSR-safe: Returns null if window is not available
- */
-export function getUserProvidedClientId(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(USER_CLIENT_ID_KEY);
-}
-
-/**
- * Set user-provided Google Client ID in localStorage
- * SSR-safe: Only sets if window is available
- */
-export function setUserProvidedClientId(clientId: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(USER_CLIENT_ID_KEY, clientId);
-  notifyConfigChange();
-}
-
-/**
- * Clear user-provided Google Client ID from localStorage
- * SSR-safe: Only clears if window is available
- */
-export function clearUserProvidedClientId(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(USER_CLIENT_ID_KEY);
-  notifyConfigChange();
-}
-
-/**
- * Get the Google Client ID from user config or environment
- * Priority: User-provided > Environment variable
+ * Get the Google Client ID from secrets (set at app level)
+ * This is a public OAuth Client ID - safe to use client-side
  */
 export function getGoogleClientId(): string {
-  // First check if user has provided their own Client ID
-  const userClientId = getUserProvidedClientId();
-  if (userClientId) {
-    return userClientId;
-  }
-  
-  // Fallback to environment variable (for admin configuration)
-  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  if (!envClientId) {
-    console.warn('[Google Calendar] No Client ID configured (user or environment)');
-  }
-  return envClientId || '';
+  // Client ID is retrieved from edge function environment
+  // For OAuth initiation, we need it client-side
+  // This should be set as an environment variable during build
+  // or fetched from the edge function
+  return import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 }
 
 /**
  * Check if Google Calendar integration is configured
- * Returns true if either user-provided or environment Client ID exists
+ * Returns true since configuration is done at the app level
  */
 export function isGoogleCalendarConfigured(): boolean {
   return Boolean(getGoogleClientId());
@@ -145,6 +95,13 @@ export function parseOAuthCallback(): { code?: string; error?: string; state?: s
     error: params.get('error') || undefined,
     state: params.get('state') || undefined,
   };
+}
+
+/**
+ * Get the edge function URL for token operations
+ */
+export function getEdgeFunctionUrl(): string {
+  return EDGE_FUNCTION_URL;
 }
 
 /**

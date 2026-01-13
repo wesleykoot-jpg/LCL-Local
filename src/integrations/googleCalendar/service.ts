@@ -2,25 +2,18 @@
  * Google Calendar Service
  * 
  * Handles synchronization of LCL events with Google Calendar.
- * Manages token storage, event creation, and updates.
- * 
- * SECURITY NOTE: This implementation uses a client-side OAuth flow.
- * For production environments with sensitive data, consider using
- * a backend service (e.g., Supabase Edge Function) to handle
- * token exchange and storage securely.
+ * Token exchange and refresh are handled securely via edge function.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import { 
   GOOGLE_CALENDAR_API_BASE, 
-  getGoogleClientId, 
   getRedirectUri,
+  getEdgeFunctionUrl,
   type GoogleCalendarEventData,
   type GoogleCalendarEventResponse,
 } from './client';
 import { TOKEN_EXPIRY_BUFFER_MS } from '@/lib/utils';
-
-const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
 export interface CalendarTokens {
   accessToken: string;
@@ -35,43 +28,29 @@ export interface SyncResult {
 }
 
 /**
- * Exchange authorization code for tokens
+ * Exchange authorization code for tokens via edge function
  */
 export async function exchangeCodeForTokens(
   code: string
 ): Promise<{ tokens: CalendarTokens; error?: string }> {
   try {
-    // For client-side apps, we need a backend to exchange codes securely
-    // In this implementation, we'll use a serverless approach via Supabase Edge Function
-    // For now, we'll store the code and simulate the exchange
-    // In production, this should be handled by a backend service
-
-    const clientId = getGoogleClientId();
-    const redirectUri = getRedirectUri();
-
-    // Note: In a production environment, the client_secret should be kept on the server
-    // For this client-side implementation, we're using the implicit grant flow
-    // The code exchange should ideally happen in a Supabase Edge Function
-
-    const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+    const response = await fetch(getEdgeFunctionUrl(), {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
+      body: JSON.stringify({
+        action: 'exchange',
         code,
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
+        redirectUri: getRedirectUri(),
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error_description || 'Token exchange failed');
-    }
-
     const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Token exchange failed');
+    }
     
     const tokens: CalendarTokens = {
       accessToken: data.access_token,
@@ -150,36 +129,26 @@ export async function isCalendarConnected(profileId: string): Promise<boolean> {
 }
 
 /**
- * Refresh access token if expired
+ * Refresh access token via edge function
  */
-async function refreshAccessToken(profileId: string, refreshToken: string): Promise<string | null> {
+async function refreshAccessToken(profileId: string): Promise<string | null> {
   try {
-    const clientId = getGoogleClientId();
-
-    const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+    const response = await fetch(getEdgeFunctionUrl(), {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
-        refresh_token: refreshToken,
-        client_id: clientId,
-        grant_type: 'refresh_token',
+      body: JSON.stringify({
+        action: 'refresh',
+        profileId,
       }),
     });
 
-    if (!response.ok) {
-      throw new Error('Token refresh failed');
-    }
-
     const data = await response.json();
-    
-    // Update stored tokens
-    await storeCalendarTokens(profileId, {
-      accessToken: data.access_token,
-      refreshToken: refreshToken, // Keep existing refresh token
-      expiresAt: new Date(Date.now() + data.expires_in * 1000),
-    });
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Token refresh failed');
+    }
 
     return data.access_token;
   } catch (error) {
@@ -199,7 +168,7 @@ async function getValidAccessToken(profileId: string): Promise<string | null> {
   const isExpired = tokens.expiresAt.getTime() < Date.now() + TOKEN_EXPIRY_BUFFER_MS;
 
   if (isExpired && tokens.refreshToken) {
-    return refreshAccessToken(profileId, tokens.refreshToken);
+    return refreshAccessToken(profileId);
   }
 
   return tokens.accessToken;
@@ -317,7 +286,6 @@ export async function deleteCalendarEvent(
     // Success cases:
     // - 204 No Content: Event was successfully deleted
     // - 410 Gone: Event was already deleted
-    // response.ok is true for 204, so we only need to explicitly allow 410
     if (!response.ok && response.status !== 410) {
       const errorData = await response.json();
       throw new Error(errorData.error?.message || 'Failed to delete calendar event');
