@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
-import { createSpoofedFetch, resolveStrategy } from "../scrape-events/strategies.ts";
+import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -341,38 +341,50 @@ interface JobRecord {
 }
 
 async function claimNextJob(supabase: SupabaseClient): Promise<JobRecord | null> {
-  // Atomically claim the next pending job
-  const { data, error } = await supabase
+  // First, find the next pending job
+  const { data: pendingJobs, error: selectError } = await supabase
+    .from("scrape_jobs")
+    .select("id, source_id, attempts, max_attempts")
+    .eq("status", "pending")
+    .order("priority", { ascending: false })
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (selectError) {
+    console.error("Failed to find pending job:", selectError.message);
+    return null;
+  }
+
+  if (!pendingJobs || pendingJobs.length === 0) {
+    return null;
+  }
+
+  const job = pendingJobs[0] as JobRecord;
+
+  // Try to claim it by updating status (could race with other workers)
+  const { data: claimedJobs, error: updateError } = await supabase
     .from("scrape_jobs")
     .update({
       status: "processing",
       started_at: new Date().toISOString(),
-      attempts: supabase.rpc ? undefined : 1, // Will increment separately
+      attempts: job.attempts + 1,
     })
-    .eq("status", "pending")
-    .order("priority", { ascending: false })
-    .order("created_at", { ascending: true })
-    .limit(1)
+    .eq("id", job.id)
+    .eq("status", "pending") // Only claim if still pending (optimistic lock)
     .select("id, source_id, attempts, max_attempts");
 
-  if (error) {
-    console.error("Failed to claim job:", error.message);
+  if (updateError) {
+    console.error("Failed to claim job:", updateError.message);
     return null;
   }
 
-  if (!data || data.length === 0) {
-    return null;
+  if (!claimedJobs || claimedJobs.length === 0) {
+    // Job was claimed by another worker, try again
+    console.log("Job was claimed by another worker, retrying...");
+    return claimNextJob(supabase);
   }
 
-  const job = data[0] as JobRecord;
-
-  // Increment attempts
-  await supabase
-    .from("scrape_jobs")
-    .update({ attempts: job.attempts + 1 })
-    .eq("id", job.id);
-
-  return { ...job, attempts: job.attempts + 1 };
+  return claimedJobs[0] as JobRecord;
 }
 
 async function completeJob(
