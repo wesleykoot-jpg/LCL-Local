@@ -61,7 +61,8 @@ interface EventStackCardProps {
 
 const getEventImage = (event: EventWithAttendees): string => {
   if (event.image_url) return event.image_url;
-  return GREY_PATTERN_FALLBACK;
+  const category = CATEGORY_MAP[event.category] || event.category;
+  return CATEGORY_FALLBACK_IMAGES[category] || GREY_PATTERN_FALLBACK;
 };
 
 const getCategoryFallback = (category: string): string => {
@@ -206,7 +207,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const handleDirections = useCallback(async (e: MouseEvent) => {
     e.stopPropagation();
     await hapticImpact('light');
-    openInMaps(event.venue_name, venueCoords || DEFAULT_COORDS);
+    openInMaps(event.venue_name, venueCoords ?? null);
   }, [event.venue_name, venueCoords]);
 
   return (
@@ -291,12 +292,6 @@ const AnchorEventCard = memo(function AnchorEventCard({
         {/* Metadata Row - Time, Attendees, Join */}
         <div className="flex items-center justify-between pt-1 gap-3">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            {formatTime(event.event_time) && (
-              <span className="flex items-center gap-1.5">
-                <Clock size={14} className="text-primary/70" />
-                {formatTime(event.event_time)}
-              </span>
-            )}
             <span className="flex items-center gap-1">
               <Users size={14} className="text-primary/70" />
               <span className="font-medium">{event.attendee_count || 0} gaan</span>
