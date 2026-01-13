@@ -263,7 +263,8 @@ function scoreEvent<T extends EventForRanking>(
 
   const urgencyBoost = calculateUrgencyBoost(event.event_date);
   const trendingBoost = calculateTrendingBoost(event.attendee_count);
-  const totalScore = baseScore * urgencyBoost * trendingBoost;
+  const boostMultiplier = Math.min(urgencyBoost * trendingBoost, 1.5);
+  const totalScore = baseScore * boostMultiplier;
   
   return {
     event,

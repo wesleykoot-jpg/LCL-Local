@@ -25,7 +25,7 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
 };
 
 const GREY_PATTERN_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Cpath fill="%23d1d5db" d="M0 0h50v50H0zM50 50h50v50H50z"/%3E%3C/svg%3E';
-const DEFAULT_COORDS = { lat: 52.5, lng: 6.0 };
+const DEFAULT_AVATAR_URL = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100';
 
 const parseEventCoordinates = (location: unknown): { lat: number; lng: number } | null => {
   if (!location) return null;
@@ -154,7 +154,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   const [isSaved, setIsSaved] = useState(false);
-  const venueCoords = parseEventCoordinates((event as any).location_coordinates) || parseEventCoordinates((event as any).location) || null;
+  const venueCoords = parseEventCoordinates(event.location_coordinates) || parseEventCoordinates(event.location) || null;
   
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
@@ -164,7 +164,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
 
   const attendeeFaces = (event.attendees || []).map((attendee, idx) => ({
     id: attendee.profile?.id || `attendee-${idx}`,
-    image: attendee.profile?.avatar_url || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100',
+    image: attendee.profile?.avatar_url || DEFAULT_AVATAR_URL,
     alt: attendee.profile?.full_name || 'Aanwezige',
   }));
   const extraAttendees = Math.max(0, (event.attendee_count || 0) - attendeeFaces.length);
