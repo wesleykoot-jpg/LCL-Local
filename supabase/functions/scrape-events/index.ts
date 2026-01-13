@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "./dateUtils.ts";
-import type { ScraperSource, RawEventCard } from "./shared.ts";
+import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
 import { createSpoofedFetch, resolveStrategy } from "./strategies.ts";
 
 const corsHeaders = {
@@ -53,6 +53,88 @@ export function normalizeEventDateForStorage(
     timestamp: constructEventDateTime(dateForStorage, eventTime),
     dateOnly: isoDate,
   };
+}
+
+/**
+ * Parses raw date/time strings into a structured date object.
+ * @param dateStr - Raw date string (e.g., "vandaag", "za 18 mei", "2026-01-15")
+ * @param timeStr - Raw time string (e.g., "20:00", "hele dag", "TBD")
+ * @param timezone - IANA timezone identifier (default: Europe/Amsterdam)
+ * @returns StructuredDate object with UTC times
+ */
+export function parseDate(
+  dateStr: string,
+  timeStr: string | null | undefined,
+  timezone: string = "Europe/Amsterdam"
+): StructuredDate | null {
+  const isoDate = parseToISODate(dateStr);
+  if (!isoDate) return null;
+
+  const normalizedTime = timeStr?.trim().toLowerCase() || "";
+  const isAllDay = !normalizedTime || 
+    normalizedTime === "tbd" || 
+    normalizedTime === "hele dag" ||
+    normalizedTime === "all day";
+
+  // Parse time if available
+  let hours = 12;
+  let minutes = 0;
+  
+  if (!isAllDay) {
+    const timeMatch = normalizedTime.match(/^(\d{1,2}):(\d{2})$/);
+    if (timeMatch) {
+      hours = parseInt(timeMatch[1], 10);
+      minutes = parseInt(timeMatch[2], 10);
+    } else {
+      // Map descriptive times to approximate hours
+      const descriptiveMap: Record<string, number> = {
+        'ochtend': 10,
+        'morning': 10,
+        'middag': 14,
+        'afternoon': 14,
+        'avond': 20,
+        'evening': 20,
+        'nacht': 22,
+        'night': 22,
+      };
+      hours = descriptiveMap[normalizedTime] || 12;
+    }
+  }
+
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const utcStart = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0)).toISOString();
+
+  return {
+    utc_start: utcStart,
+    timezone,
+    all_day: isAllDay,
+  };
+}
+
+/**
+ * Parses raw location string into a structured location object.
+ * @param locationStr - Raw location string from scraping
+ * @param defaultCoords - Default coordinates from source config
+ * @returns StructuredLocation object
+ */
+export function parseLocation(
+  locationStr: string | null | undefined,
+  defaultCoords?: { lat: number; lng: number }
+): StructuredLocation {
+  const name = normalizeWhitespace(locationStr || "");
+  
+  const result: StructuredLocation = {
+    name: name || "Unknown location",
+  };
+
+  if (defaultCoords) {
+    result.coordinates = {
+      lat: defaultCoords.lat,
+      lng: defaultCoords.lng,
+    };
+  }
+
+  return result;
 }
 
 export function mapToInternalCategory(input?: string): InternalCategory {
@@ -161,6 +243,9 @@ interface NormalizedEvent {
   venue_address?: string;
   internal_category: InternalCategory;
   detail_url?: string | null;
+  structured_date?: StructuredDate;
+  structured_location?: StructuredLocation;
+  organizer?: string;
 }
 
 function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): NormalizedEvent | null {
@@ -178,6 +263,17 @@ function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): Normaliz
     normalizeWhitespace(raw.description || "") ||
     normalizeWhitespace(cheerio.load(raw.rawHtml || "").text()).slice(0, 240);
 
+  // Build structured date
+  const structuredDate = parseDate(
+    raw.date,
+    time,
+    source.config.language === "nl" ? "Europe/Amsterdam" : "Europe/Amsterdam"
+  );
+
+  // Build structured location
+  const defaultCoords = source.default_coordinates || source.config.default_coordinates;
+  const structuredLocation = parseLocation(raw.location, defaultCoords);
+
   return {
     title: normalizeWhitespace(raw.title),
     description,
@@ -187,6 +283,8 @@ function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): Normaliz
     venue_name: raw.location || source.name,
     internal_category: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
     detail_url: raw.detailUrl,
+    structured_date: structuredDate || undefined,
+    structured_location: structuredLocation,
   };
 }
 
@@ -302,6 +400,16 @@ ${rawEvent.rawHtml}`;
   const isoDate = parseToISODate(parsed.event_date);
   if (!isoDate || !isTargetYear(isoDate)) return null;
 
+  // Build structured date from AI-parsed data
+  const structuredDate = parseDate(
+    isoDate,
+    parsed.event_time,
+    language === "nl" ? "Europe/Amsterdam" : "Europe/Amsterdam"
+  );
+
+  // Build structured location from AI-parsed data
+  const structuredLocation = parseLocation(parsed.venue_name || rawEvent.location);
+
   return {
     title: normalizeWhitespace(parsed.title),
     description: parsed.description ? normalizeWhitespace(parsed.description) : "",
@@ -316,6 +424,8 @@ ${rawEvent.rawHtml}`;
         rawEvent.title,
     ),
     detail_url: rawEvent.detailUrl,
+    structured_date: structuredDate || undefined,
+    structured_location: structuredLocation,
   };
 }
 
@@ -576,6 +686,10 @@ export async function handleRequest(req: Request): Promise<Response> {
             status: "published",
             source_id: source.id,
             event_fingerprint: fingerprint,
+            // New structured fields
+            structured_date: normalized.structured_date || null,
+            structured_location: normalized.structured_location || null,
+            organizer: normalized.organizer || null,
           };
 
           if (!dryRun) {
