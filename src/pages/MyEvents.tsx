@@ -10,10 +10,17 @@ import { Button } from '@/components/ui/button';
 
 type FilterTab = 'upcoming' | 'past';
 
+// Dev fallback profile for testing when not authenticated
+const DEV_TEST_PROFILE_ID = 'de595401-5c4f-40fc-8d3a-a627e49780ff';
+
 export default function MyEvents() {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { commitments, loading, groupedByMonth } = useAllUserCommitments(profile?.id || '');
+  
+  // Use dev profile as fallback when not logged in (development only)
+  const profileId = profile?.id || (import.meta.env.DEV ? DEV_TEST_PROFILE_ID : '');
+  
+  const { commitments, loading, groupedByMonth } = useAllUserCommitments(profileId);
   const [activeTab, setActiveTab] = useState<FilterTab>('upcoming');
 
   // Filter events based on tab
