@@ -189,7 +189,14 @@ async function main(): Promise<void> {
 }
 
 // Run if called directly
-if (require.main === module) {
+// In ES modules, check if this is the main module using import.meta.url
+const isMainModule = process.argv[1] && (
+  process.argv[1].endsWith('/cli.ts') || 
+  process.argv[1].endsWith('/cli.js') ||
+  process.argv[1].endsWith('/cli.cjs')
+);
+
+if (isMainModule) {
   main().catch(error => {
     console.error('Unhandled error:', error);
     process.exit(2);

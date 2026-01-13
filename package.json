@@ -8,12 +8,12 @@
     "build": "npx vite build && tsc -p tsconfig.cli.json",
     "build:cli": "tsc -p tsconfig.cli.json",
     "build:dev": "vite build --mode development",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint .",
     "test": "vitest run",
     "preview": "npx vite preview",
     "scrape:meppel": "npx tsx scripts/scrape-meppel.ts",
-    "scrape:dry-run": "npm run build:cli && node dist/cli.js --dry-run",
-    "scrape:run": "npm run build:cli && node dist/cli.js"
+    "scrape:dry-run": "npx tsx src/cli.ts --dry-run",
+    "scrape:run": "npx tsx src/cli.ts"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.0",

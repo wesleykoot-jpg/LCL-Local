@@ -33,5 +33,10 @@
     "src/contexts",
     "src/hooks",
     "src/integrations"
-  ]
+  ],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  }
 }

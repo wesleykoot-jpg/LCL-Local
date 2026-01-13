@@ -159,6 +159,75 @@ npx cap open ios
 - **Scraper Sources**: 5 configured (2 working, 3 need URL updates)
 - **Location**: Global support (no hardcoded regions)
 
+## Defensive Scheduled Scraper
+
+A robust, polite web scraper that runs daily to fetch events from configured sources with comprehensive error handling and monitoring.
+
+### Features
+
+- 🛡️ **Defensive crawling**: Respects robots.txt, rate limits, and exponential backoff
+- 📊 **Full observability**: Logs every fetch attempt to Supabase for debugging
+- 🔔 **Smart alerts**: Slack notifications with intelligent error analysis and suppression
+- 🔄 **Conditional GETs**: Uses ETag/If-Modified-Since to minimize bandwidth
+- ⏱️ **Rate limiting**: Per-domain concurrency and request throttling with Bottleneck
+- 🧪 **Dry-run mode**: Test without writing data or sending alerts
+
+### Quick Start
+
+1. **Add GitHub Secrets**:
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_KEY`: Supabase service role key
+   - `SLACK_WEBHOOK_URL`: Slack incoming webhook for alerts
+   - `SCRAPER_USER_AGENT` (optional): Custom user agent string
+
+2. **Configure sources** in `src/config/sources.json`:
+   ```json
+   [
+     {
+       "source_id": "example.site",
+       "url": "https://example.com/events",
+       "domain": "example.com",
+       "rate_limit": {
+         "requests_per_minute": 12,
+         "concurrency": 1
+       }
+     }
+   ]
+   ```
+
+3. **Apply migration**:
+   ```bash
+   # In Supabase dashboard or using Supabase CLI
+   supabase migration up
+   ```
+
+4. **Test locally**:
+   ```bash
+   # Dry run (no writes, no alerts)
+   npm run scrape:dry-run
+   
+   # Real run (writes to Supabase)
+   npm run scrape:run
+   ```
+
+5. **GitHub Actions**: Runs daily at 03:00 UTC automatically via `.github/workflows/scrape.yml`
+
+### Documentation
+
+- [**Runbook**](docs/runbook.md): Operational guide for monitoring and troubleshooting
+- **Configuration**: See `src/config/defaults.ts` for tunable parameters
+- **Schema**: Database tables in `supabase/migrations/20260113000000_scraper_defensive_schema.sql`
+
+### Behavioral Rules
+
+- ✅ Honors robots.txt `User-agent` and `Crawl-delay` directives
+- ✅ Uses conditional GETs with ETag/Last-Modified caching
+- ✅ Exponential backoff with full jitter on transient errors (429, 5xx, timeouts)
+- ✅ Respects `Retry-After` headers
+- ✅ Alerts only after threshold (default: 3 consecutive failures)
+- ✅ Suppresses duplicate alerts (default: 30-minute window)
+- ✅ Persists all attempts to `scrape_events` for replay and debugging
+
 ## Scripts
 
 ```bash
@@ -166,6 +235,11 @@ npm run dev      # Development server
 npm run build    # Production build
 npm run preview  # Preview build
 npm run lint     # ESLint
+npm run test     # Run tests
+
+# Scraper commands
+npm run scrape:dry-run  # Test scraper without writes/alerts
+npm run scrape:run      # Run scraper (writes to Supabase)
 ```
 
 ---

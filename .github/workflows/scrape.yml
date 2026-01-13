@@ -29,4 +29,4 @@ jobs:
           SCRAPER_USER_AGENT: ${{ secrets.SCRAPER_USER_AGENT }}
           MAX_CONSECUTIVE_FAILURES: 3
           ALERT_SUPPRESSION_MS: 1800000
-        run: node dist/cli.js --run-id=github-actions-${{ github.run_id }}
+        run: npx tsx src/cli.ts --run-id=github-actions-${{ github.run_id }}
