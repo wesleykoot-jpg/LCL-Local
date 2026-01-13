@@ -43,7 +43,7 @@ export function FloatingNav({
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
       {/* Airbnb-style clean tab bar */}
-      <div className="mx-4 mb-3">
+      <div className="mx-4 mb-2">
         <motion.nav 
           className="flex items-center justify-around px-6 py-2 bg-background/95 backdrop-blur-2xl rounded-[2rem] border-[0.5px] border-border/30"
           style={{
@@ -68,11 +68,11 @@ export function FloatingNav({
                 }`}
                 whileTap={{ scale: 0.92 }}
               >
-                {/* Active indicator */}
+                {/* Active indicator - increased opacity */}
                 {isActive && (
                   <motion.div
                     layoutId="activeNavIndicator"
-                    className="absolute inset-0 bg-primary/8 rounded-[1.25rem]"
+                    className="absolute inset-0 bg-primary/10 rounded-[1.25rem]"
                     transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                   />
                 )}
@@ -82,7 +82,7 @@ export function FloatingNav({
                   strokeWidth={isActive ? 2.5 : 2} 
                   className="relative z-10 transition-transform duration-200"
                 />
-                <span className={`relative z-10 text-[11px] mt-1 font-medium tracking-tight ${
+                <span className={`relative z-10 text-[11px] mt-0.5 font-medium tracking-tight ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}>
                   {item.label}

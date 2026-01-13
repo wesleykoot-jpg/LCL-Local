@@ -282,14 +282,14 @@ const AnchorEventCard = memo(function AnchorEventCard({
       <div className="p-5 pt-4 space-y-4">
         {/* Description if available */}
         {event.description && (
-          <p className="text-[15px] text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-[15px] text-muted-foreground leading-normal line-clamp-2">
             {event.description}
           </p>
         )}
 
-        {/* Attendee row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Attendee row - aligned heights */}
+        <div className="flex items-center justify-between h-8">
+          <div className="flex items-center gap-3 h-full">
             <Facepile users={attendeeFaces} extraCount={extraAttendees} />
             <span className="text-[15px] text-muted-foreground font-medium">
               {event.attendee_count || 0} gaan
@@ -298,7 +298,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
         </div>
 
         {/* Action buttons - Thumb zone optimized */}
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex items-center gap-2.5 pt-1">
           {/* Primary CTA - Squircle geometry */}
           <button
             onClick={async (e) => {
@@ -309,7 +309,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`flex-1 px-6 py-4 min-h-[52px] rounded-[1.5rem] text-[17px] font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.97] border-[0.5px] ${
+            className={`flex-1 px-6 h-[52px] rounded-[1.5rem] text-[17px] font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.97] border-[0.5px] ${
               hasJoined 
                 ? 'bg-muted text-muted-foreground border-border/30 cursor-default' 
                 : 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20'
@@ -322,8 +322,8 @@ const AnchorEventCard = memo(function AnchorEventCard({
             <span>{isJoining ? 'Aanmelden...' : hasJoined ? 'Aangemeld' : 'Meedoen'}</span>
           </button>
           
-          {/* Secondary actions - 44pt minimum */}
-          <div className="flex items-center gap-2">
+          {/* Secondary actions - 52px consistent */}
+          <div className="flex items-center gap-2.5">
             <button
               onClick={handleSave}
               className={`w-[52px] h-[52px] min-h-[44px] min-w-[44px] rounded-[1.5rem] border-[0.5px] flex items-center justify-center transition-all active:scale-[0.95] ${
@@ -353,7 +353,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
 
       {/* Thread indicator for stacks */}
       {hasForks && (
-        <div className="absolute -bottom-4 left-10 w-[2px] h-8 bg-border/40 rounded-full" />
+        <div className="absolute -bottom-4 left-5 w-[2px] h-8 bg-border/40 rounded-full" />
       )}
     </motion.div>
   );
@@ -408,8 +408,8 @@ const ForkEventCard = memo(function ForkEventCard({
         onClick={onClick}
       >
         <div className="flex gap-3 items-center">
-          {/* Thumbnail - Squircle */}
-          <div className="w-14 h-14 rounded-[1rem] overflow-hidden flex-shrink-0 bg-muted">
+          {/* Thumbnail - Squircle 48px */}
+          <div className="w-12 h-12 rounded-[1rem] overflow-hidden flex-shrink-0 bg-muted">
             <img 
               src={imageUrl} 
               alt={event.title}

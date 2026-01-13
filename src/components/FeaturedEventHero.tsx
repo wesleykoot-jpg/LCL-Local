@@ -105,13 +105,13 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
       
-      {/* Featured badge - top left */}
-      <div className="absolute top-4 left-4 flex items-center gap-2">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[13px] font-semibold">
+      {/* Featured badge - top left with consistent heights */}
+      <div className="absolute top-4 left-4 flex items-center gap-2 h-8">
+        <div className="flex items-center gap-1.5 px-3 h-full rounded-full bg-primary text-primary-foreground text-[13px] font-semibold">
           <Play size={12} fill="currentColor" />
           <span>Uitgelicht</span>
         </div>
-        <CategoryBadge category={categoryLabel} variant="glass" />
+        <CategoryBadge category={categoryLabel} variant="glass" size="md" />
       </div>
 
       {/* Content - bottom */}
@@ -126,17 +126,17 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
           {event.title}
         </h2>
         
-        {/* Metadata row */}
-        <div className="flex items-center gap-4 text-[14px] text-white/80 mb-5">
+        {/* Metadata row - responsive wrapping */}
+        <div className="flex flex-wrap items-center gap-3 text-[14px] text-white/80 mb-5">
           {formatTime(event.event_time) && (
             <span className="flex items-center gap-1.5">
               <Clock size={14} />
               {formatTime(event.event_time)}
             </span>
           )}
-          <span className="flex items-center gap-1.5">
-            <MapPin size={14} />
-            <span className="truncate max-w-[180px]">{event.venue_name}</span>
+          <span className="flex items-center gap-1.5 min-w-0">
+            <MapPin size={14} className="flex-shrink-0" />
+            <span className="truncate flex-1">{event.venue_name}</span>
           </span>
           <span className="flex items-center gap-1.5">
             <Users size={14} />
@@ -144,13 +144,13 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
           </span>
         </div>
         
-        {/* Action buttons - Thumb zone */}
+        {/* Action buttons - Thumb zone with identical heights */}
         <div className="flex items-center gap-3">
           {/* Primary CTA */}
           <button
             onClick={handleJoin}
             disabled={isJoining || hasJoined}
-            className={`flex items-center justify-center gap-2 px-8 py-4 min-h-[52px] rounded-[1.5rem] text-[17px] font-semibold transition-all active:scale-[0.97] ${
+            className={`flex items-center justify-center gap-2 px-8 h-[52px] rounded-[1.5rem] text-[17px] font-semibold transition-all active:scale-[0.97] ${
               hasJoined
                 ? 'bg-white/20 text-white/80'
                 : 'bg-white text-black hover:bg-white/90'
@@ -171,10 +171,10 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
             )}
           </button>
           
-          {/* Info button */}
+          {/* Info button - matching height */}
           <button
             onClick={handleInfo}
-            className="flex items-center justify-center gap-2 px-6 py-4 min-h-[52px] rounded-[1.5rem] bg-white/10 backdrop-blur-sm text-white text-[17px] font-semibold hover:bg-white/20 transition-all active:scale-[0.97] border-[0.5px] border-white/20"
+            className="flex items-center justify-center gap-2 px-6 h-[52px] rounded-[1.5rem] bg-white/10 backdrop-blur-sm text-white text-[17px] font-semibold hover:bg-white/20 transition-all active:scale-[0.97] border-[0.5px] border-white/20"
           >
             <Info size={20} />
             <span>Meer info</span>

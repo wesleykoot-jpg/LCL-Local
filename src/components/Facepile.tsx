@@ -18,7 +18,7 @@ export function Facepile({ users, extraCount = 0 }: FacepileProps) {
   if (users.length === 0) return null;
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center h-8">
       <div className="flex -space-x-2">
         {users.slice(0, 6).map((user, index) => (
           <div
@@ -39,8 +39,8 @@ export function Facepile({ users, extraCount = 0 }: FacepileProps) {
         ))}
       </div>
       {extraCount > 0 && (
-        <span className="ml-2 text-sm text-muted-foreground">
-          +{extraCount} more
+        <span className="ml-2 text-[13px] text-muted-foreground font-medium">
+          +{extraCount} meer
         </span>
       )}
     </div>

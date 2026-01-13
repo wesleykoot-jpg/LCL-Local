@@ -75,7 +75,6 @@ export type Database = {
           max_attendees: number | null
           parent_event_id: string | null
           status: string | null
-          source_id: string | null
           title: string
           updated_at: string | null
           venue_name: string
@@ -94,7 +93,6 @@ export type Database = {
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
-          source_id?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
@@ -114,7 +112,6 @@ export type Database = {
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
-          source_id?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
@@ -1302,7 +1299,6 @@ export type Database = {
           p_events_scraped: number
           p_source_id: string
           p_success: boolean
-          p_last_error?: string | null
         }
         Returns: undefined
       }
