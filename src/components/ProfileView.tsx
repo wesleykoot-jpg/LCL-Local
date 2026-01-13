@@ -290,19 +290,19 @@ export function ProfileView() {
           </div>
         </motion.section>
 
-        {/* Verification Badges - Horizontal scroll */}
+        {/* Verification Badges - Wrap layout */}
         <motion.section
           {...motionProps(0.1, 10)}
           className="px-5 pb-6"
         >
-          <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             {displayProfile.verified_resident && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-green-500/10 rounded-full border border-green-500/20 flex-shrink-0">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-green-500/10 rounded-full border border-green-500/20">
                 <CheckCircle size={16} className="text-green-600" />
                 <span className="text-sm font-medium text-green-700">Verified Resident</span>
               </div>
             )}
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 rounded-full border border-primary/20 flex-shrink-0">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 rounded-full border border-primary/20">
               <Shield size={16} className="text-primary" />
               <span className="text-sm font-medium text-primary">Identity Verified</span>
             </div>
@@ -674,12 +674,12 @@ function CalendarListItem({ event, index, isToday }: CalendarListItemProps) {
         <h4 className="font-medium text-foreground text-sm truncate mb-0.5">
           {event.title}
         </h4>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock size={11} />
-          <span>{formatEventDate(event.event_date, event.event_time, isToday)}</span>
-          <span>·</span>
-          <MapPin size={11} />
-          <span className="truncate">{event.venue_name}</span>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground overflow-hidden">
+          <Clock size={11} className="flex-shrink-0" />
+          <span className="flex-shrink-0">{formatEventDate(event.event_date, event.event_time, isToday)}</span>
+          <span className="flex-shrink-0">·</span>
+          <MapPin size={11} className="flex-shrink-0" />
+          <span className="truncate min-w-0">{event.venue_name}</span>
         </div>
       </div>
 
