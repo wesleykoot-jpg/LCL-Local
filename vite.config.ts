@@ -17,7 +17,7 @@ export default defineConfig({
     css: true,
   },
   build: {
-    target: 'es2015',
+    target: 'es2020',
     minify: 'terser',
     cssCodeSplit: true,
     rollupOptions: {
@@ -30,6 +30,7 @@ export default defineConfig({
       },
     },
     chunkSizeWarningLimit: 1000,
+    sourcemap: false,
   },
   optimizeDeps: {
     include: ['react', 'react-dom', '@supabase/supabase-js', 'lucide-react'],
@@ -37,5 +38,10 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 8080,
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 8080,
+    strictPort: false,
   },
 })
