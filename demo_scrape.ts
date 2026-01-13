@@ -66,6 +66,8 @@ const DEFAULT_SOURCES = [
   "https://www.visitexample.nl/activiteiten",
 ];
 
+const TARGET_EVENT_YEAR = Deno.env.get("TARGET_EVENT_YEAR") || "2026";
+
 const DEFENSIVE_HEADERS: Record<string, string> = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
@@ -544,7 +546,8 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
   }
 
   const supabase_inserts: string[] = [];
-  let duplicates_skipped = 0;
+  let duplicates_local = 0;
+  let duplicates_db = 0;
   const suggestions: string[] = [];
 
   if (blocked) {
@@ -643,11 +646,11 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
       evt.dedup_hash = await computeDedupHash(evt.title, evt.start_date, evt.location_name);
     }
     if (seen.has(evt.dedup_hash)) {
-      duplicates_skipped += 1;
+      duplicates_local += 1;
       continue;
     }
     seen.add(evt.dedup_hash);
-    evt.outdated = !evt.start_date.includes("2026") && !evt.description.includes("2026");
+    evt.outdated = !evt.start_date.includes(TARGET_EVENT_YEAR) && !evt.description.includes(TARGET_EVENT_YEAR);
     finalEvents.push(evt);
   }
 
@@ -663,7 +666,7 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
 
   for (const evt of extracted_examples) {
     const { insertedId, duplicate, error } = await upsertToSupabase(supabase, evt);
-    if (duplicate) duplicates_skipped += 1;
+    if (duplicate) duplicates_db += 1;
     if (insertedId) supabase_inserts.push(insertedId);
     if (error) errors.push(error);
   }
@@ -685,7 +688,7 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
     extracted_count_total,
     extracted_examples,
     supabase_inserts,
-    duplicates_skipped,
+    duplicates_skipped: duplicates_local + duplicates_db,
     errors,
     suggestions,
     debug: {
