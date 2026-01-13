@@ -61,8 +61,7 @@ interface EventStackCardProps {
 
 const getEventImage = (event: EventWithAttendees): string => {
   if (event.image_url) return event.image_url;
-  const category = CATEGORY_MAP[event.category] || event.category;
-  return CATEGORY_FALLBACK_IMAGES[category] || CATEGORY_FALLBACK_IMAGES.default;
+  return GREY_PATTERN_FALLBACK;
 };
 
 const getCategoryFallback = (category: string): string => {
@@ -230,7 +229,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/70 via-zinc-900/20 to-transparent" />
         
         {/* Top info rail */}
-        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+        <div className="absolute top-12 left-3 right-3 flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
             {formatTime(event.event_time) && (
               <span className="px-2.5 py-1 rounded-full bg-background/90 backdrop-blur-sm text-xs font-semibold text-foreground flex items-center gap-1">
@@ -269,10 +268,6 @@ const AnchorEventCard = memo(function AnchorEventCard({
             {event.match_percentage}% Match
           </div>
         )}
-        <div className="absolute bottom-3 right-3 px-2 py-1 rounded-full bg-background/85 backdrop-blur-sm text-xs text-foreground flex items-center gap-1">
-          <Users size={12} className="text-primary/80" />
-          <span className="font-medium">{event.attendee_count || 0} gaan</span>
-        </div>
       </div>
 
       {/* Content Section - Compact */}

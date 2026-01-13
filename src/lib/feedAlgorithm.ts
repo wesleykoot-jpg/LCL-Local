@@ -218,7 +218,7 @@ function calculateUrgencyBoost(eventDate: string): number {
   const eventTime = new Date(eventDate).getTime();
   const hoursUntilEvent = (eventTime - now) / (1000 * 60 * 60);
 
-  if (hoursUntilEvent < 0) return 0.8;
+  if (hoursUntilEvent < 0) return 0.1;
   if (hoursUntilEvent <= 6) return 1.2;
   if (hoursUntilEvent <= 24) return 1.15;
   if (hoursUntilEvent <= 72) return 1.1;
