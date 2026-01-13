@@ -155,6 +155,7 @@ const Feed = () => {
               showVibeHeaders
               profileId={profile?.id}
               onEventsChange={refetch}
+              userLocation={userLocation || locationPrefs.manualCoordinates || null}
             />
           )}
         </main>

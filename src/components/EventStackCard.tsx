@@ -1,11 +1,13 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Clock, Loader2, MapPin } from 'lucide-react';
+import { Users, Clock, Loader2, MapPin, Share2, Bookmark, Navigation, ShieldCheck } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { hapticImpact } from '@/lib/haptics';
+import { Facepile } from './Facepile';
+import { DistanceBadge } from './DistanceBadge';
 
 // Fallback images by category - Dutch/Netherlands themed
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
@@ -23,6 +25,30 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
 };
 
 const GREY_PATTERN_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Cpath fill="%23d1d5db" d="M0 0h50v50H0zM50 50h50v50H50z"/%3E%3C/svg%3E';
+const DEFAULT_COORDS = { lat: 52.5, lng: 6.0 };
+
+const parseEventCoordinates = (location: unknown): { lat: number; lng: number } | null => {
+  if (!location) return null;
+  if (typeof location === 'string') {
+    const match = location.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
+    if (match) {
+      return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
+    }
+  }
+  if (typeof location === 'object' && (location as { coordinates?: number[] }).coordinates) {
+    const coords = (location as { coordinates?: number[] }).coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      return { lng: Number(coords[0]), lat: Number(coords[1]) };
+    }
+  }
+  return null;
+};
+
+const openInMaps = (venue: string, coords?: { lat: number; lng: number } | null) => {
+  const query = coords ? `${coords.lat},${coords.lng}` : venue;
+  const encoded = encodeURIComponent(query || venue);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+};
 
 interface EventStackCardProps {
   stack: EventStack;
@@ -30,6 +56,7 @@ interface EventStackCardProps {
   onJoinEvent?: (eventId: string) => Promise<void>;
   joiningEventId?: string;
   currentUserProfileId?: string;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 const getEventImage = (event: EventWithAttendees): string => {
@@ -113,6 +140,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   isJoining,
   hasForks,
   currentUserProfileId,
+  userLocation,
 }: {
   event: EventWithAttendees;
   onClick?: () => void;
@@ -120,16 +148,67 @@ const AnchorEventCard = memo(function AnchorEventCard({
   isJoining?: boolean;
   hasForks: boolean;
   currentUserProfileId?: string;
+  userLocation?: { lat: number; lng: number } | null;
 }) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
+  const [isSaved, setIsSaved] = useState(false);
+  const venueCoords = parseEventCoordinates((event as any).location_coordinates) || parseEventCoordinates((event as any).location) || null;
   
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
       attendee => attendee.profile?.id === currentUserProfileId
     )
   );
+
+  const attendeeFaces = (event.attendees || []).map((attendee, idx) => ({
+    id: attendee.profile?.id || `attendee-${idx}`,
+    image: attendee.profile?.avatar_url || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100',
+    alt: attendee.profile?.full_name || 'Aanwezige',
+  }));
+  const extraAttendees = Math.max(0, (event.attendee_count || 0) - attendeeFaces.length);
+
+  const trustLabel = event.match_percentage && event.match_percentage >= 70
+    ? `${event.match_percentage}% match`
+    : event.created_by
+      ? 'Actieve host'
+      : null;
+
+  const handleShare = useCallback(async (e: MouseEvent) => {
+    e.stopPropagation();
+    await hapticImpact('light');
+    const shareUrl = `${window.location.origin}/events/${event.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: `${event.title} · ${event.venue_name}`,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // fall through to clipboard
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch (err) {
+      console.error('Share failed', err);
+    }
+  }, [event.id, event.title, event.venue_name]);
+
+  const handleSave = useCallback(async (e: MouseEvent) => {
+    e.stopPropagation();
+    await hapticImpact('light');
+    setIsSaved(prev => !prev);
+  }, []);
+
+  const handleDirections = useCallback(async (e: MouseEvent) => {
+    e.stopPropagation();
+    await hapticImpact('light');
+    openInMaps(event.venue_name, venueCoords || DEFAULT_COORDS);
+  }, [event.venue_name, venueCoords]);
 
   return (
     <motion.div
@@ -150,6 +229,30 @@ const AnchorEventCard = memo(function AnchorEventCard({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/70 via-zinc-900/20 to-transparent" />
         
+        {/* Top info rail */}
+        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {formatTime(event.event_time) && (
+              <span className="px-2.5 py-1 rounded-full bg-background/90 backdrop-blur-sm text-xs font-semibold text-foreground flex items-center gap-1">
+                <Clock size={12} className="text-primary" />
+                {formatTime(event.event_time)}
+              </span>
+            )}
+            <DistanceBadge
+              venueCoordinates={venueCoords}
+              userLocation={userLocation || null}
+              size="sm"
+              className="px-2.5 py-1 rounded-full bg-background/80 backdrop-blur-sm"
+            />
+          </div>
+          {trustLabel && (
+            <div className="px-2.5 py-1 rounded-full bg-background/85 backdrop-blur-sm text-xs font-semibold text-foreground flex items-center gap-1">
+              <ShieldCheck size={12} className="text-primary" />
+              {trustLabel}
+            </div>
+          )}
+        </div>
+        
         {/* Category Badge - Top Left */}
         <div className="absolute top-3 left-3">
           <CategoryBadge category={categoryLabel} variant="glass" />
@@ -166,6 +269,10 @@ const AnchorEventCard = memo(function AnchorEventCard({
             {event.match_percentage}% Match
           </div>
         )}
+        <div className="absolute bottom-3 right-3 px-2 py-1 rounded-full bg-background/85 backdrop-blur-sm text-xs text-foreground flex items-center gap-1">
+          <Users size={12} className="text-primary/80" />
+          <span className="font-medium">{event.attendee_count || 0} gaan</span>
+        </div>
       </div>
 
       {/* Content Section - Compact */}
@@ -174,6 +281,11 @@ const AnchorEventCard = memo(function AnchorEventCard({
           <h3 className="text-lg font-semibold text-foreground leading-snug line-clamp-2">
             {event.title}
           </h3>
+          {event.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {event.description}
+            </p>
+          )}
           
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <MapPin size={14} className="text-primary/70 flex-shrink-0" />
@@ -182,23 +294,23 @@ const AnchorEventCard = memo(function AnchorEventCard({
         </div>
 
         {/* Metadata Row - Time, Attendees, Join */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-1 gap-3">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             {formatTime(event.event_time) && (
-              <>
-                <span className="flex items-center gap-1.5">
-                  <Clock size={14} className="text-primary/70" />
-                  {formatTime(event.event_time)}
-                </span>
-                <span className="opacity-50">·</span>
-              </>
+              <span className="flex items-center gap-1.5">
+                <Clock size={14} className="text-primary/70" />
+                {formatTime(event.event_time)}
+              </span>
             )}
             <span className="flex items-center gap-1">
               <Users size={14} className="text-primary/70" />
-              <span className="font-medium">{event.attendee_count || 0}</span>
+              <span className="font-medium">{event.attendee_count || 0} gaan</span>
             </span>
           </div>
+          <Facepile users={attendeeFaces} extraCount={extraAttendees} />
+        </div>
 
+        <div className="flex items-center gap-2 pt-1">
           <button
             onClick={async (e) => {
               e.stopPropagation();
@@ -208,7 +320,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`px-4 py-2 min-h-[44px] rounded-2xl text-sm font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50 active:scale-[0.95] ${
+            className={`flex-1 px-4 py-3 min-h-[44px] rounded-2xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.95] ${
               hasJoined 
                 ? 'bg-muted text-muted-foreground cursor-default' 
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -220,6 +332,31 @@ const AnchorEventCard = memo(function AnchorEventCard({
             ) : null}
             <span>{isJoining ? 'Aanmelden...' : hasJoined ? 'Aangemeld' : 'Meedoen'}</span>
           </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleSave}
+              className={`w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl border border-border flex items-center justify-center transition-all active:scale-[0.95] ${
+                isSaved ? 'bg-primary/10 text-primary border-primary/30' : 'bg-card text-muted-foreground'
+              }`}
+              title={isSaved ? 'Opgeslagen' : 'Sla op'}
+            >
+              <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              onClick={handleShare}
+              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
+              title="Deel"
+            >
+              <Share2 size={16} />
+            </button>
+            <button
+              onClick={handleDirections}
+              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground transition-all active:scale-[0.95]"
+              title="Route"
+            >
+              <Navigation size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -338,6 +475,7 @@ export const EventStackCard = memo(function EventStackCard({
   onJoinEvent,
   joiningEventId,
   currentUserProfileId,
+  userLocation,
 }: EventStackCardProps) {
   const { anchor, forks } = stack;
 
@@ -351,6 +489,7 @@ export const EventStackCard = memo(function EventStackCard({
         isJoining={joiningEventId === anchor.id}
         hasForks={forks.length > 0}
         currentUserProfileId={currentUserProfileId}
+        userLocation={userLocation}
       />
 
       {/* Fork Events */}
