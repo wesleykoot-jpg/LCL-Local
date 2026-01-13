@@ -27,8 +27,9 @@ if (isDev && isDebugEnabled) {
 
 // Provide dummy fallback values to prevent crashes when env vars are missing
 // This allows the app to at least render and show proper error messages
-const safeSupabaseUrl = SUPABASE_URL || 'https://placeholder.supabase.co';
-const safeSupabaseKey = SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder';
+// Note: These are intentionally invalid values that will fail if actually used
+const safeSupabaseUrl = SUPABASE_URL || 'https://your-project-id.supabase.co';
+const safeSupabaseKey = SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTY0NTIwMDAwMCwiZXhwIjoxOTYwNzc2MDAwfQ.INVALID_PLACEHOLDER_KEY_DO_NOT_USE';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
