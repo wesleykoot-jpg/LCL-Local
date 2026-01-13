@@ -1,27 +1,16 @@
 import { memo, useState, useCallback, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Clock, Loader2, MapPin, Share2, Bookmark, Navigation, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Users, Clock, Loader2, MapPin, Heart, ChevronRight } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import type { EventStack } from '@/lib/feedGrouping';
 import type { EventWithAttendees } from '@/lib/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { hapticImpact } from '@/lib/haptics';
-import { Facepile } from './Facepile';
-import { DistanceBadge } from './DistanceBadge';
-import { formatEventDate, formatEventTime, getEventCoordinates } from '@/lib/formatters';
+import { formatEventDate, formatEventTime } from '@/lib/formatters';
 import { 
   useImageFallback, 
-  getEventImage, 
-  GREY_PATTERN_FALLBACK 
+  getEventImage
 } from '@/lib/hooks/useImageFallback';
-
-const DEFAULT_AVATAR_URL = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100';
-
-const openInMaps = (venue: string, coords?: { lat: number; lng: number } | null) => {
-  const query = coords ? `${coords.lat},${coords.lng}` : venue;
-  const encoded = encodeURIComponent(query || venue);
-  window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
-};
 
 interface EventStackCardProps {
   stack: EventStack;
@@ -32,7 +21,7 @@ interface EventStackCardProps {
   userLocation?: { lat: number; lng: number } | null;
 }
 
-// Netflix-style Billboard Card - Full-bleed with gradient overlay
+// Airbnb-style Event Card
 const AnchorEventCard = memo(function AnchorEventCard({
   event,
   onClick,
@@ -40,7 +29,6 @@ const AnchorEventCard = memo(function AnchorEventCard({
   isJoining,
   hasForks,
   currentUserProfileId,
-  userLocation,
 }: {
   event: EventWithAttendees;
   onClick?: () => void;
@@ -54,7 +42,6 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const primaryImageUrl = getEventImage(event.image_url, event.category);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   const [isSaved, setIsSaved] = useState(false);
-  const venueCoords = getEventCoordinates(event.location) || null;
   
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
@@ -62,148 +49,79 @@ const AnchorEventCard = memo(function AnchorEventCard({
     )
   );
 
-  const attendeeFaces = (event.attendees || []).map((attendee, idx) => ({
-    id: attendee.profile?.id || `attendee-${idx}`,
-    image: attendee.profile?.avatar_url || DEFAULT_AVATAR_URL,
-    alt: attendee.profile?.full_name || 'Aanwezige',
-  }));
-  const extraAttendees = Math.max(0, (event.attendee_count || 0) - attendeeFaces.length);
-
-  const trustLabel = event.match_percentage && event.match_percentage >= 70
-    ? `${event.match_percentage}% match`
-    : event.created_by
-      ? 'Actieve host'
-      : null;
-
-  const handleShare = useCallback(async (e: MouseEvent) => {
-    e.stopPropagation();
-    await hapticImpact('light');
-    const shareUrl = `${window.location.origin}/events/${event.id}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: event.title,
-          text: `${event.title} · ${event.venue_name}`,
-          url: shareUrl,
-        });
-        return;
-      } catch (err) {
-        // fall through to clipboard
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-    } catch (err) {
-      console.error('Share failed', err);
-    }
-  }, [event.id, event.title, event.venue_name]);
-
   const handleSave = useCallback(async (e: MouseEvent) => {
     e.stopPropagation();
     await hapticImpact('light');
     setIsSaved(prev => !prev);
   }, []);
 
-  const handleDirections = useCallback(async (e: MouseEvent) => {
-    e.stopPropagation();
-    await hapticImpact('light');
-    openInMaps(event.venue_name, venueCoords ?? null);
-  }, [event.venue_name, venueCoords]);
-
   return (
     <motion.div
-      className="relative w-full rounded-[2.5rem] overflow-hidden bg-card cursor-pointer group border-[0.5px] border-border/30"
-      style={{
-        boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.08), 0 16px 64px -16px rgba(0, 0, 0, 0.06)'
-      }}
-      whileHover={{ y: -4, boxShadow: '0 12px 40px -8px rgba(0, 0, 0, 0.12), 0 20px 70px -16px rgba(0, 0, 0, 0.1)' }}
-      whileTap={{ scale: 0.985 }}
+      className="relative w-full cursor-pointer group"
+      whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      layout
     >
-      {/* Netflix Billboard Image - Taller aspect ratio */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+      {/* Image Section */}
+      <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-3">
         <img 
           src={imageUrl} 
           alt={event.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={handleImageError}
           loading="lazy"
         />
-        {/* Cinematic gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
         
-        {/* Top metadata rail */}
-        <div className="absolute top-4 left-4 right-4 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CategoryBadge category={categoryLabel} variant="glass" />
-          </div>
-          
-          {/* Date pill - Airbnb style */}
-          <div className="px-3 py-1.5 rounded-[1rem] bg-background/95 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
-            {formatEventDate(event.event_date)}
-          </div>
+        {/* Heart/Save button - Airbnb style */}
+        <button
+          onClick={handleSave}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+        >
+          <Heart 
+            size={16} 
+            className={isSaved ? 'text-primary fill-primary' : 'text-foreground'} 
+          />
+        </button>
+        
+        {/* Category badge - top left */}
+        <div className="absolute top-3 left-3">
+          <CategoryBadge category={categoryLabel} variant="glass" size="sm" />
         </div>
 
-        {/* Bottom content overlay - Netflix style */}
-        <div className="absolute bottom-0 left-0 right-0 p-5 pt-16">
-          {/* Time & Distance pills */}
-          <div className="flex items-center gap-2 mb-3">
-            {formatEventTime(event.event_time) && (
-              <span className="px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground flex items-center gap-1.5 border-[0.5px] border-white/10">
-                <Clock size={13} className="text-primary" />
-                {formatEventTime(event.event_time)}
-              </span>
-            )}
-            <DistanceBadge
-              venueCoordinates={venueCoords}
-              userLocation={userLocation || null}
-              size="sm"
-              className="px-3 py-1.5 rounded-[1rem] bg-background/80 backdrop-blur-xl border-[0.5px] border-white/10"
-            />
-            {trustLabel && (
-              <div className="px-3 py-1.5 rounded-[1rem] bg-primary/90 backdrop-blur-xl text-[13px] font-semibold text-primary-foreground flex items-center gap-1.5">
-                <ShieldCheck size={13} />
-                {trustLabel}
-              </div>
-            )}
-          </div>
-          
-          {/* Title - iOS 17pt body scale equivalent */}
-          <h3 className="text-[22px] font-semibold text-white leading-tight line-clamp-2 mb-1.5 tracking-tight">
-            {event.title}
-          </h3>
-          
-          {/* Venue with icon */}
-          <div className="flex items-center gap-1.5 text-[15px] text-white/80">
-            <MapPin size={14} className="text-white/60 flex-shrink-0" />
-            <span className="truncate">{event.venue_name}</span>
-          </div>
+        {/* Date badge */}
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-sm text-[13px] font-semibold text-foreground shadow-sm">
+          {formatEventDate(event.event_date)}
         </div>
       </div>
-
-      {/* Content Section - Generous padding, iOS spacing */}
-      <div className="p-5 pt-4 space-y-4">
-        {/* Description if available */}
-        {event.description && (
-          <p className="text-[15px] text-muted-foreground leading-normal line-clamp-2">
-            {event.description}
-          </p>
-        )}
-
-        {/* Attendee row - aligned heights */}
-        <div className="flex items-center justify-between h-8">
-          <div className="flex items-center gap-3 h-full">
-            <Facepile users={attendeeFaces} extraCount={extraAttendees} />
-            <span className="text-[15px] text-muted-foreground font-medium">
-              {event.attendee_count || 0} gaan
+      
+      {/* Content Section - Below image (Airbnb style) */}
+      <div className="space-y-1">
+        {/* Title */}
+        <h3 className="text-[17px] font-semibold text-foreground leading-tight line-clamp-1">
+          {event.title}
+        </h3>
+        
+        {/* Location */}
+        <p className="text-[15px] text-muted-foreground flex items-center gap-1">
+          <MapPin size={14} className="flex-shrink-0" />
+          <span className="truncate">{event.venue_name}</span>
+        </p>
+        
+        {/* Metadata row */}
+        <div className="flex items-center gap-3 text-[13px] text-muted-foreground pt-1">
+          {formatEventTime(event.event_time) && (
+            <span className="flex items-center gap-1">
+              <Clock size={12} />
+              {formatEventTime(event.event_time)}
             </span>
-          </div>
+          )}
+          <span className="flex items-center gap-1">
+            <Users size={12} />
+            {event.attendee_count || 0} going
+          </span>
         </div>
-
-        {/* Action buttons - Thumb zone optimized */}
-        <div className="flex items-center gap-2.5 pt-1">
-          {/* Primary CTA - Squircle geometry */}
+        
+        {/* Join button */}
+        <div className="pt-3">
           <button
             onClick={async (e) => {
               e.stopPropagation();
@@ -213,57 +131,32 @@ const AnchorEventCard = memo(function AnchorEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`flex-1 px-6 h-[52px] rounded-[1.5rem] text-[17px] font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.97] border-[0.5px] ${
-              hasJoined 
-                ? 'bg-muted text-muted-foreground border-border/30 cursor-default' 
-                : 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary/20'
+            className={`w-full h-[48px] rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98] ${
+              hasJoined
+                ? 'bg-muted text-muted-foreground'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
             }`}
-            title={hasJoined ? 'Je doet al mee' : undefined}
           >
             {isJoining ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : null}
-            <span>{isJoining ? 'Aanmelden...' : hasJoined ? 'Aangemeld' : 'Meedoen'}</span>
+              <Loader2 size={18} className="animate-spin mx-auto" />
+            ) : hasJoined ? (
+              '✓ Joined'
+            ) : (
+              'Join Event'
+            )}
           </button>
-          
-          {/* Secondary actions - 52px consistent */}
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={handleSave}
-              className={`w-[52px] h-[52px] min-h-[44px] min-w-[44px] rounded-[1.5rem] border-[0.5px] flex items-center justify-center transition-all active:scale-[0.95] ${
-                isSaved ? 'bg-primary/10 text-primary border-primary/30' : 'bg-card text-muted-foreground border-border/50 hover:border-border'
-              }`}
-              title={isSaved ? 'Opgeslagen' : 'Sla op'}
-            >
-              <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
-            </button>
-            <button
-              onClick={handleShare}
-              className="w-[52px] h-[52px] min-h-[44px] min-w-[44px] rounded-[1.5rem] border-[0.5px] border-border/50 bg-card text-muted-foreground hover:text-foreground hover:border-border transition-all active:scale-[0.95]"
-              title="Deel"
-            >
-              <Share2 size={20} />
-            </button>
-            <button
-              onClick={handleDirections}
-              className="w-[52px] h-[52px] min-h-[44px] min-w-[44px] rounded-[1.5rem] border-[0.5px] border-border/50 bg-card text-muted-foreground hover:text-foreground hover:border-border transition-all active:scale-[0.95]"
-              title="Route"
-            >
-              <Navigation size={20} />
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Thread indicator for stacks */}
       {hasForks && (
-        <div className="absolute -bottom-4 left-5 w-[2px] h-8 bg-border/40 rounded-full" />
+        <div className="absolute -bottom-4 left-6 w-0.5 h-6 bg-border rounded-full" />
       )}
     </motion.div>
   );
 });
 
-// Fork Card - Compact horizontal with squircle geometry
+// Fork Card - Compact
 const ForkEventCard = memo(function ForkEventCard({
   event,
   onClick,
@@ -294,26 +187,21 @@ const ForkEventCard = memo(function ForkEventCard({
     <div className="flex">
       {/* Thread connector */}
       <div className="w-6 flex-shrink-0 relative">
-        <div className={`absolute top-0 left-[3px] w-[2px] bg-border/40 ${isLast ? 'h-6' : 'h-full'} rounded-full`} />
-        <div className="absolute top-6 left-[3px] h-[2px] w-5 bg-border/40 rounded-full" />
+        <div className={`absolute top-0 left-[3px] w-0.5 bg-border ${isLast ? 'h-6' : 'h-full'} rounded-full`} />
+        <div className="absolute top-6 left-[3px] h-0.5 w-5 bg-border rounded-full" />
       </div>
 
-      {/* Fork card - Squircle geometry */}
+      {/* Fork card */}
       <motion.div
-        className="flex-1 min-w-0 overflow-hidden rounded-[1.5rem] bg-card border-[0.5px] border-border/40 p-4 cursor-pointer hover:border-border/60 transition-all"
-        style={{
-          boxShadow: '0 4px 16px -4px rgba(0, 0, 0, 0.05)'
-        }}
+        className="flex-1 min-w-0 overflow-hidden rounded-xl bg-card border border-border p-3 cursor-pointer hover:border-muted-foreground/30 transition-all"
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        whileHover={{ y: -2, boxShadow: '0 6px 20px -4px rgba(0, 0, 0, 0.08)' }}
         whileTap={{ scale: 0.98 }}
         onClick={onClick}
       >
         <div className="flex gap-3 items-center">
-          {/* Thumbnail - Squircle 48px */}
-          <div className="w-12 h-12 rounded-[1rem] overflow-hidden flex-shrink-0 bg-muted">
+          {/* Thumbnail */}
+          <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
             <img 
               src={imageUrl} 
               alt={event.title}
@@ -323,49 +211,42 @@ const ForkEventCard = memo(function ForkEventCard({
             />
           </div>
 
-          {/* Content - iOS typography */}
+          {/* Content */}
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-[17px] text-foreground leading-tight line-clamp-1 tracking-tight">
+            <h4 className="font-semibold text-[15px] text-foreground leading-tight line-clamp-1">
               {event.title}
             </h4>
             <div className="flex items-center gap-2 mt-1 text-[13px] text-muted-foreground">
-              <span className="font-medium">{formatEventTime(event.event_time)}</span>
-              <span className="opacity-40">·</span>
-              <CategoryBadge category={categoryLabel} size="sm" />
+              <span>{formatEventTime(event.event_time)}</span>
+              <span>•</span>
+              <span>{event.attendee_count || 0} going</span>
             </div>
           </div>
 
-          {/* Right side */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-              <Users size={14} />
-              <span className="font-medium">{event.attendee_count || 0}</span>
-            </div>
-            
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (!hasJoined) {
-                  await hapticImpact('medium');
-                  onJoin?.();
-                }
-              }}
-              disabled={isJoining || hasJoined}
-              className={`min-h-[44px] min-w-[44px] px-4 py-2.5 rounded-[1rem] text-[15px] font-semibold transition-all flex items-center justify-center gap-1.5 active:scale-[0.95] border-[0.5px] ${
-                hasJoined 
-                  ? 'bg-muted text-muted-foreground border-border/30' 
-                  : 'bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90'
-              }`}
-            >
-              {isJoining ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : hasJoined ? (
-                <span>✓</span>
-              ) : (
-                <span>Meedoen</span>
-              )}
-            </button>
-          </div>
+          {/* Join button */}
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (!hasJoined) {
+                await hapticImpact('medium');
+                onJoin?.();
+              }
+            }}
+            disabled={isJoining || hasJoined}
+            className={`min-h-[36px] px-4 rounded-lg text-[13px] font-semibold transition-all active:scale-[0.95] ${
+              hasJoined 
+                ? 'bg-muted text-muted-foreground' 
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            }`}
+          >
+            {isJoining ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : hasJoined ? (
+              '✓'
+            ) : (
+              'Join'
+            )}
+          </button>
         </div>
       </motion.div>
     </div>
@@ -402,7 +283,7 @@ export const EventStackCard = memo(function EventStackCard({
       />
 
       {hasForks && (
-        <div className="pl-4 space-y-2">
+        <div className="pl-4 space-y-2 pt-2">
           {/* Forks toggle button */}
           <button
             onClick={handleToggleForks}
@@ -414,7 +295,7 @@ export const EventStackCard = memo(function EventStackCard({
             >
               <ChevronRight size={14} />
             </motion.div>
-            <span>{stack.forks.length} alternatieve{stack.forks.length !== 1 ? 'n' : ''}</span>
+            <span>{stack.forks.length} alternative{stack.forks.length !== 1 ? 's' : ''}</span>
           </button>
 
           <AnimatePresence>

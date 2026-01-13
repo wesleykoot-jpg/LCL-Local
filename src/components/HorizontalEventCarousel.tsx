@@ -1,7 +1,6 @@
-import { memo, useRef, useCallback } from 'react';
+import { memo, useRef, useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Loader2, Users, Clock, MapPin } from 'lucide-react';
-import { CategoryBadge } from './CategoryBadge';
+import { ChevronRight, Loader2, Users, Clock, MapPin, Heart } from 'lucide-react';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { hapticImpact } from '@/lib/haptics';
 import { formatEventDate, formatEventTime } from '@/lib/formatters';
@@ -18,7 +17,7 @@ interface HorizontalEventCarouselProps {
   onSeeAll?: () => void;
 }
 
-// Netflix-style carousel card
+// Airbnb-style carousel card
 const CarouselEventCard = memo(function CarouselEventCard({
   event,
   onClick,
@@ -32,93 +31,71 @@ const CarouselEventCard = memo(function CarouselEventCard({
   isJoining?: boolean;
   hasJoined?: boolean;
 }) {
-  const categoryLabel = CATEGORY_MAP[event.category] || event.category;
+  const [isSaved, setIsSaved] = useState(false);
   const imageUrl = getEventImage(event.image_url, event.category);
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await hapticImpact('light');
+    setIsSaved(!isSaved);
+  };
 
   return (
     <motion.div
-      className="flex-shrink-0 w-[min(280px,75vw)] rounded-[1.5rem] overflow-hidden bg-card cursor-pointer group border-[0.5px] border-border/30"
-      style={{
-        boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.08)'
-      }}
-      whileHover={{ y: -4, boxShadow: '0 8px 28px -4px rgba(0, 0, 0, 0.12)' }}
+      className="flex-shrink-0 w-[260px] cursor-pointer group"
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
     >
       {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-2">
         <img 
           src={imageUrl} 
           alt={event.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         
-        {/* Category badge */}
-        <div className="absolute top-3 left-3">
-          <CategoryBadge category={categoryLabel} variant="glass" size="sm" />
-        </div>
-        
-        {/* Date */}
-        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-[0.75rem] bg-background/90 backdrop-blur-sm text-[13px] font-semibold text-foreground">
+        {/* Heart button - Airbnb style */}
+        <button
+          onClick={handleSave}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+        >
+          <Heart 
+            size={14} 
+            className={isSaved ? 'text-primary fill-primary' : 'text-foreground'} 
+          />
+        </button>
+
+        {/* Date badge */}
+        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-sm text-[12px] font-semibold text-foreground shadow-sm">
           {formatEventDate(event.event_date)}
-        </div>
-        
-        {/* Bottom info */}
-        <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="text-[17px] font-semibold text-white leading-tight line-clamp-2 tracking-tight">
-            {event.title}
-          </h3>
         </div>
       </div>
       
-      {/* Content */}
-      <div className="p-4 space-y-3">
-        {/* Metadata */}
+      {/* Content - Below image */}
+      <div className="space-y-1">
+        <h3 className="text-[15px] font-semibold text-foreground leading-tight line-clamp-1">
+          {event.title}
+        </h3>
+        
+        <p className="text-[13px] text-muted-foreground line-clamp-1 flex items-center gap-1">
+          <MapPin size={12} className="flex-shrink-0" />
+          {event.venue_name}
+        </p>
+        
         <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
           {formatEventTime(event.event_time) && (
             <span className="flex items-center gap-1">
-              <Clock size={12} />
+              <Clock size={11} />
               {formatEventTime(event.event_time)}
             </span>
           )}
+          <span>•</span>
           <span className="flex items-center gap-1">
-            <Users size={12} />
+            <Users size={11} />
             {event.attendee_count || 0}
           </span>
         </div>
-        
-        {/* Venue */}
-        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-          <MapPin size={12} className="flex-shrink-0" />
-          <span className="truncate">{event.venue_name}</span>
-        </div>
-        
-        {/* Join button */}
-        <button
-          onClick={async (e) => {
-            e.stopPropagation();
-            if (!hasJoined) {
-              await hapticImpact('medium');
-              onJoin?.();
-            }
-          }}
-          disabled={isJoining || hasJoined}
-          className={`w-full h-[44px] rounded-[1rem] text-[15px] font-semibold transition-all active:scale-[0.97] border-[0.5px] flex items-center justify-center ${
-            hasJoined
-              ? 'bg-muted text-muted-foreground border-border/30'
-              : 'bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90'
-          }`}
-        >
-          {isJoining ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : hasJoined ? (
-            'Aangemeld'
-          ) : (
-            'Meedoen'
-          )}
-        </button>
       </div>
     </motion.div>
   );
@@ -143,28 +120,27 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
   if (events.length === 0) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-[20px] font-semibold text-foreground tracking-tight">
+        <h2 className="text-[18px] font-semibold text-foreground">
           {title}
         </h2>
         {onSeeAll && events.length > 3 && (
           <button
             onClick={handleSeeAll}
-            className="flex items-center gap-1 text-[15px] font-medium text-primary hover:text-primary/80 transition-colors min-h-[44px] px-2 active:opacity-70"
+            className="flex items-center gap-0.5 text-[14px] font-medium text-foreground hover:underline min-h-[44px] px-2 active:opacity-70"
           >
-            <span>Alles</span>
+            <span>See all</span>
             <ChevronRight size={16} />
           </button>
         )}
       </div>
       
-      {/* Horizontal scroll - proper padding */}
+      {/* Horizontal scroll */}
       <div 
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 -ml-4 -mr-4 scrollbar-hide snap-x snap-mandatory scroll-pl-4"
-        style={{ scrollSnapType: 'x mandatory' }}
+        className="flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 -ml-4 -mr-4 scrollbar-hide snap-x snap-mandatory"
       >
         {events.map((event) => {
           const hasJoined = Boolean(
