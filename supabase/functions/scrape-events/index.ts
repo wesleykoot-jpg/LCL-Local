@@ -2,544 +2,46 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "./dateUtils.ts";
-import { RawEventCard, ScraperSource, fetchEventDetailTime } from "./shared.ts";
-import type { BaseStrategy } from "../../../src/scrapers/BaseStrategy.ts";
-import { DefaultStrategy } from "../../../src/scrapers/DefaultStrategy.ts";
-import { renderPage } from "../../../src/lib/rendererClient.ts";
-export { parseToISODate } from "./dateUtils.ts";
-export type { RawEventCard, ScraperSource } from "./shared.ts";
-export { fetchEventDetailTime } from "./shared.ts";
+import type { ScraperSource } from "./shared.ts";
+import { createSpoofedFetch, resolveStrategy } from "../../../strategies/index.ts";
+import type { RawEventCard } from "../../../strategies/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-scraper-key",
 };
 
-// Valid categories for the events table
-export const VALID_CATEGORIES = ["cinema", "crafts", "sports", "gaming", "market"] as const;
-export type Category = (typeof VALID_CATEGORIES)[number];
+// Internal categories used by the product.
+export const INTERNAL_CATEGORIES = ["nightlife", "food", "culture", "active", "family"] as const;
+export type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 
-// Default event type for scraped events
+const TARGET_YEAR = 2026;
+
 const DEFAULT_EVENT_TYPE = "anchor";
 
-/**
- * Platform detection patterns.
- * Many municipalities use common CMS platforms - detecting these allows for optimized scraping.
- */
-interface PlatformConfig {
-  name: string;
-  /** URL patterns that identify this platform */
-  urlPatterns: RegExp[];
-  /** Optimized CSS selectors for this platform */
-  selectors: string[];
-  /** Specific date/time extraction logic */
-  dateSelector?: string;
-  timeSelector?: string;
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
 }
 
-const PLATFORM_CONFIGS: Record<string, PlatformConfig> = {
-  // "Ontdek" platform - used by many Dutch municipalities
-  ontdek: {
-    name: "Ontdek Platform",
-    urlPatterns: [/ontdek[\w]+\.nl/i, /bezoek[\w]+\.nl/i],
-    selectors: [
-      ".agenda-item",
-      ".event-card",
-      "article.agenda-item",
-      '[class*="agenda-item"]',
-      ".card--event",
-    ],
-    dateSelector: ".event-date, .date, time",
-    timeSelector: ".event-time, .time",
-  },
-  // "Beleef" platform - WordPress-based event sites (Paviljoen/venue style)
-  beleef: {
-    name: "Beleef WordPress Platform",
-    urlPatterns: [/beleef[\w]+\.nl/i, /paviljoen[\w]+\.nl/i],
-    selectors: [
-      ".archive-item-wrapper",
-      ".archive-item",
-      ".block-item",
-      'a.block-item',
-      '[class*="archive-item"]',
-    ],
-    dateSelector: ".date p, .date",
-    timeSelector: ".time",
-  },
-  // "Visit" platform - tourism boards (Plaece/ODP CMS)
-  visit: {
-    name: "Visit/VVV Platform",
-    urlPatterns: [/visit[\w]+\.(nl|com)/i, /vvv[\w]+\.nl/i, /touristinfo[\w]+\.nl/i],
-    selectors: [
-      'li.tiles__tile[itemtype="http://schema.org/Event"]',
-      "li.tiles__tile",
-      ".tiles__tile",
-      '[itemtype="http://schema.org/Event"]',
-      ".odp-list-container li",
-    ],
-    dateSelector: ".description__date",
-    timeSelector: ".description__time",
-  },
-  // "Uit" platform - cultural agendas
-  uit: {
-    name: "Uit Agenda Platform",
-    urlPatterns: [/uit\.[\w]+\.nl/i, /uitin[\w]+\.nl/i, /uiteratuur[\w]+\.nl/i],
-    selectors: [
-      ".event",
-      ".agenda-item",
-      "article",
-      '[class*="event"]',
-    ],
-  },
-  // Generic Dutch municipality sites
-  gemeente: {
-    name: "Municipality Website",
-    urlPatterns: [/\.nl\/agenda/i, /\.nl\/evenementen/i],
-    selectors: [
-      "article.event-card",
-      ".agenda-item",
-      ".event-item",
-      '[class*="agenda"]',
-    ],
-  },
-};
-
-/**
- * Detect which platform a URL belongs to and return optimized config.
- */
-function detectPlatform(url: string): PlatformConfig | null {
-  for (const [key, config] of Object.entries(PLATFORM_CONFIGS)) {
-    for (const pattern of config.urlPatterns) {
-      if (pattern.test(url)) {
-        console.log(`🔍 Detected platform: ${config.name} (${key})`);
-        return config;
-      }
-    }
+function normalizeMatchedTime(hours: string, minutes: string, ampm?: string): string | null {
+  let hourNum = parseInt(hours, 10);
+  if (ampm) {
+    const lower = ampm.toLowerCase();
+    if (lower === "pm" && hourNum < 12) hourNum += 12;
+    if (lower === "am" && hourNum === 12) hourNum = 0;
   }
-  return null;
+  if (hourNum > 23) return null;
+  return `${String(hourNum).padStart(2, "0")}:${minutes.padStart(2, "0")}`;
 }
 
-/**
- * Get optimized selectors for a source, using platform detection if no custom selectors provided.
- */
-export function getOptimizedSelectors(source: ScraperSource): string[] {
-  // Use custom selectors if provided
-  if (source.config.selectors && source.config.selectors.length > 0) {
-    return source.config.selectors;
-  }
-  
-  // Try to detect platform and use its optimized selectors
-  const platform = detectPlatform(source.url);
-  if (platform) {
-    return platform.selectors;
-  }
-  
-  // Fall back to default selectors
-  return DEFAULT_SELECTORS;
-}
-
-// Default selectors for event scraping (fallback)
-const DEFAULT_SELECTORS = [
-  "article.event-card",
-  "article.agenda-item",
-  "div.event-card",
-  "div.agenda-item",
-  ".event-item",
-  ".card.event",
-  ".agenda-event",
-  // More specific selectors - avoid generic ones that catch nav items
-  'main article[class*="event"]',
-  'main [class*="agenda-item"]',
-  '.content article',
-];
-
-// Containers to exclude from scraping (navigation, footers, etc.)
-const EXCLUDED_CONTAINERS = [
-  'nav', 'header', 'footer', '.menu', '.navigation', '.nav',
-  '.footer', '.header', '.sidebar', '[role="navigation"]',
-  '.language-selector', '.cookie-notice', '.disclaimer',
-  '.breadcrumb', '.pagination', '.social-links', '.share-buttons',
-  '.newsletter', '.signup', '.login', '.search', '.filter',
-];
-
-// Common navigation/UI text that should never be event titles (exact matches only)
-const TITLE_BLOCKLIST = [
-  // Navigation (exact matches)
-  'kies je taal', 'choose language', 'sprache wählen', 'selecteer taal',
-  'disclaimer', 'privacy', 'cookie', 'contact', 'over ons', 'about us',
-  'info', 'tips', 'ontdek', 'discover', 'entdecken', 'about',
-  'home', 'menu', 'search', 'zoeken', 'suchen', 'login', 'inloggen',
-  'register', 'registreren', 'newsletter', 'nieuwsbrief',
-  'follow us', 'volg ons', 'share', 'delen', 'teilen',
-  'read more', 'lees meer', 'mehr lesen', 'bekijk alle', 'view all',
-  // Generic UI (exact matches)
-  'filters', 'sorteer', 'sort by', 'categorie', 'category',
-  'agenda', 'evenementen', 'events', 'kalender', 'calendar',
-  'meer informatie', 'more info', 'details', 'tickets',
-  'accepteren', 'accept', 'weigeren', 'decline',
-  'sluiten', 'close', 'open', 'terug', 'back', 'next', 'previous',
-  'volgende', 'vorige', 'laden', 'loading',
-];
-
-export interface ParsedEvent {
-  title: string;
-  description: string;
-  category: Category;
-  venue_name: string;
-  venue_address?: string;
-  event_date: string;
-  event_time: string;
-  image_url: string | null;
-  coordinates?: { lat: number; lng: number };
-}
-
-interface EventInsert {
-  title: string;
-  description: string;
-  category: Category;
-  event_type: string;
-  venue_name: string;
-  location: string;
-  event_date: string;
-  event_time: string;
-  image_url: string | null;
-  created_by: string | null;
-  status: string;
-  source_id?: string;
-  [key: string]: unknown;
-}
-
-/**
- * Create a unique key for geocode caching
- */
-function createVenueKey(venueName: string, country: string = "NL"): string {
-  return `${venueName.toLowerCase().trim()}|${country.toUpperCase()}`;
-}
-
-/**
- * Check geocode cache for existing coordinates
- */
-// deno-lint-ignore no-explicit-any
-async function getCachedGeocode(
-  supabase: any,
-  venueName: string,
-  country: string = "NL"
-): Promise<{ lat: number; lng: number } | null> {
-  const venueKey = createVenueKey(venueName, country);
-  
-  const { data, error } = await supabase
-    .from("geocode_cache")
-    .select("lat, lng")
-    .eq("venue_key", venueKey)
-    .limit(1);
-  
-  if (error || !data || data.length === 0) {
-    return null;
-  }
-  
-  console.log(`    📍 Cache hit for "${venueName}"`);
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lng) };
-}
-
-/**
- * Store geocoded coordinates in cache
- */
-// deno-lint-ignore no-explicit-any
-async function cacheGeocode(
-  supabase: any,
-  venueName: string,
-  country: string,
-  coords: { lat: number; lng: number },
-  displayName?: string
-): Promise<void> {
-  const venueKey = createVenueKey(venueName, country);
-  
-  try {
-    await supabase.from("geocode_cache").upsert({
-      venue_key: venueKey,
-      lat: coords.lat,
-      lng: coords.lng,
-      display_name: displayName,
-    }, { onConflict: "venue_key" });
-  } catch (error) {
-    console.warn(`    ⚠️ Failed to cache geocode: ${error}`);
-  }
-}
-
-/**
- * Geocode a venue using Nominatim (OpenStreetMap) API
- * Rate limited to 1 request per second as per Nominatim usage policy
- */
-async function geocodeVenue(
-  venueName: string,
-  country: string = "NL",
-  municipality?: string
-): Promise<{ lat: number; lng: number; displayName: string } | null> {
-  try {
-    // Build search query - include municipality if available for better accuracy
-    const searchParts = [venueName];
-    if (municipality) {
-      searchParts.push(municipality);
-    }
-    searchParts.push(country);
-    
-    const query = encodeURIComponent(searchParts.join(", "));
-    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&addressdetails=1`;
-    
-    console.log(`    🌍 Geocoding: "${venueName}"...`);
-    
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "LCL-EventScraper/1.0 (https://github.com/lcl-app; Event aggregator)",
-        "Accept": "application/json",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-    
-    if (!response.ok) {
-      console.log(`    ⚠️ Nominatim error: ${response.status}`);
-      return null;
-    }
-    
-    const results = await response.json();
-    
-    if (results && results.length > 0) {
-      const result = results[0];
-      const coords = {
-        lat: parseFloat(result.lat),
-        lng: parseFloat(result.lon),
-        displayName: result.display_name,
-      };
-      console.log(`    ✅ Geocoded to: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
-      return coords;
-    }
-    
-    // If first query fails and we had municipality, try without it
-    if (municipality) {
-      const simpleQuery = encodeURIComponent(`${venueName}, ${country}`);
-      const simpleUrl = `https://nominatim.openstreetmap.org/search?q=${simpleQuery}&format=json&limit=1`;
-      
-      // Rate limit
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const simpleResponse = await fetch(simpleUrl, {
-        headers: {
-          "User-Agent": "LCL-EventScraper/1.0 (https://github.com/lcl-app; Event aggregator)",
-          "Accept": "application/json",
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-      
-      if (simpleResponse.ok) {
-        const simpleResults = await simpleResponse.json();
-        if (simpleResults && simpleResults.length > 0) {
-          const result = simpleResults[0];
-          const coords = {
-            lat: parseFloat(result.lat),
-            lng: parseFloat(result.lon),
-            displayName: result.display_name,
-          };
-          console.log(`    ✅ Geocoded (simple) to: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
-          return coords;
-        }
-      }
-    }
-    
-    console.log(`    ⚠️ No geocode results for "${venueName}"`);
-    return null;
-  } catch (error) {
-    console.log(`    ⚠️ Geocoding error: ${error instanceof Error ? error.message : 'Unknown'}`);
-    return null;
-  }
-}
-
-/**
- * Get coordinates for a venue, using cache first, then geocoding, then fallback
- */
-// deno-lint-ignore no-explicit-any
-async function getVenueCoordinates(
-  supabase: any,
-  venueName: string,
-  country: string = "NL",
-  municipality?: string,
-  defaultCoords?: { lat: number; lng: number }
-): Promise<{ lat: number; lng: number }> {
-  // Skip geocoding for generic/empty venue names
-  if (!venueName || venueName.length < 3 || venueName.toLowerCase() === "unknown") {
-    console.log(`    ⏭️ Skipping geocode for generic venue: "${venueName}"`);
-    return defaultCoords || { lat: 0, lng: 0 };
-  }
-  
-  // 1. Check cache first
-  const cached = await getCachedGeocode(supabase, venueName, country);
-  if (cached) {
-    return cached;
-  }
-  
-  // 2. Rate limit before geocoding (1 req/sec for Nominatim)
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // 3. Try geocoding
-  const geocoded = await geocodeVenue(venueName, country, municipality);
-  
-  if (geocoded) {
-    // Cache the result
-    await cacheGeocode(supabase, venueName, country, geocoded, geocoded.displayName);
-    return { lat: geocoded.lat, lng: geocoded.lng };
-  }
-  
-  // 4. Fall back to default coordinates
-  console.log(`    📍 Using default coordinates for "${venueName}"`);
-  return defaultCoords || { lat: 0, lng: 0 };
-}
-
-/**
- * Replaces year patterns in URLs with the current year.
- * Handles formats like:
- * - evenementenkalender-2026 -> evenementenkalender-2027 (when current year is 2027)
- * - agenda/2026 -> agenda/2027
- */
-function applyDynamicYear(url: string, useDynamicYear: boolean): string {
-  if (!useDynamicYear) return url;
-  
-  const currentYear = new Date().getFullYear();
-  
-  // Pattern 1: Year in path like "kalender-2026" or "calendar-2026"
-  const dashYearPattern = /-(\d{4})(?=[^\d]|$)/g;
-  
-  // Pattern 2: Year as path segment like "/2026/" or "/2026"
-  const segmentYearPattern = /\/(\d{4})(?=\/|$)/g;
-  
-  let updatedUrl = url.replace(dashYearPattern, (match, year) => {
-    const yearNum = parseInt(year);
-    // Only replace years 2020-2030 to avoid false positives
-    if (yearNum >= 2020 && yearNum <= 2030) {
-      console.log(`🔄 Dynamic year: replacing ${yearNum} with ${currentYear}`);
-      return `-${currentYear}`;
-    }
-    return match;
-  });
-  
-  updatedUrl = updatedUrl.replace(segmentYearPattern, (match, year) => {
-    const yearNum = parseInt(year);
-    if (yearNum >= 2020 && yearNum <= 2030) {
-      console.log(`🔄 Dynamic year: replacing ${yearNum} with ${currentYear}`);
-      return `/${currentYear}`;
-    }
-    return match;
-  });
-  
-  return updatedUrl;
-}
-
-function getTodayISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-/**
- * Get language-specific instructions for AI parsing
- */
-function getLanguageInstructions(language: string): string {
-  const instructions: Record<string, string> = {
-    nl: "Keep all text in Dutch. Do not translate to English.",
-    de: "Keep all text in German. Do not translate to English.",
-    en: "Keep all text in English.",
-    fr: "Keep all text in French. Do not translate to English.",
-    es: "Keep all text in Spanish. Do not translate to English.",
-    it: "Keep all text in Italian. Do not translate to English.",
-  };
-  return instructions[language] || instructions.en;
-}
-
-/**
- * Get AI system prompt for parsing events.
- * Language-aware for global use.
- */
-function getAISystemPrompt(language: string = 'en', defaultCoords?: { lat: number; lng: number }): string {
-  const today = getTodayISO();
-  const langInstructions = getLanguageInstructions(language);
-  
-  const coordsHint = defaultCoords 
-    ? `If venue location is unknown, use these fallback coordinates: ${defaultCoords.lat}, ${defaultCoords.lng}`
-    : "If venue location is unknown, omit the coordinates field.";
-  
-  return `You are a data cleaner for a global social event app.
-Your task is to extract event information from raw HTML text.
-
-IMPORTANT: ${langInstructions}
-
-Extract the following fields:
-- title: The event name (clean, without extra formatting)
-- description: A nice, readable description (max 200 chars). If vague, create a brief summary.
-- category: Map to one of these EXACT values: cinema, crafts, sports, gaming, market
-  - cinema: movies, films, theater, performances, shows, concerts, music
-  - crafts: workshops, art, creative activities, exhibitions
-  - sports: sports events, fitness, outdoor activities, walking, cycling
-  - gaming: gaming events, esports, board games
-  - market: markets, fairs, festivals, food events, community events
-- venue_name: The venue/location name
-- venue_address: Full street address if mentioned
-- event_date: Date in YYYY-MM-DD format. If only relative (e.g., "tomorrow"), calculate from today.
-- event_time: IMPORTANT - Extract the START TIME in HH:MM 24-hour format (e.g., "19:30", "14:00", "21:00").
-  Look for time patterns like "19.30", "8:00 PM", "starts at 20:00", etc.
-  If time shows a range like "19:00 - 22:00", use the START time (19:00).
-  ONLY use fallback values if absolutely no time is found:
-  - "Hele dag" or "All day" for all-day events explicitly marked as such
-  - "TBD" only as absolute last resort
-- image_url: Full image URL if found, or null
-- coordinates: If you can determine the exact location, provide { "lat": number, "lng": number }.
-  ${coordsHint}
-
-Today's date is: ${today}
-
-IMPORTANT: Return ONLY valid JSON, no markdown, no explanation.
-Keep all text in the original language.
-If you cannot extract meaningful data, return null for that field.`;
-}
-
-/**
- * Determines if a given date is in Daylight Saving Time (DST) in Central Europe.
- * DST: Last Sunday of March (02:00 CET -> 03:00 CEST) to Last Sunday of October (03:00 CEST -> 02:00 CET)
- */
-function isCentralEuropeDST(year: number, month: number, day: number): boolean {
-  if (month < 3 || month > 10) return false;
-  if (month > 3 && month < 10) return true;
-  
-  const lastSunday = getLastSundayOfMonth(year, month);
-  
-  if (month === 3) {
-    return day >= lastSunday;
-  } else {
-    return day < lastSunday;
-  }
-}
-
-function getLastSundayOfMonth(year: number, month: number): number {
-  const lastDay = new Date(year, month, 0).getDate();
-  const lastDayOfWeek = new Date(year, month - 1, lastDay).getDay();
-  const daysToSubtract = lastDayOfWeek === 0 ? 0 : lastDayOfWeek;
-  return lastDay - daysToSubtract;
-}
-
-/**
- * Construct event datetime in UTC.
- * Assumes Central European timezone for now (can be extended with timezone config per source).
- */
 export function constructEventDateTime(eventDate: string, eventTime: string): string {
   const timeMatch = eventTime.match(/^(\d{2}):(\d{2})$/);
   const hours = timeMatch ? timeMatch[1] : "12";
   const minutes = timeMatch ? timeMatch[2] : "00";
-  
-  const [year, month, day] = eventDate.split("-").map(Number);
-  const isDST = isCentralEuropeDST(year, month, day);
-  const utcOffset = isDST ? 2 : 1;
-  
-  const localHours = parseInt(hours, 10);
-  const localMinutes = parseInt(minutes, 10);
-  const utcHours = localHours - utcOffset;
 
-  const utcDate = new Date(Date.UTC(year, month - 1, day, utcHours, localMinutes, 0));
-  return utcDate.toISOString();
+  const [year, month, day] = eventDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, Number(hours), Number(minutes), 0));
+  return date.toISOString();
 }
 
 export function normalizeEventDateForStorage(
@@ -554,143 +56,145 @@ export function normalizeEventDateForStorage(
   };
 }
 
-// Scraping function
-function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function extractTitle($el: cheerio.Cheerio<cheerio.AnyNode>, $: cheerio.CheerioAPI): string {
-  const selectors = [
-    "h1, h2, h3, h4",
-    ".title",
-    '[class*="title"]',
-    'span[class*="title"]',
-    'div[class*="title"]',
-    "[data-event-title]",
-    '[aria-label*="event"]',
-    '[class*="event-title"]',
+export function mapToInternalCategory(input?: string): InternalCategory {
+  const value = (input || "").toLowerCase();
+  const keywordMap: Array<{ cat: InternalCategory; terms: string[] }> = [
+    { cat: "nightlife", terms: ["night", "club", "dj", "concert", "music", "party", "bar"] },
+    { cat: "food", terms: ["food", "dinner", "restaurant", "wine", "beer", "market", "taste"] },
+    { cat: "culture", terms: ["museum", "exhibition", "theater", "art", "culture", "film"] },
+    { cat: "active", terms: ["sport", "run", "walk", "cycling", "bike", "yoga", "fitness"] },
+    { cat: "family", terms: ["kids", "family", "children", "parent", "play", "zoo"] },
   ];
 
-  for (const selector of selectors) {
-    const text = $el.find(selector).first().text();
-    if (text && normalizeWhitespace(text).length > 0) {
-      return normalizeWhitespace(text);
+  for (const entry of keywordMap) {
+    if (entry.terms.some((term) => value.includes(term))) {
+      return entry.cat;
     }
   }
 
-  const firstLinkText = $el.find("a").first().text();
-  return normalizeWhitespace(firstLinkText || "");
+  // map legacy categories from AI outputs
+  if (["cinema", "gaming"].includes(value)) return "culture";
+  if (["crafts"].includes(value)) return "family";
+  if (["sports"].includes(value)) return "active";
+
+  return "culture";
 }
 
-function buildElementDedupKey($el: cheerio.Cheerio<cheerio.AnyNode>, $: cheerio.CheerioAPI): string | null {
-  const link = $el.find("a").first().attr("href") || "";
-  const title = extractTitle($el, $);
-  if (!link && !title) {
-    const textContent = normalizeWhitespace($el.text() || "");
-    if (textContent.length > 200) return null;
-    const textSnippet = textContent.slice(0, 80);
-    return textSnippet ? `text:${textSnippet.toLowerCase()}` : null;
+function isTargetYear(isoDate: string | null): boolean {
+  return !!isoDate && isoDate.startsWith(`${TARGET_YEAR}-`);
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function createEventFingerprint(title: string, eventDate: string, sourceId: string): Promise<string> {
+  return sha256Hex(`${title}|${eventDate}|${sourceId}`);
+}
+
+function extractTimeFromHtml(html: string): string | null {
+  const timePatterns = [
+    /(\d{1,2})[.:h](\d{2})\s*(am|pm)?/i,
+    /(\d{1,2})\s*uhr/i,
+  ];
+  for (const pattern of timePatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      return normalizeMatchedTime(match[1], match[2], match[3]);
+    }
   }
-  return `${link.toLowerCase()}|${title.toLowerCase()}`;
+  return null;
 }
 
-export interface ScrapeOptions {
-  fetcher?: typeof fetch;
-  rendererUrl?: string;
-  enableDebug?: boolean;
-  detailFetcher?: typeof fetch;
-  strategy?: BaseStrategy;
-  listingHtml?: string;
-  listingUrl?: string;
-  probeLog?: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }>;
-}
+export async function fetchEventDetailTime(
+  detailUrl: string,
+  baseUrl: string,
+  fetcher: typeof fetch = createSpoofedFetch()
+): Promise<string | null> {
+  try {
+    let fullUrl = detailUrl;
+    if (detailUrl.startsWith("/")) {
+      const urlObj = new URL(baseUrl);
+      fullUrl = `${urlObj.protocol}//${urlObj.host}${detailUrl}`;
+    } else if (!detailUrl.startsWith("http")) {
+      fullUrl = `${baseUrl.replace(/\/$/, "")}/${detailUrl}`;
+    }
 
-export async function scrapeEventCards(
-  source: ScraperSource,
-  enableDeepScraping: boolean = true,
-  options: ScrapeOptions = {}
-): Promise<RawEventCard[]> {
-  const fetcher = options.fetcher || fetch;
-  const normalizedSource: ScraperSource = { ...source, url: applyDynamicYear(source.url, source.config.dynamic_year === true) };
-  const strategy = options.strategy || new DefaultStrategy(normalizedSource);
-  const enableDebug = options.enableDebug === true;
-  const probeLog = options.probeLog;
+    const response = await fetcher(fullUrl, { method: "GET" });
+    if (!response.ok) return null;
 
-  let listingHtml = options.listingHtml;
-  let listingUrl = options.listingUrl;
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const pageText = $("body").text();
 
-  if (!listingHtml) {
-    const candidates = await strategy.discoverListingUrls(fetcher);
-    for (const candidate of candidates) {
-      try {
-        const resp = await strategy.fetchListing(candidate, fetcher);
-        probeLog?.push({
-          candidate,
-          status: resp.status,
-          finalUrl: resp.finalUrl,
-          ok: resp.status >= 200 && resp.status < 300,
-        });
-        if (enableDebug) {
-          console.log(`Probe ${candidate} -> ${resp.status}`);
-        }
-        if (resp.status === 200 && resp.html.trim().length > 0) {
-          listingHtml = resp.html;
-          listingUrl = resp.finalUrl || candidate;
-          break;
-        }
-      } catch (error) {
-        probeLog?.push({
-          candidate,
-          status: 0,
-          finalUrl: candidate,
-          ok: false,
-        });
-        if (enableDebug) {
-          console.log(`Probe failed for ${candidate}: ${error instanceof Error ? error.message : error}`);
-        }
+    const timeElements = [
+      ".event-time",
+      ".time",
+      '[class*="time"]',
+      '[class*="tijd"]',
+      ".aanvang",
+      '[class*="aanvang"]',
+    ];
+
+    for (const selector of timeElements) {
+      const el = $(selector);
+      if (el.length > 0) {
+        const elText = el.text() || el.attr("content") || "";
+        const normalized = extractTimeFromHtml(elText);
+        if (normalized) return normalized;
       }
     }
+
+    return extractTimeFromHtml(pageText);
+  } catch {
+    return null;
   }
-
-  if (!listingHtml && (normalizedSource.requires_render || normalizedSource.config.requires_render) && options.rendererUrl) {
-    const rendered = await renderPage(options.rendererUrl, {
-      url: normalizedSource.url,
-      headers: normalizedSource.config.headers,
-    });
-    probeLog?.push({
-      candidate: "renderer",
-      status: rendered.status,
-      finalUrl: rendered.finalUrl,
-      ok: rendered.status >= 200 && rendered.status < 400,
-    });
-    if (rendered.html) {
-      listingHtml = rendered.html;
-      listingUrl = rendered.finalUrl;
-    } else if (enableDebug) {
-      console.log(`Renderer failed with status ${rendered.status}`);
-    }
-  }
-
-  if (!listingHtml) {
-    if (enableDebug) {
-      console.log(`⚠️ No listing HTML found for ${normalizedSource.name}`);
-    }
-    return [];
-  }
-
-  const events = await strategy.parseListing(listingHtml, listingUrl || normalizedSource.url, {
-    fetcher: options.detailFetcher || fetcher,
-    enableDeepScraping,
-    enableDebug,
-  });
-
-  return events;
 }
 
-export async function callGemini(
+interface NormalizedEvent {
+  title: string;
+  description: string;
+  event_date: string;
+  event_time: string;
+  image_url: string | null;
+  venue_name: string;
+  venue_address?: string;
+  internal_category: InternalCategory;
+  detail_url?: string | null;
+}
+
+function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): NormalizedEvent | null {
+  if (!raw.title) return null;
+  const isoDate = parseToISODate(raw.date);
+  if (!isoDate || !isTargetYear(isoDate)) return null;
+
+  const time =
+    raw.detailPageTime ||
+    extractTimeFromHtml(raw.rawHtml) ||
+    extractTimeFromHtml(raw.description) ||
+    "TBD";
+
+  const description =
+    normalizeWhitespace(raw.description || "") ||
+    normalizeWhitespace(cheerio.load(raw.rawHtml || "").text()).slice(0, 240);
+
+  return {
+    title: normalizeWhitespace(raw.title),
+    description,
+    event_date: isoDate,
+    event_time: time || "TBD",
+    image_url: raw.imageUrl,
+    venue_name: raw.location || source.name,
+    internal_category: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
+    detail_url: raw.detailUrl,
+  };
+}
+
+async function callGemini(
   apiKey: string,
   body: unknown,
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch
 ): Promise<string | null> {
   const response = await fetcher(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
@@ -698,12 +202,12 @@ export async function callGemini(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }
+    },
   );
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Gemini API error: ${response.status} - ${errorText}`);
+    const text = await response.text();
+    console.error("Gemini error", response.status, text);
     return null;
   }
 
@@ -711,281 +215,228 @@ export async function callGemini(
   return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 }
 
-// AI Parsing function using Google Gemini
 export async function parseEventWithAI(
-  apiKey: string, 
-  rawEvent: RawEventCard, 
-  language: string = 'en',
-  defaultCoords?: { lat: number; lng: number },
-  opts: { callGeminiFn?: typeof callGemini } = {}
-): Promise<ParsedEvent | null> {
-  try {
-    const timeHint = rawEvent.detailPageTime 
-      ? `Time (from detail page): ${rawEvent.detailPageTime}` 
-      : "Time hint: not found on detail page";
+  apiKey: string,
+  rawEvent: RawEventCard,
+  language: string = "nl",
+  options: { fetcher?: typeof fetch; callGeminiFn?: typeof callGemini } = {}
+): Promise<NormalizedEvent | null> {
+  const fetcher = options.fetcher || createSpoofedFetch();
+  const callFn = options.callGeminiFn || callGemini;
 
-    const userPrompt = `Parse this event data and return ONLY valid JSON:
+  const today = new Date().toISOString().split("T")[0];
+  const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
+- Retourneer uitsluitend geldige JSON.
+- Weiger evenementen die niet in 2026 plaatsvinden.
+- Houd tekst in originele taal (${language}).
+- velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name, venue_address, image_url`;
 
-Title hint: ${rawEvent.title || "unknown"}
-Date hint: ${rawEvent.date || "unknown"}
-Location hint: ${rawEvent.location || "unknown"}
-${timeHint}
-Image URL: ${rawEvent.imageUrl || "none"}
-
-Raw HTML content:
+  const userPrompt = `Vandaag is ${today}.
+Bron hint titel: ${rawEvent.title}
+Bron hint datum: ${rawEvent.date}
+Bron hint locatie: ${rawEvent.location}
+HTML:
 ${rawEvent.rawHtml}`;
 
-    const payload = {
-      contents: [
-        { role: "user", parts: [{ text: getAISystemPrompt(language, defaultCoords) }] },
-        { role: "model", parts: [{ text: "I understand. I will parse event data and return clean JSON." }] },
-        { role: "user", parts: [{ text: userPrompt }] },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 1024,
-      },
-    };
+  const payload = {
+    contents: [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: userPrompt }] },
+    ],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 768 },
+  };
 
-    const geminiCaller = opts.callGeminiFn || callGemini;
-    const text = await geminiCaller(apiKey, payload);
+  const text = await callFn(apiKey, payload, fetcher);
+  if (!text) return null;
 
-    if (!text) {
-      console.error("No text in Gemini response");
-      return null;
-    }
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+  const parsed = JSON.parse(cleaned) as Partial<NormalizedEvent>;
 
-    // Clean and parse JSON
-    let jsonStr = text.trim();
-    if (jsonStr.startsWith("```json")) {
-      jsonStr = jsonStr.slice(7);
-    }
-    if (jsonStr.startsWith("```")) {
-      jsonStr = jsonStr.slice(3);
-    }
-    if (jsonStr.endsWith("```")) {
-      jsonStr = jsonStr.slice(0, -3);
-    }
-    jsonStr = jsonStr.trim();
+  if (!parsed.title || !parsed.event_date) return null;
+  const isoDate = parseToISODate(parsed.event_date);
+  if (!isoDate || !isTargetYear(isoDate)) return null;
 
-    const parsed = JSON.parse(jsonStr) as ParsedEvent;
+  return {
+    title: normalizeWhitespace(parsed.title),
+    description: parsed.description ? normalizeWhitespace(parsed.description) : "",
+    event_date: isoDate,
+    event_time: parsed.event_time || "TBD",
+    venue_name: parsed.venue_name || rawEvent.location || "",
+    venue_address: parsed.venue_address,
+    image_url: parsed.image_url ?? rawEvent.imageUrl ?? null,
+    internal_category: mapToInternalCategory(
+      (parsed as Record<string, unknown>).category as string ||
+        parsed.description ||
+        rawEvent.title,
+    ),
+    detail_url: rawEvent.detailUrl,
+  };
+}
 
-    // Validate and normalize
-    if (!parsed.title || !parsed.category) {
-      console.log("❌ Missing required fields (title or category)");
-      return null;
-    }
-
-    if (!VALID_CATEGORIES.includes(parsed.category as Category)) {
-      console.log(`⚠️ Invalid category "${parsed.category}", defaulting to "market"`);
-      parsed.category = "market";
-    }
-
-    // Prioritize time from deep scraping if available
-    if (rawEvent.detailPageTime) {
-      parsed.event_time = rawEvent.detailPageTime;
-    }
-
-    // Validate date
-    const isoDate = parseToISODate(parsed.event_date);
-    if (!isoDate) {
-      console.log(`⚠️ Invalid date format: ${parsed.event_date}`);
-      return null;
-    }
-    parsed.event_date = isoDate;
-
-    // Use default coordinates if none provided
-    if (!parsed.coordinates && defaultCoords) {
-      parsed.coordinates = defaultCoords;
-    }
-
-    return parsed;
+// deno-lint-ignore no-explicit-any
+async function upsertProbeLog(supabase: any, sourceId: string, probes: Array<Record<string, unknown>>) {
+  try {
+    await supabase.from("scraper_sources").update({ last_probe_urls: probes }).eq("id", sourceId);
   } catch (error) {
-    console.error("AI parsing error:", error instanceof Error ? error.message : error);
-    return null;
+    console.warn("Failed to persist probe log", error);
   }
 }
 
-// Check for duplicate events
 // deno-lint-ignore no-explicit-any
+async function fingerprintExists(
+  supabase: any,
+  sourceId: string,
+  fingerprint: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id")
+    .eq("source_id", sourceId)
+    .eq("event_fingerprint", fingerprint)
+    .limit(1);
+  if (error) {
+    console.warn("Fingerprint lookup failed", error.message);
+    return false;
+  }
+  return (data && data.length > 0) || false;
+}
+
 export async function eventExists(
   supabase: any,
   title: string,
   eventDate: string,
   eventTime: string,
-  normalized?: { timestamp: string; dateOnly: string | null },
+  _normalized?: { timestamp: string; dateOnly: string | null },
   sourceId?: string
 ): Promise<boolean> {
-  const { timestamp, dateOnly } = normalized || normalizeEventDateForStorage(eventDate, eventTime);
-
-  let primaryQuery = supabase
-    .from("events")
-    .select("id")
-    .eq("title", title)
-    .eq("event_date", timestamp);
-
-  if (sourceId) {
-    primaryQuery = primaryQuery.eq("source_id", sourceId);
-  }
-
-  const primaryCheck = await primaryQuery.limit(1);
-
-  if (primaryCheck.error) {
-    console.error("Error checking for duplicate:", primaryCheck.error);
-    return false;
-  }
-
-  if (primaryCheck.data && primaryCheck.data.length > 0) {
-    return true;
-  }
-
-  if (dateOnly) {
-    let dateOnlyQuery = supabase
-      .from("events")
-      .select("id")
-      .eq("title", title)
-      .eq("event_date", dateOnly);
-
-    if (sourceId) {
-      dateOnlyQuery = dateOnlyQuery.eq("source_id", sourceId);
-    }
-
-    const dateOnlyCheck = await dateOnlyQuery.limit(1);
-
-    if (!dateOnlyCheck.error && dateOnlyCheck.data && dateOnlyCheck.data.length > 0) {
-      return true;
-    }
-
-    const startOfDay = `${dateOnly}T00:00:00Z`;
-    const endOfDay = `${dateOnly}T23:59:59Z`;
-
-    let dayRangeQuery = supabase
-      .from("events")
-      .select("id")
-      .eq("title", title)
-      .gte("event_date", startOfDay)
-      .lte("event_date", endOfDay);
-
-    if (sourceId) {
-      dayRangeQuery = dayRangeQuery.eq("source_id", sourceId);
-    }
-
-    const dayRange = await dayRangeQuery.limit(1);
-    if (!dayRange.error && dayRange.data && dayRange.data.length > 0) {
-      return true;
-    }
-  }
-
-  return false;
+  const fingerprint = await createEventFingerprint(title, eventDate, sourceId || "unknown");
+  return fingerprintExists(supabase, sourceId || "unknown", fingerprint);
 }
 
-// Insert event into database
+export interface ScrapeEventCardOptions {
+  fetcher?: typeof fetch;
+  listingHtml?: string;
+  listingUrl?: string;
+  enableDebug?: boolean;
+}
+
+export async function scrapeEventCards(
+  source: ScraperSource,
+  enableDeepScraping: boolean = true,
+  options: ScrapeEventCardOptions = {}
+): Promise<RawEventCard[]> {
+  const strategy = resolveStrategy((source as Record<string, unknown>)["strategy"] as string, source);
+  const fetcher = options.fetcher || createSpoofedFetch({ headers: source.config.headers });
+  const rateLimit = source.config.rate_limit_ms ?? 150;
+
+  let listingHtml = options.listingHtml;
+  let listingUrl = options.listingUrl || source.url;
+
+  if (!listingHtml) {
+    const candidates = await strategy.discoverListingUrls(fetcher);
+    for (const candidate of candidates) {
+      const resp = await strategy.fetchListing(candidate, fetcher);
+      if (resp.status === 404 || !resp.html) continue;
+      listingHtml = resp.html;
+      listingUrl = resp.finalUrl || candidate;
+      break;
+    }
+  }
+
+  if (!listingHtml) return [];
+
+  const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug: options.enableDebug, fetcher });
+  if (enableDeepScraping) {
+    for (const raw of rawEvents) {
+      if (!raw.detailUrl || raw.detailPageTime) continue;
+      const time = await fetchEventDetailTime(raw.detailUrl, listingUrl, fetcher);
+      if (time) raw.detailPageTime = time;
+      await new Promise((resolve) => setTimeout(resolve, rateLimit));
+    }
+  }
+
+  return rawEvents;
+}
+
 // deno-lint-ignore no-explicit-any
 async function insertEvent(
   supabase: any,
-  event: EventInsert
+  event: Record<string, unknown>
 ): Promise<boolean> {
   const { error } = await supabase.from("events").insert(event);
-
   if (error) {
-    console.error(`Failed to insert "${event.title}":`, error.message);
+    console.error("Insert failed", error.message);
     return false;
   }
-
   return true;
 }
 
-// Update scraper source stats
 // deno-lint-ignore no-explicit-any
 async function updateSourceStats(
   supabase: any,
   sourceId: string,
-  eventsScraped: number,
-  success: boolean,
-  lastError?: string | null
-): Promise<void> {
+  scraped: number,
+  success: boolean
+) {
   try {
     await supabase.rpc("update_scraper_source_stats", {
       p_source_id: sourceId,
-      p_events_scraped: eventsScraped,
+      p_events_scraped: scraped,
       p_success: success,
-      p_last_error: success ? null : (lastError || (eventsScraped === 0 ? "No events found" : "Scrape failed")),
     });
   } catch (error) {
-    console.warn("Failed to update source stats:", error);
+    console.warn("update_scraper_source_stats failed", error);
   }
 }
 
-// Main handler
+export interface ScrapeOptions {
+  sourceId?: string;
+  dryRun?: boolean;
+  enableDeepScraping?: boolean;
+  limit?: number;
+  enableDebug?: boolean;
+}
+
 export async function handleRequest(req: Request): Promise<Response> {
-  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get API keys - support both GEMINI_API_KEY and GOOGLE_AI_API_KEY
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!geminiApiKey) {
-      throw new Error("Missing GEMINI_API_KEY or GOOGLE_AI_API_KEY environment variable");
-    }
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
+      throw new Error("Missing Supabase env vars");
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const renderServiceUrl = Deno.env.get("RENDER_SERVICE_URL");
 
-    // Parse request body for options
-    let options: { 
-      sourceId?: string; 
-      dryRun?: boolean; 
-      enableDeepScraping?: boolean;
-      limit?: number;
-      enableDebug?: boolean;
-    } = {};
-    
-    try {
-      if (req.method === "POST") {
+    let options: ScrapeOptions = {};
+    if (req.method === "POST") {
+      try {
         const body = await req.text();
-        if (body) {
-          options = JSON.parse(body);
-        }
+        options = body ? JSON.parse(body) : {};
+      } catch {
+        options = {};
       }
-    } catch {
-      // Ignore parsing errors, use defaults
     }
 
     const { sourceId, dryRun = false, enableDeepScraping = true, limit, enableDebug = false } = options;
 
-    // Get enabled scraper sources
     let query = supabase.from("scraper_sources").select("*").eq("enabled", true);
-    
-    if (sourceId) {
-      query = query.eq("id", sourceId);
-    }
-    
-    if (limit) {
-      query = query.limit(limit);
-    }
+    if (sourceId) query = query.eq("id", sourceId);
+    if (limit) query = query.limit(limit);
 
     const { data: sources, error: sourcesError } = await query;
-
-    if (sourcesError) {
-      throw new Error(`Failed to fetch scraper sources: ${sourcesError.message}`);
-    }
-
+    if (sourcesError) throw new Error(sourcesError.message);
     if (!sources || sources.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, message: "No enabled scraper sources found", stats: {} }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ success: true, message: "No enabled sources" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-
-    console.log(`\n🚀 Starting scrape for ${sources.length} source(s)...`);
 
     const stats = {
       totalSources: sources.length,
@@ -993,177 +444,138 @@ export async function handleRequest(req: Request): Promise<Response> {
       totalEventsInserted: 0,
       totalEventsDuplicate: 0,
       totalEventsFailed: 0,
-      sourceResults: [] as Array<{
-        name: string;
-        scraped: number;
-        inserted: number;
-        duplicates: number;
-        failed: number;
-      }>,
+      sourceResults: [] as Array<Record<string, unknown>>,
     };
 
-    // Process each source
     for (const source of sources as ScraperSource[]) {
-      console.log(`\n📰 Processing source: ${source.name}`);
-      
-      const sourceStats = {
-        name: source.name,
-        scraped: 0,
-        inserted: 0,
-        duplicates: 0,
-        failed: 0,
-      };
-      let lastErrorMessage: string | null = null;
+      const strategy = resolveStrategy((source as Record<string, unknown>)["strategy"] as string, source);
+      const fetcher = createSpoofedFetch({ headers: source.config.headers });
+      const probeLog: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }> = [];
+      const rateLimit = source.config.rate_limit_ms ?? 200;
+      const sourceStats = { name: source.name, scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
 
       try {
-        // Scrape events from source
-        const probeLog: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }> = [];
-        const rawEvents = await scrapeEventCards(source, enableDeepScraping, { enableDebug, rendererUrl: renderServiceUrl, probeLog });
+        const candidates = await strategy.discoverListingUrls(fetcher);
+        let listingHtml = "";
+        let listingUrl = source.url;
+
+        for (const candidate of candidates) {
+          const resp = await strategy.fetchListing(candidate, fetcher);
+          probeLog.push({ candidate, status: resp.status, finalUrl: resp.finalUrl, ok: resp.status >= 200 && resp.status < 400 });
+          if (resp.status === 404 || !resp.html) continue;
+          listingHtml = resp.html;
+          listingUrl = resp.finalUrl || candidate;
+          break;
+        }
+
+        if (!listingHtml) {
+          await upsertProbeLog(supabase, source.id, probeLog);
+          await updateSourceStats(supabase, source.id, 0, false);
+          stats.totalEventsFailed++;
+          continue;
+        }
+
+        const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug, fetcher });
         sourceStats.scraped = rawEvents.length;
         stats.totalEventsScraped += rawEvents.length;
 
-        if (rawEvents.length === 0) {
-          const probeSummary = probeLog
-            .slice(0, 3)
-            .map((p) => `${p.status || 0}:${p.finalUrl || p.candidate}`)
-            .join(", ");
-          lastErrorMessage = probeLog.length > 0
-            ? `No events found; probes tried ${probeLog.length} (${probeSummary})`
-            : "No events found";
-        }
-
-        if (probeLog.length > 0) {
-          try {
-            await supabase.from("scraper_sources").update({ last_probe_urls: probeLog }).eq("id", source.id);
-          } catch (error) {
-            console.warn("Failed to persist probe log", error);
+        if (enableDeepScraping) {
+          for (const raw of rawEvents) {
+            if (!raw.detailUrl || raw.detailPageTime) continue;
+            const time = await fetchEventDetailTime(raw.detailUrl, listingUrl, fetcher);
+            if (time) raw.detailPageTime = time;
+            await new Promise((resolve) => setTimeout(resolve, rateLimit));
           }
         }
 
-        // Parse and insert each event
-        const language = source.language || source.config.language || 'en';
-        const defaultCoords = source.default_coordinates || source.config.default_coordinates;
-        
-        for (const rawEvent of rawEvents) {
-          console.log(`\n  Processing: ${rawEvent.title || "Unknown title"}`);
+        for (const raw of rawEvents) {
+          let normalized = cheapNormalizeEvent(raw, source);
+          if ((!normalized || normalized.event_time === "TBD" || !normalized.description) && geminiApiKey) {
+            const aiResult = await parseEventWithAI(geminiApiKey, raw, source.language || "nl", { fetcher });
+            if (aiResult) normalized = aiResult;
+          }
 
-          // Parse with AI
-          const parsed = await parseEventWithAI(geminiApiKey, rawEvent, language, defaultCoords);
-
-          if (!parsed) {
-            console.log("  ❌ Failed to parse event");
+          if (!normalized) {
             sourceStats.failed++;
-            lastErrorMessage = lastErrorMessage || "Failed to parse events";
             continue;
           }
 
-          console.log(`  ✅ Parsed: ${parsed.title} | ${parsed.event_date} | ${parsed.event_time}`);
-
-          // Check for duplicate using normalized storage format
-          const normalizedDate = normalizeEventDateForStorage(parsed.event_date, parsed.event_time);
-          const exists = await eventExists(
-            supabase,
-            parsed.title,
-            parsed.event_date,
-            parsed.event_time,
-            normalizedDate,
-            source.id
-          );
-
+          const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, source.id);
+          const exists = await fingerprintExists(supabase, source.id, fingerprint);
           if (exists) {
-            console.log("  ⏭️ Duplicate, skipping");
             sourceStats.duplicates++;
+            stats.totalEventsDuplicate++;
             continue;
           }
 
-          // Get venue coordinates via geocoding (with caching)
-          const venueCountry = source.country || source.config.country || "NL";
-          const municipality = source.name.replace(/^(Ontdek|Bezoek|Visit)\s*/i, "");
-          
-          const coords = await getVenueCoordinates(
-            supabase,
-            parsed.venue_name || source.name,
-            venueCountry,
-            municipality,
-            defaultCoords
+          const normalizedDate = normalizeEventDateForStorage(
+            normalized.event_date,
+            normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
           );
+          const defaultCoords = source.default_coordinates || source.config.default_coordinates;
+          const point = defaultCoords
+            ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})`
+            : "POINT(0 0)";
 
-          if (dryRun) {
-            console.log(`  🧪 Dry run, would insert at ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
-            sourceStats.inserted++;
-            continue;
-          }
-
-          // Insert event
-          const eventInsert: EventInsert = {
-            title: parsed.title,
-            description: parsed.description || "",
-            category: parsed.category,
+          const eventInsert = {
+            title: normalized.title,
+            description: normalized.description || "",
+            internal_category: normalized.internal_category,
             event_type: DEFAULT_EVENT_TYPE,
-            venue_name: parsed.venue_name || source.name,
-            location: `POINT(${coords.lng} ${coords.lat})`,
+            venue_name: normalized.venue_name || source.name,
+            venue_address: normalized.venue_address || null,
+            location: point,
             event_date: normalizedDate.timestamp,
-            event_time: parsed.event_time || "TBD",
-            image_url: parsed.image_url,
+            event_time: normalized.event_time,
+            image_url: normalized.image_url,
             created_by: null,
             status: "published",
             source_id: source.id,
+            event_fingerprint: fingerprint,
           };
 
-          const inserted = await insertEvent(supabase, eventInsert);
-          
-          if (inserted) {
-            console.log("  💾 Inserted successfully");
-            sourceStats.inserted++;
+          if (!dryRun) {
+            const inserted = await insertEvent(supabase, eventInsert);
+            if (inserted) {
+              sourceStats.inserted++;
+              stats.totalEventsInserted++;
+            } else {
+              sourceStats.failed++;
+              stats.totalEventsFailed++;
+            }
           } else {
-            sourceStats.failed++;
+            // In dry-run we still count as would-be insert to surface potential duplicates/stats.
+            sourceStats.inserted++;
+            stats.totalEventsInserted++;
           }
 
-          // Rate limiting between events
-          await new Promise(resolve => setTimeout(resolve, source.config.rate_limit_ms || 200));
+          await new Promise((resolve) => setTimeout(resolve, rateLimit));
         }
 
-        // Update source stats
-        const success = sourceStats.scraped > 0;
-        await updateSourceStats(supabase, source.id, sourceStats.scraped, success, lastErrorMessage);
-
+        await upsertProbeLog(supabase, source.id, probeLog);
+        await updateSourceStats(supabase, source.id, sourceStats.scraped, sourceStats.scraped > 0);
       } catch (error) {
-        console.error(`Error processing source ${source.name}:`, error);
-        lastErrorMessage = error instanceof Error ? error.message : "Unknown error";
-        await updateSourceStats(supabase, source.id, 0, false, lastErrorMessage);
+        console.error(`Error processing ${source.name}`, error);
+        await updateSourceStats(supabase, source.id, sourceStats.scraped, false);
       }
 
       stats.sourceResults.push(sourceStats);
-      stats.totalEventsInserted += sourceStats.inserted;
-      stats.totalEventsDuplicate += sourceStats.duplicates;
-      stats.totalEventsFailed += sourceStats.failed;
     }
 
-    console.log("\n✅ Scraping complete!");
-    console.log(`   Total scraped: ${stats.totalEventsScraped}`);
-    console.log(`   Total inserted: ${stats.totalEventsInserted}`);
-    console.log(`   Total duplicates: ${stats.totalEventsDuplicate}`);
-    console.log(`   Total failed: ${stats.totalEventsFailed}`);
-
-    return new Response(
-      JSON.stringify({ success: true, stats }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return new Response(JSON.stringify({ success: true, stats }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
-    console.error("Scraper error:", error);
+    console.error("Scraper error", error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 }
+
+export { parseToISODate } from "./dateUtils.ts";
+export type { ScraperSource } from "./shared.ts";
 
 if (import.meta.main) {
   serve(handleRequest);
