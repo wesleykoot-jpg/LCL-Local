@@ -226,7 +226,8 @@ const Feed = () => {
       >
         {/* Header - Airbnb-inspired with safe area */}
         <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-2xl border-b border-[0.5px] border-border/30 pt-safe">
-          <div className="px-5 py-4 flex items-center justify-between">
+          {/* Location row */}
+          <div className="px-5 py-3 flex items-center justify-between">
             {/* Location as primary element - 44pt touch target */}
             <button 
               onClick={handleLocationClick}
@@ -259,17 +260,18 @@ const Feed = () => {
               <SlidersHorizontal size={20} />
             </button>
           </div>
-        </header>
-
-        {/* Main Content - Netflix/Airbnb hybrid layout */}
-        <main className="px-4 pt-5 space-y-8 overflow-x-hidden">
-          {/* Time Filter Pills */}
-          <div className="sticky top-[72px] z-30 bg-background/80 backdrop-blur-xl -mx-4 px-4 py-3">
+          
+          {/* Filter pills - part of header, no gap */}
+          <div className="px-4 pb-3">
             <TimeFilterPills
               activeFilter={activeFilter}
               onFilterChange={setActiveFilter}
             />
           </div>
+        </header>
+
+        {/* Main Content - Netflix/Airbnb hybrid layout */}
+        <main className="px-4 pt-4 space-y-8 overflow-x-hidden">
 
           {loading ? (
             <div className="max-w-md mx-auto flex flex-col gap-5">
