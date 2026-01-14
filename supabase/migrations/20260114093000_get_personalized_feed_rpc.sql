@@ -68,7 +68,7 @@ DECLARE
   w_compatibility numeric := 0.10;
   w_distance numeric := 0.20;
   social_log_max numeric := 1000;
-  social_log_denominator numeric := LOG(10, social_log_max);
+  social_log_denominator numeric := LN(social_log_max);
   v_user_point geography;
   v_pref_categories text[] := ARRAY[]::text[];
 BEGIN
@@ -128,7 +128,7 @@ BEGIN
         WHEN EXTRACT(EPOCH FROM (e.event_date - now())) / 86400.0 < 1 THEN 1.0
         ELSE GREATEST(
           0.1,
-          EXP(- (EXTRACT(EPOCH FROM (e.event_date - now())) / 86400.0) / 7.0)
+          EXP(-(EXTRACT(EPOCH FROM (e.event_date - now())) / 86400.0) / 7.0)
         )
       END AS time_score,
       CASE
@@ -137,7 +137,7 @@ BEGIN
           1.0,
           GREATEST(
             0.2,
-            LOG(10, COALESCE(ac.going_count, 0) + 1) / NULLIF(social_log_denominator, 0)
+            LN(COALESCE(ac.going_count, 0) + 1) / NULLIF(social_log_denominator, 0)
           )
         )
       END AS social_score,
@@ -161,7 +161,7 @@ BEGIN
           0.1,
           LEAST(
             1.0,
-            1 / (1 + (bs.distance_km / NULLIF(v_radius_km * 0.5, 0)))
+            1 / (1 + (bs.distance_km / (NULLIF(v_radius_km, 0) * 0.5)))
           )
         )
       END AS distance_score
