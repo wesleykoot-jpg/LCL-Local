@@ -16,20 +16,20 @@ export * from './ui/avatar';
 export * from './ui/badge';
 export * from './ui/breadcrumb';
 export * from './ui/button';
-// export * from './ui/calendar'; // Disabled: react-day-picker not installed
+// TODO: Enable when react-day-picker is installed - export * from './ui/calendar';
 export * from './ui/card';
-// export * from './ui/carousel'; // Disabled: embla-carousel-react not installed
-// export * from './ui/chart'; // Disabled: recharts not installed
+// TODO: Enable when embla-carousel-react is installed - export * from './ui/carousel';
+// TODO: Enable when recharts is installed - export * from './ui/chart';
 export * from './ui/checkbox';
 export * from './ui/collapsible';
-// export * from './ui/command'; // Disabled: cmdk not installed
+// TODO: Enable when cmdk is installed - export * from './ui/command';
 export * from './ui/context-menu';
 export * from './ui/dialog';
-// export * from './ui/drawer'; // Disabled: vaul not installed
+// TODO: Enable when vaul is installed - export * from './ui/drawer';
 export * from './ui/dropdown-menu';
-// export * from './ui/form'; // Keep disabled for now
+// TODO: Enable when @hookform/resolvers and react-hook-form are installed - export * from './ui/form';
 export * from './ui/hover-card';
-// export * from './ui/input-otp'; // Disabled: input-otp not installed
+// TODO: Enable when input-otp is installed - export * from './ui/input-otp';
 export * from './ui/input';
 export * from './ui/label';
 export * from './ui/menubar';
@@ -38,12 +38,12 @@ export * from './ui/pagination';
 export * from './ui/popover';
 export * from './ui/progress';
 export * from './ui/radio-group';
-// export * from './ui/resizable'; // Disabled: react-resizable-panels not installed
+// TODO: Enable when react-resizable-panels is installed - export * from './ui/resizable';
 export * from './ui/scroll-area';
 export * from './ui/select';
 export * from './ui/separator';
 export * from './ui/sheet';
-// export * from './ui/sidebar'; // Has form dependency
+// TODO: Enable after form dependency is resolved - export * from './ui/sidebar';
 export * from './ui/skeleton';
 export * from './ui/slider';
 export * from './ui/sonner';
