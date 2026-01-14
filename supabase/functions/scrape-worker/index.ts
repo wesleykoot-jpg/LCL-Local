@@ -689,7 +689,6 @@ serve(async (req: Request): Promise<Response> => {
       console.log(`Worker: Completed job ${job.id} - scraped: ${stats.scraped}, inserted: ${stats.inserted}, duplicates: ${stats.duplicates} | ${coordsLog}`);
 
       // Send Slack notification for job completion
-      const defaultCoords = source.default_coordinates || source.config?.default_coordinates;
       const coordsInfo = defaultCoords 
         ? `📍 ${defaultCoords.lat.toFixed(4)}, ${defaultCoords.lng.toFixed(4)}`
         : "📍 No coordinates";

@@ -118,24 +118,21 @@ serve(async (req: Request): Promise<Response> => {
     
     const { count: recentEventsCount } = await supabase
       .from("events")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .gte("created_at", twentyFourHoursAgo);
 
     // Get persona breakdown (Family vs Social/Culture)
-    const { data: familyEvents } = await supabase
+    const { count: familyCount } = await supabase
       .from("events")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .eq("category", "family")
       .gte("created_at", twentyFourHoursAgo);
 
-    const { data: socialEvents } = await supabase
+    const { count: socialCount } = await supabase
       .from("events")
-      .select("id", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true })
       .in("category", ["culture", "nightlife", "food"])
       .gte("created_at", twentyFourHoursAgo);
-
-    const familyCount = familyEvents?.length || 0;
-    const socialCount = socialEvents?.length || 0;
 
     // Get error/failure stats from scraper_sources (sources with recent failures)
     const { data: failedSources } = await supabase
@@ -200,11 +197,11 @@ serve(async (req: Request): Promise<Response> => {
         fields: [
           {
             type: "mrkdwn",
-            text: `*Family Events:*\n👨‍👩‍👧‍👦 ${familyCount}`,
+            text: `*Family Events:*\n👨‍👩‍👧‍👦 ${familyCount || 0}`,
           },
           {
             type: "mrkdwn",
-            text: `*Social Events:*\n🍷 ${socialCount}`,
+            text: `*Social Events:*\n🍷 ${socialCount || 0}`,
           },
         ],
       },
