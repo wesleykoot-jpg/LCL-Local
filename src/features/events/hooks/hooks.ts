@@ -282,7 +282,7 @@ interface GroupedEvents {
 }
 
 /**
- * Fetch ALL user commitments for the timeline view, grouped by month
+ * Fetch ALL user commitments and created events for the timeline view, grouped by month
  */
 export function useAllUserCommitments(profileId: string) {
   const query = useQuery({
@@ -292,7 +292,10 @@ export function useAllUserCommitments(profileId: string) {
         return [];
       }
 
-      const [{ data, error }, { data: createdEvents, error: createdError }] = await Promise.all([
+      const [
+        { data: attendanceData, error: attendanceError },
+        { data: createdEvents, error: createdError },
+      ] = await Promise.all([
         supabase
           .from('event_attendees')
           .select(`
@@ -310,11 +313,11 @@ export function useAllUserCommitments(profileId: string) {
           .eq('created_by', profileId),
       ]);
 
-      if (error) throw error;
+      if (attendanceError) throw attendanceError;
       if (createdError) throw createdError;
 
       // Process and sort by event date
-      const commitmentsWithEvents = (data || [])
+      const commitmentsWithEvents = (attendanceData || [])
         .map(attendance => {
           const event = attendance.event as EventWithCount;
           return {
@@ -333,9 +336,11 @@ export function useAllUserCommitments(profileId: string) {
       // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
       // This ensures creator-owned events still appear even if the creator isn't listed as an attendee
       const merged = [...commitmentsWithEvents];
+      const existingIds = new Set(merged.map(event => event.id));
       createdByUser.forEach(event => {
-        if (!merged.some(existing => existing.id === event.id)) {
+        if (!existingIds.has(event.id)) {
           merged.push(event);
+          existingIds.add(event.id);
         }
       });
 
