@@ -416,7 +416,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const {
       minPopulation = 1000,
-      maxMunicipalities = Number.POSITIVE_INFINITY,
+      maxMunicipalities,
       municipalities: municipalityFilter,
       categories: categoryFilter,
       dryRun = false,
