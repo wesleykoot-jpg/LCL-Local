@@ -302,6 +302,9 @@ export function useAllUserCommitments(profileId: string) {
       if (createdError) throw createdError;
       if (error) throw error;
 
+      const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
+        Array.isArray(event?.attendee_count) ? event.attendee_count[0]?.count || 0 : 0;
+
       // Process and sort by event date
       const commitmentsWithEvents = (data || [])
         .map(attendance => {
@@ -309,18 +312,14 @@ export function useAllUserCommitments(profileId: string) {
           return {
             ...event,
             ticket_number: attendance.ticket_number,
-            attendee_count: Array.isArray(event?.attendee_count)
-              ? event.attendee_count[0]?.count || 0
-              : 0,
+            attendee_count: getAttendeeCount(event),
           };
         })
         .filter(e => e.id) as Array<EventWithAttendees & { ticket_number?: string }>;
 
       const createdByUser = (createdEvents || []).map(event => ({
         ...event,
-        attendee_count: Array.isArray(event?.attendee_count)
-          ? event.attendee_count[0]?.count || 0
-          : 0,
+        attendee_count: getAttendeeCount(event),
       })) as Array<EventWithAttendees & { ticket_number?: string }>;
 
       // Deduplicate by event ID, preferring attendance record (which may include ticket info)
