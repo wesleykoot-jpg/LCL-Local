@@ -480,7 +480,7 @@ serve(async (req: Request): Promise<Response> => {
       console.log(`Processing ${municipality.name} (pop: ${municipality.population})`);
       
       const discovered = await processMunicipality(
-        supabase,
+        supabase as Parameters<typeof processMunicipality>[0],
         municipality,
         categoriesToSearch,
         geminiApiKey,

@@ -366,12 +366,6 @@ function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): Normaliz
   };
 }
 
-// Jittered delay helper (100-300ms random delay)
-function jitteredDelay(baseMs: number = 100, jitterMs: number = 200): Promise<void> {
-  const delay = baseMs + Math.random() * jitterMs;
-  return new Promise((resolve) => setTimeout(resolve, delay));
-}
-
 // Exponential backoff with jitter for retries
 async function exponentialBackoff(attempt: number, baseMs: number = 1000): Promise<void> {
   const delay = Math.min(baseMs * Math.pow(2, attempt), 30000); // cap at 30s
