@@ -11,7 +11,7 @@ import { useOnboarding } from '@/features/profile';
 import { useAuth } from '@/features/auth';
 import { useLocation } from '@/features/location';
 import { MapPin, Plus, SlidersHorizontal, ChevronDown, Navigation, Sparkles } from 'lucide-react';
-import { useEvents, useJoinEvent, type EventWithAttendees } from './hooks/hooks';
+import { useEventsQuery, useJoinEvent, type EventWithAttendees } from './hooks';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { groupEventsIntoStacks } from './api/feedGrouping';
 import { rankEvents } from './api/feedAlgorithm';
@@ -91,7 +91,12 @@ const Feed = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs, permissionState, requestPermission } = useLocation();
-  const { events: allEvents, loading, refetch } = useEvents({ currentUserProfileId: profile?.id });
+  const { events: allEvents, loading, refetch } = useEventsQuery({ 
+    currentUserProfileId: profile?.id,
+    userLocation: userLocation || undefined,
+    radiusKm: locationPrefs.radiusKm,
+    usePersonalizedFeed: !!userLocation && !!profile?.id,
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<TimeFilter>('all');

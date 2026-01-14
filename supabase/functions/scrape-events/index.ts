@@ -12,6 +12,27 @@ import {
   createFetcherForSource,
 } from "./strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
+import { jitteredDelay, isRateLimited } from "../_shared/rateLimiting.ts";
+import { 
+  logScraperFailure, 
+  getHistoricalEventCount, 
+  increaseRateLimit, 
+  getEffectiveRateLimit 
+} from "../_shared/scraperObservability.ts";
+
+// Default CSS selectors for event scraping
+const SELECTORS = [
+  "article.event",
+  ".event-item",
+  ".event-card",
+  "[itemtype*='Event']",
+  ".agenda-item",
+  ".calendar-event",
+  "[class*='event']",
+  "[class*='agenda']",
+  "li.event",
+  ".post-item",
+];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -505,7 +526,13 @@ export async function scrapeEventCards(
 ): Promise<RawEventCard[]> {
   const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
   const fetcher = options.fetcher || createFetcherForSource(source);
-  const rateLimit = source.config.rate_limit_ms ?? 150;
+  
+  // Use effective rate limit (may be dynamically increased)
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const rateLimit = supabaseUrl && supabaseKey 
+    ? await getEffectiveRateLimit(supabaseUrl, supabaseKey, source.id)
+    : source.config.rate_limit_ms ?? 150;
 
   let listingHtml = options.listingHtml;
   let listingUrl = options.listingUrl || source.url;
@@ -514,6 +541,13 @@ export async function scrapeEventCards(
     const candidates = await strategy.discoverListingUrls(fetcher);
     for (const candidate of candidates) {
       const resp = await strategy.fetchListing(candidate, fetcher);
+      
+      // Handle rate limiting responses
+      if (isRateLimited(resp.status) && supabaseUrl && supabaseKey) {
+        await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status);
+        console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
+      }
+      
       if (resp.status === 404 || !resp.html) continue;
       listingHtml = resp.html;
       listingUrl = resp.finalUrl || candidate;
@@ -524,12 +558,14 @@ export async function scrapeEventCards(
   if (!listingHtml) return [];
 
   const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug: options.enableDebug, fetcher });
+  
   if (enableDeepScraping) {
     for (const raw of rawEvents) {
       if (!raw.detailUrl || raw.detailPageTime) continue;
       const time = await fetchEventDetailTime(raw.detailUrl, listingUrl, fetcher);
       if (time) raw.detailPageTime = time;
-      await new Promise((resolve) => setTimeout(resolve, rateLimit));
+      // Use jittered delay (±20%) to avoid fingerprinting
+      await jitteredDelay(rateLimit, 20);
     }
   }
 
@@ -628,7 +664,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
       const fetcher = createFetcherForSource(source);
       const probeLog: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }> = [];
-      const rateLimit = source.config.rate_limit_ms ?? 200;
+      
+      // Get effective rate limit (may be dynamically adjusted)
+      const rateLimit = await getEffectiveRateLimit(supabaseUrl, supabaseKey, source.id);
       const sourceStats = { name: source.name, scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
 
       try {
@@ -639,6 +677,22 @@ export async function handleRequest(req: Request): Promise<Response> {
         for (const candidate of candidates) {
           const resp = await strategy.fetchListing(candidate, fetcher);
           probeLog.push({ candidate, status: resp.status, finalUrl: resp.finalUrl, ok: resp.status >= 200 && resp.status < 400 });
+          
+          // Handle rate limiting responses
+          if (isRateLimited(resp.status)) {
+            await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status);
+            console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
+            
+            // Log the failure
+            await logScraperFailure(supabaseUrl, supabaseKey, {
+              source_id: source.id,
+              url: candidate,
+              error_type: 'rate_limited',
+              error_message: `Received ${resp.status} response`,
+              status_code: resp.status,
+            });
+          }
+          
           if (resp.status === 404 || !resp.html) continue;
           listingHtml = resp.html;
           listingUrl = resp.finalUrl || candidate;
@@ -655,13 +709,32 @@ export async function handleRequest(req: Request): Promise<Response> {
         const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug, fetcher });
         sourceStats.scraped = rawEvents.length;
         stats.totalEventsScraped += rawEvents.length;
+        
+        // Check for anomaly: 0 events when we expected more (broken selectors)
+        if (rawEvents.length === 0) {
+          const historicalCount = await getHistoricalEventCount(supabaseUrl, supabaseKey, source.id);
+          if (historicalCount > 0) {
+            // Log potential broken selector
+            await logScraperFailure(supabaseUrl, supabaseKey, {
+              source_id: source.id,
+              url: listingUrl,
+              error_type: 'no_events_found',
+              error_message: `Expected ~${historicalCount} events based on history, found 0`,
+              raw_html: listingHtml.slice(0, 50000), // Store first 50KB for debugging
+              selector_context: { selectors: source.config.selectors || SELECTORS },
+              events_expected: historicalCount,
+              events_found: 0,
+            });
+          }
+        }
 
         if (enableDeepScraping) {
           for (const raw of rawEvents) {
             if (!raw.detailUrl || raw.detailPageTime) continue;
             const time = await fetchEventDetailTime(raw.detailUrl, listingUrl, fetcher);
             if (time) raw.detailPageTime = time;
-            await new Promise((resolve) => setTimeout(resolve, rateLimit));
+            // Use jittered delay (±20%) to avoid fingerprinting
+            await jitteredDelay(rateLimit, 20);
           }
         }
 
@@ -734,7 +807,8 @@ export async function handleRequest(req: Request): Promise<Response> {
             stats.totalEventsInserted++;
           }
 
-          await new Promise((resolve) => setTimeout(resolve, rateLimit));
+          // Use jittered delay (±20%) to avoid fingerprinting
+          await jitteredDelay(rateLimit, 20);
         }
 
         await upsertProbeLog(supabase, source.id, probeLog);
