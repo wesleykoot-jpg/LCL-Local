@@ -42,8 +42,8 @@ export interface EventForRanking {
   venue_name?: string;
   /** Event coordinates from database (PostGIS location column) */
   coordinates?: { lat: number; lng: number } | null;
-  // Add any other fields needed for display
-  [key: string]: any;
+  // Allow other fields from the database
+  [key: string]: unknown;
 }
 
 export interface UserLocation {

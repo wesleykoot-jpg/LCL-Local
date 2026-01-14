@@ -34,17 +34,17 @@ vi.mock('react-router-dom', async () => {
 
 describe('ShareProfile', () => {
   const originalClipboard = navigator.clipboard;
-  const originalShare = (navigator as any).share;
+  const originalShare = (navigator as unknown as { share?: typeof navigator.share }).share;
 
   afterEach(() => {
-    (navigator as any).share = originalShare;
+    (navigator as unknown as { share?: typeof navigator.share }).share = originalShare;
     Object.assign(navigator, { clipboard: originalClipboard });
     vi.restoreAllMocks();
   });
 
   it('uses navigator.share when available', async () => {
     const shareMock = vi.fn().mockResolvedValue(undefined);
-    (navigator as any).share = shareMock;
+    (navigator as unknown as { share?: typeof navigator.share }).share = shareMock;
     Object.assign(navigator, { clipboard: { writeText: vi.fn() } });
 
     render(
@@ -61,7 +61,7 @@ describe('ShareProfile', () => {
   });
 
   it('copies link when navigator.share is unavailable', async () => {
-    (navigator as any).share = undefined;
+    (navigator as unknown as { share?: typeof navigator.share }).share = undefined;
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
     const expectedUrl = `https://lcl-local.com/profile/${mockProfile.id}`;

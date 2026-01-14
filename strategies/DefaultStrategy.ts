@@ -188,12 +188,12 @@ export class DefaultStrategy implements ScraperStrategy {
         const $el = $(el);
         const title =
           $el.find("h1, h2, h3, h4").first().text().trim() ||
-          $el.find('[class*=\"title\"]').first().text().trim() ||
+          $el.find('[class*="title"]').first().text().trim() ||
           $el.find("a").first().text().trim();
         const dateText =
           $el.find("time").first().attr("datetime") ||
           $el.find("time").first().text() ||
-          $el.find('[class*=\"date\"]').first().text();
+          $el.find('[class*="date"]').first().text();
 
         const isoDate = dateText ? parseToISODate(dateText) : null;
         if (!title || !isoDate) return;

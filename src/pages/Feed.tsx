@@ -393,7 +393,7 @@ const Feed = () => {
         <ErrorBoundary>
           <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
             <EventDetailModal
-              event={selectedEvent as any}
+              event={selectedEvent}
               onClose={handleCloseEventDetail}
               onJoin={() => handleJoinEvent()}
               isJoining={isJoining(selectedEventId || '')}
