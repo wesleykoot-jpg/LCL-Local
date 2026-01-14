@@ -312,12 +312,97 @@ export class DynamicPageFetcher implements PageFetcher {
 }
 
 /**
+ * FailoverPageFetcher implements automatic failover between static and dynamic fetchers.
+ * If static fetching fails 3 times in a row, it automatically switches to dynamic fetching
+ * (ScrapingBee) for the remainder of the session.
+ */
+export class FailoverPageFetcher implements PageFetcher {
+  private staticFetcher: PageFetcher;
+  private dynamicFetcher: PageFetcher | null = null;
+  private failureCount = 0;
+  private maxFailuresBeforeFailover = 3;
+  private hasFailedOver = false;
+  private source: ScraperSource;
+
+  constructor(source: ScraperSource) {
+    this.source = source;
+    
+    // Create static fetcher as primary
+    const retryConfig: RetryConfig = {
+      maxRetries: 3,
+      initialDelayMs: 1000,
+      maxDelayMs: 10000,
+    };
+    
+    this.staticFetcher = new StaticPageFetcher(
+      fetch,
+      source.config.headers,
+      15000,
+      retryConfig
+    );
+    
+    // Pre-create dynamic fetcher if ScrapingBee key is available
+    if (source.config.scrapingbee_api_key || Deno.env.get('SCRAPINGBEE_API_KEY')) {
+      const dynamicConfig = {
+        apiKey: source.config.scrapingbee_api_key || Deno.env.get('SCRAPINGBEE_API_KEY'),
+        headless: source.config.headless ?? true,
+        waitForSelector: source.config.wait_for_selector,
+        waitForTimeout: source.config.wait_for_timeout,
+      };
+      
+      this.dynamicFetcher = new DynamicPageFetcher(
+        'scrapingbee',
+        dynamicConfig,
+        retryConfig
+      );
+    }
+  }
+
+  async fetchPage(url: string): Promise<{ html: string; finalUrl: string; statusCode: number }> {
+    // If already failed over, use dynamic fetcher
+    if (this.hasFailedOver && this.dynamicFetcher) {
+      console.log(`Using dynamic fetcher (failover active) for ${this.source.name}`);
+      return await this.dynamicFetcher.fetchPage(url);
+    }
+
+    try {
+      // Try static fetcher first
+      const result = await this.staticFetcher.fetchPage(url);
+      
+      // Reset failure count on success
+      this.failureCount = 0;
+      
+      return result;
+    } catch (error) {
+      // Increment failure count
+      this.failureCount++;
+      console.warn(`Static fetch failed (${this.failureCount}/${this.maxFailuresBeforeFailover}) for ${this.source.name}:`, error);
+      
+      // Check if we should fail over
+      if (this.failureCount >= this.maxFailuresBeforeFailover && this.dynamicFetcher && !this.hasFailedOver) {
+        this.hasFailedOver = true;
+        console.log(`Failing over to dynamic fetcher for ${this.source.name} after ${this.failureCount} failures`);
+        
+        // Retry with dynamic fetcher
+        return await this.dynamicFetcher.fetchPage(url);
+      }
+      
+      // Re-throw if we can't fail over
+      throw error;
+    }
+  }
+}
+
+/**
  * Factory function to create the appropriate PageFetcher for a source.
  * Reads fetcher_type from scraper_sources to support per-source configuration
  * of 'static' vs 'dynamic' fetching strategies.
  * 
+ * Now includes automatic failover: if static fetching fails 3 times, it pivots to
+ * dynamic fetching (ScrapingBee) for the session.
+ * 
  * @param source - The scraper source configuration
- * @returns A PageFetcher instance (StaticPageFetcher or DynamicPageFetcher)
+ * @returns A PageFetcher instance (with failover capability)
  */
 export function createFetcherForSource(source: ScraperSource): PageFetcher {
   const fetcherType = source.fetcher_type || 'static';
@@ -330,12 +415,12 @@ export function createFetcherForSource(source: ScraperSource): PageFetcher {
     maxDelayMs: 10000,
   };
 
-  // Static fetcher (default)
+  // Use failover fetcher for static sources (automatic pivot to dynamic if needed)
   if (fetcherType === 'static') {
-    return new StaticPageFetcher(fetch, customHeaders, timeout, retryConfig);
+    return new FailoverPageFetcher(source);
   }
 
-  // Dynamic fetchers (Puppeteer, Playwright, ScrapingBee)
+  // Dynamic fetchers (Puppeteer, Playwright, ScrapingBee) - no failover needed
   const dynamicConfig = {
     apiKey: source.config.scrapingbee_api_key,
     headless: source.config.headless ?? true,
