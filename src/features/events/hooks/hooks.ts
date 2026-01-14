@@ -30,6 +30,12 @@ export interface EventWithAttendees extends Event {
 
 const ATTENDEE_LIMIT = 4;
 
+/**
+ * Normalize Supabase count response shape into a number.
+ * Supabase returns an array with a single object: [{ count: <number> }]
+ */
+type EventWithCount = Event & { attendee_count?: Array<{ count: number }> };
+
 const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
   Array.isArray(event?.attendee_count) && event.attendee_count.length > 0
     ? event.attendee_count[0]?.count || 0
@@ -310,7 +316,7 @@ export function useAllUserCommitments(profileId: string) {
       // Process and sort by event date
       const commitmentsWithEvents = (data || [])
         .map(attendance => {
-          const event = attendance.event as unknown as Event & { attendee_count: Array<{ count: number }> };
+          const event = attendance.event as EventWithCount;
           return {
             ...event,
             ticket_number: attendance.ticket_number,
@@ -321,7 +327,7 @@ export function useAllUserCommitments(profileId: string) {
 
       const createdByUser = (createdEvents || []).map(event => ({
         ...event,
-        attendee_count: getAttendeeCount(event),
+        attendee_count: getAttendeeCount(event as EventWithCount),
       })) as Array<EventWithAttendees & { ticket_number?: string }>;
 
       // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
