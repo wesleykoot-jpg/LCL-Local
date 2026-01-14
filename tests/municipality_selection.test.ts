@@ -8,10 +8,11 @@ import {
 describe('selectMunicipalitiesForDiscovery', () => {
   it('returns all municipalities over 1000 residents by default', () => {
     const expected = getMunicipalitiesByMinPopulation(1000);
+    const baseline = getMunicipalitiesByMinPopulation(50000);
     const result = selectMunicipalitiesForDiscovery();
 
     expect(result.length).toBe(expected.length);
-    expect(result.length).toBeGreaterThan(40);
+    expect(result.length).toBeGreaterThan(baseline.length);
   });
 
   it('respects explicit municipality filters and caps results', () => {
@@ -27,7 +28,6 @@ describe('selectMunicipalitiesForDiscovery', () => {
       maxMunicipalities: 1,
     });
 
-    expect(capped.length).toBe(1);
-    expect(['Vught', 'Amsterdam']).toContain(capped[0].name);
+    expect(capped).toEqual(filtered.slice(0, 1));
   });
 });
