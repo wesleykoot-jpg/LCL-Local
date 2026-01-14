@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, useMemo, useCallback } from 'react';
+import { useState, lazy, Suspense, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FloatingNav, LoadingSkeleton, ErrorBoundary, DevPanel } from '@/shared/components';
@@ -15,6 +15,8 @@ import { useEventsQuery, useJoinEvent, type EventWithAttendees } from './hooks';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { groupEventsIntoStacks } from './api/feedGrouping';
 import { rankEvents } from './api/feedAlgorithm';
+import { trackEventView, trackEventJoin } from './api/interestTracking';
+import { useFeedMode } from '@/contexts/FeedContext';
 
 const CreateEventModal = lazy(() => import('./components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 const EventDetailModal = lazy(() => import('./components/EventDetailModal'));
@@ -102,6 +104,7 @@ const Feed = () => {
   const [activeFilter, setActiveFilter] = useState<TimeFilter>('all');
   
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
+  const { feedMode, isParentDetected, setIsParentDetected } = useFeedMode();
   
   const {
     showOnboarding,
@@ -111,15 +114,17 @@ const Feed = () => {
     isLoaded,
   } = useOnboarding();
 
-  // Combine onboarding preferences with location for feed algorithm
+  // Combine onboarding preferences with location and feed mode for feed algorithm
   const feedPreferences = useMemo(() => {
     if (!preferences) return null;
     return {
       ...preferences,
       userLocation,
       radiusKm: locationPrefs.radiusKm,
+      feedMode,
+      isParentDetected,
     };
-  }, [preferences, userLocation, locationPrefs.radiusKm]);
+  }, [preferences, userLocation, locationPrefs.radiusKm, feedMode, isParentDetected]);
 
   // Filter and rank events
   const filteredEvents = useMemo(() => {
@@ -165,9 +170,20 @@ const Feed = () => {
     else if (view === 'my-events') navigate('/my-events');
   };
 
-  const handleEventClick = (eventId: string) => {
+  const handleEventClick = useCallback(async (eventId: string) => {
     setSelectedEventId(eventId);
-  };
+    
+    // Track event view for interest scoring
+    if (profile?.id) {
+      const event = allEvents.find(e => e.id === eventId);
+      if (event) {
+        const result = await trackEventView(profile.id, event.category);
+        if (result.isParentDetected && !isParentDetected) {
+          setIsParentDetected(true);
+        }
+      }
+    }
+  }, [allEvents, profile?.id, isParentDetected, setIsParentDetected]);
 
   const handleCloseEventDetail = () => {
     setSelectedEventId(null);
@@ -189,7 +205,18 @@ const Feed = () => {
     if (!id) return;
     await joinEvent(id);
     if (!eventId) setSelectedEventId(null);
-  }, [selectedEventId, joinEvent]);
+    
+    // Track event join for interest scoring (higher weight)
+    if (profile?.id) {
+      const event = allEvents.find(e => e.id === id);
+      if (event) {
+        const result = await trackEventJoin(profile.id, event.category);
+        if (result.isParentDetected && !isParentDetected) {
+          setIsParentDetected(true);
+        }
+      }
+    }
+  }, [selectedEventId, joinEvent, allEvents, profile?.id, isParentDetected, setIsParentDetected]);
 
   const hasJoinedFeatured = useMemo(() => {
     if (!featuredEvent || !profile?.id) return false;
