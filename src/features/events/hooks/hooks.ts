@@ -299,8 +299,8 @@ export function useAllUserCommitments(profileId: string) {
           .eq('created_by', profileId),
       ]);
 
-      if (createdError) throw createdError;
       if (error) throw error;
+      if (createdError) throw createdError;
 
       const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
         Array.isArray(event?.attendee_count) ? event.attendee_count[0]?.count || 0 : 0;
@@ -322,7 +322,7 @@ export function useAllUserCommitments(profileId: string) {
         attendee_count: getAttendeeCount(event),
       })) as Array<EventWithAttendees & { ticket_number?: string }>;
 
-      // Deduplicate by event ID, preferring attendance record (which may include ticket info)
+      // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
       const mergedMap = new Map<string, EventWithAttendees & { ticket_number?: string }>();
       commitmentsWithEvents.forEach(event => mergedMap.set(event.id, event));
       createdByUser.forEach(event => {
