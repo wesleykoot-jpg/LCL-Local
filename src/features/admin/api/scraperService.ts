@@ -60,6 +60,12 @@ export interface DryRunResult {
   error?: string;
 }
 
+export interface CoordinatorResult {
+  success: boolean;
+  jobsCreated?: number;
+  error?: string;
+}
+
 /**
  * Fetch all scraper sources with their stats
  */
@@ -193,4 +199,39 @@ export async function resetSourceHealth(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function updateSourceConfig(id: string, config: Record<string, unknown>): Promise<void> {
+  const { error } = await supabase
+    .from('scraper_sources')
+    .update({ config })
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function triggerCoordinator(): Promise<CoordinatorResult> {
+  const { data, error } = await supabase.functions.invoke('scrape-coordinator');
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return (data as CoordinatorResult) ?? { success: false, error: 'Unknown error' };
+}
+
+export async function pruneEvents(): Promise<number> {
+  const { data, error } = await supabase
+    .from('events')
+    .delete()
+    .lt('event_date', new Date().toISOString())
+    .select('id');
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.length ?? 0;
 }
