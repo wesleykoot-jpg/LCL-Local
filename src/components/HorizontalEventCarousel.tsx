@@ -1,7 +1,6 @@
 import { memo, useRef, useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Loader2, Users, Clock, MapPin, Heart } from 'lucide-react';
-import { CATEGORY_MAP } from '@/lib/categories';
+import { ChevronRight, Users, Clock, MapPin, Heart } from 'lucide-react';
 import { hapticImpact } from '@/lib/haptics';
 import { formatEventDate, formatEventTime } from '@/lib/formatters';
 import { getEventImage } from '@/lib/hooks/useImageFallback';
@@ -21,9 +20,6 @@ interface HorizontalEventCarouselProps {
 const CarouselEventCard = memo(function CarouselEventCard({
   event,
   onClick,
-  onJoin,
-  isJoining,
-  hasJoined,
 }: {
   event: EventWithAttendees;
   onClick?: () => void;

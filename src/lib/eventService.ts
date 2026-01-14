@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
-type Event = Database['public']['Tables']['events']['Row'];
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
 type JoinEventRpcResult = {
   status: 'ok' | 'exists' | 'full' | 'error';

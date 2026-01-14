@@ -173,7 +173,6 @@ const ForkEventCard = memo(function ForkEventCard({
   isLast: boolean;
   currentUserProfileId?: string;
 }) {
-  const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const primaryImageUrl = getEventImage(event.image_url, event.category);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   

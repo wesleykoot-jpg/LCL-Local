@@ -1,4 +1,4 @@
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 
 export async function hapticImpact(style: 'light' | 'medium' | 'heavy' = 'medium') {
   try {
@@ -16,7 +16,12 @@ export async function hapticImpact(style: 'light' | 'medium' | 'heavy' = 'medium
 
 export async function hapticNotification(type: 'success' | 'warning' | 'error' = 'success') {
   try {
-    await Haptics.notification({ type });
+    const notificationTypes = {
+      success: NotificationType.Success,
+      warning: NotificationType.Warning,
+      error: NotificationType.Error,
+    };
+    await Haptics.notification({ type: notificationTypes[type] });
   } catch (error) {
     console.log('Haptics not available');
   }

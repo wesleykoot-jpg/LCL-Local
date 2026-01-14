@@ -1,4 +1,3 @@
-import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface LoadingSkeletonProps {
@@ -8,7 +7,7 @@ interface LoadingSkeletonProps {
 export function LoadingSkeleton({ className }: LoadingSkeletonProps) {
   const skeletonProps = {
     role: 'status' as const,
-    'aria-busy': 'true',
+    'aria-busy': true as const,
     'aria-label': 'Loading',
   };
 

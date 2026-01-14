@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { ChevronLeft, Share2, Copy, QrCode, Mail, MessageSquare, Facebook, Twitter, CheckCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';

@@ -2,7 +2,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { extractStructuredEvents } from "../lib/structuredData.ts";
 import { normalizeAndResolveUrl, probePaths } from "../lib/urlUtils.ts";
 import { parseToISODate } from "../../supabase/functions/scrape-events/dateUtils.ts";
-import type { ScraperSource, RawEventCard } from "../../supabase/functions/scrape-events/shared.ts";
+import type { RawEventCard } from "../../supabase/functions/scrape-events/shared.ts";
 import { fetchEventDetailTime } from "../../supabase/functions/scrape-events/shared.ts";
 import { BaseStrategy, StrategyContext } from "./BaseStrategy.ts";
 

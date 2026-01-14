@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/useAuth';
-import { Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Loader2 } from 'lucide-react';
 
 interface LoginViewProps {
   onSwitchToSignUp: () => void;

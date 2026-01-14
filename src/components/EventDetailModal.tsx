@@ -271,7 +271,7 @@ export const EventDetailModal = memo(function EventDetailModal({
                   {formatTime(event.event_time)}
                 </div>
                 <DistanceBadge 
-                  venueName={event.venue_name} 
+                  venueCoordinates={venueCoords} 
                   userLocation={userLocation}
                   className="px-3 py-2 rounded-[1rem] bg-muted/50"
                 />
