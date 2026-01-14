@@ -278,9 +278,12 @@ export function useAllUserCommitments(profileId: string) {
   useEffect(() => {
     async function fetchAllCommitments() {
       if (!profileId) {
+        console.log('[useAllUserCommitments] No profileId provided');
         setLoading(false);
         return;
       }
+
+      console.log('[useAllUserCommitments] Fetching commitments for profileId:', profileId);
 
       try {
         const { data, error } = await supabase
@@ -294,6 +297,8 @@ export function useAllUserCommitments(profileId: string) {
           `)
           .eq('profile_id', profileId)
           .eq('status', 'going');
+
+        console.log('[useAllUserCommitments] Query result:', { data, error, count: data?.length });
 
         if (error) throw error;
 
@@ -327,6 +332,12 @@ export function useAllUserCommitments(profileId: string) {
             grouped[monthYear] = [];
           }
           grouped[monthYear].push(event);
+        });
+
+        console.log('[useAllUserCommitments] Processed commitments:', {
+          totalEvents: commitmentsWithEvents.length,
+          monthsCount: Object.keys(grouped).length,
+          grouped
         });
 
         setGroupedByMonth(grouped);
