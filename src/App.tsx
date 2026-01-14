@@ -1,25 +1,26 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/shared/components/ui/toaster";
+import { Toaster as Sonner } from "@/shared/components/ui/sonner";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { LocationProvider } from "./contexts/LocationContext";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { AuthProvider } from "@/features/auth";
+import { LocationProvider } from "@/features/location";
+import { ErrorBoundary } from "@/shared/components";
 
-// Page imports
-import Feed from "./pages/Feed";
-import MyEvents from "./pages/MyEvents";
-import Profile from "./pages/Profile";
-import Login from "./pages/Login";
+// Feature-based page imports
+import { FeedPage, MyEventsPage } from "@/features/events";
+import { 
+  ProfilePage, 
+  PrivacySettingsPage, 
+  PersonalInformationPage, 
+  VerificationSafetyPage, 
+  NotificationPreferencesPage, 
+  ShareProfilePage 
+} from "@/features/profile";
+import { LoginPage } from "@/features/auth";
+import { GoogleCalendarSettingsPage } from "@/features/calendar";
+import { AdminPage } from "@/features/admin";
 import NotFound from "./pages/NotFound";
-import PrivacySettings from "./pages/PrivacySettings";
-import PersonalInformation from "./pages/PersonalInformation";
-import VerificationSafety from "./pages/VerificationSafety";
-import NotificationPreferences from "./pages/NotificationPreferences";
-import ShareProfile from "./pages/ShareProfile";
-import GoogleCalendarSettings from "./pages/GoogleCalendarSettings";
-import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -35,23 +36,23 @@ const App = () => (
               <Routes>
                 {/* Main app routes - accessible without login for dev */}
                 <Route path="/" element={<Navigate to="/feed" replace />} />
-                <Route path="/feed" element={<Feed />} />
-                <Route path="/my-events" element={<MyEvents />} />
-                <Route path="/profile" element={<Profile />} />
+                <Route path="/feed" element={<FeedPage />} />
+                <Route path="/my-events" element={<MyEventsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 
                 {/* Profile Settings routes */}
-                <Route path="/profile/privacy-settings" element={<PrivacySettings />} />
-                <Route path="/profile/personal-information" element={<PersonalInformation />} />
-                <Route path="/profile/verification-safety" element={<VerificationSafety />} />
-                <Route path="/profile/notification-preferences" element={<NotificationPreferences />} />
-                <Route path="/profile/share" element={<ShareProfile />} />
-                <Route path="/profile/calendar" element={<GoogleCalendarSettings />} />
+                <Route path="/profile/privacy-settings" element={<PrivacySettingsPage />} />
+                <Route path="/profile/personal-information" element={<PersonalInformationPage />} />
+                <Route path="/profile/verification-safety" element={<VerificationSafetyPage />} />
+                <Route path="/profile/notification-preferences" element={<NotificationPreferencesPage />} />
+                <Route path="/profile/share" element={<ShareProfilePage />} />
+                <Route path="/profile/calendar" element={<GoogleCalendarSettingsPage />} />
                 
                 {/* Admin routes (dev mode only) */}
-                <Route path="/admin" element={<Admin />} />
+                <Route path="/admin" element={<AdminPage />} />
                 
                 {/* Auth routes */}
-                <Route path="/login" element={<Login />} />
+                <Route path="/login" element={<LoginPage />} />
                 
                 {/* Catch-all */}
                 <Route path="*" element={<NotFound />} />
