@@ -298,7 +298,7 @@ export class DynamicPageFetcher implements PageFetcher {
 
   private async fallbackToStaticFetch(url: string): Promise<{ html: string; finalUrl: string; statusCode: number }> {
     console.log('Using static fetch fallback');
-    const fetcher = new StaticPageFetcher();
+    const fetcher = new StaticPageFetcher(fetch, undefined, undefined, this.retryConfig);
     return await fetcher.fetchPage(url);
   }
 }
