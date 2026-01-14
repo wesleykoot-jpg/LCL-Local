@@ -107,6 +107,17 @@ export interface FetchOptions {
 /**
  * @deprecated Use StaticPageFetcher directly instead.
  * This function is kept for backward compatibility.
+ * 
+ * Migration example:
+ * ```typescript
+ * // Old way:
+ * const fetcher = createSpoofedFetch({ headers: customHeaders });
+ * const response = await fetcher(url, { method: "GET" });
+ * 
+ * // New way:
+ * const fetcher = new StaticPageFetcher(fetch, customHeaders);
+ * const { html, finalUrl, statusCode } = await fetcher.fetchPage(url);
+ * ```
  */
 export function createSpoofedFetch(options: FetchOptions = {}): typeof fetch {
   const mergedHeaders = { ...DEFAULT_HEADERS, ...options.headers };

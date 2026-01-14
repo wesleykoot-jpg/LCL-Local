@@ -323,7 +323,6 @@ async function exponentialBackoff(attempt: number, baseMs: number = 1000): Promi
 async function callGemini(
   apiKey: string,
   body: unknown,
-  fetcher: PageFetcher,
   maxRetries: number = 3
 ): Promise<string | null> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -332,8 +331,7 @@ async function callGemini(
       await jitteredDelay(100, 200); // 100-300ms jitter before first call
     }
 
-    // For Gemini API calls, we need raw fetch, not PageFetcher.fetchPage
-    // So we'll use fetch directly here
+    // Use raw fetch for Gemini API calls (not PageFetcher)
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
@@ -377,7 +375,8 @@ export async function parseEventWithAI(
   language: string = "nl",
   options: { fetcher?: PageFetcher; callGeminiFn?: typeof callGemini } = {}
 ): Promise<NormalizedEvent | null> {
-  const fetcher = options.fetcher || new StaticPageFetcher();
+  // Note: fetcher parameter is kept for API consistency and future extensibility,
+  // but currently not used as Gemini API calls use raw fetch
   const callFn = options.callGeminiFn || callGemini;
 
   const today = new Date().toISOString().split("T")[0];
@@ -402,7 +401,7 @@ ${rawEvent.rawHtml}`;
     generationConfig: { temperature: 0.1, maxOutputTokens: 768 },
   };
 
-  const text = await callFn(apiKey, payload, fetcher);
+  const text = await callFn(apiKey, payload);
   if (!text) return null;
 
   let cleaned = text.trim();
