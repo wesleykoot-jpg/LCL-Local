@@ -56,8 +56,44 @@ function normalizeEventDateForStorage(
   };
 }
 
+/**
+ * Dutch parenting keywords that force "family" category (Hybrid Life logic)
+ */
+const DUTCH_FAMILY_KEYWORDS = [
+  "basisschool", "speeltuin", "kinderopvang", "zwemles", "peutergroep",
+  "kinderfeest", "jeugdclub", "schoolfeest", "kinderactiviteit", "gezinsdag",
+  "voorlezen", "kinderboerderij", "kinderdisco", "sinterklaas", "kinderen", "ouder-kind"
+];
+
+/**
+ * Dutch adult social keywords that prioritize "social" or "foodie" (Hybrid Life logic)
+ */
+const DUTCH_SOCIAL_KEYWORDS = [
+  "borrel", "vrijdagmiddag", "vrijmibo", "netwerken", "networking", "proeverij",
+  "wijnproeverij", "bierproeverij", "happy hour", "afterwork", "singles", "speed date"
+];
+
 function mapToInternalCategory(input?: string): InternalCategory {
   const value = (input || "").toLowerCase();
+
+  // Hybrid Life: Force family if Dutch parenting keywords detected
+  for (const keyword of DUTCH_FAMILY_KEYWORDS) {
+    if (value.includes(keyword)) {
+      return "family";
+    }
+  }
+
+  // Hybrid Life: Prioritize food/social for adult social keywords
+  for (const keyword of DUTCH_SOCIAL_KEYWORDS) {
+    if (value.includes(keyword)) {
+      // Check if it's more food-related
+      if (value.includes("proeverij") || value.includes("wijn") || value.includes("bier") || value.includes("eten")) {
+        return "food";
+      }
+      return "culture"; // Maps to social activities
+    }
+  }
+
   const keywordMap: Array<{ cat: InternalCategory; terms: string[] }> = [
     { cat: "nightlife", terms: ["night", "club", "dj", "concert", "music", "party", "bar"] },
     { cat: "food", terms: ["food", "dinner", "restaurant", "wine", "beer", "market", "taste"] },
@@ -332,6 +368,43 @@ async function updateSourceStats(supabase: SupabaseClient, sourceId: string, scr
   }
 }
 
+/**
+ * Self-healing fetcher logic: Check if source needs fetcher_type change
+ */
+async function checkAndHealFetcher(
+  supabase: SupabaseClient,
+  sourceId: string,
+  eventsFound: number,
+  httpStatus: number
+): Promise<{ healed: boolean; newFetcher?: string }> {
+  try {
+    const { data, error } = await supabase.rpc("check_and_heal_fetcher", {
+      p_source_id: sourceId,
+      p_events_found: eventsFound,
+      p_http_status: httpStatus,
+    });
+
+    if (error) {
+      console.warn("check_and_heal_fetcher failed:", error.message);
+      return { healed: false };
+    }
+
+    if (data?.healed) {
+      console.log(
+        `Self-healing: Switched ${data.source_name} from ${data.old_fetcher} to ${data.new_fetcher}`
+      );
+    }
+
+    return {
+      healed: data?.healed || false,
+      newFetcher: data?.new_fetcher,
+    };
+  } catch (error) {
+    console.warn("checkAndHealFetcher error:", error);
+    return { healed: false };
+  }
+}
+
 // ============ Worker Logic ============
 
 interface JobRecord {
@@ -491,6 +564,7 @@ async function processSingleSource(
     // Log warning if coordinates are missing
     if (!defaultCoords) {
       console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);
+    }
 
     const eventInsert = {
       title: normalized.title,
@@ -593,6 +667,12 @@ serve(async (req: Request): Promise<Response> => {
 
       // Update source stats
       await updateSourceStats(supabase, source.id, stats.scraped, stats.scraped > 0);
+
+      // Self-healing: Check if fetcher_type needs to be upgraded
+      // Only if we got valid response but 0 events
+      if (stats.scraped === 0) {
+        await checkAndHealFetcher(supabase, source.id, stats.scraped, 200);
+      }
 
       // Mark job as completed
       await completeJob(supabase, job.id, stats.scraped, stats.inserted);

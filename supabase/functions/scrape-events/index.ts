@@ -174,8 +174,44 @@ export function parseLocation(
   return result;
 }
 
+/**
+ * Dutch parenting keywords that force "family" category (Hybrid Life logic)
+ */
+const DUTCH_FAMILY_KEYWORDS = [
+  "basisschool", "speeltuin", "kinderopvang", "zwemles", "peutergroep",
+  "kinderfeest", "jeugdclub", "schoolfeest", "kinderactiviteit", "gezinsdag",
+  "voorlezen", "kinderboerderij", "kinderdisco", "sinterklaas", "kinderen", "ouder-kind"
+];
+
+/**
+ * Dutch adult social keywords that prioritize "social" or "foodie" (Hybrid Life logic)
+ */
+const DUTCH_SOCIAL_KEYWORDS = [
+  "borrel", "vrijdagmiddag", "vrijmibo", "netwerken", "networking", "proeverij",
+  "wijnproeverij", "bierproeverij", "happy hour", "afterwork", "singles", "speed date"
+];
+
 export function mapToInternalCategory(input?: string): InternalCategory {
   const value = (input || "").toLowerCase();
+
+  // Hybrid Life: Force family if Dutch parenting keywords detected
+  for (const keyword of DUTCH_FAMILY_KEYWORDS) {
+    if (value.includes(keyword)) {
+      return "family";
+    }
+  }
+
+  // Hybrid Life: Prioritize food/social for adult social keywords
+  for (const keyword of DUTCH_SOCIAL_KEYWORDS) {
+    if (value.includes(keyword)) {
+      // Check if it's more food-related
+      if (value.includes("proeverij") || value.includes("wijn") || value.includes("bier") || value.includes("eten")) {
+        return "food";
+      }
+      return "culture"; // Maps to social activities via culture category
+    }
+  }
+
   const keywordMap: Array<{ cat: InternalCategory; terms: string[] }> = [
     { cat: "nightlife", terms: ["night", "club", "dj", "concert", "music", "party", "bar"] },
     { cat: "food", terms: ["food", "dinner", "restaurant", "wine", "beer", "market", "taste"] },
@@ -603,6 +639,46 @@ async function updateSourceStats(
   }
 }
 
+/**
+ * Self-healing fetcher logic: Check if source needs fetcher_type change
+ * If a source returns 0 events for 3 consecutive runs with HTTP 200 OK,
+ * automatically switch to a more capable fetcher type.
+ */
+// deno-lint-ignore no-explicit-any
+async function checkAndHealFetcher(
+  supabase: any,
+  sourceId: string,
+  eventsFound: number,
+  httpStatus: number
+): Promise<{ healed: boolean; newFetcher?: string }> {
+  try {
+    const { data, error } = await supabase.rpc("check_and_heal_fetcher", {
+      p_source_id: sourceId,
+      p_events_found: eventsFound,
+      p_http_status: httpStatus,
+    });
+
+    if (error) {
+      console.warn("check_and_heal_fetcher failed:", error.message);
+      return { healed: false };
+    }
+
+    if (data?.healed) {
+      console.log(
+        `Self-healing: Switched ${data.source_name} from ${data.old_fetcher} to ${data.new_fetcher}`
+      );
+    }
+
+    return {
+      healed: data?.healed || false,
+      newFetcher: data?.new_fetcher,
+    };
+  } catch (error) {
+    console.warn("checkAndHealFetcher error:", error);
+    return { healed: false };
+  }
+}
+
 export interface ScrapeOptions {
   sourceId?: string;
   dryRun?: boolean;
@@ -668,6 +744,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       // Get effective rate limit (may be dynamically adjusted)
       const rateLimit = await getEffectiveRateLimit(supabaseUrl, supabaseKey, source.id);
       const sourceStats = { name: source.name, scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
+      let lastHttpStatus = 0; // Track HTTP status for self-healing
 
       try {
         const candidates = await strategy.discoverListingUrls(fetcher);
@@ -676,6 +753,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
         for (const candidate of candidates) {
           const resp = await strategy.fetchListing(candidate, fetcher);
+          lastHttpStatus = resp.status; // Track last HTTP status
           probeLog.push({ candidate, status: resp.status, finalUrl: resp.finalUrl, ok: resp.status >= 200 && resp.status < 400 });
           
           // Handle rate limiting responses
@@ -813,6 +891,12 @@ export async function handleRequest(req: Request): Promise<Response> {
 
         await upsertProbeLog(supabase, source.id, probeLog);
         await updateSourceStats(supabase, source.id, sourceStats.scraped, sourceStats.scraped > 0);
+        
+        // Self-healing: Check if fetcher_type needs to be upgraded
+        // Only if we got HTTP 200 OK but 0 events
+        if (lastHttpStatus === 200 && sourceStats.scraped === 0) {
+          await checkAndHealFetcher(supabase, source.id, sourceStats.scraped, lastHttpStatus);
+        }
       } catch (error) {
         console.error(`Error processing ${source.name}`, error);
         await updateSourceStats(supabase, source.id, sourceStats.scraped, false);
