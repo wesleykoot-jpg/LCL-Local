@@ -1362,6 +1362,7 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      trigger_scrape_coordinator: { Args: never; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
       update_scraper_source_stats: {
         Args: {
