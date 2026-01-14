@@ -331,7 +331,9 @@ async function callGemini(
       await jitteredDelay(100, 200); // 100-300ms jitter before first call
     }
 
-    // Use raw fetch for Gemini API calls (not PageFetcher)
+    // Note: Use raw fetch for Gemini API calls instead of PageFetcher.
+    // PageFetcher is designed for scraping web pages with browser-like behavior
+    // (user-agent spoofing, redirect handling). API endpoints expect direct HTTP requests.
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
@@ -375,8 +377,9 @@ export async function parseEventWithAI(
   language: string = "nl",
   options: { fetcher?: PageFetcher; callGeminiFn?: typeof callGemini } = {}
 ): Promise<NormalizedEvent | null> {
-  // Note: fetcher parameter is kept for API consistency and future extensibility,
-  // but currently not used as Gemini API calls use raw fetch
+  // Note: fetcher parameter is kept in options for potential future use (e.g., fetching 
+  // additional event details from URLs within rawHtml) and for test mocking consistency.
+  // Currently unused as Gemini API calls use raw fetch (see callGemini).
   const callFn = options.callGeminiFn || callGemini;
 
   const today = new Date().toISOString().split("T")[0];

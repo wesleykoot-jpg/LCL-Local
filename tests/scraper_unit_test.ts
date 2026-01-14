@@ -10,6 +10,7 @@ import {
 import { normalizeAndResolveUrl, probePaths } from "../src/lib/urlUtils.ts";
 import { extractStructuredEvents } from "../src/lib/structuredData.ts";
 import { DefaultStrategy } from "../strategies/DefaultStrategy.ts";
+import { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "../supabase/functions/scrape-events/strategies.ts";
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 Deno.test("parseToISODate handles localized, textual, and relative dates", () => {
@@ -191,7 +192,6 @@ Deno.test("extractStructuredEvents parses JSON-LD blocks", () => {
 });
 
 // PageFetcher Pattern Tests
-import { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "../supabase/functions/scrape-events/strategies.ts";
 
 Deno.test("StaticPageFetcher returns html, finalUrl and statusCode", async () => {
   const mockFetch = (_url: string, _init?: RequestInit) => {
