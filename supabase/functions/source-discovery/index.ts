@@ -355,9 +355,9 @@ async function processMunicipality(
 }
 
 interface DiscoveryOptions {
-  /** Minimum population for municipalities to process */
+  /** Minimum population for municipalities to process (default: 1000) */
   minPopulation?: number;
-  /** Maximum municipalities to process in one run */
+  /** Maximum municipalities to process in one run (default: unlimited) */
   maxMunicipalities?: number;
   /** Specific municipality names to process */
   municipalities?: string[];
@@ -416,7 +416,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const {
       minPopulation = 1000,
-      maxMunicipalities,
+      maxMunicipalities = Number.POSITIVE_INFINITY,
       municipalities: municipalityFilter,
       categories: categoryFilter,
       dryRun = false,
