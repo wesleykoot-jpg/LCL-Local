@@ -303,7 +303,9 @@ export function useAllUserCommitments(profileId: string) {
       if (createdError) throw createdError;
 
       const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
-        Array.isArray(event?.attendee_count) ? event.attendee_count[0]?.count || 0 : 0;
+        Array.isArray(event?.attendee_count) && event.attendee_count.length > 0
+          ? event.attendee_count[0]?.count || 0
+          : 0;
 
       // Process and sort by event date
       const commitmentsWithEvents = (data || [])
@@ -323,6 +325,7 @@ export function useAllUserCommitments(profileId: string) {
       })) as Array<EventWithAttendees & { ticket_number?: string }>;
 
       // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
+      // This ensures creator-owned events still appear even if the creator isn't listed as an attendee
       const mergedMap = new Map<string, EventWithAttendees & { ticket_number?: string }>();
       commitmentsWithEvents.forEach(event => mergedMap.set(event.id, event));
       createdByUser.forEach(event => {
