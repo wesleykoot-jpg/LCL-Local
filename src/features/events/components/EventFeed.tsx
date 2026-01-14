@@ -11,6 +11,9 @@ import { getCategoryConfig } from '@/lib/categories';
 import { useJoinEvent } from '@/lib/hooks';
 import type { EventWithAttendees } from '@/lib/hooks';
 
+// Constants
+const VIRTUAL_ITEM_ESTIMATED_SIZE = 400; // Estimated height in pixels per event stack card
+
 // Vibe header configuration
 type VibeType = 'tonight' | 'weekend' | 'later';
 
@@ -298,7 +301,7 @@ export const EventFeed = memo(function EventFeed({
   const virtualizer = useVirtualizer({
     count: virtualItems.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: useCallback(() => 400, []), // Estimated height per item
+    estimateSize: useCallback(() => VIRTUAL_ITEM_ESTIMATED_SIZE, []),
     overscan: 3, // Number of items to render outside visible area
   });
 
@@ -334,14 +337,12 @@ export const EventFeed = memo(function EventFeed({
             {eventStacks.length > 0 ? (
               <div
                 ref={parentRef}
-                className="overflow-auto"
-                style={{ height: '100%', width: '100%' }}
+                className="overflow-auto w-full h-full"
               >
                 <div
+                  className="relative w-full"
                   style={{
                     height: `${virtualizer.getTotalSize()}px`,
-                    width: '100%',
-                    position: 'relative',
                   }}
                 >
                   {virtualizer.getVirtualItems().map((virtualRow) => {
@@ -350,11 +351,8 @@ export const EventFeed = memo(function EventFeed({
                     return (
                       <div
                         key={item.key}
+                        className="absolute top-0 left-0 w-full"
                         style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
                           transform: `translateY(${virtualRow.start}px)`,
                         }}
                       >
