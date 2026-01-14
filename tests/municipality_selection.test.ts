@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   ALL_MUNICIPALITIES,
+  getMunicipalitiesByMinPopulation,
   selectMunicipalitiesForDiscovery,
 } from '../supabase/functions/_shared/dutchMunicipalities.ts';
 
 describe('selectMunicipalitiesForDiscovery', () => {
   it('returns all municipalities over 1000 residents by default', () => {
+    const expected = getMunicipalitiesByMinPopulation(1000);
     const result = selectMunicipalitiesForDiscovery();
-    expect(result.length).toBe(ALL_MUNICIPALITIES.length);
+
+    expect(result.length).toBe(expected.length);
     expect(result.length).toBeGreaterThan(40);
   });
 
