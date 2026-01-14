@@ -4,6 +4,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
+import { sendSlackNotification } from "../_shared/slack.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -288,7 +289,7 @@ ${rawEvent.rawHtml}`;
     event_time: parsed.event_time || "TBD",
     venue_name: parsed.venue_name || rawEvent.location || "",
     venue_address: parsed.venue_address,
-    image_url: parsed.image_url ?? rawEvent.imageUrl ?? null,
+    image_url: rawEvent.imageUrl ?? parsed.image_url ?? null,
     internal_category: mapToInternalCategory(
       (parsed as Record<string, unknown>).category as string || parsed.description || rawEvent.title
     ),
@@ -486,6 +487,10 @@ async function processSingleSource(
     );
     const defaultCoords = source.default_coordinates || source.config.default_coordinates;
     const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(0 0)";
+    
+    // Log warning if coordinates are missing
+    if (!defaultCoords) {
+      console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);
 
     const eventInsert = {
       title: normalized.title,
@@ -594,6 +599,15 @@ serve(async (req: Request): Promise<Response> => {
 
       console.log(`Worker: Completed job ${job.id} - scraped: ${stats.scraped}, inserted: ${stats.inserted}, duplicates: ${stats.duplicates}`);
 
+      // Send Slack notification for job completion if webhook is configured
+      const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+      if (slackWebhookUrl) {
+        const message = `✅ Job ${job.id} completed\n` +
+          `Source: ${source.name}\n` +
+          `Scraped: ${stats.scraped} | Inserted: ${stats.inserted} | Duplicates: ${stats.duplicates}`;
+        await sendSlackNotification(slackWebhookUrl, message, false);
+      }
+
       // Chain to the next job if requested
       if (chain) {
         // Check if there are more pending jobs
@@ -632,6 +646,16 @@ serve(async (req: Request): Promise<Response> => {
 
       await failJob(supabase, job, errorMessage);
       await updateSourceStats(supabase, source.id, 0, false);
+
+      // Send Slack notification for job failure
+      const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+      if (slackWebhookUrl) {
+        const message = `❌ Job ${job.id} failed\n` +
+          `Source: ${source.name}\n` +
+          `Error: ${errorMessage}\n` +
+          `Will retry: ${job.attempts < job.max_attempts}`;
+        await sendSlackNotification(slackWebhookUrl, message, true);
+      }
 
       // Still chain to next job on failure
       if (chain) {

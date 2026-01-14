@@ -4,6 +4,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
+import { sendSlackNotification } from "../_shared/slack.ts";
 
 /**
  * Run Scraper Edge Function
@@ -338,7 +339,7 @@ ${rawEvent.rawHtml}`;
     event_time: parsed.event_time || "TBD",
     venue_name: parsed.venue_name || rawEvent.location || "",
     venue_address: parsed.venue_address,
-    image_url: parsed.image_url ?? rawEvent.imageUrl ?? null,
+    image_url: rawEvent.imageUrl ?? parsed.image_url ?? null,
     internal_category: mapToInternalCategory(
       (parsed as Record<string, unknown>).category as string || parsed.description || rawEvent.title
     ),
@@ -476,6 +477,10 @@ async function processSingleSource(
     );
     const defaultCoords = source.default_coordinates || source.config.default_coordinates;
     const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(0 0)";
+    
+    // Log warning if coordinates are missing
+    if (!defaultCoords) {
+      console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);
 
     const eventInsert = {
       title: normalized.title,
@@ -695,6 +700,16 @@ serve(async (req: Request): Promise<Response> => {
     console.log(`   Duplicates: ${stats.totalEventsDuplicate}`);
     console.log(`   Failed: ${stats.totalEventsFailed}`);
 
+    // Send Slack notification if webhook URL is configured
+    const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+    if (slackWebhookUrl && !dryRun) {
+      const message = `🎉 Scraper Run Complete (${runId})\n` +
+        `Sources: ${stats.totalSources}\n` +
+        `Scraped: ${stats.totalEventsScraped} | Inserted: ${stats.totalEventsInserted}\n` +
+        `Duplicates: ${stats.totalEventsDuplicate} | Failed: ${stats.totalEventsFailed}`;
+      await sendSlackNotification(slackWebhookUrl, message, false);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -707,6 +722,14 @@ serve(async (req: Request): Promise<Response> => {
     );
   } catch (error) {
     console.error("Scraper error:", error);
+    
+    // Send Slack notification for errors
+    const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+    if (slackWebhookUrl) {
+      const errorMessage = `❌ Scraper Error\n${error instanceof Error ? error.message : "Unknown error"}`;
+      await sendSlackNotification(slackWebhookUrl, errorMessage, true);
+    }
+    
     return new Response(
       JSON.stringify({
         success: false,
