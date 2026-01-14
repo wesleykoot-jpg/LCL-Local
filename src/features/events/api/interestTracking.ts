@@ -5,7 +5,7 @@
  * if the user is a parent based on their interest patterns.
  */
 
-import { supabase } from '@/shared/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface InterestScores {
   [categoryId: string]: number;
