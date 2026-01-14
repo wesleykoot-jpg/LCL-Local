@@ -102,7 +102,10 @@ Failed to connect to source: Connection timeout
 - `supabase/functions/run-scraper/index.ts`
 - `supabase/functions/scrape-worker/index.ts`
 - `supabase/functions/scrape-events/index.ts`
+- `supabase/functions/_shared/slack.ts` (new shared utility)
 - `.env.example` (added documentation)
+
+**Note**: The `sendSlackNotification` function has been extracted to a shared utility module (`_shared/slack.ts`) to avoid code duplication and improve maintainability.
 
 ---
 

@@ -4,6 +4,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "./dateUtils.ts";
 import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
 import { createSpoofedFetch, resolveStrategy } from "./strategies.ts";
+import { sendSlackNotification } from "../_shared/slack.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,44 +18,6 @@ export type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 const TARGET_YEAR = 2026;
 
 const DEFAULT_EVENT_TYPE = "anchor";
-
-/**
- * Send notification to Slack webhook
- */
-async function sendSlackNotification(
-  webhookUrl: string,
-  message: string,
-  isError: boolean = false
-): Promise<void> {
-  try {
-    const payload = {
-      text: message,
-      attachments: isError ? [
-        {
-          color: "danger",
-          text: "⚠️ Error occurred during scraping",
-        }
-      ] : [
-        {
-          color: "good",
-          text: "✅ Scraping completed successfully",
-        }
-      ],
-    };
-
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      console.error(`Slack notification failed: ${response.status} ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error("Failed to send Slack notification:", error);
-  }
-}
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();

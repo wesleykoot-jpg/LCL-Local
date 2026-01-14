@@ -4,6 +4,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
+import { sendSlackNotification } from "../_shared/slack.ts";
 
 /**
  * Run Scraper Edge Function
@@ -66,44 +67,6 @@ interface GeminiRequestPayload {
 }
 
 // ============ Helper Functions ============
-
-/**
- * Send notification to Slack webhook
- */
-async function sendSlackNotification(
-  webhookUrl: string,
-  message: string,
-  isError: boolean = false
-): Promise<void> {
-  try {
-    const payload = {
-      text: message,
-      attachments: isError ? [
-        {
-          color: "danger",
-          text: "⚠️ Error occurred during scraping",
-        }
-      ] : [
-        {
-          color: "good",
-          text: "✅ Scraping completed successfully",
-        }
-      ],
-    };
-
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      console.error(`Slack notification failed: ${response.status} ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error("Failed to send Slack notification:", error);
-  }
-}
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
