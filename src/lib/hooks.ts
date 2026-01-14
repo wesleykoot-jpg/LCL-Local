@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { joinEvent, checkEventAttendance } from './eventService';
 import { hapticNotification } from './haptics';
@@ -270,76 +271,68 @@ interface GroupedEvents {
  * Fetch ALL user commitments for the timeline view, grouped by month
  */
 export function useAllUserCommitments(profileId: string) {
-  const [commitments, setCommitments] = useState<Array<EventWithAttendees & { ticket_number?: string }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [groupedByMonth, setGroupedByMonth] = useState<GroupedEvents>({});
-
-  useEffect(() => {
-    async function fetchAllCommitments() {
+  const query = useQuery({
+    queryKey: ['user-commitments', profileId],
+    queryFn: async () => {
       if (!profileId) {
-        setLoading(false);
-        return;
+        return [];
       }
 
-      try {
-        const { data, error } = await supabase
-          .from('event_attendees')
-          .select(`
+      const { data, error } = await supabase
+        .from('event_attendees')
+        .select(`
+          *,
+          event:events(
             *,
-            event:events(
-              *,
-              attendee_count:event_attendees(count)
-            )
-          `)
-          .eq('profile_id', profileId)
-          .eq('status', 'going');
+            attendee_count:event_attendees(count)
+          )
+        `)
+        .eq('profile_id', profileId)
+        .eq('status', 'going');
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Process and sort by event date
-        const commitmentsWithEvents = (data || [])
-          .map(attendance => {
-            const event = attendance.event as unknown as Event & { attendee_count: Array<{ count: number }> };
-            return {
-              ...event,
-              ticket_number: attendance.ticket_number,
-              attendee_count: Array.isArray(event?.attendee_count)
-                ? event.attendee_count[0]?.count || 0
-                : 0,
-            };
-          })
-          .filter(e => e.id) // Filter out null events
-          .sort((a, b) => {
-            const dateA = new Date(a.event_date);
-            const dateB = new Date(b.event_date);
-            return dateA.getTime() - dateB.getTime();
-          }) as Array<EventWithAttendees & { ticket_number?: string }>;
+      // Process and sort by event date
+      const commitmentsWithEvents = (data || [])
+        .map(attendance => {
+          const event = attendance.event as unknown as Event & { attendee_count: Array<{ count: number }> };
+          return {
+            ...event,
+            ticket_number: attendance.ticket_number,
+            attendee_count: Array.isArray(event?.attendee_count)
+              ? event.attendee_count[0]?.count || 0
+              : 0,
+          };
+        })
+        .filter(e => e.id) // Filter out null events
+        .sort((a, b) => {
+          const dateA = new Date(a.event_date);
+          const dateB = new Date(b.event_date);
+          return dateA.getTime() - dateB.getTime();
+        }) as Array<EventWithAttendees & { ticket_number?: string }>;
 
-        setCommitments(commitmentsWithEvents);
+      return commitmentsWithEvents;
+    },
+    enabled: !!profileId,
+    staleTime: 1000 * 60 * 2, // Consider data fresh for 2 minutes
+    gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to the tab
+  });
 
-        // Group by month
-        const grouped: GroupedEvents = {};
-        commitmentsWithEvents.forEach(event => {
-          const date = new Date(event.event_date);
-          const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-          if (!grouped[monthYear]) {
-            grouped[monthYear] = [];
-          }
-          grouped[monthYear].push(event);
-        });
+  const commitments = query.data || [];
 
-        setGroupedByMonth(grouped);
-      } catch (e) {
-        console.error('Error fetching all commitments:', e);
-      } finally {
-        setLoading(false);
-      }
+  // Group by month
+  const groupedByMonth = commitments.reduce((grouped: GroupedEvents, event) => {
+    const date = new Date(event.event_date);
+    const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!grouped[monthYear]) {
+      grouped[monthYear] = [];
     }
+    grouped[monthYear].push(event);
+    return grouped;
+  }, {} as GroupedEvents);
 
-    fetchAllCommitments();
-  }, [profileId]);
-
-  return { commitments, loading, groupedByMonth };
+  return { commitments, loading: query.isLoading, groupedByMonth };
 }
 
 /**
@@ -349,6 +342,7 @@ export function useAllUserCommitments(profileId: string) {
  */
 export function useJoinEvent(profileId: string | undefined, onSuccess?: () => void) {
   const [joiningEvents, setJoiningEvents] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
   const handleJoinEvent = useCallback(
     async (eventId: string) => {
@@ -393,6 +387,10 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
           toast.success("You're in! Event added to your calendar");
         }
 
+        // Invalidate both events feed and user commitments queries
+        await queryClient.invalidateQueries({ queryKey: ['events'] });
+        await queryClient.invalidateQueries({ queryKey: ['user-commitments', profileId] });
+
         // Call refetch callback if provided
         onSuccess?.();
       } catch (error) {
@@ -412,7 +410,7 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
         });
       }
     },
-    [profileId, onSuccess]
+    [profileId, queryClient, onSuccess]
   );
 
   const isJoining = useCallback(
