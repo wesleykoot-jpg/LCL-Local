@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { joinEvent, checkEventAttendance } from '../api/eventService';
@@ -321,16 +321,18 @@ export function useAllUserCommitments(profileId: string) {
 
   const commitments = query.data || [];
 
-  // Group by month
-  const groupedByMonth = commitments.reduce((grouped: GroupedEvents, event) => {
-    const date = new Date(event.event_date);
-    const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    if (!grouped[monthYear]) {
-      grouped[monthYear] = [];
-    }
-    grouped[monthYear].push(event);
-    return grouped;
-  }, {} as GroupedEvents);
+  // Group by month - memoized to avoid recalculation on every render
+  const groupedByMonth = useMemo(() => {
+    return commitments.reduce((grouped: GroupedEvents, event) => {
+      const date = new Date(event.event_date);
+      const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!grouped[monthYear]) {
+        grouped[monthYear] = [];
+      }
+      grouped[monthYear].push(event);
+      return grouped;
+    }, {} as GroupedEvents);
+  }, [commitments]);
 
   return { commitments, loading: query.isLoading, groupedByMonth };
 }
