@@ -118,19 +118,19 @@ serve(async (req: Request): Promise<Response> => {
     
     const { count: recentEventsCount } = await supabase
       .from("events")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .gte("created_at", twentyFourHoursAgo);
 
     // Get persona breakdown (Family vs Social/Culture)
     const { count: familyCount } = await supabase
       .from("events")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("category", "family")
       .gte("created_at", twentyFourHoursAgo);
 
     const { count: socialCount } = await supabase
       .from("events")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .in("category", ["culture", "nightlife", "food"])
       .gte("created_at", twentyFourHoursAgo);
 
