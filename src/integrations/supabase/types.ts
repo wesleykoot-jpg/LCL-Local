@@ -757,6 +757,14 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_effective_rate_limit: {
+        Args: { p_source_id: string }
+        Returns: {
+          delay_between_requests_ms: number
+          max_concurrent: number
+          requests_per_minute: number
+        }[]
+      }
       gettransactionid: { Args: never; Returns: unknown }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
