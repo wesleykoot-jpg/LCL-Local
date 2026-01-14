@@ -5,6 +5,12 @@
  * Used by source-discovery and scrape-events functions
  */
 
+/**
+ * Modern category IDs used across the application
+ */
+export const INTERNAL_CATEGORIES = ["active", "gaming", "entertainment", "social", "family", "outdoors", "music", "workshops", "foodie", "community"] as const;
+export type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
+
 export interface CategoryDefinition {
   /** Category ID matching src/lib/categories.ts */
   id: string;

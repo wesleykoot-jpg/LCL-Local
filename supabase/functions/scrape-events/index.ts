@@ -19,6 +19,7 @@ import {
   increaseRateLimit, 
   getEffectiveRateLimit 
 } from "../_shared/scraperObservability.ts";
+import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 
 // Default CSS selectors for event scraping
 const SELECTORS = [
@@ -38,10 +39,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-scraper-key",
 };
-
-// Internal categories used by the product.
-export const INTERNAL_CATEGORIES = ["nightlife", "food", "culture", "active", "family"] as const;
-export type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 
 const TARGET_YEAR = 2026;
 
@@ -174,67 +171,19 @@ export function parseLocation(
   return result;
 }
 
-/**
- * Dutch parenting keywords that force "family" category (Hybrid Life logic)
- */
-const DUTCH_FAMILY_KEYWORDS = [
-  "basisschool", "speeltuin", "kinderopvang", "zwemles", "peutergroep",
-  "kinderfeest", "jeugdclub", "schoolfeest", "kinderactiviteit", "gezinsdag",
-  "voorlezen", "kinderboerderij", "kinderdisco", "sinterklaas", "kinderen", "ouder-kind"
-];
-
-/**
- * Dutch adult social keywords that prioritize "social" or "foodie" (Hybrid Life logic)
- */
-const DUTCH_SOCIAL_KEYWORDS = [
-  "borrel", "vrijdagmiddag", "vrijmibo", "netwerken", "networking", "proeverij",
-  "wijnproeverij", "bierproeverij", "happy hour", "afterwork", "singles", "speed date"
-];
-
 export function mapToInternalCategory(input?: string): InternalCategory {
   const value = (input || "").toLowerCase();
-
-  // Hybrid Life: Force family if Dutch parenting keywords detected
-  for (const keyword of DUTCH_FAMILY_KEYWORDS) {
-    if (value.includes(keyword)) {
-      return "family";
-    }
+  
+  // Use the modern category classification system
+  const category = classifyTextToCategory(value);
+  
+  // Validate that the result is one of our internal categories
+  if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
+    return category as InternalCategory;
   }
-
-  // Hybrid Life: Prioritize food for adult social keywords
-  // Note: Returns INTERNAL_CATEGORIES values - 'culture' for social since there's 
-  // no 'social' in the legacy internal categories. These get mapped to modern 
-  // categories via CATEGORY_MAP in src/lib/categories.ts
-  for (const keyword of DUTCH_SOCIAL_KEYWORDS) {
-    if (value.includes(keyword)) {
-      // Check if it's more food-related
-      if (value.includes("proeverij") || value.includes("wijn") || value.includes("bier") || value.includes("eten")) {
-        return "food";
-      }
-      return "culture"; // Legacy internal category for social activities
-    }
-  }
-
-  const keywordMap: Array<{ cat: InternalCategory; terms: string[] }> = [
-    { cat: "nightlife", terms: ["night", "club", "dj", "concert", "music", "party", "bar"] },
-    { cat: "food", terms: ["food", "dinner", "restaurant", "wine", "beer", "market", "taste"] },
-    { cat: "culture", terms: ["museum", "exhibition", "theater", "art", "culture", "film"] },
-    { cat: "active", terms: ["sport", "run", "walk", "cycling", "bike", "yoga", "fitness"] },
-    { cat: "family", terms: ["kids", "family", "children", "parent", "play", "zoo"] },
-  ];
-
-  for (const entry of keywordMap) {
-    if (entry.terms.some((term) => value.includes(term))) {
-      return entry.cat;
-    }
-  }
-
-  // map legacy categories from AI outputs
-  if (["cinema", "gaming"].includes(value)) return "culture";
-  if (["crafts"].includes(value)) return "family";
-  if (["sports"].includes(value)) return "active";
-
-  return "culture";
+  
+  // Default fallback to community (most general category)
+  return "community";
 }
 
 function isTargetYear(isoDate: string | null): boolean {

@@ -5,6 +5,7 @@ import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification, createScraperBlockNotification } from "../_shared/slack.ts";
+import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 
 /**
  * Run Scraper Edge Function
@@ -35,10 +36,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Internal categories used by the product
-const INTERNAL_CATEGORIES = ["nightlife", "food", "culture", "active", "family"] as const;
-type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 
 // Dynamically calculate target year (current year, or configurable via env)
 function getTargetYear(): number {
@@ -106,25 +103,17 @@ function normalizeEventDateForStorage(
 
 function mapToInternalCategory(input?: string): InternalCategory {
   const value = (input || "").toLowerCase();
-  const keywordMap: Array<{ cat: InternalCategory; terms: string[] }> = [
-    { cat: "nightlife", terms: ["night", "club", "dj", "concert", "music", "party", "bar"] },
-    { cat: "food", terms: ["food", "dinner", "restaurant", "wine", "beer", "market", "taste"] },
-    { cat: "culture", terms: ["museum", "exhibition", "theater", "art", "culture", "film"] },
-    { cat: "active", terms: ["sport", "run", "walk", "cycling", "bike", "yoga", "fitness"] },
-    { cat: "family", terms: ["kids", "family", "children", "parent", "play", "zoo"] },
-  ];
-
-  for (const entry of keywordMap) {
-    if (entry.terms.some((term) => value.includes(term))) {
-      return entry.cat;
-    }
+  
+  // Use the modern category classification system
+  const category = classifyTextToCategory(value);
+  
+  // Validate that the result is one of our internal categories
+  if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
+    return category as InternalCategory;
   }
-
-  if (["cinema", "gaming"].includes(value)) return "culture";
-  if (["crafts"].includes(value)) return "family";
-  if (["sports"].includes(value)) return "active";
-
-  return "culture";
+  
+  // Default fallback to community (most general category)
+  return "community";
 }
 
 function isTargetYear(isoDate: string | null): boolean {
