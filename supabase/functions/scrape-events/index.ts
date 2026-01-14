@@ -3,7 +3,14 @@ import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "./dateUtils.ts";
 import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
-import { createSpoofedFetch, resolveStrategy } from "./strategies.ts";
+import { 
+  createSpoofedFetch, 
+  resolveStrategy,
+  type PageFetcher,
+  StaticPageFetcher,
+  DynamicPageFetcher,
+  createFetcherForSource,
+} from "./strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 
 const corsHeaders = {
@@ -200,7 +207,7 @@ function extractTimeFromHtml(html: string): string | null {
 export async function fetchEventDetailTime(
   detailUrl: string,
   baseUrl: string,
-  fetcher: typeof fetch = createSpoofedFetch()
+  fetcher?: PageFetcher
 ): Promise<string | null> {
   try {
     let fullUrl = detailUrl;
@@ -211,10 +218,12 @@ export async function fetchEventDetailTime(
       fullUrl = `${baseUrl.replace(/\/$/, "")}/${detailUrl}`;
     }
 
-    const response = await fetcher(fullUrl, { method: "GET" });
-    if (!response.ok) return null;
+    // Use provided fetcher or create a default StaticPageFetcher
+    const pageFetcher = fetcher || new StaticPageFetcher();
+    const { html, statusCode } = await pageFetcher.fetchPage(fullUrl);
+    
+    if (statusCode < 200 || statusCode >= 400) return null;
 
-    const html = await response.text();
     const $ = cheerio.load(html);
     const pageText = $("body").text();
 
@@ -314,7 +323,6 @@ async function exponentialBackoff(attempt: number, baseMs: number = 1000): Promi
 async function callGemini(
   apiKey: string,
   body: unknown,
-  fetcher: typeof fetch,
   maxRetries: number = 3
 ): Promise<string | null> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -323,7 +331,10 @@ async function callGemini(
       await jitteredDelay(100, 200); // 100-300ms jitter before first call
     }
 
-    const response = await fetcher(
+    // Note: Use raw fetch for Gemini API calls instead of PageFetcher.
+    // PageFetcher is designed for scraping web pages with browser-like behavior
+    // (user-agent spoofing, redirect handling). API endpoints expect direct HTTP requests.
+    const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
@@ -364,9 +375,11 @@ export async function parseEventWithAI(
   apiKey: string,
   rawEvent: RawEventCard,
   language: string = "nl",
-  options: { fetcher?: typeof fetch; callGeminiFn?: typeof callGemini } = {}
+  options: { fetcher?: PageFetcher; callGeminiFn?: typeof callGemini } = {}
 ): Promise<NormalizedEvent | null> {
-  const fetcher = options.fetcher || createSpoofedFetch();
+  // Note: fetcher parameter is kept in options for potential future use (e.g., fetching 
+  // additional event details from URLs within rawHtml) and for test mocking consistency.
+  // Currently unused as Gemini API calls use raw fetch (see callGemini).
   const callFn = options.callGeminiFn || callGemini;
 
   const today = new Date().toISOString().split("T")[0];
@@ -391,7 +404,7 @@ ${rawEvent.rawHtml}`;
     generationConfig: { temperature: 0.1, maxOutputTokens: 768 },
   };
 
-  const text = await callFn(apiKey, payload, fetcher);
+  const text = await callFn(apiKey, payload);
   if (!text) return null;
 
   let cleaned = text.trim();
@@ -479,7 +492,7 @@ export async function eventExists(
 }
 
 export interface ScrapeEventCardOptions {
-  fetcher?: typeof fetch;
+  fetcher?: PageFetcher;
   listingHtml?: string;
   listingUrl?: string;
   enableDebug?: boolean;
@@ -491,7 +504,7 @@ export async function scrapeEventCards(
   options: ScrapeEventCardOptions = {}
 ): Promise<RawEventCard[]> {
   const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
-  const fetcher = options.fetcher || createSpoofedFetch({ headers: source.config.headers });
+  const fetcher = options.fetcher || createFetcherForSource(source);
   const rateLimit = source.config.rate_limit_ms ?? 150;
 
   let listingHtml = options.listingHtml;
@@ -613,7 +626,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     for (const source of sources as ScraperSource[]) {
       const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
-      const fetcher = createSpoofedFetch({ headers: source.config.headers });
+      const fetcher = createFetcherForSource(source);
       const probeLog: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }> = [];
       const rateLimit = source.config.rate_limit_ms ?? 200;
       const sourceStats = { name: source.name, scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
@@ -766,6 +779,8 @@ export async function handleRequest(req: Request): Promise<Response> {
 
 export { parseToISODate } from "./dateUtils.ts";
 export type { ScraperSource } from "./shared.ts";
+export type { PageFetcher } from "./strategies.ts";
+export { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "./strategies.ts";
 
 if (import.meta.main) {
   serve(handleRequest);
