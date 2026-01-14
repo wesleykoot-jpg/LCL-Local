@@ -109,13 +109,6 @@ export default function Admin() {
   const [jobStats, setJobStats] = useState<JobStats>({ pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 });
   const [showJobQueue] = useState(true);
 
-  // Check dev mode
-  useEffect(() => {
-    const storedDev = localStorage.getItem('dev_mode');
-    if (storedDev !== 'true') {
-      navigate('/feed');
-    }
-  }, [navigate]);
 
   // Load sources and jobs
   useEffect(() => {
