@@ -164,6 +164,12 @@ export class DynamicPageFetcher implements PageFetcher {
       return await this.fallbackToStaticFetch(url);
     }
 
+    // Basic API key validation
+    if (typeof apiKey !== 'string' || apiKey.length < 20) {
+      console.warn('ScrapingBee API key appears invalid, falling back to static fetch');
+      return await this.fallbackToStaticFetch(url);
+    }
+
     try {
       const scrapingBeeUrl = new URL('https://app.scrapingbee.com/api/v1/');
       scrapingBeeUrl.searchParams.set('api_key', apiKey);
@@ -221,8 +227,9 @@ export class DynamicPageFetcher implements PageFetcher {
         });
 
         if (this.config?.waitForSelector) {
+          const selectorTimeout = this.config?.waitForTimeout || 10000;
           await page.waitForSelector(this.config.waitForSelector, {
-            timeout: 10000,
+            timeout: selectorTimeout,
           }).catch(() => {
             console.warn(`Selector ${this.config?.waitForSelector} not found, continuing anyway`);
           });
@@ -272,8 +279,9 @@ export class DynamicPageFetcher implements PageFetcher {
         });
 
         if (this.config?.waitForSelector) {
+          const selectorTimeout = this.config?.waitForTimeout || 10000;
           await page.waitForSelector(this.config.waitForSelector, {
-            timeout: 10000,
+            timeout: selectorTimeout,
           }).catch(() => {
             console.warn(`Selector ${this.config?.waitForSelector} not found, continuing anyway`);
           });
