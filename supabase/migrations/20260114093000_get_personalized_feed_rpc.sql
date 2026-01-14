@@ -61,9 +61,21 @@ CREATE OR REPLACE FUNCTION public.get_personalized_feed(
 ) AS $$
 DECLARE
   v_radius_km numeric := 25;
+  v_score_cap numeric := 1.5;
+  w_category numeric := 0.35;
+  w_time numeric := 0.20;
+  w_social numeric := 0.15;
+  w_compatibility numeric := 0.10;
+  w_distance numeric := 0.20;
+  social_log_max numeric := 1000;
+  social_log_denominator numeric := LOG(10, social_log_max);
   v_user_point geography;
   v_pref_categories text[] := ARRAY[]::text[];
 BEGIN
+  IF v_radius_km IS NULL OR v_radius_km <= 0 THEN
+    v_radius_km := 25;
+  END IF;
+
   -- Prefer explicit coordinates; fallback to stored profile coordinates
   IF user_lat IS NOT NULL AND user_long IS NOT NULL THEN
     v_user_point := ST_SetSRID(ST_MakePoint(user_long, user_lat), 4326)::geography;
@@ -125,7 +137,7 @@ BEGIN
           1.0,
           GREATEST(
             0.2,
-            LOG(10, COALESCE(ac.going_count, 0) + 1) / LOG(10, 1000)
+            LOG(10, COALESCE(ac.going_count, 0) + 1) / NULLIF(social_log_denominator, 0)
           )
         )
       END AS social_score,
@@ -149,7 +161,7 @@ BEGIN
           0.1,
           LEAST(
             1.0,
-            1 / (1 + (bs.distance_km / (v_radius_km * 0.5)))
+            1 / (1 + (bs.distance_km / NULLIF(v_radius_km * 0.5, 0)))
           )
         )
       END AS distance_score
@@ -173,13 +185,13 @@ BEGIN
     s.host_reliability,
     s.distance_km,
     LEAST(
-      1.5,
+      v_score_cap,
       (
-        (s.category_score * 0.35) +
-        (s.time_score * 0.20) +
-        (s.social_score * 0.15) +
-        (s.compatibility_score * 0.10) +
-        (s.distance_score * 0.20)
+        (s.category_score * w_category) +
+        (s.time_score * w_time) +
+        (s.social_score * w_social) +
+        (s.compatibility_score * w_compatibility) +
+        (s.distance_score * w_distance)
       ) * (
         CASE
           WHEN EXTRACT(EPOCH FROM (s.event_date - now())) / 3600.0 < 0 THEN 0.1
