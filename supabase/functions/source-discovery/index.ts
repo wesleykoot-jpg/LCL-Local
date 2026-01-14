@@ -9,6 +9,7 @@ import {
   CATEGORIES, 
   classifyTextToCategory 
 } from "../_shared/categoryMapping.ts";
+import { sendSlackNotification } from "../_shared/slack.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -271,6 +272,64 @@ async function processMunicipality(
               stats.sourcesInserted++;
               discovered.push(source);
               console.log(`Discovered source: ${source.name} (${source.url})`);
+              
+              // Send Slack alert for high-value "Anchor Source" discoveries
+              // Criteria: Major municipality (population > 100k) AND high confidence (>= 80)
+              const isMajorMunicipality = municipality.population >= 100000;
+              const isHighConfidence = validation.confidence >= 80;
+              
+              if (isMajorMunicipality && isHighConfidence) {
+                const blocks = [
+                  {
+                    type: "header",
+                    text: {
+                      type: "plain_text",
+                      text: "🎯 High-Value Anchor Source Discovered!",
+                      emoji: true,
+                    },
+                  },
+                  {
+                    type: "section",
+                    fields: [
+                      {
+                        type: "mrkdwn",
+                        text: `*Source Name:*\n${source.name}`,
+                      },
+                      {
+                        type: "mrkdwn",
+                        text: `*Municipality:*\n${source.municipality} (${municipality.population.toLocaleString()} pop.)`,
+                      },
+                      {
+                        type: "mrkdwn",
+                        text: `*Confidence Score:*\n${validation.confidence}%`,
+                      },
+                      {
+                        type: "mrkdwn",
+                        text: `*Category:*\n${category.labelNL}`,
+                      },
+                      {
+                        type: "mrkdwn",
+                        text: `*Coordinates:*\n\`${source.coordinates.lat.toFixed(4)}, ${source.coordinates.lng.toFixed(4)}\``,
+                      },
+                      {
+                        type: "mrkdwn",
+                        text: `*URL:*\n${source.url}`,
+                      },
+                    ],
+                  },
+                  {
+                    type: "context",
+                    elements: [
+                      {
+                        type: "mrkdwn",
+                        text: "💡 This source has been auto-discovered and added as _disabled_. Review and enable it in the admin panel for nationwide geofencing coverage.",
+                      },
+                    ],
+                  },
+                ];
+                
+                await sendSlackNotification({ blocks }, false);
+              }
             }
           }
         } catch (error) {
