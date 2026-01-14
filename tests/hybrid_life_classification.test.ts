@@ -3,6 +3,17 @@ import { describe, it, expect } from 'vitest';
 /**
  * Test for NL-Context Intelligent Mapping (Phase 2)
  * Tests the Hybrid Life logic for Dutch keyword classification
+ * 
+ * Note: The scrape functions use INTERNAL_CATEGORIES which is a legacy mapping
+ * with values: "nightlife", "food", "culture", "active", "family"
+ * 
+ * These get mapped to modern categories in src/lib/categories.ts via CATEGORY_MAP:
+ * - nightlife -> music
+ * - food -> foodie (but 'food' is not in CATEGORY_MAP, so might remain as-is)
+ * - culture -> (not mapped, so default to first category)
+ * 
+ * The 'culture' category is used as a catch-all for social activities since
+ * there's no 'social' in the legacy INTERNAL_CATEGORIES.
  */
 
 // Dutch parenting keywords that force "family" category
@@ -103,16 +114,16 @@ describe('Hybrid Life Category Classification', () => {
   });
 
   describe('Dutch Adult Social Keywords (Phase 2)', () => {
-    it('should classify borrel events as culture (social activity)', () => {
+    it('should classify borrel events as culture (legacy mapping for social)', () => {
       expect(mapToInternalCategory('Vrijdagmiddag Borrel')).toBe('culture');
       expect(mapToInternalCategory('Nieuwjaarsborrel')).toBe('culture');
     });
 
-    it('should classify vrijmibo events as culture', () => {
+    it('should classify vrijmibo events as culture (legacy mapping for social)', () => {
       expect(mapToInternalCategory('Vrijmibo bij het stadskantoor')).toBe('culture');
     });
 
-    it('should classify netwerken events as culture', () => {
+    it('should classify netwerken events as culture (legacy mapping for social)', () => {
       expect(mapToInternalCategory('Netwerken voor ondernemers')).toBe('culture');
       expect(mapToInternalCategory('Networking Event Amsterdam')).toBe('culture');
     });

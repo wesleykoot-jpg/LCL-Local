@@ -83,14 +83,17 @@ function mapToInternalCategory(input?: string): InternalCategory {
     }
   }
 
-  // Hybrid Life: Prioritize food/social for adult social keywords
+  // Hybrid Life: Prioritize food for adult social keywords
+  // Note: Returns INTERNAL_CATEGORIES values - 'culture' for social since there's 
+  // no 'social' in the legacy internal categories. These get mapped to modern 
+  // categories via CATEGORY_MAP in src/lib/categories.ts
   for (const keyword of DUTCH_SOCIAL_KEYWORDS) {
     if (value.includes(keyword)) {
       // Check if it's more food-related
       if (value.includes("proeverij") || value.includes("wijn") || value.includes("bier") || value.includes("eten")) {
         return "food";
       }
-      return "culture"; // Maps to social activities
+      return "culture"; // Legacy internal category for social activities
     }
   }
 

@@ -157,6 +157,9 @@ export function getCategoryById(id: string): CategoryDefinition | undefined {
 /**
  * Classify text to category using keyword matching
  * Implements "Hybrid Life" logic for Dutch-specific keywords
+ * 
+ * Note: Returns category IDs from src/lib/categories.ts.
+ * The scrape functions have their own INTERNAL_CATEGORIES mapping.
  */
 export function classifyTextToCategory(text: string): string {
   const lowerText = text.toLowerCase();
@@ -179,7 +182,7 @@ export function classifyTextToCategory(text: string): string {
     }
   }
 
-  // Standard keyword matching
+  // Standard keyword matching using category definitions
   for (const category of CATEGORIES) {
     for (const keyword of category.keywordsNL) {
       if (lowerText.includes(keyword)) {
