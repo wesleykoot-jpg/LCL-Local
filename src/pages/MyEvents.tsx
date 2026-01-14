@@ -20,22 +20,8 @@ export default function MyEvents() {
   // Use dev profile as fallback when not logged in (development only)
   const profileId = profile?.id || (import.meta.env.DEV ? DEV_TEST_PROFILE_ID : '');
   
-  console.log('[MyEvents] Component rendering:', {
-    hasProfile: !!profile,
-    profileId,
-    isDevMode: import.meta.env.DEV,
-    devTestProfileId: DEV_TEST_PROFILE_ID
-  });
-  
   const { commitments, loading, groupedByMonth } = useAllUserCommitments(profileId);
   const [activeTab, setActiveTab] = useState<FilterTab>('upcoming');
-  
-  console.log('[MyEvents] Data state:', {
-    loading,
-    commitmentsCount: commitments.length,
-    monthsCount: Object.keys(groupedByMonth).length,
-    groupedByMonth
-  });
 
   // Filter events based on tab
   const today = new Date();
