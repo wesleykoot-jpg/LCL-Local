@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Clock, Loader2, MapPin, Heart, ChevronRight } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import type { EventStack } from '@/lib/feedGrouping';
-import type { EventWithAttendees } from '@/lib/hooks';
+import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { hapticImpact } from '@/lib/haptics';
 import { formatEventDate, formatEventTime } from '@/lib/formatters';

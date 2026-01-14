@@ -19,7 +19,7 @@ import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { useLocation } from '@/contexts/LocationContext';
 import { hapticImpact } from '@/lib/haptics';
-import type { EventWithAttendees } from '@/lib/hooks';
+import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 interface EventDetailModalProps {
   event: EventWithAttendees;

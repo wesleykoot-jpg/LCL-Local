@@ -4,7 +4,7 @@ import { ChevronRight, Users, Clock, MapPin, Heart } from 'lucide-react';
 import { hapticImpact } from '@/lib/haptics';
 import { formatEventDate, formatEventTime } from '@/lib/formatters';
 import { getEventImage } from '@/lib/hooks/useImageFallback';
-import type { EventWithAttendees } from '@/lib/hooks';
+import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 interface HorizontalEventCarouselProps {
   title: string;

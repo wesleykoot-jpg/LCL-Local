@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { TimelineEventCard } from './TimelineEventCard';
-import type { EventWithAttendees } from '@/lib/hooks';
+import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 interface DayGroupedEvents {
   [dayKey: string]: Array<EventWithAttendees & { ticket_number?: string }>;

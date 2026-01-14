@@ -5,6 +5,8 @@ import { joinEvent, checkEventAttendance } from '../api/eventService';
 import { hapticNotification } from '@/shared/lib/haptics';
 import toast from 'react-hot-toast';
 import type { Database } from '@/integrations/supabase/types';
+import { queryKeys } from '@/shared/config/queryKeys';
+import { QUERY_STALE_TIME, QUERY_GC_TIME } from '@/shared/config/queryConfig';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type PersonaStats = Database['public']['Tables']['persona_stats']['Row'];
@@ -27,10 +29,6 @@ export interface EventWithAttendees extends Event {
 }
 
 const ATTENDEE_LIMIT = 4;
-
-// Query cache configuration constants
-const QUERY_STALE_TIME = 1000 * 60 * 2; // Consider data fresh for 2 minutes
-const QUERY_GC_TIME = 1000 * 60 * 10; // Keep unused data in cache for 10 minutes
 
 
 export function usePersonaStats(profileId: string) {
@@ -277,7 +275,7 @@ interface GroupedEvents {
  */
 export function useAllUserCommitments(profileId: string) {
   const query = useQuery({
-    queryKey: ['user-commitments', profileId],
+    queryKey: queryKeys.profile.commitments(profileId),
     queryFn: async () => {
       if (!profileId) {
         return [];
@@ -396,8 +394,8 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
 
         // Invalidate both events feed and user commitments queries concurrently
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['events'] }),
-          queryClient.invalidateQueries({ queryKey: ['user-commitments', profileId] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.profile.commitments(profileId) }),
         ]);
 
         // Call refetch callback if provided

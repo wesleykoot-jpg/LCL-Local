@@ -8,8 +8,8 @@ import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
 import { groupEventsIntoStacks, type EventStack } from '@/lib/feedGrouping';
 import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 import { getCategoryConfig } from '@/lib/categories';
-import { useJoinEvent } from '@/lib/hooks';
-import type { EventWithAttendees } from '@/lib/hooks';
+import { useJoinEvent } from '@/features/events/hooks/hooks';
+import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 // Constants
 const VIRTUAL_ITEM_ESTIMATED_SIZE = 400; // Estimated height in pixels per event stack card

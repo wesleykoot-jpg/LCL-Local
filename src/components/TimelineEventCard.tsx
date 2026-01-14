@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Users, Ticket } from 'lucide-react';
 import { CATEGORY_MAP } from '@/lib/categories';
-import type { EventWithAttendees } from '@/lib/hooks';
+import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 interface TimelineEventCardProps {
   event: EventWithAttendees & { ticket_number?: string };
