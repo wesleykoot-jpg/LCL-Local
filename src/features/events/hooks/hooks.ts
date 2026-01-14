@@ -30,6 +30,11 @@ export interface EventWithAttendees extends Event {
 
 const ATTENDEE_LIMIT = 4;
 
+const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
+  Array.isArray(event?.attendee_count) && event.attendee_count.length > 0
+    ? event.attendee_count[0]?.count || 0
+    : 0;
+
 
 export function usePersonaStats(profileId: string) {
   const [stats, setStats] = useState<PersonaStats | null>(null);
@@ -302,11 +307,6 @@ export function useAllUserCommitments(profileId: string) {
       if (error) throw error;
       if (createdError) throw createdError;
 
-      const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
-        Array.isArray(event?.attendee_count) && event.attendee_count.length > 0
-          ? event.attendee_count[0]?.count || 0
-          : 0;
-
       // Process and sort by event date
       const commitmentsWithEvents = (data || [])
         .map(attendance => {
@@ -326,15 +326,14 @@ export function useAllUserCommitments(profileId: string) {
 
       // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
       // This ensures creator-owned events still appear even if the creator isn't listed as an attendee
-      const mergedMap = new Map<string, EventWithAttendees & { ticket_number?: string }>();
-      commitmentsWithEvents.forEach(event => mergedMap.set(event.id, event));
+      const merged = [...commitmentsWithEvents];
       createdByUser.forEach(event => {
-        if (!mergedMap.has(event.id)) {
-          mergedMap.set(event.id, event);
+        if (!merged.some(existing => existing.id === event.id)) {
+          merged.push(event);
         }
       });
 
-      const merged = Array.from(mergedMap.values()).sort((a, b) => {
+      merged.sort((a, b) => {
         const dateA = new Date(a.event_date);
         const dateB = new Date(b.event_date);
         return dateA.getTime() - dateB.getTime();
