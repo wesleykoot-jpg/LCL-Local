@@ -1,6 +1,6 @@
 import { memo, useState, useCallback, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Clock, Loader2, MapPin, Heart, ChevronRight } from 'lucide-react';
+import { Users, Clock, Loader2, MapPin, Heart, ChevronRight, Baby, Sparkles } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import type { EventStack } from '../api/feedGrouping';
 import type { EventWithAttendees } from '../hooks/hooks';
@@ -11,6 +11,7 @@ import {
   useImageFallback, 
   getEventImage
 } from '../hooks/useImageFallback';
+import { useFeedMode } from '@/contexts/FeedContext';
 
 interface EventStackCardProps {
   stack: EventStack;
@@ -19,6 +20,20 @@ interface EventStackCardProps {
   joiningEventId?: string;
   currentUserProfileId?: string;
   userLocation?: { lat: number; lng: number } | null;
+}
+
+// Helper to determine context badge
+function getContextBadge(category: string, feedMode: 'family' | 'social' | 'default') {
+  if (feedMode === 'family' && category === 'family') {
+    return { text: 'Parent Favorite', icon: Baby, color: 'teal' };
+  }
+  if (feedMode === 'family' && (category === 'outdoors' || category === 'active')) {
+    return { text: 'Family Fun', icon: Baby, color: 'teal' };
+  }
+  if (feedMode === 'social' && (category === 'social' || category === 'music' || category === 'foodie')) {
+    return { text: 'Solo Friendly', icon: Sparkles, color: 'blue' };
+  }
+  return null;
 }
 
 // Airbnb-style Event Card
@@ -43,6 +58,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   const [isSaved, setIsSaved] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { feedMode } = useFeedMode();
   
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
@@ -59,6 +75,8 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const handleImageLoad = useCallback(() => {
     setImageLoaded(true);
   }, []);
+
+  const contextBadge = getContextBadge(event.category, feedMode);
 
   return (
     <motion.div
@@ -92,8 +110,20 @@ const AnchorEventCard = memo(function AnchorEventCard({
         </button>
         
         {/* Category badge - top left */}
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
           <CategoryBadge category={categoryLabel} variant="glass" size="sm" />
+          
+          {/* Context badge - only shown when feed mode is active */}
+          {contextBadge && (
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-sm text-[11px] font-semibold shadow-sm ${
+              contextBadge.color === 'teal' 
+                ? 'bg-teal-500/90 text-white' 
+                : 'bg-blue-500/90 text-white'
+            }`}>
+              <contextBadge.icon size={12} />
+              {contextBadge.text}
+            </div>
+          )}
         </div>
 
         {/* Date badge */}

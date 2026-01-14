@@ -51,11 +51,15 @@ export interface UserLocation {
   lng: number;
 }
 
+export type FeedMode = 'family' | 'social' | 'default';
+
 export interface UserPreferences {
   selectedCategories: string[];
   zone: string;
   userLocation?: UserLocation | null;
   radiusKm?: number;
+  feedMode?: FeedMode;
+  isParentDetected?: boolean;
 }
 
 interface ScoredEvent<T extends EventForRanking> {
@@ -69,6 +73,7 @@ interface ScoredEvent<T extends EventForRanking> {
     distanceScore: number;
     urgencyBoost: number;
     trendingBoost: number;
+    modeMultiplier: number;
   };
 }
 
@@ -237,6 +242,27 @@ function calculateTrendingBoost(attendeeCount: number = 0): number {
 }
 
 /**
+ * Calculates mode-based category multiplier
+ * Applies different weights based on feed mode (family vs social)
+ */
+function calculateModeMultiplier(
+  category: string,
+  feedMode: FeedMode = 'default',
+  isParentDetected: boolean = false
+): number {
+  if (feedMode === 'family') {
+    // Family Mode: 2.5x multiplier for family, 1.5x for outdoors/active if parent
+    if (category === 'family') return 2.5;
+    if (isParentDetected && (category === 'outdoors' || category === 'active')) return 1.5;
+  } else if (feedMode === 'social') {
+    // Social Mode: 2.0x for social/music/foodie, suppress family (0.3x)
+    if (category === 'social' || category === 'music' || category === 'foodie') return 2.0;
+    if (category === 'family') return 0.3;
+  }
+  return 1.0;
+}
+
+/**
  * Calculates a composite score for an event based on multiple factors
  */
 function scoreEvent<T extends EventForRanking>(
@@ -246,6 +272,8 @@ function scoreEvent<T extends EventForRanking>(
   const userCategories = preferences?.selectedCategories || [];
   const userLocation = preferences?.userLocation;
   const radiusKm = preferences?.radiusKm || CONFIG.DEFAULT_RADIUS_KM;
+  const feedMode = preferences?.feedMode || 'default';
+  const isParentDetected = preferences?.isParentDetected || false;
   
   const categoryScore = calculateCategoryScore(event.category, userCategories);
   const timeScore = calculateTimeScore(event.event_date);
@@ -263,8 +291,10 @@ function scoreEvent<T extends EventForRanking>(
 
   const urgencyBoost = calculateUrgencyBoost(event.event_date);
   const trendingBoost = calculateTrendingBoost(event.attendee_count);
+  const modeMultiplier = calculateModeMultiplier(event.category, feedMode, isParentDetected);
+  
   const boostMultiplier = Math.min(urgencyBoost * trendingBoost, 1.5);
-  const totalScore = baseScore * boostMultiplier;
+  const totalScore = baseScore * boostMultiplier * modeMultiplier;
   
   return {
     event,
@@ -277,6 +307,7 @@ function scoreEvent<T extends EventForRanking>(
       distanceScore,
       urgencyBoost,
       trendingBoost,
+      modeMultiplier,
     },
   };
 }

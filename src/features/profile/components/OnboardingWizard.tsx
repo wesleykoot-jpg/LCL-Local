@@ -209,6 +209,22 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 <p className="text-muted-foreground text-[15px] max-w-xs mb-6">
                   Your personalized feed is ready with {selectedCategories.size} categories near {zone}
                 </p>
+                
+                {/* Smart Feed Explainer */}
+                <div className="max-w-md px-4 py-4 mb-6 bg-primary/5 border border-primary/10 rounded-2xl">
+                  <div className="flex items-start gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg">✨</span>
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-[15px] font-semibold text-foreground mb-1">Smart Feed Learning</h4>
+                      <p className="text-[13px] text-muted-foreground">
+                        Your feed will learn from your interests as you explore events. Switch between Family and Social modes anytime to get perfectly tailored recommendations.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap justify-center gap-2 max-w-sm">
                   {Array.from(selectedCategories).slice(0, 5).map(catId => {
                     const cat = CATEGORIES.find(c => c.id === catId);
