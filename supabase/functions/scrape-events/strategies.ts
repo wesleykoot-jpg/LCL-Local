@@ -1,4 +1,4 @@
-import type { ScraperSource, RawEventCard } from "./shared.ts";
+import type { ScraperSource, RawEventCard, FetcherType } from "./shared.ts";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 
 const DEFAULT_HEADERS = {
@@ -6,6 +6,60 @@ const DEFAULT_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "en,nl;q=0.9,de;q=0.8",
 };
+
+/**
+ * Retry configuration for fetcher operations
+ */
+export interface RetryConfig {
+  maxRetries?: number;
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+  backoffMultiplier?: number;
+}
+
+const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
+  maxRetries: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 10000,
+  backoffMultiplier: 2,
+};
+
+/**
+ * Implements exponential backoff retry logic
+ */
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  config: RetryConfig = {}
+): Promise<T> {
+  const { maxRetries, initialDelayMs, maxDelayMs, backoffMultiplier } = {
+    ...DEFAULT_RETRY_CONFIG,
+    ...config,
+  };
+
+  let lastError: Error | undefined;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt === maxRetries) {
+        break;
+      }
+      
+      const delayMs = Math.min(
+        initialDelayMs * Math.pow(backoffMultiplier, attempt),
+        maxDelayMs
+      );
+      
+      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delayMs}ms delay`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  
+  throw lastError || new Error('Operation failed after retries');
+}
 
 /**
  * PageFetcher interface for abstracting HTML fetching logic.
@@ -29,6 +83,7 @@ export interface PageFetcher {
  * StaticPageFetcher implements PageFetcher using standard HTTP requests.
  * Uses user-agent spoofing and custom headers to mimic browser behavior.
  * This is the default fetcher for most scraping operations.
+ * Includes retry logic with exponential backoff for transient failures.
  */
 export class StaticPageFetcher implements PageFetcher {
   private defaultHeaders = {
@@ -41,62 +96,258 @@ export class StaticPageFetcher implements PageFetcher {
   constructor(
     private fetchImpl: typeof fetch = fetch,
     private customHeaders?: Record<string, string>,
-    private timeout?: number
+    private timeout?: number,
+    private retryConfig?: RetryConfig
   ) {}
 
   async fetchPage(url: string) {
     const headers = { ...this.defaultHeaders, ...(this.customHeaders || {}) };
     const timeoutMs = this.timeout ?? 15000;
 
-    const res = await this.fetchImpl(url, {
-      method: 'GET',
-      headers,
-      redirect: 'follow',
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+    return retryWithBackoff(async () => {
+      const res = await this.fetchImpl(url, {
+        method: 'GET',
+        headers,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(timeoutMs),
+      });
 
-    const html = await res.text();
-    const finalUrl = res.url || url;
-    const statusCode = res.status;
+      const html = await res.text();
+      const finalUrl = res.url || url;
+      const statusCode = res.status;
 
-    return { html, finalUrl, statusCode };
+      return { html, finalUrl, statusCode };
+    }, this.retryConfig);
   }
 }
 
 /**
- * DynamicPageFetcher is a placeholder for future headless browser support.
- * TODO: Implement using Puppeteer, Playwright, or a service like ScrapingBee
- * to handle JavaScript-rendered pages and anti-bot protections.
+ * DynamicPageFetcher implements PageFetcher using headless browser rendering.
+ * Supports Puppeteer, Playwright, and ScrapingBee for JavaScript-rendered pages
+ * and handling anti-bot protections.
+ * 
+ * Note: This implementation uses conditional logic based on available libraries.
+ * Libraries are optional dependencies and loaded dynamically when needed.
  */
 export class DynamicPageFetcher implements PageFetcher {
+  constructor(
+    private fetcherType: 'puppeteer' | 'playwright' | 'scrapingbee' = 'puppeteer',
+    private config?: {
+      apiKey?: string;
+      headless?: boolean;
+      waitForSelector?: string;
+      waitForTimeout?: number;
+    },
+    private retryConfig?: RetryConfig
+  ) {}
+
   async fetchPage(url: string) {
-    // TODO: implement headless-browser rendering (Puppeteer/Playwright/ScrapingBee)
-    // For now, return an error-like response to signal unimplemented
-    console.warn(`DynamicPageFetcher not yet implemented for: ${url}`);
-    return {
-      html: '',
-      finalUrl: url,
-      statusCode: 501, // Not Implemented
-    };
+    return retryWithBackoff(async () => {
+      switch (this.fetcherType) {
+        case 'scrapingbee':
+          return await this.fetchWithScrapingBee(url);
+        case 'puppeteer':
+          return await this.fetchWithPuppeteer(url);
+        case 'playwright':
+          return await this.fetchWithPlaywright(url);
+        default:
+          throw new Error(`Unsupported fetcher type: ${this.fetcherType}`);
+      }
+    }, this.retryConfig);
+  }
+
+  private async fetchWithScrapingBee(url: string) {
+    const apiKey = this.config?.apiKey || Deno.env.get('SCRAPINGBEE_API_KEY');
+    
+    if (!apiKey) {
+      console.warn('ScrapingBee API key not found, falling back to static fetch');
+      return await this.fallbackToStaticFetch(url);
+    }
+
+    // Basic API key validation
+    if (typeof apiKey !== 'string' || apiKey.length < 20) {
+      console.warn('ScrapingBee API key appears invalid, falling back to static fetch');
+      return await this.fallbackToStaticFetch(url);
+    }
+
+    try {
+      const scrapingBeeUrl = new URL('https://app.scrapingbee.com/api/v1/');
+      scrapingBeeUrl.searchParams.set('api_key', apiKey);
+      scrapingBeeUrl.searchParams.set('url', url);
+      scrapingBeeUrl.searchParams.set('render_js', 'true');
+      
+      if (this.config?.waitForTimeout) {
+        scrapingBeeUrl.searchParams.set('wait', String(this.config.waitForTimeout));
+      }
+
+      const response = await fetch(scrapingBeeUrl.toString());
+      
+      if (!response.ok) {
+        throw new Error(`ScrapingBee API error: ${response.status} ${response.statusText}`);
+      }
+
+      const html = await response.text();
+      return {
+        html,
+        finalUrl: url,
+        statusCode: response.status,
+      };
+    } catch (error) {
+      console.error('ScrapingBee fetch failed:', error);
+      throw error;
+    }
+  }
+
+  private async fetchWithPuppeteer(url: string) {
+    try {
+      // Attempt to import puppeteer dynamically
+      // This will work in environments where puppeteer is available
+      const puppeteer = await import('npm:puppeteer@23.11.1').catch(() => null);
+      
+      if (!puppeteer) {
+        console.warn('Puppeteer not available, falling back to static fetch');
+        return await this.fallbackToStaticFetch(url);
+      }
+
+      const browser = await puppeteer.default.launch({
+        headless: this.config?.headless ?? true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+
+      try {
+        const page = await browser.newPage();
+        await page.setUserAgent(
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+        );
+
+        await page.goto(url, { 
+          waitUntil: 'networkidle2',
+          timeout: this.config?.waitForTimeout || 30000 
+        });
+
+        if (this.config?.waitForSelector) {
+          const selectorTimeout = this.config?.waitForTimeout || 10000;
+          await page.waitForSelector(this.config.waitForSelector, {
+            timeout: selectorTimeout,
+          }).catch(() => {
+            console.warn(`Selector ${this.config?.waitForSelector} not found, continuing anyway`);
+          });
+        }
+
+        const html = await page.content();
+        const finalUrl = page.url();
+
+        return {
+          html,
+          finalUrl,
+          statusCode: 200,
+        };
+      } finally {
+        await browser.close();
+      }
+    } catch (error) {
+      console.error('Puppeteer fetch failed:', error);
+      throw error;
+    }
+  }
+
+  private async fetchWithPlaywright(url: string) {
+    try {
+      // Attempt to import playwright dynamically
+      const playwright = await import('npm:playwright@1.49.1').catch(() => null);
+      
+      if (!playwright) {
+        console.warn('Playwright not available, falling back to static fetch');
+        return await this.fallbackToStaticFetch(url);
+      }
+
+      const browser = await playwright.chromium.launch({
+        headless: this.config?.headless ?? true,
+      });
+
+      try {
+        const context = await browser.newContext({
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+                    '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        });
+
+        const page = await context.newPage();
+        await page.goto(url, { 
+          waitUntil: 'networkidle',
+          timeout: this.config?.waitForTimeout || 30000 
+        });
+
+        if (this.config?.waitForSelector) {
+          const selectorTimeout = this.config?.waitForTimeout || 10000;
+          await page.waitForSelector(this.config.waitForSelector, {
+            timeout: selectorTimeout,
+          }).catch(() => {
+            console.warn(`Selector ${this.config?.waitForSelector} not found, continuing anyway`);
+          });
+        }
+
+        const html = await page.content();
+        const finalUrl = page.url();
+
+        return {
+          html,
+          finalUrl,
+          statusCode: 200,
+        };
+      } finally {
+        await browser.close();
+      }
+    } catch (error) {
+      console.error('Playwright fetch failed:', error);
+      throw error;
+    }
+  }
+
+  private async fallbackToStaticFetch(url: string): Promise<{ html: string; finalUrl: string; statusCode: number }> {
+    console.log('Using static fetch fallback');
+    const fetcher = new StaticPageFetcher(fetch, undefined, undefined, this.retryConfig);
+    return await fetcher.fetchPage(url);
   }
 }
 
 /**
  * Factory function to create the appropriate PageFetcher for a source.
- * TODO: Read fetcher type from scraper_sources.config.fetcher field
- * to support per-source configuration of 'static' vs 'dynamic' fetching.
+ * Reads fetcher_type from scraper_sources to support per-source configuration
+ * of 'static' vs 'dynamic' fetching strategies.
  * 
  * @param source - The scraper source configuration
  * @returns A PageFetcher instance (StaticPageFetcher or DynamicPageFetcher)
  */
 export function createFetcherForSource(source: ScraperSource): PageFetcher {
-  // TODO: Add 'fetcher' field to scraper_sources config and read it here
-  // Example: if (source.config.fetcher === 'dynamic') return new DynamicPageFetcher();
-  
+  const fetcherType = source.fetcher_type || 'static';
   const customHeaders = source.config.headers;
   const timeout = 15000; // default timeout
   
-  return new StaticPageFetcher(fetch, customHeaders, timeout);
+  const retryConfig: RetryConfig = {
+    maxRetries: 3,
+    initialDelayMs: 1000,
+    maxDelayMs: 10000,
+  };
+
+  // Static fetcher (default)
+  if (fetcherType === 'static') {
+    return new StaticPageFetcher(fetch, customHeaders, timeout, retryConfig);
+  }
+
+  // Dynamic fetchers (Puppeteer, Playwright, ScrapingBee)
+  const dynamicConfig = {
+    apiKey: source.config.scrapingbee_api_key,
+    headless: source.config.headless ?? true,
+    waitForSelector: source.config.wait_for_selector,
+    waitForTimeout: source.config.wait_for_timeout,
+  };
+
+  return new DynamicPageFetcher(
+    fetcherType as 'puppeteer' | 'playwright' | 'scrapingbee',
+    dynamicConfig,
+    retryConfig
+  );
 }
 
 export interface FetchOptions {

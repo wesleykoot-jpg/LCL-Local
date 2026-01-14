@@ -228,16 +228,29 @@ Deno.test("StaticPageFetcher merges custom headers", async () => {
   assertEquals(capturedHeaders["Accept-Language"], "en-US,en;q=0.5");
 });
 
-Deno.test("DynamicPageFetcher returns 501 Not Implemented", async () => {
-  const fetcher = new DynamicPageFetcher();
-  const result = await fetcher.fetchPage("https://example.com/test");
+Deno.test("DynamicPageFetcher with ScrapingBee fallback to static", async () => {
+  // Without API key, should fallback to static fetch
+  const fetcher = new DynamicPageFetcher('scrapingbee');
+  
+  const mockHtml = "<html><body>Test Content</body></html>";
+  // Mock global fetch for the fallback
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (_url: string, _init?: RequestInit) => {
+    const response = new Response(mockHtml, { status: 200 });
+    Object.defineProperty(response, "url", { value: "https://example.com/final" });
+    return Promise.resolve(response);
+  };
 
-  assertEquals(result.html, "");
-  assertEquals(result.finalUrl, "https://example.com/test");
-  assertEquals(result.statusCode, 501);
+  try {
+    const result = await fetcher.fetchPage("https://example.com/test");
+    assertEquals(result.html, mockHtml);
+    assertEquals(result.statusCode, 200);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
-Deno.test("createFetcherForSource returns StaticPageFetcher with source headers", () => {
+Deno.test("createFetcherForSource returns StaticPageFetcher by default", () => {
   const source: ScraperSource = {
     id: "test-source",
     name: "Test Source",
@@ -245,13 +258,78 @@ Deno.test("createFetcherForSource returns StaticPageFetcher with source headers"
     enabled: true,
     config: {
       headers: {
-        "X-Source-Header": "source-value",
+        "X-Source-Header": "test-value",
       },
     },
   };
 
   const fetcher = createFetcherForSource(source);
   assert(fetcher instanceof StaticPageFetcher);
+});
+
+Deno.test("createFetcherForSource returns StaticPageFetcher when fetcher_type is static", () => {
+  const source: ScraperSource = {
+    id: "test-source",
+    name: "Test Source",
+    url: "https://example.com",
+    enabled: true,
+    fetcher_type: "static",
+    config: {
+      headers: {
+        "X-Source-Header": "test-value",
+      },
+    },
+  };
+
+  const fetcher = createFetcherForSource(source);
+  assert(fetcher instanceof StaticPageFetcher);
+});
+
+Deno.test("createFetcherForSource returns DynamicPageFetcher when fetcher_type is puppeteer", () => {
+  const source: ScraperSource = {
+    id: "test-source",
+    name: "Test Source",
+    url: "https://example.com",
+    enabled: true,
+    fetcher_type: "puppeteer",
+    config: {
+      headless: true,
+      wait_for_selector: ".content",
+    },
+  };
+
+  const fetcher = createFetcherForSource(source);
+  assert(fetcher instanceof DynamicPageFetcher);
+});
+
+Deno.test("createFetcherForSource returns DynamicPageFetcher when fetcher_type is playwright", () => {
+  const source: ScraperSource = {
+    id: "test-source",
+    name: "Test Source",
+    url: "https://example.com",
+    enabled: true,
+    fetcher_type: "playwright",
+    config: {},
+  };
+
+  const fetcher = createFetcherForSource(source);
+  assert(fetcher instanceof DynamicPageFetcher);
+});
+
+Deno.test("createFetcherForSource returns DynamicPageFetcher when fetcher_type is scrapingbee", () => {
+  const source: ScraperSource = {
+    id: "test-source",
+    name: "Test Source",
+    url: "https://example.com",
+    enabled: true,
+    fetcher_type: "scrapingbee",
+    config: {
+      scrapingbee_api_key: "test-key",
+    },
+  };
+
+  const fetcher = createFetcherForSource(source);
+  assert(fetcher instanceof DynamicPageFetcher);
 });
 
 Deno.test("scrapeEventCards works with PageFetcher", async () => {
@@ -283,4 +361,56 @@ Deno.test("scrapeEventCards works with PageFetcher", async () => {
   assertEquals(events.length, 1);
   assertEquals(events[0].title, "Music Festival");
   assertEquals(events[0].date, "15 juli 2026");
+});
+
+Deno.test("StaticPageFetcher retries on failure with exponential backoff", async () => {
+  let attemptCount = 0;
+  const mockFetch = (_url: string, _init?: RequestInit) => {
+    attemptCount++;
+    // Fail the first 2 attempts, succeed on the 3rd
+    if (attemptCount < 3) {
+      throw new Error(`Attempt ${attemptCount} failed`);
+    }
+    const response = new Response("<html><body>Success</body></html>", { status: 200 });
+    Object.defineProperty(response, "url", { value: "https://example.com/final" });
+    return Promise.resolve(response);
+  };
+
+  const fetcher = new StaticPageFetcher(mockFetch as typeof fetch, {}, 15000, {
+    maxRetries: 3,
+    initialDelayMs: 100, // Short delay for test
+    maxDelayMs: 1000,
+  });
+
+  const result = await fetcher.fetchPage("https://example.com/test");
+  
+  assertEquals(attemptCount, 3); // Should have retried twice and succeeded on 3rd
+  assertEquals(result.html, "<html><body>Success</body></html>");
+  assertEquals(result.statusCode, 200);
+});
+
+Deno.test("StaticPageFetcher fails after max retries exceeded", async () => {
+  let attemptCount = 0;
+  const mockFetch = (_url: string, _init?: RequestInit) => {
+    attemptCount++;
+    throw new Error(`Attempt ${attemptCount} failed`);
+  };
+
+  const fetcher = new StaticPageFetcher(mockFetch as typeof fetch, {}, 15000, {
+    maxRetries: 2,
+    initialDelayMs: 100,
+    maxDelayMs: 1000,
+  });
+
+  let errorThrown = false;
+  try {
+    await fetcher.fetchPage("https://example.com/test");
+  } catch (error) {
+    errorThrown = true;
+    assert(error instanceof Error);
+    assert(error.message.includes("failed"));
+  }
+
+  assert(errorThrown);
+  assertEquals(attemptCount, 3); // Initial attempt + 2 retries = 3 total attempts
 });

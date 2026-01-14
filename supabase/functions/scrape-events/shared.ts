@@ -46,11 +46,14 @@ export interface StructuredLocation {
   venue_id?: string;
 }
 
+export type FetcherType = 'static' | 'puppeteer' | 'playwright' | 'scrapingbee';
+
 export interface ScraperSource {
   id: string;
   name: string;
   url: string;
   enabled: boolean;
+  fetcher_type?: FetcherType;
   requires_render?: boolean;
   last_probe_urls?: Record<string, unknown>;
   language?: string;
@@ -67,6 +70,12 @@ export interface ScraperSource {
     discoveryAnchors?: string[];
     alternatePaths?: string[];
     requires_render?: boolean;
+    // ScrapingBee specific config
+    scrapingbee_api_key?: string;
+    // Puppeteer/Playwright specific config
+    headless?: boolean;
+    wait_for_selector?: string;
+    wait_for_timeout?: number;
   };
 }
 
