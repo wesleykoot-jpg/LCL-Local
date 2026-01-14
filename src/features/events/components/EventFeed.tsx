@@ -1,6 +1,7 @@
-import { memo, useMemo, useState, Fragment, useCallback } from 'react';
+import { memo, useMemo, useState, Fragment, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Calendar, Clock } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { EventStackCard } from './EventStackCard';
 import { CategorySubscribeCard } from './CategorySubscribeCard';
 import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
@@ -9,6 +10,9 @@ import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 import { getCategoryConfig } from '@/lib/categories';
 import { useJoinEvent } from '@/lib/hooks';
 import type { EventWithAttendees } from '@/lib/hooks';
+
+// Constants
+const VIRTUAL_ITEM_ESTIMATED_SIZE = 400; // Estimated height in pixels per event stack card
 
 // Vibe header configuration
 type VibeType = 'tonight' | 'weekend' | 'later';
@@ -248,41 +252,58 @@ export const EventFeed = memo(function EventFeed({
     return groupStacksByVibe(eventStacks);
   }, [eventStacks, showVibeHeaders, activeFilter]);
 
-  // Render a single stack card
-  const renderStackCard = (stack: EventStack, index: number, injectSubscribeCard: boolean = false, totalInGroup: number = 0) => {
-    // Check if any event in the stack (anchor or any fork) is being joined
-    const joiningId = isJoining(stack.anchor.id) 
-      ? stack.anchor.id 
-      : stack.forks.find(fork => isJoining(fork.id))?.id;
+  // Create parent ref for virtualizer
+  const parentRef = useRef<HTMLDivElement>(null);
 
-    return (
-      <Fragment key={stack.anchor.id}>
-        <motion.div
-          variants={{
-            hidden: { opacity: 0, y: 20 },
-            visible: { opacity: 1, y: 0 }
-          }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          layout
-        >
-          <EventStackCard
-            stack={stack}
-            onEventClick={onEventClick}
-            onJoinEvent={handleJoinEvent}
-            joiningEventId={joiningId}
-            currentUserProfileId={profileId}
-            userLocation={userLocation}
-          />
-        </motion.div>
-        {/* Inject CategorySubscribeCard after 2nd event in "later" group */}
-        {injectSubscribeCard && index === 1 && totalInGroup > 2 && (
-          <CategorySubscribeCard
-            categoryLabel={getCategoryConfig(stack.anchor.category).label}
-          />
-        )}
-      </Fragment>
-    );
-  };
+  // Flatten items for virtualization (including headers)
+  type VirtualItem = 
+    | { type: 'header'; vibe: VibeType; key: string }
+    | { type: 'stack'; stack: EventStack; index: number; injectSubscribeCard: boolean; totalInGroup: number; key: string };
+
+  const virtualItems = useMemo((): VirtualItem[] => {
+    const items: VirtualItem[] = [];
+    
+    if (eventStacks.length === 0) {
+      return [];
+    }
+
+    if (activeFilter === 'all' && vibeGroups.length > 0) {
+      vibeGroups.forEach(group => {
+        items.push({ type: 'header', vibe: group.vibe, key: `header-${group.vibe}` });
+        group.stacks.forEach((stack, index) => {
+          items.push({
+            type: 'stack',
+            stack,
+            index,
+            injectSubscribeCard: group.vibe === 'later',
+            totalInGroup: group.stacks.length,
+            key: `stack-${stack.anchor.id}`,
+          });
+        });
+      });
+    } else {
+      eventStacks.forEach((stack, index) => {
+        items.push({
+          type: 'stack',
+          stack,
+          index,
+          injectSubscribeCard: false,
+          totalInGroup: eventStacks.length,
+          key: `stack-${stack.anchor.id}`,
+        });
+      });
+    }
+
+    return items;
+  }, [eventStacks, vibeGroups, activeFilter]);
+
+  // Setup virtualizer
+  const virtualizer = useVirtualizer({
+    count: virtualItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: useCallback(() => VIRTUAL_ITEM_ESTIMATED_SIZE, []),
+    overscan: 3, // Number of items to render outside visible area
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -295,7 +316,7 @@ export const EventFeed = memo(function EventFeed({
       </div>
 
       <motion.div 
-        className="max-w-md mx-auto w-full flex flex-col gap-5 overflow-hidden"
+        className="max-w-md mx-auto w-full flex flex-col gap-5"
         initial="hidden"
         animate="visible"
         variants={{
@@ -312,21 +333,65 @@ export const EventFeed = memo(function EventFeed({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="flex flex-col gap-6"
           >
             {eventStacks.length > 0 ? (
-              activeFilter === 'all' && vibeGroups.length > 0 ? (
-                vibeGroups.map(group => (
-                  <Fragment key={group.vibe}>
-                    <VibeHeaderSection vibe={group.vibe} />
-                    {group.stacks.map((stack, index) => 
-                      renderStackCard(stack, index, group.vibe === 'later', group.stacks.length)
-                    )}
-                  </Fragment>
-                ))
-              ) : (
-                eventStacks.map((stack, index) => renderStackCard(stack, index))
-              )
+              <div
+                ref={parentRef}
+                className="overflow-auto w-full h-full"
+              >
+                <div
+                  className="relative w-full"
+                  style={{
+                    height: `${virtualizer.getTotalSize()}px`,
+                  }}
+                >
+                  {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const item = virtualItems[virtualRow.index];
+                    
+                    return (
+                      <div
+                        key={item.key}
+                        className="absolute top-0 left-0 w-full"
+                        style={{
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        {item.type === 'header' ? (
+                          <VibeHeaderSection vibe={item.vibe} />
+                        ) : (
+                          <Fragment>
+                            <motion.div
+                              variants={{
+                                hidden: { opacity: 0, y: 20 },
+                                visible: { opacity: 1, y: 0 }
+                              }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              layout
+                              className="mb-6"
+                            >
+                              <EventStackCard
+                                stack={item.stack}
+                                onEventClick={onEventClick}
+                                onJoinEvent={handleJoinEvent}
+                                joiningEventId={isJoining(item.stack.anchor.id) 
+                                  ? item.stack.anchor.id 
+                                  : item.stack.forks.find(fork => isJoining(fork.id))?.id}
+                                currentUserProfileId={profileId}
+                                userLocation={userLocation}
+                              />
+                            </motion.div>
+                            {item.injectSubscribeCard && item.index === 1 && item.totalInGroup > 2 && (
+                              <CategorySubscribeCard
+                                categoryLabel={getCategoryConfig(item.stack.anchor.category).label}
+                              />
+                            )}
+                          </Fragment>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             ) : (
               <motion.div
                 initial={{ opacity: 0 }}

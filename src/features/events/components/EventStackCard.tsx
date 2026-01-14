@@ -42,6 +42,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const primaryImageUrl = getEventImage(event.image_url, event.category);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   const [isSaved, setIsSaved] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
@@ -55,6 +56,10 @@ const AnchorEventCard = memo(function AnchorEventCard({
     setIsSaved(prev => !prev);
   }, []);
 
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
+
   return (
     <motion.div
       className="relative w-full cursor-pointer group"
@@ -63,12 +68,16 @@ const AnchorEventCard = memo(function AnchorEventCard({
     >
       {/* Image Section */}
       <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-3">
-        <img 
+        <motion.img 
           src={imageUrl} 
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={handleImageError}
+          onLoad={handleImageLoad}
           loading="lazy"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: imageLoaded ? 1 : 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
         />
         
         {/* Heart/Save button - Airbnb style */}
@@ -175,12 +184,17 @@ const ForkEventCard = memo(function ForkEventCard({
 }) {
   const primaryImageUrl = getEventImage(event.image_url, event.category);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
       attendee => attendee.profile?.id === currentUserProfileId
     )
   );
+
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
 
   return (
     <div className="flex">
@@ -201,12 +215,16 @@ const ForkEventCard = memo(function ForkEventCard({
         <div className="flex gap-3 items-center">
           {/* Thumbnail */}
           <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
-            <img 
+            <motion.img 
               src={imageUrl} 
               alt={event.title}
               className="w-full h-full object-cover"
               onError={handleImageError}
+              onLoad={handleImageLoad}
               loading="lazy"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: imageLoaded ? 1 : 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
             />
           </div>
 
