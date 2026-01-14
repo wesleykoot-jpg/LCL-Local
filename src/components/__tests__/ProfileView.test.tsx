@@ -13,7 +13,8 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-vi.mock('@/contexts/useAuth', () => ({
+// Mock the new feature-based auth module
+vi.mock('@/features/auth', () => ({
   useAuth: () => ({
     profile: {
       id: 'user-1',
@@ -34,13 +35,15 @@ vi.mock('@/contexts/useAuth', () => ({
   }),
 }));
 
-vi.mock('@/lib/hooks', () => ({
+// Mock the new feature-based events module
+vi.mock('@/features/events', () => ({
   usePersonaStats: () => ({ stats: null, loading: false }),
   usePersonaBadges: () => ({ badges: [], loading: false }),
   useUserCommitments: () => ({ commitments: [], loading: false }),
 }));
 
-vi.mock('@/hooks/useGoogleCalendar', () => ({
+// Mock the new feature-based calendar module
+vi.mock('@/features/calendar', () => ({
   useGoogleCalendar: () => ({ isConnected: false }),
 }));
 
@@ -52,7 +55,7 @@ vi.mock('react-hot-toast', () => ({
   }),
 }));
 
-vi.mock('@/lib/haptics', () => ({
+vi.mock('@/shared/lib/haptics', () => ({
   hapticImpact: vi.fn().mockResolvedValue(undefined),
 }));
 
