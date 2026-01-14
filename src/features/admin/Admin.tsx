@@ -15,7 +15,8 @@ import {
   Activity,
   Clock,
   Loader2,
-  ListChecks
+  ListChecks,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Switch } from '@/shared/components/ui/switch';
@@ -30,10 +31,32 @@ import {
   testSource,
   disableBrokenSources,
   resetSourceHealth,
+  triggerCoordinator,
+  updateSourceConfig,
+  pruneEvents,
   type ScraperSource,
   type ScrapeResult,
   type DryRunResult
 } from './api/scraperService';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/shared/components/ui/dialog';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from '@/shared/components/ui/alert-dialog';
 
 interface ScrapeJob {
   id: string;
@@ -103,6 +126,13 @@ export default function Admin() {
   const [testResults, setTestResults] = useState<Record<string, DryRunResult>>({});
   const [showResults, setShowResults] = useState(false);
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  const [schedulerLoading, setSchedulerLoading] = useState(false);
+  const [lastScheduledRun, setLastScheduledRun] = useState<string | null>(null);
+  const [configDialogSource, setConfigDialogSource] = useState<ScraperSource | null>(null);
+  const [configValue, setConfigValue] = useState('');
+  const [configSaving, setConfigSaving] = useState(false);
+  const [pruneDialogOpen, setPruneDialogOpen] = useState(false);
+  const [pruning, setPruning] = useState(false);
   
   // Job queue state
   const [jobs, setJobs] = useState<ScrapeJob[]>([]);
@@ -163,6 +193,7 @@ export default function Admin() {
         .limit(20);
       
       if (jobsData) {
+        setLastScheduledRun(jobsData[0]?.created_at ?? null);
         // Get source names
         const sourceIds = [...new Set(jobsData.map((j) => j.source_id))];
         const { data: sourcesData } = await supabase
@@ -190,27 +221,20 @@ export default function Admin() {
     }
   }
 
-  async function triggerCoordinator() {
-    setScraping(true);
+  async function handleTriggerScheduler() {
+    setSchedulerLoading(true);
     try {
-      const response = await fetch(
-        `https://mlpefjsbriqgxcaqxhic.supabase.co/functions/v1/scrape-coordinator`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-      const result = await response.json();
+      const result = await triggerCoordinator();
       if (result.success) {
-        toast.success(`Queued ${result.jobsCreated} scrape jobs`);
+        toast.success(`Queued ${result.jobsCreated ?? 0} scrape jobs`);
         await loadJobs();
       } else {
         toast.error(result.error || 'Failed to queue jobs');
       }
     } catch (error) {
-      toast.error('Failed to trigger coordinator');
+      toast.error('Failed to trigger scheduler');
     } finally {
-      setScraping(false);
+      setSchedulerLoading(false);
     }
   }
 
@@ -311,6 +335,46 @@ export default function Admin() {
     }
   }
 
+  function openConfigDialog(source: ScraperSource) {
+    setConfigDialogSource(source);
+    setConfigValue(JSON.stringify(source.config ?? {}, null, 2));
+  }
+
+  async function handleSaveConfig() {
+    if (!configDialogSource) return;
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(configValue);
+    } catch (error) {
+      toast.error('Config must be valid JSON');
+      return;
+    }
+    try {
+      setConfigSaving(true);
+      await updateSourceConfig(configDialogSource.id, parsed);
+      setSources(prev => prev.map(s => s.id === configDialogSource.id ? { ...s, config: parsed } : s));
+      toast.success('Config updated');
+      setConfigDialogSource(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update configuration');
+    } finally {
+      setConfigSaving(false);
+    }
+  }
+
+  async function handlePruneEvents() {
+    try {
+      setPruning(true);
+      const deleted = await pruneEvents();
+      toast.success(`Deleted ${deleted} stale event(s)`);
+    } catch (error) {
+      toast.error('Failed to prune events');
+    } finally {
+      setPruning(false);
+      setPruneDialogOpen(false);
+    }
+  }
+
   function toggleSelectSource(id: string) {
     setSelectedSources(prev => {
       const next = new Set(prev);
@@ -358,15 +422,6 @@ export default function Admin() {
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={triggerCoordinator} 
-              disabled={scraping || jobStats.pending > 0 || jobStats.processing > 0}
-              className="gap-2"
-              variant="default"
-            >
-              <ListChecks size={16} />
-              Queue All
-            </Button>
-            <Button 
               onClick={handleRunAll} 
               disabled={scraping}
               className="gap-2"
@@ -378,6 +433,47 @@ export default function Admin() {
           </div>
         </div>
       </header>
+
+      {/* Automation & Scheduling */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-4 py-4 border-b border-border bg-muted/20"
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <Clock size={18} />
+              Automation & Scheduling
+            </h2>
+            <p className="text-sm text-muted-foreground">Trigger the daily scheduler and monitor automation</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock size={14} />
+            <span>Last Scheduled Run: {formatRelativeTime(lastScheduledRun)}</span>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button 
+            onClick={handleTriggerScheduler} 
+            disabled={schedulerLoading || jobStats.pending > 0 || jobStats.processing > 0}
+            className="gap-2"
+            size="lg"
+          >
+            <Zap size={18} className={schedulerLoading ? 'animate-spin' : ''} />
+            {schedulerLoading ? 'Triggering...' : 'Trigger Daily Scheduler'}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={loadJobs}
+            className="gap-1"
+          >
+            <RefreshCw size={14} />
+            Refresh Queue
+          </Button>
+        </div>
+      </motion.div>
 
       {/* Job Queue Dashboard */}
       <div className="px-4 py-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border">
@@ -525,6 +621,32 @@ export default function Admin() {
           <XCircle size={14} />
           Disable Broken ({brokenCount})
         </Button>
+        <AlertDialog open={pruneDialogOpen} onOpenChange={setPruneDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1"
+            >
+              <Trash2 size={14} />
+              Prune Stale Events
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Prune stale events</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will delete events with an event date in the past. Are you sure you want to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={pruning}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handlePruneEvents} disabled={pruning}>
+                {pruning ? 'Pruning...' : 'Confirm'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Button 
           variant="outline" 
           size="sm" 
@@ -609,6 +731,15 @@ export default function Admin() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => openConfigDialog(source)}
+                    className="h-8 px-2"
+                  >
+                    <Settings size={14} />
+                    <span className="sr-only">Edit Config</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleTestSource(source.id)}
                     disabled={isTesting}
                     className="h-8 px-2"
@@ -638,6 +769,29 @@ export default function Admin() {
           );
         })}
       </div>
+
+      <Dialog open={!!configDialogSource} onOpenChange={(open) => !open && setConfigDialogSource(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Config {configDialogSource ? `- ${configDialogSource.name}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <Textarea 
+            value={configValue}
+            onChange={(e) => setConfigValue(e.target.value)}
+            className="font-mono min-h-[240px]"
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfigDialogSource(null)} disabled={configSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveConfig} disabled={configSaving}>
+              {configSaving ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Last Results Panel */}
       <AnimatePresence>
