@@ -18,7 +18,6 @@ import { useEvents, useJoinEvent } from '@/lib/hooks';
 import { hapticImpact } from '@/lib/haptics';
 import { groupEventsIntoStacks } from '@/lib/feedGrouping';
 import { rankEvents } from '@/lib/feedAlgorithm';
-import { CATEGORY_MAP } from '@/lib/categories';
 import type { EventWithAttendees } from '@/lib/hooks';
 
 const CreateEventModal = lazy(() => import('@/components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
@@ -42,14 +41,15 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === today.getTime();
       });
-    case 'tomorrow':
+    case 'tomorrow': {
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
       return events.filter(e => {
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === tomorrow.getTime();
       });
-    case 'weekend':
+    }
+    case 'weekend': {
       const dayOfWeek = today.getDay();
       const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
       const friday = new Date(today);
@@ -62,24 +62,11 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
         const eventDay = parseLocalDate(e.event_date);
         return eventDay >= friday && eventDay <= sunday;
       });
+    }
     case 'all':
     default:
       return events;
   }
-}
-
-// Group events by category for carousels
-function groupEventsByCategory(events: EventWithAttendees[]): Map<string, EventWithAttendees[]> {
-  const groups = new Map<string, EventWithAttendees[]>();
-  
-  events.forEach(event => {
-    const category = CATEGORY_MAP[event.category] || event.category;
-    const existing = groups.get(category) || [];
-    existing.push(event);
-    groups.set(category, existing);
-  });
-  
-  return groups;
 }
 
 // Get trending events (most attendees)
@@ -421,7 +408,6 @@ const Feed = () => {
           <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
             <CreateEventModal
               onClose={() => setShowCreateModal(false)}
-              defaultCategory="social"
               defaultEventType="anchor"
             />
           </Suspense>

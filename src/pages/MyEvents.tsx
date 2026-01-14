@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FloatingNav } from '@/components/FloatingNav';
 import { EventTimeline } from '@/components/EventTimeline';
@@ -20,7 +20,7 @@ export default function MyEvents() {
   // Use dev profile as fallback when not logged in (development only)
   const profileId = profile?.id || (import.meta.env.DEV ? DEV_TEST_PROFILE_ID : '');
   
-  const { commitments, loading, groupedByMonth } = useAllUserCommitments(profileId);
+  const { loading, groupedByMonth } = useAllUserCommitments(profileId);
   const [activeTab, setActiveTab] = useState<FilterTab>('upcoming');
 
   // Filter events based on tab

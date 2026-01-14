@@ -5,7 +5,6 @@ import { hapticNotification } from './haptics';
 import toast from 'react-hot-toast';
 import type { Database } from '@/integrations/supabase/types';
 
-type Profile = Database['public']['Tables']['profiles']['Row'];
 type Event = Database['public']['Tables']['events']['Row'];
 type PersonaStats = Database['public']['Tables']['persona_stats']['Row'];
 type PersonaBadge = Database['public']['Tables']['persona_badges']['Row'];

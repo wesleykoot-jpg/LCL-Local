@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, Shield, CheckCircle, AlertTriangle, FileCheck, Camera, Phone, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,7 +9,7 @@ export function VerificationSafety() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   
-  const [verifications, setVerifications] = useState({
+  const [verifications] = useState({
     email: true,
     phone: false,
     identity: false,

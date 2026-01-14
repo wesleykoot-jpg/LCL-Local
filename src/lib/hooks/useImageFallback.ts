@@ -60,7 +60,7 @@ export function getEventImage(imageUrl: string | null | undefined, category: str
  */
 export function useImageFallback(primaryUrl: string, category: string) {
   const [currentSrc, setCurrentSrc] = useState(primaryUrl);
-  const [errorCount, setErrorCount] = useState(0);
+  const [, setErrorCount] = useState(0);
 
   const handleError = useCallback(() => {
     setErrorCount(prev => {

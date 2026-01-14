@@ -529,7 +529,7 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
   let llm_prompt: string | undefined;
   let llm_response_excerpt: string | undefined;
   let blocked = false;
-  let errors: string[] = [];
+  const errors: string[] = [];
 
   for (const candidate of attempted_paths) {
     DEFENSIVE_HEADERS.Referer = candidate;

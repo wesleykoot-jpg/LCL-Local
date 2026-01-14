@@ -66,6 +66,10 @@ export function CreateEventModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile?.id) return;
+    if (!userLocation) {
+      toast.error('Location required. Please enable location services.');
+      return;
+    }
 
     setLoading(true);
 

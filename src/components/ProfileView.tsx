@@ -1,4 +1,5 @@
-import React, { useState, createElement } from 'react';
+import { useState, createElement } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { 
   MapPin, Shield, ChevronRight, Trophy, Star, Award, Users, 
   CheckCircle, Flame, LogOut, Loader2, Settings, Heart,
@@ -14,7 +15,7 @@ import { hapticImpact } from '@/lib/haptics';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
-const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
+const iconMap: Record<string, LucideIcon> = {
   Shield,
   Users,
   Trophy,
@@ -404,7 +405,7 @@ export function ProfileView() {
                 <div className="flex items-center justify-center gap-1 mb-0.5">
                   <Star size={16} className="text-primary fill-primary" />
                   <span className="text-2xl font-bold text-foreground">
-                    {personaStats.host_rating.toFixed(1)}
+                    {personaStats.host_rating?.toFixed(1) ?? 'N/A'}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground">

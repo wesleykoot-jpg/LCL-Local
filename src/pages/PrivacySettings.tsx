@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Shield, Eye, EyeOff, Lock, Database, Share2, Download, Trash2, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, Shield, Eye, Lock, Database, Share2, Download, Trash2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';

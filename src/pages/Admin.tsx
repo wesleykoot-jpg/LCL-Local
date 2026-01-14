@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
   RefreshCw, 
-  Play, 
-  Pause, 
   AlertTriangle, 
   CheckCircle2, 
   XCircle,
@@ -109,7 +107,7 @@ export default function Admin() {
   // Job queue state
   const [jobs, setJobs] = useState<ScrapeJob[]>([]);
   const [jobStats, setJobStats] = useState<JobStats>({ pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 });
-  const [showJobQueue, setShowJobQueue] = useState(true);
+  const [showJobQueue] = useState(true);
 
   // Check dev mode
   useEffect(() => {
@@ -143,7 +141,7 @@ export default function Admin() {
       
       if (statsData) {
         const stats: JobStats = { pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 };
-        statsData.forEach((job: { status: string; events_scraped: number; events_inserted: number }) => {
+        statsData.forEach((job) => {
           if (job.status === 'pending') stats.pending++;
           else if (job.status === 'processing') stats.processing++;
           else if (job.status === 'completed') stats.completed++;
@@ -173,16 +171,24 @@ export default function Admin() {
       
       if (jobsData) {
         // Get source names
-        const sourceIds = [...new Set(jobsData.map((j: ScrapeJob) => j.source_id))];
+        const sourceIds = [...new Set(jobsData.map((j) => j.source_id))];
         const { data: sourcesData } = await supabase
           .from('scraper_sources')
           .select('id, name')
           .in('id', sourceIds);
         
-        const sourceMap = new Map(sourcesData?.map((s: { id: string; name: string }) => [s.id, s.name]) || []);
+        const sourceMap = new Map(sourcesData?.map((s) => [s.id, s.name]) || []);
         
-        setJobs(jobsData.map((j: ScrapeJob) => ({
-          ...j,
+        setJobs(jobsData.map((j) => ({
+          id: j.id,
+          source_id: j.source_id,
+          status: j.status as ScrapeJob['status'],
+          attempts: j.attempts ?? 0,
+          events_scraped: j.events_scraped ?? 0,
+          events_inserted: j.events_inserted ?? 0,
+          error_message: j.error_message,
+          created_at: j.created_at ?? '',
+          completed_at: j.completed_at,
           source_name: sourceMap.get(j.source_id) || 'Unknown'
         })));
       }
