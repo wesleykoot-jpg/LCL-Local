@@ -5,7 +5,7 @@ import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification, createScraperBlockNotification } from "../_shared/slack.ts";
-import { classifyTextToCategory } from "../_shared/categoryMapping.ts";
+import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 
 /**
  * Run Scraper Edge Function
@@ -36,10 +36,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Internal categories used by the product - aligned with modern UI categories
-const INTERNAL_CATEGORIES = ["active", "gaming", "entertainment", "social", "family", "outdoors", "music", "workshops", "foodie", "community"] as const;
-type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 
 // Dynamically calculate target year (current year, or configurable via env)
 function getTargetYear(): number {

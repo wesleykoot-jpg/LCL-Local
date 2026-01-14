@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyTextToCategory } from '../supabase/functions/_shared/categoryMapping';
+import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from '../supabase/functions/_shared/categoryMapping';
 
 /**
  * Test for NL-Context Intelligent Mapping (Updated for Modern Categories)
@@ -8,9 +8,6 @@ import { classifyTextToCategory } from '../supabase/functions/_shared/categoryMa
  * Now uses modern 10-category system:
  * - active, gaming, entertainment, social, family, outdoors, music, workshops, foodie, community
  */
-
-// Internal categories (matching modern INTERNAL_CATEGORIES)
-type InternalCategory = "active" | "gaming" | "entertainment" | "social" | "family" | "outdoors" | "music" | "workshops" | "foodie" | "community";
 
 /**
  * mapToInternalCategory implementation matching the updated one in scrape-events
@@ -21,10 +18,8 @@ function mapToInternalCategory(input?: string): InternalCategory {
   // Use the modern category classification system
   const category = classifyTextToCategory(value);
   
-  const INTERNAL_CATEGORIES = ["active", "gaming", "entertainment", "social", "family", "outdoors", "music", "workshops", "foodie", "community"];
-  
   // Validate that the result is one of our internal categories
-  if (INTERNAL_CATEGORIES.includes(category)) {
+  if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
     return category as InternalCategory;
   }
   

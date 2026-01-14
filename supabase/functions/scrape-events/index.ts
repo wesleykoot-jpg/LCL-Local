@@ -19,7 +19,7 @@ import {
   increaseRateLimit, 
   getEffectiveRateLimit 
 } from "../_shared/scraperObservability.ts";
-import { classifyTextToCategory } from "../_shared/categoryMapping.ts";
+import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 
 // Default CSS selectors for event scraping
 const SELECTORS = [
@@ -39,10 +39,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-scraper-key",
 };
-
-// Internal categories used by the product - aligned with modern UI categories
-export const INTERNAL_CATEGORIES = ["active", "gaming", "entertainment", "social", "family", "outdoors", "music", "workshops", "foodie", "community"] as const;
-export type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
 
 const TARGET_YEAR = 2026;
 
