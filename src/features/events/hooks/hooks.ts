@@ -28,6 +28,11 @@ export interface EventWithAttendees extends Event {
 
 const ATTENDEE_LIMIT = 4;
 
+// Query cache configuration constants
+const QUERY_STALE_TIME = 1000 * 60 * 2; // Consider data fresh for 2 minutes
+const QUERY_GC_TIME = 1000 * 60 * 10; // Keep unused data in cache for 10 minutes
+
+
 export function usePersonaStats(profileId: string) {
   const [stats, setStats] = useState<PersonaStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -314,8 +319,8 @@ export function useAllUserCommitments(profileId: string) {
       return commitmentsWithEvents;
     },
     enabled: !!profileId,
-    staleTime: 1000 * 60 * 2, // Consider data fresh for 2 minutes
-    gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
     refetchOnWindowFocus: true, // Refetch when user returns to the tab
   });
 
