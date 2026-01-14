@@ -189,3 +189,98 @@ Deno.test("extractStructuredEvents parses JSON-LD blocks", () => {
   assertEquals(events[0].detailUrl, "https://example.com/jazz");
   assertEquals(events[0].detailPageTime, "20:00");
 });
+
+// PageFetcher Pattern Tests
+import { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "../supabase/functions/scrape-events/strategies.ts";
+
+Deno.test("StaticPageFetcher returns html, finalUrl and statusCode", async () => {
+  const mockFetch = (_url: string, _init?: RequestInit) => {
+    const response = new Response("<html><body>Test Content</body></html>", { 
+      status: 200, 
+      headers: { "Content-Type": "text/html" } 
+    });
+    Object.defineProperty(response, "url", { value: "https://example.com/final" });
+    return Promise.resolve(response);
+  };
+
+  const fetcher = new StaticPageFetcher(mockFetch as typeof fetch);
+  const result = await fetcher.fetchPage("https://example.com/test");
+
+  assertEquals(result.html, "<html><body>Test Content</body></html>");
+  assertEquals(result.finalUrl, "https://example.com/final");
+  assertEquals(result.statusCode, 200);
+});
+
+Deno.test("StaticPageFetcher merges custom headers", async () => {
+  let capturedHeaders: Record<string, string> = {};
+  
+  const mockFetch = (_url: string, init?: RequestInit) => {
+    capturedHeaders = (init?.headers as Record<string, string>) || {};
+    return Promise.resolve(new Response("", { status: 200 }));
+  };
+
+  const customHeaders = { "X-Custom-Header": "test-value" };
+  const fetcher = new StaticPageFetcher(mockFetch as typeof fetch, customHeaders);
+  await fetcher.fetchPage("https://example.com/test");
+
+  assert(capturedHeaders["User-Agent"]?.includes("Mozilla"));
+  assertEquals(capturedHeaders["X-Custom-Header"], "test-value");
+  assertEquals(capturedHeaders["Accept-Language"], "en-US,en;q=0.5");
+});
+
+Deno.test("DynamicPageFetcher returns 501 Not Implemented", async () => {
+  const fetcher = new DynamicPageFetcher();
+  const result = await fetcher.fetchPage("https://example.com/test");
+
+  assertEquals(result.html, "");
+  assertEquals(result.finalUrl, "https://example.com/test");
+  assertEquals(result.statusCode, 501);
+});
+
+Deno.test("createFetcherForSource returns StaticPageFetcher with source headers", () => {
+  const source: ScraperSource = {
+    id: "test-source",
+    name: "Test Source",
+    url: "https://example.com",
+    enabled: true,
+    config: {
+      headers: {
+        "X-Source-Header": "source-value",
+      },
+    },
+  };
+
+  const fetcher = createFetcherForSource(source);
+  assert(fetcher instanceof StaticPageFetcher);
+});
+
+Deno.test("scrapeEventCards works with PageFetcher", async () => {
+  const html = `
+    <article class="event-card">
+      <h2>Music Festival</h2>
+      <div class="date">15 juli 2026</div>
+      <a href="/festival">Details</a>
+    </article>
+  `;
+
+  const mockFetch = (_url: string, _init?: RequestInit) => {
+    const response = new Response(html, { status: 200 });
+    Object.defineProperty(response, "url", { value: "https://example.com/events" });
+    return Promise.resolve(response);
+  };
+
+  const source: ScraperSource = {
+    id: "test-fetcher",
+    name: "Test Fetcher Source",
+    url: "https://example.com/events",
+    enabled: true,
+    config: {},
+  };
+
+  const fetcher = new StaticPageFetcher(mockFetch as typeof fetch);
+  const events = await scrapeEventCards(source, false, { fetcher });
+
+  assertEquals(events.length, 1);
+  assertEquals(events[0].title, "Music Festival");
+  assertEquals(events[0].date, "15 juli 2026");
+});
