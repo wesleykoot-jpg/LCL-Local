@@ -9,7 +9,7 @@
     - Time Relevance:   20%
     - Social Proof:     15%
     - Distance:         20%
-    - Compatibility:    10% (match_percentage or host reliability)
+    - Compatibility:    10% (match_percentage)
 
   Inputs:
     - user_lat, user_long: User coordinates (fallback to profile location)
@@ -23,6 +23,10 @@
 -- Ensure profiles can store preference categories for server-side scoring
 ALTER TABLE IF EXISTS public.profiles
   ADD COLUMN IF NOT EXISTS preferred_categories text[] DEFAULT '{}'::text[];
+
+-- Ensure reliability_score column is present (used for compatibility fallback display)
+ALTER TABLE IF EXISTS public.profiles
+  ADD COLUMN IF NOT EXISTS reliability_score numeric DEFAULT 100 CHECK (reliability_score >= 0 AND reliability_score <= 100);
 
 -- Ensure geospatial index exists for efficient distance filtering
 CREATE INDEX IF NOT EXISTS idx_events_location ON public.events USING GIST(location);
@@ -85,7 +89,7 @@ BEGIN
     FROM public.event_attendees
     GROUP BY event_id
   ),
-  scored AS (
+  base_scored AS (
     SELECT
       e.id AS event_id,
       e.title,
@@ -134,6 +138,22 @@ BEGIN
     LEFT JOIN attendee_counts ac ON ac.event_id = e.id
     LEFT JOIN public.profiles host ON host.id = e.created_by
     WHERE v_user_point IS NULL OR ST_DWithin(e.location, v_user_point, v_radius_km * 1000)
+  ),
+  scored AS (
+    SELECT
+      bs.*,
+      CASE
+        WHEN v_user_point IS NULL THEN 0.5
+        WHEN bs.distance_km <= 0.1 THEN 1.0
+        ELSE GREATEST(
+          0.1,
+          LEAST(
+            1.0,
+            1 / (1 + (bs.distance_km / (v_radius_km * 0.5)))
+          )
+        )
+      END AS distance_score
+    FROM base_scored bs
   )
   SELECT
     s.event_id,
@@ -159,14 +179,7 @@ BEGIN
         (s.time_score * 0.20) +
         (s.social_score * 0.15) +
         (s.compatibility_score * 0.10) +
-        ((CASE
-            WHEN v_user_point IS NULL THEN 0.5
-            WHEN s.distance_km <= 0.1 THEN 1.0
-            ELSE GREATEST(
-              0.1,
-              LEAST(1.0, 1 / (1 + (s.distance_km / (v_radius_km * 0.5))))
-            )
-          END) * 0.20)
+        (s.distance_score * 0.20)
       ) * (
         CASE
           WHEN EXTRACT(EPOCH FROM (s.event_date - now())) / 3600.0 < 0 THEN 0.1
