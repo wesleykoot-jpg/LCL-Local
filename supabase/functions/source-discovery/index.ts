@@ -1,9 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { 
-  MAJOR_MUNICIPALITIES, 
-  MEDIUM_MUNICIPALITIES,
-  type Municipality 
+  type Municipality,
+  selectMunicipalitiesForDiscovery,
 } from "../_shared/dutchMunicipalities.ts";
 import { 
   CATEGORIES, 
@@ -356,9 +355,9 @@ async function processMunicipality(
 }
 
 interface DiscoveryOptions {
-  /** Minimum population for municipalities to process */
+  /** Minimum population for municipalities to process (default: 1000) */
   minPopulation?: number;
-  /** Maximum municipalities to process in one run */
+  /** Maximum municipalities to process in one run (default: unlimited) */
   maxMunicipalities?: number;
   /** Specific municipality names to process */
   municipalities?: string[];
@@ -415,31 +414,21 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // Default to processing all municipalities that meet the population threshold to ensure nationwide coverage
     const {
-      minPopulation = 50000,
-      maxMunicipalities = 5,
+      minPopulation = 1000,
+      maxMunicipalities,
       municipalities: municipalityFilter,
       categories: categoryFilter,
       dryRun = false,
     } = options;
 
     // Select municipalities to process
-    let municipalitiesToProcess: Municipality[] = [];
-    
-    if (municipalityFilter && municipalityFilter.length > 0) {
-      // Use specified municipalities
-      const allMunicipalities = [...MAJOR_MUNICIPALITIES, ...MEDIUM_MUNICIPALITIES];
-      municipalitiesToProcess = allMunicipalities.filter(m =>
-        municipalityFilter.some(name => 
-          m.name.toLowerCase() === name.toLowerCase()
-        )
-      );
-    } else {
-      // Filter by population
-      municipalitiesToProcess = [...MAJOR_MUNICIPALITIES, ...MEDIUM_MUNICIPALITIES]
-        .filter(m => m.population >= minPopulation)
-        .slice(0, maxMunicipalities);
-    }
+    const municipalitiesToProcess = selectMunicipalitiesForDiscovery({
+      minPopulation,
+      maxMunicipalities,
+      municipalities: municipalityFilter,
+    });
 
     if (municipalitiesToProcess.length === 0) {
       return new Response(

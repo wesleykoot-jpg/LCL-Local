@@ -195,3 +195,40 @@ export function getMunicipalityCoordinates(name: string): { lat: number; lng: nu
   const municipality = findMunicipalityByName(name);
   return municipality ? { lat: municipality.lat, lng: municipality.lng } : null;
 }
+
+export interface MunicipalitySelectionOptions {
+  /** Minimum population threshold */
+  minPopulation?: number;
+  /** Limit the number of municipalities to process */
+  maxMunicipalities?: number;
+  /** Explicit municipality name filter (case-insensitive) */
+  municipalities?: string[];
+}
+
+/**
+ * Helper used by source discovery to pick municipalities to process
+ */
+export function selectMunicipalitiesForDiscovery(
+  options: MunicipalitySelectionOptions = {}
+): Municipality[] {
+  const {
+    minPopulation = 1000,
+    maxMunicipalities,
+    municipalities,
+  } = options;
+
+  const baseList =
+    municipalities && municipalities.length > 0
+      ? ALL_MUNICIPALITIES.filter((m) =>
+          municipalities.some(
+            (name) => m.name.toLowerCase() === name.toLowerCase()
+          )
+        )
+      : getMunicipalitiesByMinPopulation(minPopulation);
+
+  if (maxMunicipalities && maxMunicipalities > 0) {
+    return baseList.slice(0, maxMunicipalities);
+  }
+
+  return baseList;
+}
