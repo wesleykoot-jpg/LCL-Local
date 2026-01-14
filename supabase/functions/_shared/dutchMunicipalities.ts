@@ -226,10 +226,7 @@ export function selectMunicipalitiesForDiscovery(
         )
       : getMunicipalitiesByMinPopulation(minPopulation);
 
-  if (
-    Number.isFinite(maxMunicipalities) &&
-    (maxMunicipalities ?? 0) > 0
-  ) {
+  if (maxMunicipalities && maxMunicipalities > 0) {
     return baseList.slice(0, maxMunicipalities);
   }
 

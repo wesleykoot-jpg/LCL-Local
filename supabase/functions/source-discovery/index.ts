@@ -414,6 +414,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // Default to processing all municipalities that meet the population threshold to ensure nationwide coverage
     const {
       minPopulation = 1000,
       maxMunicipalities,
