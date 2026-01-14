@@ -10,6 +10,10 @@ DECLARE
   v_event3_id uuid := '5dd99a4a-9e15-4ac6-aa8b-89bed8fb7ec3';
   v_event4_id uuid := 'bbd9adcf-158e-49ae-b237-43a396ebeee8';
   v_event5_id uuid := '71b39cff-d9a8-4f22-885d-5c2244f6f9c5';
+  -- Profile constants for consistency
+  v_reliability_score int := 96;
+  v_events_attended int := 48;
+  v_events_committed int := 50;
 BEGIN
   -- Check if the target profile already exists
   SELECT id INTO v_existing_profile_id 
@@ -63,7 +67,7 @@ BEGIN
       ) VALUES (
         v_target_profile_id, 'Alex van Berg', 'Meppel', 'NL',
         ST_SetSRID(ST_MakePoint(6.2, 52.7), 4326)::geography,
-        96, 48, 50, 'family', true
+        v_reliability_score, v_events_attended, v_events_committed, 'family', true
       );
       
       -- Insert persona stats
@@ -168,12 +172,16 @@ BEGIN
   END IF;
 
   -- Create additional test profiles for other attendees (if they don't exist)
-  INSERT INTO profiles (id, full_name, location_city, location_country, reliability_score, current_persona, verified_resident)
+  INSERT INTO profiles (id, full_name, location_city, location_country, location_coordinates, reliability_score, current_persona, verified_resident)
   VALUES 
-    ('a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Test User 1', 'Meppel', 'NL', 95, 'family', true),
-    ('b2c3d4e5-f6a7-4b5c-9d0e-1f2a3b4c5d6e', 'Test User 2', 'Meppel', 'NL', 92, 'gamer', true),
-    ('c3d4e5f6-a7b8-4c5d-0e1f-2a3b4c5d6e7f', 'Test User 3', 'Meppel', 'NL', 98, 'family', true),
-    ('d4e5f6a7-b8c9-4d5e-1f2a-3b4c5d6e7f8a', 'Test User 4', 'Meppel', 'NL', 90, 'gamer', true)
+    ('a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Test User 1', 'Meppel', 'NL', 
+     ST_SetSRID(ST_MakePoint(6.19, 52.69), 4326)::geography, 95, 'family', true),
+    ('b2c3d4e5-f6a7-4b5c-9d0e-1f2a3b4c5d6e', 'Test User 2', 'Meppel', 'NL', 
+     ST_SetSRID(ST_MakePoint(6.21, 52.71), 4326)::geography, 92, 'gamer', true),
+    ('c3d4e5f6-a7b8-4c5d-0e1f-2a3b4c5d6e7f', 'Test User 3', 'Meppel', 'NL', 
+     ST_SetSRID(ST_MakePoint(6.18, 52.72), 4326)::geography, 98, 'family', true),
+    ('d4e5f6a7-b8c9-4d5e-1f2a-3b4c5d6e7f8a', 'Test User 4', 'Meppel', 'NL', 
+     ST_SetSRID(ST_MakePoint(6.22, 52.68), 4326)::geography, 90, 'gamer', true)
   ON CONFLICT (id) DO NOTHING;
 
   RAISE NOTICE 'Test data setup complete!';
