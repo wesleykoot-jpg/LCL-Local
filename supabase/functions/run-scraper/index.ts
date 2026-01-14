@@ -481,6 +481,7 @@ async function processSingleSource(
     // Log warning if coordinates are missing
     if (!defaultCoords) {
       console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);
+    }
 
     const eventInsert = {
       title: normalized.title,
