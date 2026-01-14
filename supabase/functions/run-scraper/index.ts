@@ -4,7 +4,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
-import { sendSlackNotification } from "../_shared/slack.ts";
+import { sendSlackNotification, createScraperBlockNotification } from "../_shared/slack.ts";
 
 /**
  * Run Scraper Edge Function
@@ -703,11 +703,14 @@ serve(async (req: Request): Promise<Response> => {
 
     // Send Slack notification if webhook URL is configured
     if (!dryRun) {
-      const message = `🎉 Scraper Run Complete (${runId})\n` +
-        `Sources: ${stats.totalSources}\n` +
-        `Scraped: ${stats.totalEventsScraped} | Inserted: ${stats.totalEventsInserted}\n` +
-        `Duplicates: ${stats.totalEventsDuplicate} | Failed: ${stats.totalEventsFailed}`;
-      await sendSlackNotification(message, false);
+      const blockNotification = createScraperBlockNotification({
+        eventsScraped: stats.totalEventsScraped,
+        eventsInserted: stats.totalEventsInserted,
+        eventsDuplicate: stats.totalEventsDuplicate,
+        eventsFailed: stats.totalEventsFailed,
+        totalSources: stats.totalSources,
+      });
+      await sendSlackNotification(blockNotification, false);
     }
 
     return new Response(

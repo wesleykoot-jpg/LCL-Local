@@ -4,7 +4,7 @@ import { Heart, Clock, MapPin, Users, Loader2 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
 import { hapticImpact } from '@/lib/haptics';
-import type { EventWithAttendees } from '@/lib/hooks';
+import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 interface FeaturedEventHeroProps {
   event: EventWithAttendees;
