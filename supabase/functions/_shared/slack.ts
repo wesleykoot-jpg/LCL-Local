@@ -2,13 +2,31 @@
  * Shared utility for sending Slack webhook notifications
  */
 
+// Slack Block Kit types
+export interface SlackBlock {
+  type: string;
+  text?: {
+    type: string;
+    text: string;
+    emoji?: boolean;
+  };
+  fields?: Array<{
+    type: string;
+    text: string;
+  }>;
+}
+
+export interface SlackBlockMessage {
+  blocks: SlackBlock[];
+}
+
 /**
  * Send notification to Slack webhook using Block Kit for rich formatting
  * @param message - The main message text (or Block Kit blocks)
  * @param isError - Whether this is an error notification (changes color)
  */
 export async function sendSlackNotification(
-  message: string | { blocks: unknown[] },
+  message: string | SlackBlockMessage,
   isError: boolean = false
 ): Promise<void> {
   try {
@@ -56,14 +74,15 @@ export async function sendSlackNotification(
 
 /**
  * Create a rich Block Kit notification for scraper results
- * @param municipality - Name of the municipality processed
- * @param newSourcesFound - Number of new sources found
- * @param eventsScraped - Number of events successfully scraped
- * @param eventsInserted - Number of events inserted into database
- * @param eventsDuplicate - Number of duplicate events skipped
- * @param eventsFailed - Number of events that failed to process
- * @param totalSources - Total number of sources processed
- * @returns Block Kit formatted message object
+ * 
+ * @param params.municipality - Optional: Name of the municipality processed
+ * @param params.newSourcesFound - Optional: Number of new sources discovered
+ * @param params.eventsScraped - Number of events successfully scraped
+ * @param params.eventsInserted - Number of events inserted into database
+ * @param params.eventsDuplicate - Number of duplicate events skipped
+ * @param params.eventsFailed - Number of events that failed to process
+ * @param params.totalSources - Total number of sources processed
+ * @returns Block Kit formatted message object with type-safe blocks
  */
 export function createScraperBlockNotification(params: {
   municipality?: string;
@@ -73,7 +92,7 @@ export function createScraperBlockNotification(params: {
   eventsDuplicate: number;
   eventsFailed: number;
   totalSources: number;
-}): { blocks: unknown[] } {
+}): SlackBlockMessage {
   const { 
     municipality, 
     newSourcesFound, 
