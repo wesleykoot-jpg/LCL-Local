@@ -778,8 +778,8 @@ export async function handleRequest(req: Request): Promise<Response> {
 }
 
 export { parseToISODate } from "./dateUtils.ts";
-export type { ScraperSource } from "./shared.ts";
-export type { PageFetcher } from "./strategies.ts";
+export type { ScraperSource, FetcherType } from "./shared.ts";
+export type { PageFetcher, RetryConfig } from "./strategies.ts";
 export { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "./strategies.ts";
 
 if (import.meta.main) {
