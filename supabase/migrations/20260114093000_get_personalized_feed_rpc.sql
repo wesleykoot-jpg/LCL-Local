@@ -103,7 +103,7 @@ BEGIN
       COALESCE(ac.going_count, 0) AS attendee_count,
       COALESCE(host.reliability_score, 50) AS host_reliability,
       CASE
-        WHEN cardinality(v_pref_categories) = 0 THEN 0.5
+        WHEN array_length(v_pref_categories, 1) IS NULL THEN 0.5
         WHEN e.category = ANY (v_pref_categories) THEN 1.0
         ELSE 0.3
       END AS category_score,
@@ -125,7 +125,7 @@ BEGIN
           )
         )
       END AS social_score,
-      COALESCE(e.match_percentage, host.reliability_score, 50)::numeric / 100.0 AS compatibility_score,
+      COALESCE(e.match_percentage, 50)::numeric / 100.0 AS compatibility_score,
       CASE
         WHEN v_user_point IS NULL THEN NULL
         ELSE ST_Distance(e.location, v_user_point) / 1000.0
