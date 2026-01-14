@@ -909,13 +909,12 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Send Slack notification if webhook URL is configured
-    const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
-    if (slackWebhookUrl && !dryRun) {
+    if (!dryRun) {
       const message = `🎉 Scraper Complete\n` +
         `Sources: ${stats.totalSources}\n` +
         `Scraped: ${stats.totalEventsScraped} | Inserted: ${stats.totalEventsInserted}\n` +
         `Duplicates: ${stats.totalEventsDuplicate} | Failed: ${stats.totalEventsFailed}`;
-      await sendSlackNotification(slackWebhookUrl, message, false);
+      await sendSlackNotification(message, false);
     }
 
     return new Response(JSON.stringify({ success: true, stats }), {
@@ -925,11 +924,8 @@ export async function handleRequest(req: Request): Promise<Response> {
     console.error("Scraper error", error);
     
     // Send Slack notification for errors
-    const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
-    if (slackWebhookUrl) {
-      const errorMessage = `❌ Scraper Error\n${error instanceof Error ? error.message : "Unknown error"}`;
-      await sendSlackNotification(slackWebhookUrl, errorMessage, true);
-    }
+    const errorMessage = `❌ Scraper Error\n${error instanceof Error ? error.message : "Unknown error"}`;
+    await sendSlackNotification(errorMessage, true);
     
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),

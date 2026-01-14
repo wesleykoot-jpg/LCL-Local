@@ -680,16 +680,24 @@ serve(async (req: Request): Promise<Response> => {
       // Mark job as completed
       await completeJob(supabase, job.id, stats.scraped, stats.inserted);
 
-      console.log(`Worker: Completed job ${job.id} - scraped: ${stats.scraped}, inserted: ${stats.inserted}, duplicates: ${stats.duplicates}`);
+      // Get coordinates for logging
+      const defaultCoords = source.default_coordinates || source.config?.default_coordinates;
+      const coordsLog = defaultCoords 
+        ? `Coordinates: ${defaultCoords.lat.toFixed(4)}, ${defaultCoords.lng.toFixed(4)}`
+        : "Coordinates: Not configured";
 
-      // Send Slack notification for job completion if webhook is configured
-      const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
-      if (slackWebhookUrl) {
-        const message = `✅ Job ${job.id} completed\n` +
-          `Source: ${source.name}\n` +
-          `Scraped: ${stats.scraped} | Inserted: ${stats.inserted} | Duplicates: ${stats.duplicates}`;
-        await sendSlackNotification(slackWebhookUrl, message, false);
-      }
+      console.log(`Worker: Completed job ${job.id} - scraped: ${stats.scraped}, inserted: ${stats.inserted}, duplicates: ${stats.duplicates} | ${coordsLog}`);
+
+      // Send Slack notification for job completion
+      const coordsInfo = defaultCoords 
+        ? `📍 ${defaultCoords.lat.toFixed(4)}, ${defaultCoords.lng.toFixed(4)}`
+        : "📍 No coordinates";
+      
+      const message = `✅ Job ${job.id} completed\n` +
+        `Source: ${source.name}\n` +
+        `Scraped: ${stats.scraped} | Inserted: ${stats.inserted} | Duplicates: ${stats.duplicates}\n` +
+        `${coordsInfo}`;
+      await sendSlackNotification(message, false);
 
       // Chain to the next job if requested
       if (chain) {
@@ -731,14 +739,11 @@ serve(async (req: Request): Promise<Response> => {
       await updateSourceStats(supabase, source.id, 0, false);
 
       // Send Slack notification for job failure
-      const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
-      if (slackWebhookUrl) {
-        const message = `❌ Job ${job.id} failed\n` +
-          `Source: ${source.name}\n` +
-          `Error: ${errorMessage}\n` +
-          `Will retry: ${job.attempts < job.max_attempts}`;
-        await sendSlackNotification(slackWebhookUrl, message, true);
-      }
+      const message = `❌ Job ${job.id} failed\n` +
+        `Source: ${source.name}\n` +
+        `Error: ${errorMessage}\n` +
+        `Will retry: ${job.attempts < job.max_attempts}`;
+      await sendSlackNotification(message, true);
 
       // Still chain to next job on failure
       if (chain) {

@@ -3,18 +3,25 @@
  */
 
 /**
- * Send notification to Slack webhook
- * @param webhookUrl - The Slack webhook URL
- * @param message - The main message text
+ * Send notification to Slack webhook using Block Kit for rich formatting
+ * @param message - The main message text (or Block Kit blocks)
  * @param isError - Whether this is an error notification (changes color)
  */
 export async function sendSlackNotification(
-  webhookUrl: string,
-  message: string,
+  message: string | { blocks: unknown[] },
   isError: boolean = false
 ): Promise<void> {
   try {
-    const payload = {
+    // Read SLACK_WEBHOOK_URL from environment variables
+    const webhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+    
+    if (!webhookUrl) {
+      console.warn("SLACK_WEBHOOK_URL not configured, skipping Slack notification");
+      return;
+    }
+
+    // Support both simple text messages and Block Kit formatted messages
+    const payload = typeof message === "string" ? {
       text: message,
       attachments: isError ? [
         {
@@ -27,7 +34,7 @@ export async function sendSlackNotification(
           text: "✅ Scraping completed successfully",
         }
       ],
-    };
+    } : message;
 
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -36,9 +43,13 @@ export async function sendSlackNotification(
     });
 
     if (!response.ok) {
-      console.error(`Slack notification failed: ${response.status} ${response.statusText}`);
+      const responseText = await response.text();
+      console.error(`Slack notification failed: ${response.status} ${response.statusText}. Response: ${responseText}`);
+    } else {
+      console.log("Slack notification sent successfully");
     }
   } catch (error) {
-    console.error("Failed to send Slack notification:", error);
+    // Defensive error handling: Log the error but don't crash the scraper
+    console.error("Failed to send Slack notification (non-critical error):", error instanceof Error ? error.message : String(error));
   }
 }
