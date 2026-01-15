@@ -11,6 +11,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_service_role_key text;
+  v_supabase_url text;
 BEGIN
   -- Primary: read from app_secrets (preferred secure storage)
   SELECT value INTO v_service_role_key
@@ -26,13 +27,25 @@ BEGIN
     RAISE EXCEPTION 'Service role key not configured for scrape coordinator';
   END IF;
 
+  -- Resolve Supabase URL (prefer app.settings, fallback to app_secrets)
+  v_supabase_url := current_setting('app.settings.supabase_url', true);
+  IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
+    SELECT value INTO v_supabase_url
+    FROM app_secrets
+    WHERE key = 'supabase_url';
+  END IF;
+
+  IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
+    RAISE EXCEPTION 'Supabase URL not configured for scrape coordinator';
+  END IF;
+
   PERFORM net.http_post(
-    url := 'https://mlpefjsbriqgxcaqxhic.supabase.co/functions/v1/scrape-coordinator',
+    url := v_supabase_url || '/functions/v1/scrape-coordinator',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_service_role_key
     ),
-    body := '{"triggerWorker": true}'::jsonb
+    body := jsonb_build_object('triggerWorker', true)
   );
 END;
 $$;
