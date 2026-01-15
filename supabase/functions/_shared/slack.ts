@@ -56,12 +56,12 @@ export async function sendSlackNotification(
       attachments: isError ? [
         {
           color: "danger",
-          text: "⚠️ Error occurred during scraping",
+          text: "⚠️ Error notification",
         }
       ] : [
         {
           color: "good",
-          text: "✅ Scraping completed successfully",
+          text: "✅ Notification",
         }
       ],
     } : message;

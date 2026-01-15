@@ -18,6 +18,7 @@ export interface ErrorLogEntry {
 }
 
 let supabaseClient: ReturnType<typeof createClient> | null = null;
+const SLACK_FIELD_LIMIT = 1800;
 
 function getSupabaseClient() {
   if (!supabaseClient) {
@@ -32,7 +33,7 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
-function truncateValue(value: string | undefined, limit = 2500): string | undefined {
+function truncateValue(value: string | undefined, limit = SLACK_FIELD_LIMIT): string | undefined {
   if (!value) return undefined;
   return value.length > limit ? `${value.slice(0, limit)}…(truncated)` : value;
 }
@@ -69,15 +70,23 @@ export async function logError(entry: ErrorLogEntry): Promise<void> {
 
     // Forward errors to Slack for real-time visibility
     if (level === 'error' || level === 'fatal') {
-      const contextString = truncateValue(
-        entry.context ? JSON.stringify(entry.context, null, 2) : undefined,
-        1800
-      );
-      const stackTrace = truncateValue(entry.stack_trace, 1800);
+      let contextString: string | undefined;
+      try {
+        contextString = truncateValue(
+          entry.context ? JSON.stringify(entry.context, null, 2) : undefined,
+          SLACK_FIELD_LIMIT
+        );
+      } catch (contextError) {
+        console.error('[ErrorLogging] Failed to serialize context for Slack:', contextError);
+        const contextErrorMessage = contextError instanceof Error ? contextError.message : String(contextError);
+        contextString = `[ErrorLogging] Context serialization failed: ${contextErrorMessage}`;
+      }
+      const stackTrace = truncateValue(entry.stack_trace, SLACK_FIELD_LIMIT);
+      const messageText = truncateValue(entry.message, SLACK_FIELD_LIMIT) || 'No message provided';
 
       const slackMessageLines = [
-        `*${level.toUpperCase()}* ${entry.source}${entry.function_name ? ` › ${entry.function_name}` : ''}`,
-        `*Message*: ${entry.message}`,
+        `*${level.toUpperCase()}* ${entry.source}${entry.function_name ? ` | ${entry.function_name}` : ''}`,
+        `*Message*: ${messageText}`,
         entry.error_type ? `*Type*: ${entry.error_type}` : undefined,
         entry.error_code ? `*Code*: ${entry.error_code}` : undefined,
         entry.request_id ? `*Request ID*: ${entry.request_id}` : undefined,
@@ -86,8 +95,10 @@ export async function logError(entry: ErrorLogEntry): Promise<void> {
         stackTrace ? `*Stack*:\n${stackTrace}` : undefined,
       ].filter(Boolean);
 
-      if (slackMessageLines.length > 0) {
+      try {
         await sendSlackNotification(slackMessageLines.join('\n'), true);
+      } catch (notifyError) {
+        console.error('[ErrorLogging] Failed to send Slack notification:', notifyError);
       }
     }
   } catch (err) {
