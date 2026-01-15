@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -69,6 +69,7 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { Input } from '@/shared/components/ui/input';
 
+// Types
 interface ScrapeJob {
   id: string;
   source_id: string;
@@ -91,8 +92,20 @@ interface JobStats {
   total_inserted: number;
 }
 
+interface LogsSummary {
+  total: number;
+  fatal: number;
+  errors: number;
+  warnings: number;
+  info: number;
+  debug: number;
+  by_source: Record<string, number>;
+  by_function: Record<string, number>;
+}
+
 type HealthStatus = 'healthy' | 'warning' | 'error';
 
+// Utility functions
 function getHealthStatus(source: ScraperSource): HealthStatus {
   if (source.auto_disabled) return 'error';
   if ((source.consecutive_failures ?? 0) >= 3) return 'error';
@@ -129,6 +142,8 @@ function formatRelativeTime(date: string | null): string {
 
 export default function Admin() {
   const navigate = useNavigate();
+  
+  // Sources state
   const [sources, setSources] = useState<ScraperSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [scraping, setScraping] = useState(false);
@@ -137,11 +152,17 @@ export default function Admin() {
   const [testResults, setTestResults] = useState<Record<string, DryRunResult>>({});
   const [showResults, setShowResults] = useState(false);
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  
+  // Scheduler state
   const [schedulerLoading, setSchedulerLoading] = useState(false);
   const [lastScheduledRun, setLastScheduledRun] = useState<string | null>(null);
+  
+  // Config dialog state
   const [configDialogSource, setConfigDialogSource] = useState<ScraperSource | null>(null);
   const [configValue, setConfigValue] = useState('');
   const [configSaving, setConfigSaving] = useState(false);
+  
+  // Prune dialog state
   const [pruneDialogOpen, setPruneDialogOpen] = useState(false);
   const [pruning, setPruning] = useState(false);
   
@@ -153,98 +174,42 @@ export default function Admin() {
   
   // Job queue state
   const [jobs, setJobs] = useState<ScrapeJob[]>([]);
-  const [jobStats, setJobStats] = useState<JobStats>({ pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 });
-  const [showJobQueue] = useState(true);
+  const [jobStats, setJobStats] = useState<JobStats>({ 
+    pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 
+  });
   
   // Logs state
   const [logsLoading, setLogsLoading] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [logsSummary, setLogsSummary] = useState<{ 
-    total: number; 
-    fatal: number;
-    errors: number; 
-    warnings: number; 
-    info: number;
-    debug: number;
-    by_source: Record<string, number>;
-    by_function: Record<string, number>;
-  } | null>(null);
+  const [logsSummary, setLogsSummary] = useState<LogsSummary | null>(null);
   const [showLogs, setShowLogs] = useState(false);
-  const [logsMinutes, setLogsMinutes] = useState<number>(60); // Default to 1 hour for better coverage
+  const [logsMinutes, setLogsMinutes] = useState<number>(60);
 
-
-  // Load sources and jobs
-  useEffect(() => {
-    loadSources();
-    loadJobs();
-    loadDiscoveredSources();
-    
-    // Poll jobs every 3 seconds when there are pending/processing jobs
-    const interval = setInterval(() => {
-      if (jobStats.pending > 0 || jobStats.processing > 0) {
-        loadJobs();
-      }
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, [jobStats.pending, jobStats.processing]);
-
-  async function loadDiscoveredSources() {
+  // Load functions
+  const loadSources = useCallback(async () => {
     try {
-      const data = await getDiscoveredSources();
-      setDiscoveredSources(data);
+      setLoading(true);
+      const data = await getSources();
+      setSources(data);
     } catch (error) {
-      console.error('Failed to load discovered sources:', error);
-    }
-  }
-
-  async function handleTriggerDiscovery() {
-    setDiscoveryLoading(true);
-    try {
-      const result = await triggerSourceDiscovery({
-        maxMunicipalities,
-        minPopulation,
-      });
-      if (result.success) {
-        toast.success(`Discovery started! Found ${result.sourcesDiscovered ?? 0} sources, ${result.sourcesEnabled ?? 0} enabled`);
-        // Reload after a delay to get new sources
-        setTimeout(() => {
-          loadDiscoveredSources();
-          loadSources();
-        }, 5000);
-      } else {
-        // If it timed out, that's OK - it's running in the background
-        if (result.error?.includes('timeout') || result.error?.includes('context canceled')) {
-          toast.info('Discovery running in background - check back in a few minutes');
-          setTimeout(() => {
-            loadDiscoveredSources();
-            loadSources();
-          }, 30000);
-        } else {
-          toast.error(result.error || 'Discovery failed');
-        }
-      }
-    } catch (error) {
-      // Edge functions timeout is expected for long-running discovery
-      toast.info('Discovery running in background - check back in a few minutes');
-      setTimeout(() => {
-        loadDiscoveredSources();
-        loadSources();
-      }, 30000);
+      toast.error('Failed to load sources');
+      console.error(error);
     } finally {
-      setDiscoveryLoading(false);
+      setLoading(false);
     }
-  }
+  }, []);
 
-  async function loadJobs() {
+  const loadJobs = useCallback(async () => {
     try {
-      // Get job stats
       const { data: statsData } = await supabase
         .from('scrape_jobs')
         .select('status, events_scraped, events_inserted');
       
       if (statsData) {
-        const stats: JobStats = { pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 };
+        const stats: JobStats = { 
+          pending: 0, processing: 0, completed: 0, failed: 0, 
+          total_scraped: 0, total_inserted: 0 
+        };
         statsData.forEach((job) => {
           if (job.status === 'pending') stats.pending++;
           else if (job.status === 'processing') stats.processing++;
@@ -256,26 +221,14 @@ export default function Admin() {
         setJobStats(stats);
       }
 
-      // Get recent jobs with source names
       const { data: jobsData } = await supabase
         .from('scrape_jobs')
-        .select(`
-          id,
-          source_id,
-          status,
-          attempts,
-          events_scraped,
-          events_inserted,
-          error_message,
-          created_at,
-          completed_at
-        `)
+        .select('id, source_id, status, attempts, events_scraped, events_inserted, error_message, created_at, completed_at')
         .order('created_at', { ascending: false })
         .limit(20);
       
       if (jobsData) {
         setLastScheduledRun(jobsData[0]?.created_at ?? null);
-        // Get source names
         const sourceIds = [...new Set(jobsData.map((j) => j.source_id))];
         const { data: sourcesData } = await supabase
           .from('scraper_sources')
@@ -300,6 +253,53 @@ export default function Admin() {
     } catch (error) {
       console.error('Failed to load jobs:', error);
     }
+  }, []);
+
+  const loadDiscoveredSources = useCallback(async () => {
+    try {
+      const data = await getDiscoveredSources();
+      setDiscoveredSources(data);
+    } catch (error) {
+      console.error('Failed to load discovered sources:', error);
+    }
+  }, []);
+
+  // Initial load and polling
+  useEffect(() => {
+    loadSources();
+    loadJobs();
+    loadDiscoveredSources();
+  }, [loadSources, loadJobs, loadDiscoveredSources]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (jobStats.pending > 0 || jobStats.processing > 0) {
+        loadJobs();
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [jobStats.pending, jobStats.processing, loadJobs]);
+
+  // Handlers
+  async function handleTriggerDiscovery() {
+    setDiscoveryLoading(true);
+    try {
+      const result = await triggerSourceDiscovery({ maxMunicipalities, minPopulation });
+      if (result.success) {
+        toast.success(`Discovery started! Found ${result.sourcesDiscovered ?? 0} sources, ${result.sourcesEnabled ?? 0} enabled`);
+        setTimeout(() => { loadDiscoveredSources(); loadSources(); }, 5000);
+      } else if (result.error?.includes('timeout') || result.error?.includes('context canceled')) {
+        toast.info('Discovery running in background - check back in a few minutes');
+        setTimeout(() => { loadDiscoveredSources(); loadSources(); }, 30000);
+      } else {
+        toast.error(result.error || 'Discovery failed');
+      }
+    } catch {
+      toast.info('Discovery running in background - check back in a few minutes');
+      setTimeout(() => { loadDiscoveredSources(); loadSources(); }, 30000);
+    } finally {
+      setDiscoveryLoading(false);
+    }
   }
 
   async function handleTriggerScheduler() {
@@ -312,7 +312,7 @@ export default function Admin() {
       } else {
         toast.error(result.error || 'Failed to queue jobs');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to trigger scheduler');
     } finally {
       setSchedulerLoading(false);
@@ -321,27 +321,11 @@ export default function Admin() {
 
   async function clearCompletedJobs() {
     try {
-      await supabase
-        .from('scrape_jobs')
-        .delete()
-        .in('status', ['completed', 'failed']);
+      await supabase.from('scrape_jobs').delete().in('status', ['completed', 'failed']);
       toast.success('Cleared completed jobs');
       await loadJobs();
-    } catch (error) {
+    } catch {
       toast.error('Failed to clear jobs');
-    }
-  }
-
-  async function loadSources() {
-    try {
-      setLoading(true);
-      const data = await getSources();
-      setSources(data);
-    } catch (error) {
-      toast.error('Failed to load sources');
-      console.error(error);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -352,7 +336,7 @@ export default function Admin() {
         s.id === id ? { ...s, enabled, auto_disabled: enabled ? false : s.auto_disabled } : s
       ));
       toast.success(enabled ? 'Source enabled' : 'Source disabled');
-    } catch (error) {
+    } catch {
       toast.error('Failed to update source');
     }
   }
@@ -363,9 +347,8 @@ export default function Admin() {
       const result = await triggerScraper();
       setLastResult(result);
       setShowResults(true);
-      const inserted = result.totals?.inserted ?? result.inserted ?? 0;
-      toast.success(`Scraped ${inserted} new events`);
-      await loadSources(); // Refresh stats
+      toast.success(`Scraped ${result.totals?.inserted ?? result.inserted ?? 0} new events`);
+      await loadSources();
     } catch (error) {
       toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
@@ -378,12 +361,9 @@ export default function Admin() {
     try {
       const result = await testSource(sourceId);
       setTestResults(prev => ({ ...prev, [sourceId]: result }));
-      if (result.success) {
-        toast.success(`Found ${result.eventsFound} events`);
-      } else {
-        toast.error(result.error || 'Test failed');
-      }
-    } catch (error) {
+      if (result.success) toast.success(`Found ${result.eventsFound} events`);
+      else toast.error(result.error || 'Test failed');
+    } catch {
       toast.error('Test failed');
     } finally {
       setTestingSourceId(null);
@@ -393,13 +373,9 @@ export default function Admin() {
   async function handleDisableBroken() {
     try {
       const count = await disableBrokenSources();
-      if (count > 0) {
-        toast.success(`Disabled ${count} broken source(s)`);
-        await loadSources();
-      } else {
-        toast.info('No broken sources to disable');
-      }
-    } catch (error) {
+      if (count > 0) { toast.success(`Disabled ${count} broken source(s)`); await loadSources(); }
+      else toast.info('No broken sources to disable');
+    } catch {
       toast.error('Failed to disable sources');
     }
   }
@@ -411,7 +387,7 @@ export default function Admin() {
         s.id === id ? { ...s, consecutive_failures: 0, last_error: null, auto_disabled: false } : s
       ));
       toast.success('Health reset');
-    } catch (error) {
+    } catch {
       toast.error('Failed to reset health');
     }
   }
@@ -424,12 +400,7 @@ export default function Admin() {
   async function handleSaveConfig() {
     if (!configDialogSource) return;
     let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(configValue);
-    } catch (error) {
-      toast.error('Config must be valid JSON');
-      return;
-    }
+    try { parsed = JSON.parse(configValue); } catch { toast.error('Config must be valid JSON'); return; }
     try {
       setConfigSaving(true);
       await updateSourceConfig(configDialogSource.id, parsed);
@@ -448,7 +419,7 @@ export default function Admin() {
       setPruning(true);
       const deleted = await pruneEvents();
       toast.success(`Deleted ${deleted} stale event(s)`);
-    } catch (error) {
+    } catch {
       toast.error('Failed to prune events');
     } finally {
       setPruning(false);
@@ -464,20 +435,18 @@ export default function Admin() {
         setLogs(result.logs || []);
         setLogsSummary(result.summary || null);
         setShowLogs(true);
-        const errCount = result.summary?.errors ?? 0;
-        const warnCount = result.summary?.warnings ?? 0;
-        const fatalCount = result.summary?.fatal ?? 0;
-        if (fatalCount > 0 || errCount > 0) {
-          toast.error(`Fetched ${result.summary?.total ?? 0} entries: ${fatalCount} fatal, ${errCount} errors, ${warnCount} warnings`);
-        } else if (warnCount > 0) {
-          toast.warning(`Fetched ${result.summary?.total ?? 0} entries: ${warnCount} warnings`);
+        const { fatal = 0, errors = 0, warnings = 0, total = 0 } = result.summary || {};
+        if (fatal > 0 || errors > 0) {
+          toast.error(`Fetched ${total} entries: ${fatal} fatal, ${errors} errors, ${warnings} warnings`);
+        } else if (warnings > 0) {
+          toast.warning(`Fetched ${total} entries: ${warnings} warnings`);
         } else {
-          toast.success(`Fetched ${result.summary?.total ?? 0} log entries from last ${logsMinutes} min`);
+          toast.success(`Fetched ${total} log entries from last ${logsMinutes} min`);
         }
       } else {
         toast.error(result.error || 'Failed to fetch logs');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch logs');
     } finally {
       setLogsLoading(false);
@@ -500,11 +469,8 @@ export default function Admin() {
   function toggleSelectSource(id: string) {
     setSelectedSources(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -516,8 +482,6 @@ export default function Admin() {
   const lastScrapedAt = sources
     .filter(s => s.last_scraped_at)
     .sort((a, b) => new Date(b.last_scraped_at!).getTime() - new Date(a.last_scraped_at!).getTime())[0]?.last_scraped_at;
-  const lastSourcesFetched = lastResult ? (lastResult.sources?.length ?? 0) : '-';
-  const lastNewEvents = lastResult ? (lastResult.totals?.inserted ?? lastResult.inserted ?? 0) : '-';
 
   if (loading) {
     return (
@@ -544,75 +508,47 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">Manage event sources</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleRunAll} 
-              disabled={scraping}
-              className="gap-2"
-              variant="outline"
-            >
-              <RefreshCw size={16} className={scraping ? 'animate-spin' : ''} />
-              {scraping ? 'Running...' : 'Run Legacy'}
-            </Button>
-          </div>
+          <Button onClick={handleRunAll} disabled={scraping} variant="outline" className="gap-2">
+            <RefreshCw size={16} className={scraping ? 'animate-spin' : ''} />
+            {scraping ? 'Running...' : 'Run Legacy'}
+          </Button>
         </div>
       </header>
 
       {/* Automation & Scheduling */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="px-4 py-4 border-b border-border bg-muted/20"
-      >
+      <section className="px-4 py-4 border-b border-border bg-muted/20">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="font-semibold flex items-center gap-2">
-              <Clock size={18} />
-              Automation & Scheduling
+              <Clock size={18} /> Automation & Scheduling
             </h2>
             <p className="text-sm text-muted-foreground">Trigger the daily scheduler and monitor automation</p>
-            <div className="mt-1 flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <span>
-                Sources fetched: <strong className="text-foreground">{lastSourcesFetched}</strong>
-              </span>
-              <span className="text-green-600">
-                New events: <strong>{lastNewEvents}</strong>
-              </span>
-            </div>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock size={14} />
-            <span>Last Scheduled Run: {formatRelativeTime(lastScheduledRun)}</span>
+            <span>Last Run: {formatRelativeTime(lastScheduledRun)}</span>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button 
             onClick={handleTriggerScheduler} 
             disabled={schedulerLoading || jobStats.pending > 0 || jobStats.processing > 0}
-            className="gap-2"
-            size="lg"
+            size="lg" className="gap-2"
           >
             <Zap size={18} className={schedulerLoading ? 'animate-spin' : ''} />
             {schedulerLoading ? 'Triggering...' : 'Trigger Daily Scheduler'}
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={loadJobs}
-            className="gap-1"
-          >
-            <RefreshCw size={14} />
-            Refresh Queue
+          <Button variant="outline" size="sm" onClick={loadJobs} className="gap-1">
+            <RefreshCw size={14} /> Refresh Queue
           </Button>
         </div>
-      </motion.div>
+      </section>
 
-      {/* Job Queue Dashboard */}
-      <div className="px-4 py-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border">
+      {/* Job Queue */}
+      <section className="px-4 py-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold flex items-center gap-2">
-            <ListChecks size={18} />
-            Scrape Job Queue
+            <ListChecks size={18} /> Scrape Job Queue
           </h2>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={loadJobs} className="h-7 px-2">
@@ -626,7 +562,6 @@ export default function Admin() {
           </div>
         </div>
         
-        {/* Progress bar */}
         {(jobStats.pending > 0 || jobStats.processing > 0 || jobStats.completed > 0) && (
           <div className="mb-3">
             <Progress 
@@ -639,50 +574,29 @@ export default function Admin() {
           </div>
         )}
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-4 gap-3 mb-3">
-          <div className="bg-background rounded-lg p-3 text-center border border-border">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Clock size={14} className="text-amber-500" />
-              <span className="text-2xl font-bold">{jobStats.pending}</span>
+          {[
+            { label: 'Pending', value: jobStats.pending, icon: Clock, color: 'text-amber-500' },
+            { label: 'Processing', value: jobStats.processing, icon: Loader2, color: 'text-blue-500', spin: jobStats.processing > 0 },
+            { label: 'Completed', value: jobStats.completed, icon: CheckCircle2, color: 'text-green-500' },
+            { label: 'Failed', value: jobStats.failed, icon: XCircle, color: 'text-red-500' },
+          ].map(({ label, value, icon: Icon, color, spin }) => (
+            <div key={label} className="bg-background rounded-lg p-3 text-center border border-border">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Icon size={14} className={`${color} ${spin ? 'animate-spin' : ''}`} />
+                <span className="text-2xl font-bold">{value}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">{label}</p>
             </div>
-            <p className="text-xs text-muted-foreground">Pending</p>
-          </div>
-          <div className="bg-background rounded-lg p-3 text-center border border-border">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Loader2 size={14} className={`text-blue-500 ${jobStats.processing > 0 ? 'animate-spin' : ''}`} />
-              <span className="text-2xl font-bold">{jobStats.processing}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Processing</p>
-          </div>
-          <div className="bg-background rounded-lg p-3 text-center border border-border">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <CheckCircle2 size={14} className="text-green-500" />
-              <span className="text-2xl font-bold text-green-600">{jobStats.completed}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Completed</p>
-          </div>
-          <div className="bg-background rounded-lg p-3 text-center border border-border">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <XCircle size={14} className="text-red-500" />
-              <span className="text-2xl font-bold text-red-600">{jobStats.failed}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Failed</p>
-          </div>
+          ))}
         </div>
 
-        {/* Totals */}
         <div className="flex items-center gap-4 text-sm">
-          <span className="text-muted-foreground">
-            Total scraped: <strong>{jobStats.total_scraped}</strong>
-          </span>
-          <span className="text-green-600">
-            New events: <strong>{jobStats.total_inserted}</strong>
-          </span>
+          <span className="text-muted-foreground">Total scraped: <strong>{jobStats.total_scraped}</strong></span>
+          <span className="text-green-600">New events: <strong>{jobStats.total_inserted}</strong></span>
         </div>
 
-        {/* Recent Jobs List */}
-        {showJobQueue && jobs.length > 0 && (
+        {jobs.length > 0 && (
           <div className="mt-4 space-y-1 max-h-48 overflow-y-auto">
             {jobs.slice(0, 10).map(job => (
               <div 
@@ -702,121 +616,65 @@ export default function Admin() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {job.status === 'completed' && (
-                    <span className="text-muted-foreground">
-                      {job.events_scraped} scraped, {job.events_inserted} new
-                    </span>
+                    <span className="text-muted-foreground">{job.events_scraped} scraped, {job.events_inserted} new</span>
                   )}
                   {job.status === 'failed' && job.error_message && (
                     <span className="text-red-500 truncate max-w-32" title={job.error_message}>
                       {job.error_message.slice(0, 30)}...
                     </span>
                   )}
-                  {job.attempts > 1 && (
-                    <Badge variant="outline" className="text-[10px] h-4">
-                      Attempt {job.attempts}
-                    </Badge>
-                  )}
+                  {job.attempts > 1 && <Badge variant="outline" className="text-[10px] h-4">Attempt {job.attempts}</Badge>}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Source Discovery Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="px-4 py-4 border-b border-border bg-gradient-to-r from-blue-500/5 to-purple-500/5"
-      >
+      {/* Source Discovery */}
+      <section className="px-4 py-4 border-b border-border bg-gradient-to-r from-blue-500/5 to-purple-500/5">
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
           <div>
             <h2 className="font-semibold flex items-center gap-2">
-              <Search size={18} />
-              Source Discovery
+              <Search size={18} /> Source Discovery
             </h2>
             <p className="text-sm text-muted-foreground">Automatically find new event sources from Dutch municipalities</p>
           </div>
           <Badge variant="outline" className="gap-1">
-            <Globe size={12} />
-            {discoveredSources.length} discovered
+            <Globe size={12} /> {discoveredSources.length} discovered
           </Badge>
         </div>
 
-        {/* Discovery Controls */}
         <div className="flex flex-wrap items-end gap-3 mb-4">
           <div className="flex-1 min-w-[120px]">
             <label className="text-xs text-muted-foreground block mb-1">Max Municipalities</label>
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              value={maxMunicipalities}
-              onChange={(e) => setMaxMunicipalities(Number(e.target.value) || 10)}
-              className="h-9 w-full"
-            />
+            <Input type="number" min={1} max={100} value={maxMunicipalities} onChange={(e) => setMaxMunicipalities(Number(e.target.value) || 10)} className="h-9 w-full" />
           </div>
           <div className="flex-1 min-w-[120px]">
             <label className="text-xs text-muted-foreground block mb-1">Min Population</label>
-            <Input
-              type="number"
-              min={1000}
-              step={10000}
-              value={minPopulation}
-              onChange={(e) => setMinPopulation(Number(e.target.value) || 50000)}
-              className="h-9 w-full"
-            />
+            <Input type="number" min={1000} step={10000} value={minPopulation} onChange={(e) => setMinPopulation(Number(e.target.value) || 50000)} className="h-9 w-full" />
           </div>
-          <Button
-            onClick={handleTriggerDiscovery}
-            disabled={discoveryLoading}
-            className="gap-2"
-            variant="default"
-          >
-            {discoveryLoading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Discovering...
-              </>
-            ) : (
-              <>
-                <Search size={16} />
-                Start Discovery
-              </>
-            )}
+          <Button onClick={handleTriggerDiscovery} disabled={discoveryLoading} className="gap-2">
+            {discoveryLoading ? <><Loader2 size={16} className="animate-spin" /> Discovering...</> : <><Search size={16} /> Start Discovery</>}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadDiscoveredSources}
-            className="gap-1"
-          >
-            <RefreshCw size={14} />
-            Refresh
+          <Button variant="outline" size="sm" onClick={loadDiscoveredSources} className="gap-1">
+            <RefreshCw size={14} /> Refresh
           </Button>
         </div>
 
-        {/* Recently Discovered Sources */}
         {discoveredSources.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <MapPin size={14} />
-              Recently Discovered
-            </h3>
+            <h3 className="text-sm font-medium flex items-center gap-2"><MapPin size={14} /> Recently Discovered</h3>
             <div className="grid gap-2 max-h-48 overflow-y-auto">
               {discoveredSources.slice(0, 8).map((source) => (
-                <div
-                  key={source.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-background border border-border text-sm"
-                >
+                <div key={source.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-background border border-border text-sm">
                   <div className="flex items-center gap-2 min-w-0">
                     <Globe size={14} className="text-primary flex-shrink-0" />
                     <div className="min-w-0">
                       <span className="font-medium truncate block">{source.name}</span>
                       {source.location_name && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin size={10} />
-                          {source.location_name}
+                          <MapPin size={10} /> {source.location_name}
                         </span>
                       )}
                     </div>
@@ -825,12 +683,7 @@ export default function Admin() {
                     <Badge variant={source.enabled ? "default" : "secondary"} className="text-[10px]">
                       {source.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
-                    <a
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary"
-                    >
+                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
                       <ExternalLink size={12} />
                     </a>
                   </div>
@@ -845,45 +698,23 @@ export default function Admin() {
             No sources discovered yet. Click "Start Discovery" to find new event sources.
           </p>
         )}
-      </motion.div>
+      </section>
 
       {/* Logs Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="px-4 py-4 border-b border-border bg-gradient-to-r from-green-500/5 to-emerald-500/5"
-      >
+      <section className="px-4 py-4 border-b border-border bg-gradient-to-r from-green-500/5 to-emerald-500/5">
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
           <div>
             <h2 className="font-semibold flex items-center gap-2">
-              <FileText size={18} />
-              Edge Function Logs
+              <FileText size={18} /> Edge Function Logs
             </h2>
             <p className="text-sm text-muted-foreground">Fetch and download recent Supabase edge function logs for error triage</p>
           </div>
           {logs.length > 0 && (
             <div className="flex gap-2 flex-wrap">
-              <Badge variant="outline" className="gap-1">
-                {logs.length} entries
-              </Badge>
-              {logsSummary?.fatal ? (
-                <Badge variant="destructive" className="gap-1 bg-purple-600">
-                  <XCircle size={10} />
-                  {logsSummary.fatal} fatal
-                </Badge>
-              ) : null}
-              {logsSummary?.errors ? (
-                <Badge variant="destructive" className="gap-1">
-                  <XCircle size={10} />
-                  {logsSummary.errors} errors
-                </Badge>
-              ) : null}
-              {logsSummary?.warnings ? (
-                <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/30">
-                  <AlertTriangle size={10} />
-                  {logsSummary.warnings} warnings
-                </Badge>
-              ) : null}
+              <Badge variant="outline" className="gap-1">{logs.length} entries</Badge>
+              {logsSummary?.fatal ? <Badge variant="destructive" className="gap-1 bg-purple-600"><XCircle size={10} /> {logsSummary.fatal} fatal</Badge> : null}
+              {logsSummary?.errors ? <Badge variant="destructive" className="gap-1"><XCircle size={10} /> {logsSummary.errors} errors</Badge> : null}
+              {logsSummary?.warnings ? <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/30"><AlertTriangle size={10} /> {logsSummary.warnings} warnings</Badge> : null}
             </div>
           )}
         </div>
@@ -891,11 +722,7 @@ export default function Admin() {
         <div className="flex flex-wrap gap-2 items-center mb-3">
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground">Time range:</label>
-            <select 
-              value={logsMinutes} 
-              onChange={(e) => setLogsMinutes(Number(e.target.value))}
-              className="h-9 px-2 rounded-md border border-input bg-background text-sm"
-            >
+            <select value={logsMinutes} onChange={(e) => setLogsMinutes(Number(e.target.value))} className="h-9 px-2 rounded-md border border-input bg-background text-sm">
               <option value={15}>15 min</option>
               <option value={60}>1 hour</option>
               <option value={180}>3 hours</option>
@@ -904,40 +731,15 @@ export default function Admin() {
               <option value={1440}>24 hours</option>
             </select>
           </div>
-          <Button
-            onClick={handleFetchLogs}
-            disabled={logsLoading}
-            className="gap-2"
-          >
-            {logsLoading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Fetching...
-              </>
-            ) : (
-              <>
-                <FileText size={16} />
-                Fetch Logs
-              </>
-            )}
+          <Button onClick={handleFetchLogs} disabled={logsLoading} className="gap-2">
+            {logsLoading ? <><Loader2 size={16} className="animate-spin" /> Fetching...</> : <><FileText size={16} /> Fetch Logs</>}
           </Button>
           {logs.length > 0 && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={downloadLogs}
-                className="gap-1"
-              >
-                <Download size={14} />
-                Download JSONL
+              <Button variant="outline" size="sm" onClick={downloadLogs} className="gap-1">
+                <Download size={14} /> Download JSONL
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowLogs(!showLogs)}
-                className="gap-1"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowLogs(!showLogs)} className="gap-1">
                 {showLogs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 {showLogs ? 'Hide' : 'Show'} Logs
               </Button>
@@ -945,130 +747,74 @@ export default function Admin() {
           )}
         </div>
 
-        {/* Source/Function breakdown */}
         {logsSummary && Object.keys(logsSummary.by_source || {}).length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3 text-xs">
             <span className="text-muted-foreground">By source:</span>
             {Object.entries(logsSummary.by_source).map(([source, count]) => (
-              <Badge key={source} variant="secondary" className="text-[10px]">
-                {source}: {count}
-              </Badge>
+              <Badge key={source} variant="secondary" className="text-[10px]">{source}: {count}</Badge>
             ))}
           </div>
         )}
 
-        {/* Logs Preview */}
         <AnimatePresence>
           {showLogs && logs.length > 0 && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
               <div className="bg-background border border-border rounded-lg p-3 max-h-64 overflow-y-auto font-mono text-xs space-y-1">
                 {logs.slice(0, 50).map((log, i) => (
-                  <div 
-                    key={i} 
-                    className={`py-1 px-2 rounded ${
-                      log.level === 'error' ? 'bg-red-500/10 text-red-600' :
-                      log.level === 'warn' ? 'bg-amber-500/10 text-amber-600' :
-                      'bg-muted/50'
-                    }`}
-                  >
-                    <span className="text-muted-foreground">
-                      {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ''}
-                    </span>
-                    {log.function_name && (
-                      <span className="ml-2 text-primary">[{log.function_name}]</span>
-                    )}
+                  <div key={i} className={`py-1 px-2 rounded ${log.level === 'fatal' ? 'bg-purple-500/10 text-purple-600' : log.level === 'error' ? 'bg-red-500/10 text-red-600' : log.level === 'warn' ? 'bg-amber-500/10 text-amber-600' : 'bg-muted/50'}`}>
+                    <span className="text-muted-foreground">{log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ''}</span>
+                    {log.function_name && <span className="ml-2 text-primary">[{log.function_name}]</span>}
                     <span className="ml-2">{log.message || JSON.stringify(log).slice(0, 200)}</span>
                   </div>
                 ))}
-                {logs.length > 50 && (
-                  <p className="text-center text-muted-foreground py-2">
-                    ... and {logs.length - 50} more entries. Download for full logs.
-                  </p>
-                )}
+                {logs.length > 50 && <p className="text-center text-muted-foreground py-2">... and {logs.length - 50} more entries. Download for full logs.</p>}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {logs.length === 0 && !logsLoading && (
-          <p className="text-sm text-muted-foreground text-center py-2">
-            Click "Fetch Last 15min Logs" to load recent edge function logs.
-          </p>
+          <p className="text-sm text-muted-foreground text-center py-2">Click "Fetch Logs" to load recent edge function logs.</p>
         )}
-      </motion.div>
+      </section>
 
+      {/* Source Stats */}
       <div className="px-4 py-3 bg-muted/30 border-b border-border">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <Activity size={14} className="text-muted-foreground" />
-              <strong>{sources.length}</strong> sources
-            </span>
+            <span className="flex items-center gap-1"><Activity size={14} className="text-muted-foreground" /> <strong>{sources.length}</strong> sources</span>
             <span className="text-green-600">{enabledCount} enabled</span>
             {warningCount > 0 && <span className="text-amber-600">{warningCount} warning</span>}
             {brokenCount > 0 && <span className="text-red-600">{brokenCount} broken</span>}
           </div>
-          <span className="text-muted-foreground">
-            Last run: {formatRelativeTime(lastScrapedAt ?? null)}
-          </span>
+          <span className="text-muted-foreground">Last run: {formatRelativeTime(lastScrapedAt ?? null)}</span>
         </div>
       </div>
 
       {/* Action Buttons */}
       <div className="px-4 py-3 flex gap-2 border-b border-border">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleDisableBroken}
-          disabled={brokenCount === 0}
-          className="gap-1"
-        >
-          <XCircle size={14} />
-          Disable Broken ({brokenCount})
+        <Button variant="outline" size="sm" onClick={handleDisableBroken} disabled={brokenCount === 0} className="gap-1">
+          <XCircle size={14} /> Disable Broken ({brokenCount})
         </Button>
         <AlertDialog open={pruneDialogOpen} onOpenChange={setPruneDialogOpen}>
           <AlertDialogTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1"
-            >
-              <Trash2 size={14} />
-              Prune Stale Events
-            </Button>
+            <Button variant="outline" size="sm" className="gap-1"><Trash2 size={14} /> Prune Stale Events</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Prune stale events</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will delete events with an event date in the past. Are you sure you want to continue?
-              </AlertDialogDescription>
+              <AlertDialogDescription>This will delete events with an event date in the past. Are you sure you want to continue?</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={pruning}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handlePruneEvents} disabled={pruning}>
-                {pruning ? 'Pruning...' : 'Confirm'}
-              </AlertDialogAction>
+              <AlertDialogAction onClick={handlePruneEvents} disabled={pruning}>{pruning ? 'Pruning...' : 'Confirm'}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={loadSources}
-          className="gap-1"
-        >
-          <RefreshCw size={14} />
-          Refresh
-        </Button>
+        <Button variant="outline" size="sm" onClick={loadSources} className="gap-1"><RefreshCw size={14} /> Refresh</Button>
       </div>
 
-      {/* Sources Table */}
+      {/* Sources List */}
       <div className="divide-y divide-border">
         {sources.map(source => {
           const health = getHealthStatus(source);
@@ -1076,36 +822,17 @@ export default function Admin() {
           const isTesting = testingSourceId === source.id;
           
           return (
-            <motion.div
-              key={source.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="px-4 py-3"
-            >
+            <motion.div key={source.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-4 py-3">
               <div className="flex items-start justify-between gap-3">
-                {/* Left: Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <input
-                      type="checkbox"
-                      checked={selectedSources.has(source.id)}
-                      onChange={() => toggleSelectSource(source.id)}
-                      className="rounded border-border"
-                    />
+                    <input type="checkbox" checked={selectedSources.has(source.id)} onChange={() => toggleSelectSource(source.id)} className="rounded border-border" />
                     <h3 className="font-medium truncate">{source.name}</h3>
                     {getHealthBadge(health)}
                   </div>
-                  
-                  <a 
-                    href={source.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 truncate"
-                  >
-                    {source.url}
-                    <ExternalLink size={10} />
+                  <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 truncate">
+                    {source.url} <ExternalLink size={10} />
                   </a>
-                  
                   <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                     <span>Last: {formatRelativeTime(source.last_scraped_at)}</span>
                     <span>Total: {source.total_events_scraped ?? 0} events</span>
@@ -1113,66 +840,33 @@ export default function Admin() {
                       <span className="text-red-500">{source.consecutive_failures} failures</span>
                     )}
                   </div>
-                  
-                  {source.last_error && (
-                    <p className="text-xs text-red-500 mt-1 truncate">{source.last_error}</p>
-                  )}
-                  
+                  {source.last_error && <p className="text-xs text-red-500 mt-1 truncate">{source.last_error}</p>}
                   {testResult && (
                     <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
                       <p className={testResult.success ? 'text-green-600' : 'text-red-500'}>
-                        {testResult.success 
-                          ? `✓ Found ${testResult.eventsFound} events` 
-                          : `✗ ${testResult.error}`}
+                        {testResult.success ? `✓ Found ${testResult.eventsFound} events` : `✗ ${testResult.error}`}
                       </p>
                       {testResult.sampleEvents && testResult.sampleEvents.length > 0 && (
                         <ul className="mt-1 space-y-0.5 text-muted-foreground">
-                          {testResult.sampleEvents.slice(0, 3).map((e, i) => (
-                            <li key={i}>• {e.title}</li>
-                          ))}
+                          {testResult.sampleEvents.slice(0, 3).map((e, i) => <li key={i}>• {e.title}</li>)}
                         </ul>
                       )}
                     </div>
                   )}
                 </div>
-
-                {/* Right: Actions */}
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openConfigDialog(source)}
-                    className="h-8 px-2"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => openConfigDialog(source)} className="h-8 px-2">
                     <Settings size={14} />
-                    <span className="sr-only">Edit Config</span>
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleTestSource(source.id)}
-                    disabled={isTesting}
-                    className="h-8 px-2"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => handleTestSource(source.id)} disabled={isTesting} className="h-8 px-2">
                     <Zap size={14} className={isTesting ? 'animate-pulse' : ''} />
                   </Button>
-                  
                   {health === 'error' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleResetHealth(source.id)}
-                      className="h-8 px-2 text-amber-600"
-                      title="Reset health"
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => handleResetHealth(source.id)} className="h-8 px-2 text-amber-600" title="Reset health">
                       <RefreshCw size={14} />
                     </Button>
                   )}
-                  
-                  <Switch
-                    checked={source.enabled && !source.auto_disabled}
-                    onCheckedChange={(checked) => handleToggleSource(source.id, checked)}
-                  />
+                  <Switch checked={source.enabled && !source.auto_disabled} onCheckedChange={(checked) => handleToggleSource(source.id, checked)} />
                 </div>
               </div>
             </motion.div>
@@ -1180,82 +874,43 @@ export default function Admin() {
         })}
       </div>
 
+      {/* Config Dialog */}
       <Dialog open={!!configDialogSource} onOpenChange={(open) => !open && setConfigDialogSource(null)}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              Edit Config {configDialogSource ? `- ${configDialogSource.name}` : ''}
-            </DialogTitle>
+            <DialogTitle>Edit Config {configDialogSource ? `- ${configDialogSource.name}` : ''}</DialogTitle>
           </DialogHeader>
-          <Textarea 
-            value={configValue}
-            onChange={(e) => setConfigValue(e.target.value)}
-            className="font-mono min-h-[240px]"
-          />
+          <Textarea value={configValue} onChange={(e) => setConfigValue(e.target.value)} className="font-mono min-h-[240px]" />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setConfigDialogSource(null)} disabled={configSaving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveConfig} disabled={configSaving}>
-              {configSaving ? 'Saving...' : 'Save'}
-            </Button>
+            <Button variant="ghost" onClick={() => setConfigDialogSource(null)} disabled={configSaving}>Cancel</Button>
+            <Button onClick={handleSaveConfig} disabled={configSaving}>{configSaving ? 'Saving...' : 'Save'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Last Results Panel */}
+      {/* Results Panel */}
       <AnimatePresence>
         {showResults && lastResult && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg"
-          >
-            <button
-              onClick={() => setShowResults(!showResults)}
-              className="w-full flex items-center justify-between px-4 py-2 bg-muted/50"
-            >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg">
+            <button onClick={() => setShowResults(!showResults)} className="w-full flex items-center justify-between px-4 py-2 bg-muted/50">
               <span className="font-medium text-sm">Last Scrape Results</span>
               {showResults ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
             </button>
-            
             <div className="px-4 py-3 max-h-48 overflow-y-auto">
               <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-center text-xs mb-3">
-                <div>
-                  <p className="text-2xl font-bold">{lastResult.sources?.length ?? 0}</p>
-                  <p className="text-muted-foreground">Sources</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{lastResult.totals?.totalScraped ?? lastResult.totalScraped ?? 0}</p>
-                  <p className="text-muted-foreground">Scraped</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{lastResult.totals?.parsedByAI ?? lastResult.parsedByAI ?? 0}</p>
-                  <p className="text-muted-foreground">Parsed</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-green-600">{lastResult.totals?.inserted ?? lastResult.inserted ?? 0}</p>
-                  <p className="text-muted-foreground">New</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-amber-600">{lastResult.totals?.skipped ?? lastResult.skipped ?? 0}</p>
-                  <p className="text-muted-foreground">Dupes</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-red-600">{lastResult.totals?.failed ?? lastResult.failed ?? 0}</p>
-                  <p className="text-muted-foreground">Failed</p>
-                </div>
+                <div><p className="text-2xl font-bold">{lastResult.sources?.length ?? 0}</p><p className="text-muted-foreground">Sources</p></div>
+                <div><p className="text-2xl font-bold">{lastResult.totals?.totalScraped ?? lastResult.totalScraped ?? 0}</p><p className="text-muted-foreground">Scraped</p></div>
+                <div><p className="text-2xl font-bold">{lastResult.totals?.parsedByAI ?? lastResult.parsedByAI ?? 0}</p><p className="text-muted-foreground">Parsed</p></div>
+                <div><p className="text-2xl font-bold text-green-600">{lastResult.totals?.inserted ?? lastResult.inserted ?? 0}</p><p className="text-muted-foreground">New</p></div>
+                <div><p className="text-2xl font-bold text-amber-600">{lastResult.totals?.skipped ?? lastResult.skipped ?? 0}</p><p className="text-muted-foreground">Dupes</p></div>
+                <div><p className="text-2xl font-bold text-red-600">{lastResult.totals?.failed ?? lastResult.failed ?? 0}</p><p className="text-muted-foreground">Failed</p></div>
               </div>
-              
               {lastResult.sources && lastResult.sources.length > 0 && (
                 <div className="space-y-1 text-xs">
                   {lastResult.sources.map(s => (
                     <div key={s.sourceId} className="flex justify-between py-1 border-t border-border/50">
                       <span className="truncate">{s.sourceName}</span>
-                      <span className={s.error ? 'text-red-500' : 'text-muted-foreground'}>
-                        {s.error ? '✗' : `${s.inserted} new`}
-                      </span>
+                      <span className={s.error ? 'text-red-500' : 'text-muted-foreground'}>{s.error ? '✗' : `${s.inserted} new`}</span>
                     </div>
                   ))}
                 </div>
