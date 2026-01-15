@@ -89,7 +89,7 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
               <div className="px-3 py-2 space-y-2 border-t border-amber-400/30">
                 {/* Admin Dashboard Button */}
                 <button
-                  onClick={() => navigate('/admin')}
+                  onClick={() => navigate('/scraper-admin')}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-white text-xs font-medium transition-colors"
                 >
                   <Settings size={12} />
