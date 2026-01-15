@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: '*/15 * * * *' # every 15 minutes; adjust as needed
   workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'How many minutes of logs to fetch (default: 15)'
+        required: false
+        default: '15'
 
 jobs:
   fetch-and-commit-logs:
@@ -20,7 +25,7 @@ jobs:
         env:
           LOGS_FETCH_URL: ${{ secrets.LOGS_FETCH_URL }}
           LOGS_FETCH_SECRET: ${{ secrets.LOGS_FETCH_SECRET }} # optional
-          MINUTES: '15'
+          MINUTES: ${{ github.event.inputs.minutes || '15' }}
         run: |
           node scripts/fetch_edge_logs.mjs
 
