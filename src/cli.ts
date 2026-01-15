@@ -8,10 +8,6 @@ type CliOptions = {
   "run-id"?: string;
 };
 
-function getEnv(name: string): string | undefined {
-  return process.env[name] || process.env[name.replace("SUPABASE_", "SUPABASE_SERVICE_ROLE_")];
-}
-
 function buildPayload(options: CliOptions): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   if (options["source-id"]) payload.sourceId = options["source-id"];
@@ -25,7 +21,16 @@ function buildPayload(options: CliOptions): Record<string, unknown> {
   return payload;
 }
 
+function parseLimit(raw?: string): number | undefined {
+  if (!raw) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return undefined;
+  if (!Number.isInteger(value) || value <= 0) return undefined;
+  return value;
+}
+
 async function main() {
+  const RUN_SCRAPER_PATH = "/functions/v1/run-scraper";
   const { values } = parseArgs({
     options: {
       "source-id": { type: "string" },
@@ -37,20 +42,26 @@ async function main() {
   });
 
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = getEnv("SUPABASE_KEY");
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
-    console.error("Missing SUPABASE_URL or SUPABASE_KEY environment variables.");
+    console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
     process.exit(1);
   }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn("⚠️  Using SUPABASE_KEY fallback. Prefer SUPABASE_SERVICE_ROLE_KEY for scraper runs.");
+  }
 
-  const parsedLimit = values.limit ? Number(values.limit) : undefined;
+  const normalizedLimit = parseLimit(values.limit);
   const payload = buildPayload({
-    ...values,
-    limit: parsedLimit,
+    "source-id": values["source-id"],
+    "dry-run": values["dry-run"],
+    "enable-deep-scraping": values["enable-deep-scraping"],
+    limit: normalizedLimit,
+    "run-id": values["run-id"],
   });
 
-  const targetUrl = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/run-scraper`;
+  const targetUrl = `${supabaseUrl.replace(/\/$/, "")}${RUN_SCRAPER_PATH}`;
   const runId = values["run-id"] || `cli-run-${Date.now()}`;
 
   console.log(`▶️  Starting scraper run ${runId}`);
@@ -62,6 +73,7 @@ async function main() {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${supabaseKey}`,
+      "X-Run-Id": runId,
     },
     body: JSON.stringify(payload),
   });
