@@ -55,6 +55,8 @@ jobs:
           echo "$CHANGED_FILES"
 
           # Extract unique function directories (excluding _* directories)
+          # Note: Supabase functions must be in subdirectories with an index.ts/js file
+          # Files directly in supabase/functions/ are not valid function deployments
           CHANGED_FUNCTIONS=$(echo "$CHANGED_FILES" | \
             grep '^supabase/functions/' | \
             sed 's|^supabase/functions/||' | \
