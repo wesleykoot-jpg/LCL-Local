@@ -49,18 +49,19 @@ jobs:
             exit 1
           fi
 
-          SEARCH_ARG=()
+          LOG_CMD=(
+            supabase functions logs
+            --project-ref "$SUPABASE_PROJECT_ID"
+            --env "$LOG_ENV"
+            --since "$LOG_SINCE"
+            --limit "$LOG_LIMIT"
+          )
+
           if [ -n "${FUNCTION_FILTER:-}" ]; then
-            SEARCH_ARG+=(--search "$FUNCTION_FILTER")
+            LOG_CMD+=(--search "$FUNCTION_FILTER")
           fi
 
-          supabase functions logs \
-            --project-ref "$SUPABASE_PROJECT_ID" \
-            --env "$LOG_ENV" \
-            --since "$LOG_SINCE" \
-            --limit "$LOG_LIMIT" \
-            "${SEARCH_ARG[@]}" \
-            | tee supabase-function-logs.txt
+          "${LOG_CMD[@]}" | tee supabase-function-logs.txt
 
       - name: Upload logs artifact
         uses: actions/upload-artifact@v4
