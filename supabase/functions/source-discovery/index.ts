@@ -374,6 +374,7 @@ async function searchForEventSources(
       }
       
       for (const result of results) {
+        if (!result.link) continue;
         // Filter out noise domains
         if (isNoiseDomain(result.link)) {
           stats.noiseDomainsFiltered++;

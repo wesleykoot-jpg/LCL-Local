@@ -19,6 +19,7 @@ import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import { useLocation } from '@/features/location';
 import { hapticImpact } from '@/shared/lib/haptics';
+import { formatEventLocation, getEventCoordinates } from '@/shared/lib/formatters';
 import type { EventWithAttendees } from '../hooks/hooks';
 
 interface EventDetailModalProps {
@@ -96,22 +97,6 @@ function openInMaps(lat: number, lng: number, label: string) {
   }
 }
 
-/**
- * Parse PostGIS POINT format to coordinates
- */
-function parseEventLocation(location: unknown): { lat: number; lng: number } | null {
-  if (!location) return null;
-  
-  if (typeof location === 'string') {
-    const match = location.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
-    if (match) {
-      return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
-    }
-  }
-  
-  return null;
-}
-
 export const EventDetailModal = memo(function EventDetailModal({
   event,
   onClose,
@@ -128,9 +113,13 @@ export const EventDetailModal = memo(function EventDetailModal({
     ? (CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default)
     : (event.image_url || CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default);
 
-  const venueCoords = parseEventLocation(event.location) || { lat: 52.5, lng: 6.0 };
-  
-  const staticMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`;
+  const parsedCoords = getEventCoordinates(event.location, event.structured_location);
+  const hasValidCoords = !!parsedCoords;
+  const venueCoords = parsedCoords || null;
+  const locationLabel = formatEventLocation(event.venue_name, event.structured_location);
+  const staticMapUrl = venueCoords
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`
+    : '';
 
   const attendeeDisplay = event.attendees?.slice(0, 8).map(a => ({
     id: a.profile?.id || '',
@@ -145,6 +134,7 @@ export const EventDetailModal = memo(function EventDetailModal({
       : null;
 
   const handleOpenMaps = useCallback(async () => {
+    if (!venueCoords) return;
     await hapticImpact('light');
     openInMaps(venueCoords.lat, venueCoords.lng, event.venue_name);
   }, [venueCoords, event.venue_name]);
@@ -281,36 +271,42 @@ export const EventDetailModal = memo(function EventDetailModal({
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-[15px]">
                   <MapPin size={16} className="text-primary flex-shrink-0" />
-                  <span className="text-foreground font-medium">{event.venue_name}</span>
+                  <span className="text-foreground font-medium">{hasValidCoords ? locationLabel : 'Location Unknown'}</span>
                 </div>
 
                 {/* Static Map - Squircle geometry */}
-                <motion.div 
-                  className="relative h-44 rounded-[1.5rem] overflow-hidden bg-muted cursor-pointer group border-[0.5px] border-border/30"
-                  onClick={handleOpenMaps}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <iframe
-                    src={staticMapUrl}
-                    className="w-full h-full border-0 pointer-events-none"
-                    title="Event location map"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-                  
-                  {/* Open in Maps button - Squircle */}
-                  <div className="absolute bottom-3 right-3">
-                    <div
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95 backdrop-blur-xl text-[14px] font-semibold border-[0.5px] border-border/30"
-                      style={{
-                        boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.12)'
-                      }}
-                    >
-                      <Navigation size={15} className="text-primary" />
-                      Route
+                {hasValidCoords ? (
+                  <motion.div 
+                    className="relative h-44 rounded-[1.5rem] overflow-hidden bg-muted cursor-pointer group border-[0.5px] border-border/30"
+                    onClick={handleOpenMaps}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <iframe
+                      src={staticMapUrl}
+                      className="w-full h-full border-0 pointer-events-none"
+                      title="Event location map"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                    
+                    {/* Open in Maps button - Squircle */}
+                    <div className="absolute bottom-3 right-3">
+                      <div
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95 backdrop-blur-xl text-[14px] font-semibold border-[0.5px] border-border/30"
+                        style={{
+                          boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.12)'
+                        }}
+                      >
+                        <Navigation size={15} className="text-primary" />
+                        Route
+                      </div>
                     </div>
+                  </motion.div>
+                ) : (
+                  <div className="relative h-44 rounded-[1.5rem] border border-dashed border-border/40 bg-muted/60 flex items-center justify-center text-muted-foreground">
+                    Location Unknown
                   </div>
-                </motion.div>
+                )}
               </div>
 
               {/* Description - iOS 17pt equivalent */}
