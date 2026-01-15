@@ -595,7 +595,7 @@ export async function scrapeEventCards(
 function ensureValidCategory(category: unknown): InternalCategory {
   // Type guard: ensure we're working with a string
   if (typeof category !== 'string') {
-    console.warn(`Category is not a string (type: ${typeof category}). Falling back to "community"`);
+    console.warn(`Category is not a string (type: ${typeof category}, value: ${JSON.stringify(category)}). Falling back to "community"`);
     return "community";
   }
   

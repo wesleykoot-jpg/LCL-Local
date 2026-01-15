@@ -76,8 +76,14 @@ describe('Category Mapping Edge Cases', () => {
 
   it('should return valid category for null/undefined input', () => {
     // Test that the function handles invalid inputs gracefully
+    // We intentionally bypass TypeScript's type checking here to test runtime behavior
+    // when the function receives unexpected inputs (e.g., from external sources)
     const result1 = classifyTextToCategory(null as unknown as string);
     const result2 = classifyTextToCategory(undefined as unknown as string);
+    
+    // Both should return "community" as the safe default
+    expect(result1).toBe('community');
+    expect(result2).toBe('community');
     expect(INTERNAL_CATEGORIES).toContain(result1);
     expect(INTERNAL_CATEGORIES).toContain(result2);
   });
