@@ -1,12 +1,22 @@
 // Calendar Feature Module - Public API
 // Contains Google Calendar integration
 
-// API / Services
+// API / Client utilities
 export { 
-  createGoogleCalendarClient, 
-  calendarClient 
+  GOOGLE_CALENDAR_SCOPES,
+  getGoogleClientId,
+  isGoogleCalendarConfigured,
+  getRedirectUri,
+  initiateGoogleOAuth,
+  validateOAuthState,
+  parseOAuthCallback,
+  getEdgeFunctionUrl,
+  GOOGLE_CALENDAR_API_BASE,
+  type GoogleCalendarEventData,
+  type GoogleCalendarEventResponse
 } from './api/client';
 
+// Service
 export {
   GoogleCalendarService,
   type CalendarEvent,
