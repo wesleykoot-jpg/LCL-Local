@@ -5,24 +5,24 @@ import {
 } from '../supabase/functions/_shared/dutchMunicipalities.ts';
 
 describe('Source Discovery Defaults', () => {
-  it('uses 20000 as default minimum population', () => {
-    // The new default should focus on regional hubs
-    const expected = getMunicipalitiesByMinPopulation(20000);
-    const result = selectMunicipalitiesForDiscovery({ minPopulation: 20000 });
+  it('uses 15000 as default minimum population (Long Tail)', () => {
+    // The new default focuses on Long Tail (15k+ population)
+    const expected = getMunicipalitiesByMinPopulation(15000);
+    const result = selectMunicipalitiesForDiscovery({ minPopulation: 15000 });
 
     expect(result.length).toBe(expected.length);
-    // Should be less than the old default of 1000
-    const oldDefault = getMunicipalitiesByMinPopulation(1000);
-    expect(result.length).toBeLessThan(oldDefault.length);
+    // Should be more than the old default of 50k
+    const oldDefault = getMunicipalitiesByMinPopulation(50000);
+    expect(result.length).toBeGreaterThan(oldDefault.length);
   });
 
-  it('respects maxMunicipalities limit of 20', () => {
+  it('respects maxMunicipalities limit of 30', () => {
     const result = selectMunicipalitiesForDiscovery({
-      minPopulation: 20000,
-      maxMunicipalities: 20,
+      minPopulation: 15000,
+      maxMunicipalities: 30,
     });
 
-    expect(result.length).toBe(20);
+    expect(result.length).toBe(30);
     
     // Should include major cities
     const names = result.map(m => m.name);
@@ -31,24 +31,23 @@ describe('Source Discovery Defaults', () => {
     expect(names).toContain('Utrecht');
   });
 
-  it('excludes municipalities below 20000 population with new defaults', () => {
+  it('excludes municipalities below 15000 population with new defaults', () => {
     const result = selectMunicipalitiesForDiscovery({
-      minPopulation: 20000,
+      minPopulation: 15000,
     });
 
-    // All municipalities should have population >= 20000
-    const allAboveThreshold = result.every(m => m.population >= 20000);
+    // All municipalities should have population >= 15000
+    const allAboveThreshold = result.every(m => m.population >= 15000);
     expect(allAboveThreshold).toBe(true);
 
-    // Should exclude small municipalities
+    // Should exclude very small municipalities
     const names = result.map(m => m.name);
-    expect(names).not.toContain('Staphorst'); // population: 17302
     expect(names).not.toContain('Het Bildt'); // population: 10655
   });
 
   it('prioritizes largest municipalities when limited', () => {
     const result = selectMunicipalitiesForDiscovery({
-      minPopulation: 20000,
+      minPopulation: 15000,
       maxMunicipalities: 5,
     });
 
@@ -66,76 +65,71 @@ describe('Source Discovery Defaults', () => {
 });
 
 describe('Auto-Enable Logic', () => {
-  it('should enable sources with 70% confidence (new threshold)', () => {
+  it('should enable sources with >90% confidence (new threshold)', () => {
     // Test the logic that would be used in insertDiscoveredSource
-    const highConfidence = 70;
-    const shouldEnable = highConfidence >= 70;
+    const highConfidence = 91;
+    const shouldEnable = highConfidence > 90;
     expect(shouldEnable).toBe(true);
   });
 
-  it('should enable sources with >70% confidence', () => {
-    const veryHighConfidence = 85;
-    const shouldEnable = veryHighConfidence >= 70;
+  it('should enable sources with 95% confidence', () => {
+    const veryHighConfidence = 95;
+    const shouldEnable = veryHighConfidence > 90;
     expect(shouldEnable).toBe(true);
   });
 
-  it('should not enable sources with <70% confidence', () => {
-    const mediumConfidence = 65;
-    const shouldEnable = mediumConfidence >= 70;
+  it('should NOT enable sources with exactly 90% confidence', () => {
+    const borderlineConfidence = 90;
+    const shouldEnable = borderlineConfidence > 90;
     expect(shouldEnable).toBe(false);
   });
 
-  it('should not enable sources with low confidence', () => {
-    const lowConfidence = 50;
-    const shouldEnable = lowConfidence >= 70;
+  it('should NOT enable sources with <90% confidence', () => {
+    const mediumConfidence = 85;
+    const shouldEnable = mediumConfidence > 90;
     expect(shouldEnable).toBe(false);
   });
 });
 
 describe('Search Pattern Expansion', () => {
-  it('generates all 7 Dutch agenda URL patterns', () => {
+  it('generates 5 diverse search queries per municipality (Query Multiplexing)', () => {
     const municipalityName = 'amsterdam';
     
-    const patterns = [
-      `https://www.${municipalityName}.nl/agenda`,
-      `https://www.ontdek${municipalityName}.nl/agenda`,
-      `https://www.visit${municipalityName}.nl/events`,
-      `https://www.${municipalityName}.nl/evenementen`,
-      `https://www.uitagenda${municipalityName}.nl`,
-      `https://www.${municipalityName}marketing.nl/agenda`,
-      `https://agenda.${municipalityName}.nl`,
+    // New Query Multiplexing approach
+    const queries = [
+      `${municipalityName} agenda evenementen`,
+      `${municipalityName} uitagenda`,
+      `${municipalityName} evenementenkalender`,
+      `wat te doen ${municipalityName}`,
+      `${municipalityName} activiteiten programma`,
     ];
 
-    // All 7 patterns should be tested
-    expect(patterns.length).toBe(7);
+    // All 5 queries should be generated
+    expect(queries.length).toBe(5);
     
-    // Verify pattern diversity
-    const uniquePatterns = new Set(patterns);
-    expect(uniquePatterns.size).toBe(7);
+    // Verify query diversity
+    const uniqueQueries = new Set(queries);
+    expect(uniqueQueries.size).toBe(5);
   });
 
-  it('patterns cover common Dutch agenda structures', () => {
+  it('queries cover diverse Dutch agenda search intents', () => {
     const municipalityName = 'utrecht';
     
-    const patterns = [
-      `https://www.${municipalityName}.nl/agenda`,
-      `https://www.ontdek${municipalityName}.nl/agenda`,
-      `https://www.visit${municipalityName}.nl/events`,
-      `https://www.${municipalityName}.nl/evenementen`,
-      `https://www.uitagenda${municipalityName}.nl`,
-      `https://www.${municipalityName}marketing.nl/agenda`,
-      `https://agenda.${municipalityName}.nl`,
+    const queries = [
+      `${municipalityName} agenda evenementen`,
+      `${municipalityName} uitagenda`,
+      `${municipalityName} evenementenkalender`,
+      `wat te doen ${municipalityName}`,
+      `${municipalityName} activiteiten programma`,
     ];
 
-    // Check that patterns include key Dutch variations
-    const hasOfficialSite = patterns.some(p => p.includes('www.utrecht.nl'));
-    const hasOntdek = patterns.some(p => p.includes('ontdekutrecht'));
-    const hasVisit = patterns.some(p => p.includes('visitutrecht'));
-    const hasSubdomain = patterns.some(p => p.includes('agenda.utrecht'));
-
-    expect(hasOfficialSite).toBe(true);
-    expect(hasOntdek).toBe(true);
-    expect(hasVisit).toBe(true);
-    expect(hasSubdomain).toBe(true);
+    // Check that queries include key Dutch variations
+    const combined = queries.join(' ');
+    expect(combined).toContain('agenda');
+    expect(combined).toContain('uitagenda');
+    expect(combined).toContain('evenementen');
+    expect(combined).toContain('wat te doen');
+    expect(combined).toContain('activiteiten');
   });
 });
+
