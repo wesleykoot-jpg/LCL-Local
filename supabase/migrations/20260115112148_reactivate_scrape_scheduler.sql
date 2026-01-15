@@ -38,6 +38,7 @@ BEGIN
     v_supabase_url := trim(both ' ' from v_supabase_url);
     v_supabase_url := regexp_replace(v_supabase_url, '/+$', '');
 
+    -- Accept http/https URLs with optional port and path; tightened to avoid trailing junk
     IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?(/[A-Za-z0-9._~:/?#@!$&''()*+,;=%-]*)?$' THEN
       RAISE EXCEPTION 'Supabase URL not configured correctly for scrape coordinator';
     END IF;
@@ -71,6 +72,20 @@ BEGIN
 
   IF v_cron_schema IS NULL THEN
     RAISE EXCEPTION 'pg_cron extension not available';
+  END IF;
+
+  IF v_cron_schema !~ '^[A-Za-z_][A-Za-z0-9_]*$' THEN
+    RAISE EXCEPTION 'Invalid pg_cron schema name detected';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = v_cron_schema
+      AND p.proname IN ('schedule', 'alter_job')
+  ) THEN
+    RAISE EXCEPTION 'pg_cron functions not found in schema %', v_cron_schema;
   END IF;
 
   EXECUTE format('SELECT jobid FROM %I.job WHERE jobname = $1', v_cron_schema)
