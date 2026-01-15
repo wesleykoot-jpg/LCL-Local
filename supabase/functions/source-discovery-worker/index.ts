@@ -345,12 +345,12 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const serperApiKey = Deno.env.get("SERPER_API_KEY");
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (!serperApiKey || !geminiApiKey) {
-      console.error("[Worker] Missing SERPER_API_KEY or GEMINI_API_KEY");
+      console.error("[Worker] Missing SERPER_API_KEY or GEMINI/GOOGLE_AI API key");
       return new Response(
         JSON.stringify({ success: false, error: "Missing API keys" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
