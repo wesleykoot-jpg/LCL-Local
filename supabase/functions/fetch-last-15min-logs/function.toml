@@ -1,0 +1,4 @@
+name = "fetch-last-15min-logs"
+version = "0.1.0"
+lang = "ts"
+include = ["index.ts", "shared.ts", "strategies.ts", "dateUtils.ts", "README.md", "../_shared/**"]
