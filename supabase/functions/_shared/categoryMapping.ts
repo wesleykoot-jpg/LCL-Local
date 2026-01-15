@@ -168,6 +168,11 @@ export function getCategoryById(id: string): CategoryDefinition | undefined {
  * The scrape functions have their own INTERNAL_CATEGORIES mapping.
  */
 export function classifyTextToCategory(text: string): string {
+  // Handle null/undefined input defensively
+  if (!text) {
+    return "community";
+  }
+  
   const lowerText = text.toLowerCase();
 
   // Hybrid Life: Force family if Dutch parenting keywords detected
