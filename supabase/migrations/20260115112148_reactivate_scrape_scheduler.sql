@@ -38,7 +38,7 @@ BEGIN
     v_supabase_url := trim(both ' ' from v_supabase_url);
     v_supabase_url := regexp_replace(v_supabase_url, '/+$', '');
 
-    IF v_supabase_url !~* '^https?://[^\\s]+' THEN
+    IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?(/[A-Za-z0-9._~:/?#@!$&''()*+,;=%-]*)?$' THEN
       RAISE EXCEPTION 'Supabase URL not configured correctly for scrape coordinator';
     END IF;
   END IF;
@@ -61,25 +61,28 @@ $$;
 -- Reactivate or create the daily scheduler (03:00 UTC)
 DO $$
 DECLARE
+  v_cron_schema text;
   v_job_id integer;
 BEGIN
-  -- Make pg_cron objects discoverable regardless of schema placement
-  PERFORM set_config('search_path', 'public, cron, extensions', true);
+  SELECT n.nspname INTO v_cron_schema
+  FROM pg_extension e
+  JOIN pg_namespace n ON n.oid = e.extnamespace
+  WHERE e.extname = 'pg_cron';
 
-  SELECT jobid INTO v_job_id FROM job WHERE jobname = 'daily-scrape-coordinator';
+  IF v_cron_schema IS NULL THEN
+    RAISE EXCEPTION 'pg_cron extension not available';
+  END IF;
+
+  EXECUTE format('SELECT jobid FROM %I.job WHERE jobname = $1', v_cron_schema)
+    INTO v_job_id
+    USING 'daily-scrape-coordinator';
 
   IF v_job_id IS NULL THEN
-    PERFORM schedule(
-      'daily-scrape-coordinator',
-      '0 3 * * *',
-      $$SELECT public.trigger_scrape_coordinator()$$
-    );
+    EXECUTE format('SELECT %I.schedule($1, $2, $3)', v_cron_schema)
+      USING 'daily-scrape-coordinator', '0 3 * * *', 'SELECT public.trigger_scrape_coordinator()';
   ELSE
-    PERFORM alter_job(
-      jobid := v_job_id,
-      schedule := '0 3 * * *',
-      active := true
-    );
+    EXECUTE format('SELECT %I.alter_job(jobid := $1, schedule := $2, active := true)', v_cron_schema)
+      USING v_job_id, '0 3 * * *';
   END IF;
 END;
 $$;
