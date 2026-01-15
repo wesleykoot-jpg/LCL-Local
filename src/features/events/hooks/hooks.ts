@@ -30,6 +30,17 @@ export interface EventWithAttendees extends Event {
 
 const ATTENDEE_LIMIT = 4;
 
+/**
+ * Normalize Supabase count response shape into a number.
+ * Supabase returns an array with a single object: [{ count: <number> }]
+ */
+type EventWithCount = Event & { attendee_count?: Array<{ count: number }> };
+
+const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
+  Array.isArray(event?.attendee_count) && event.attendee_count.length > 0
+    ? event.attendee_count[0]?.count || 0
+    : 0;
+
 
 export function usePersonaStats(profileId: string) {
   const [stats, setStats] = useState<PersonaStats | null>(null);
@@ -271,7 +282,7 @@ interface GroupedEvents {
 }
 
 /**
- * Fetch ALL user commitments for the timeline view, grouped by month
+ * Fetch ALL user commitments and created events for the timeline view, grouped by month
  */
 export function useAllUserCommitments(profileId: string) {
   const query = useQuery({
@@ -281,40 +292,65 @@ export function useAllUserCommitments(profileId: string) {
         return [];
       }
 
-      const { data, error } = await supabase
-        .from('event_attendees')
-        .select(`
-          *,
-          event:events(
+      const [
+        { data: attendanceData, error: attendanceError },
+        { data: createdEvents, error: createdError },
+      ] = await Promise.all([
+        supabase
+          .from('event_attendees')
+          .select(`
             *,
-            attendee_count:event_attendees(count)
-          )
-        `)
-        .eq('profile_id', profileId)
-        .eq('status', 'going');
+            event:events(
+              *,
+              attendee_count:event_attendees(count)
+            )
+          `)
+          .eq('profile_id', profileId)
+          .eq('status', 'going'),
+        supabase
+          .from('events')
+          .select('*, attendee_count:event_attendees(count)')
+          .eq('created_by', profileId),
+      ]);
 
-      if (error) throw error;
+      if (attendanceError) throw attendanceError;
+      if (createdError) throw createdError;
 
       // Process and sort by event date
-      const commitmentsWithEvents = (data || [])
+      const commitmentsWithEvents = (attendanceData || [])
         .map(attendance => {
-          const event = attendance.event as unknown as Event & { attendee_count: Array<{ count: number }> };
+          const event = attendance.event as EventWithCount;
           return {
             ...event,
             ticket_number: attendance.ticket_number,
-            attendee_count: Array.isArray(event?.attendee_count)
-              ? event.attendee_count[0]?.count || 0
-              : 0,
+            attendee_count: getAttendeeCount(event),
           };
         })
-        .filter(e => e.id) // Filter out null events
-        .sort((a, b) => {
-          const dateA = new Date(a.event_date);
-          const dateB = new Date(b.event_date);
-          return dateA.getTime() - dateB.getTime();
-        }) as Array<EventWithAttendees & { ticket_number?: string }>;
+        .filter(e => e.id) as Array<EventWithAttendees & { ticket_number?: string }>;
 
-      return commitmentsWithEvents;
+      const createdByUser = (createdEvents || []).map(event => ({
+        ...event,
+        attendee_count: getAttendeeCount(event as EventWithCount),
+      })) as Array<EventWithAttendees & { ticket_number?: string }>;
+
+      // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
+      // This ensures creator-owned events still appear even if the creator isn't listed as an attendee
+      const merged = [...commitmentsWithEvents];
+      const existingIds = new Set(merged.map(event => event.id));
+      createdByUser.forEach(event => {
+        if (!existingIds.has(event.id)) {
+          merged.push(event);
+          existingIds.add(event.id);
+        }
+      });
+
+      merged.sort((a, b) => {
+        const dateA = new Date(a.event_date);
+        const dateB = new Date(b.event_date);
+        return dateA.getTime() - dateB.getTime();
+      });
+
+      return merged;
     },
     enabled: !!profileId,
     staleTime: QUERY_STALE_TIME,
