@@ -302,37 +302,48 @@ export interface LogsResult {
   success: boolean;
   from?: string;
   to?: string;
+  minutes?: number;
   count?: number;
   summary?: {
     total: number;
+    fatal: number;
     errors: number;
     warnings: number;
     info: number;
+    debug: number;
+    by_source: Record<string, number>;
+    by_function: Record<string, number>;
   };
   logs?: LogEntry[];
   error?: string;
 }
 
 /**
- * Fetch recent Supabase edge function logs
+ * Fetch recent Supabase logs (errors, jobs, discovery)
  */
-export async function fetchLogs(minutes: number = 15): Promise<LogsResult> {
-  const { data, error } = await supabase.functions.invoke('fetch-last-15min-logs', {
-    body: {},
+export async function fetchLogs(minutes: number = 60): Promise<LogsResult> {
+  // Use fetch directly to support query params
+  const url = `https://mlpefjsbriqgxcaqxhic.supabase.co/functions/v1/fetch-last-15min-logs?minutes=${minutes}`;
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  const response = await fetch(url, {
     headers: {
-      // Add minutes param via query string is not possible in invoke, so we pass default
+      'Authorization': `Bearer ${session?.access_token || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGVmanNicmlxZ3hjYXF4aGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MTMwNjMsImV4cCI6MjA4MzQ4OTA2M30.UxuID8hbNO4ZS9qEOJ95QabLPcZ4V_lMXEvp9EuxYZA'}`,
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGVmanNicmlxZ3hjYXF4aGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MTMwNjMsImV4cCI6MjA4MzQ4OTA2M30.UxuID8hbNO4ZS9qEOJ95QabLPcZ4V_lMXEvp9EuxYZA',
     }
   });
 
-  if (error) {
-    return { success: false, error: error.message };
+  if (!response.ok) {
+    return { success: false, error: `HTTP ${response.status}` };
   }
 
+  const data = await response.json();
   return {
     success: true,
     from: data?.from,
     to: data?.to,
-    count: data?.count ?? data?.summary?.total ?? (Array.isArray(data?.logs) ? data.logs.length : 0),
+    minutes: data?.minutes,
+    count: data?.summary?.total ?? (Array.isArray(data?.logs) ? data.logs.length : 0),
     summary: data?.summary,
     logs: data?.logs || [],
   };

@@ -159,8 +159,18 @@ export default function Admin() {
   // Logs state
   const [logsLoading, setLogsLoading] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [logsSummary, setLogsSummary] = useState<{ total: number; errors: number; warnings: number; info: number } | null>(null);
+  const [logsSummary, setLogsSummary] = useState<{ 
+    total: number; 
+    fatal: number;
+    errors: number; 
+    warnings: number; 
+    info: number;
+    debug: number;
+    by_source: Record<string, number>;
+    by_function: Record<string, number>;
+  } | null>(null);
   const [showLogs, setShowLogs] = useState(false);
+  const [logsMinutes, setLogsMinutes] = useState<number>(60); // Default to 1 hour for better coverage
 
 
   // Load sources and jobs
@@ -449,17 +459,20 @@ export default function Admin() {
   async function handleFetchLogs() {
     setLogsLoading(true);
     try {
-      const result = await fetchLogs(15);
+      const result = await fetchLogs(logsMinutes);
       if (result.success) {
         setLogs(result.logs || []);
         setLogsSummary(result.summary || null);
         setShowLogs(true);
         const errCount = result.summary?.errors ?? 0;
         const warnCount = result.summary?.warnings ?? 0;
-        if (errCount > 0 || warnCount > 0) {
-          toast.warning(`Fetched ${result.count ?? 0} entries: ${errCount} errors, ${warnCount} warnings`);
+        const fatalCount = result.summary?.fatal ?? 0;
+        if (fatalCount > 0 || errCount > 0) {
+          toast.error(`Fetched ${result.summary?.total ?? 0} entries: ${fatalCount} fatal, ${errCount} errors, ${warnCount} warnings`);
+        } else if (warnCount > 0) {
+          toast.warning(`Fetched ${result.summary?.total ?? 0} entries: ${warnCount} warnings`);
         } else {
-          toast.success(`Fetched ${result.count ?? 0} log entries`);
+          toast.success(`Fetched ${result.summary?.total ?? 0} log entries from last ${logsMinutes} min`);
         }
       } else {
         toast.error(result.error || 'Failed to fetch logs');
@@ -839,10 +852,16 @@ export default function Admin() {
             <p className="text-sm text-muted-foreground">Fetch and download recent Supabase edge function logs</p>
           </div>
           {logs.length > 0 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Badge variant="outline" className="gap-1">
                 {logs.length} entries
               </Badge>
+              {logsSummary?.fatal ? (
+                <Badge variant="destructive" className="gap-1 bg-purple-600">
+                  <XCircle size={10} />
+                  {logsSummary.fatal} fatal
+                </Badge>
+              ) : null}
               {logsSummary?.errors ? (
                 <Badge variant="destructive" className="gap-1">
                   <XCircle size={10} />
@@ -859,7 +878,22 @@ export default function Admin() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 items-center mb-3">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground">Time range:</label>
+            <select 
+              value={logsMinutes} 
+              onChange={(e) => setLogsMinutes(Number(e.target.value))}
+              className="h-9 px-2 rounded-md border border-input bg-background text-sm"
+            >
+              <option value={15}>15 min</option>
+              <option value={60}>1 hour</option>
+              <option value={180}>3 hours</option>
+              <option value={360}>6 hours</option>
+              <option value={720}>12 hours</option>
+              <option value={1440}>24 hours</option>
+            </select>
+          </div>
           <Button
             onClick={handleFetchLogs}
             disabled={logsLoading}
@@ -873,7 +907,7 @@ export default function Admin() {
             ) : (
               <>
                 <FileText size={16} />
-                Fetch Last 15min Logs
+                Fetch Logs
               </>
             )}
           </Button>
@@ -900,6 +934,18 @@ export default function Admin() {
             </>
           )}
         </div>
+
+        {/* Source/Function breakdown */}
+        {logsSummary && Object.keys(logsSummary.by_source || {}).length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3 text-xs">
+            <span className="text-muted-foreground">By source:</span>
+            {Object.entries(logsSummary.by_source).map(([source, count]) => (
+              <Badge key={source} variant="secondary" className="text-[10px]">
+                {source}: {count}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Logs Preview */}
         <AnimatePresence>
