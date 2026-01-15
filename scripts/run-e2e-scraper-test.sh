@@ -99,7 +99,6 @@ check_database() {
   
   echo ""
   echo "2️⃣ Events:"
-  local event_count=$(query_supabase "events" "?select=id&limit=1" | curl -s -X HEAD "${SUPABASE_URL}/rest/v1/events?select=id" -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" -H "Prefer: count=exact" -w '%{http_code}' -o /dev/null 2>/dev/null || echo "0")
   local events=$(query_supabase "events" "?select=id")
   local total_events=$(echo "$events" | jq 'length')
   echo "   Total events: $total_events"
