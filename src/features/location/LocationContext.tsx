@@ -63,7 +63,7 @@ const defaultPreferences: LocationPreferences = {
   manualCoordinates: null, // No default coordinates
 };
 
-const LocationContext = createContext<LocationContextType | undefined>(undefined);
+export const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
 /**
  * Load persisted preferences from localStorage
