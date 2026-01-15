@@ -92,14 +92,15 @@ BEGIN
 
   -- Check if we need to apply backoff (3+ consecutive failures)
   IF v_source.consecutive_failures + 1 >= 3 THEN
-    -- Calculate exponential backoff: 2^level hours (1h, 2h, 4h, 8h, 16h, max 32h)
+    -- Calculate exponential backoff: 2^(level+1) hours
+    -- Progression: Level 0 -> 2h, Level 1 -> 4h, Level 2 -> 8h, Level 3 -> 16h, Level 4+ -> 32h (max)
     v_backoff_hours := LEAST(POWER(2, v_source.backoff_level + 1)::integer, 32);
     v_new_backoff_until := NOW() + (v_backoff_hours || ' hours')::interval;
     
-    -- Apply backoff and increment level
+    -- Apply backoff and increment level (max level 5 = 32h backoff)
     UPDATE scraper_sources
     SET 
-      backoff_level = LEAST(backoff_level + 1, 5),  -- Cap at level 5 (32h max)
+      backoff_level = LEAST(backoff_level + 1, 5),  -- Cap at level 5 (2^6 = 64h, capped to 32h)
       backoff_until = v_new_backoff_until,
       auto_disabled = false  -- Don't permanently disable, just backoff
     WHERE id = p_source_id;

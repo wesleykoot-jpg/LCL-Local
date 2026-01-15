@@ -415,9 +415,10 @@ async function claimNextJob(
   }
 
   if (!claimedJobs || claimedJobs.length === 0) {
-    // Job was claimed by another worker, try again with backoff
+    // Job was claimed by another worker, try again with exponential backoff
     console.log(`Job claimed by another worker (retry ${retryCount + 1}/3), backing off...`);
-    await new Promise(resolve => setTimeout(resolve, 100 * (retryCount + 1))); // 100ms, 200ms, 300ms backoff
+    const backoffMs = Math.pow(2, retryCount) * 100; // 100ms, 200ms, 400ms exponential backoff
+    await new Promise(resolve => setTimeout(resolve, backoffMs));
     return claimNextJob(supabase, retryCount + 1);
   }
 

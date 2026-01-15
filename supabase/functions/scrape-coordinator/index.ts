@@ -7,6 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Scaling configuration constants
+const MAX_CONCURRENT_WORKERS = 5;  // Maximum number of parallel workers to spawn
+const JOBS_PER_WORKER = 10;         // Target number of jobs per worker for optimal distribution
+
 /**
  * Scrape Coordinator
  * 
@@ -102,13 +106,13 @@ serve(async (req: Request): Promise<Response> => {
     console.log(`Coordinator: Enqueued ${jobsCreated} jobs for sources: ${sources.map((s) => s.name).join(", ")}`);
 
     // Trigger multiple workers in parallel to scale beyond 40 sources
-    // Spawn up to 5 workers concurrently to process jobs faster
+    // Spawn workers based on job count (1 per JOBS_PER_WORKER jobs, up to MAX_CONCURRENT_WORKERS)
     if (triggerWorker && jobsCreated > 0) {
       try {
         const workerUrl = `${supabaseUrl}/functions/v1/scrape-worker`;
-        const workersToSpawn = Math.min(5, Math.ceil(jobsCreated / 10)); // 1 worker per 10 jobs, max 5
+        const workersToSpawn = Math.min(MAX_CONCURRENT_WORKERS, Math.ceil(jobsCreated / JOBS_PER_WORKER));
         
-        console.log(`Spawning ${workersToSpawn} parallel workers for ${jobsCreated} jobs`);
+        console.log(`Spawning ${workersToSpawn} parallel workers for ${jobsCreated} jobs (${JOBS_PER_WORKER} jobs per worker)`);
         
         // Spawn workers in parallel (non-blocking)
         const workerPromises = Array.from({ length: workersToSpawn }, (_, i) => 
