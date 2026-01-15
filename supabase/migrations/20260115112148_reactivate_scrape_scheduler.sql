@@ -33,19 +33,17 @@ BEGIN
     WHERE key = 'supabase_url';
   END IF;
 
-  IF v_supabase_url IS NOT NULL THEN
-    -- Normalize and validate format
-    v_supabase_url := trim(both ' ' from v_supabase_url);
-    v_supabase_url := regexp_replace(v_supabase_url, '/+$', '');
-
-    -- Accept http/https URLs with optional port and path; tightened to avoid trailing junk
-    IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?(/[A-Za-z0-9._~:/?#@!$&''()*+,;=%-]*)?$' THEN
-      RAISE EXCEPTION 'Supabase URL not configured correctly for scrape coordinator';
-    END IF;
-  END IF;
-
   IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
     RAISE EXCEPTION 'Supabase URL not configured for scrape coordinator';
+  END IF;
+
+  -- Normalize and validate format
+  v_supabase_url := trim(both ' ' from v_supabase_url);
+  v_supabase_url := regexp_replace(v_supabase_url, '/+$', '');
+
+  -- Accept http/https URLs with optional port and path; tightened to avoid trailing junk or quotes
+  IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?(/[A-Za-z0-9._~:/?#@!$&()*+,;=%-]*)?$' THEN
+    RAISE EXCEPTION 'Supabase URL not configured correctly for scrape coordinator';
   END IF;
 
   PERFORM net.http_post(
@@ -75,7 +73,7 @@ BEGIN
   END IF;
 
   IF v_cron_schema !~ '^[A-Za-z_][A-Za-z0-9_]*$' THEN
-    RAISE EXCEPTION 'Invalid pg_cron schema name detected';
+    RAISE EXCEPTION 'Invalid pg_cron schema name detected: %', v_cron_schema;
   END IF;
 
   IF NOT EXISTS (
@@ -84,6 +82,8 @@ BEGIN
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = v_cron_schema
       AND p.proname IN ('schedule', 'alter_job')
+    GROUP BY n.nspname
+    HAVING COUNT(DISTINCT p.proname) = 2
   ) THEN
     RAISE EXCEPTION 'pg_cron functions not found in schema %', v_cron_schema;
   END IF;
