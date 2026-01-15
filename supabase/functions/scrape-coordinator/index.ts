@@ -7,12 +7,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Scaling configuration constants
+const MAX_CONCURRENT_WORKERS = 5;  // Maximum number of parallel workers to spawn
+const JOBS_PER_WORKER = 10;         // Target number of jobs per worker for optimal distribution
+
 /**
  * Scrape Coordinator
  * 
- * This lightweight function enqueues scrape jobs for all enabled sources.
+ * This lightweight function enqueues scrape jobs for all available sources.
  * It does minimal CPU work - just database queries to create jobs.
  * Sends comprehensive Slack notifications with Block Kit formatting.
+ * 
+ * Scaling Improvements:
+ * - Spawns multiple workers in parallel (up to 5 concurrent workers)
+ * - Uses scraper_sources_available view to respect exponential backoff
+ * - Supports processing 100+ sources by distributing load across workers
  * 
  * Usage:
  * POST /functions/v1/scrape-coordinator
@@ -46,12 +55,14 @@ serve(async (req: Request): Promise<Response> => {
 
     const { priority = 0, sourceIds, triggerWorker = true } = options;
 
-    // Get enabled sources (optionally filter by specific IDs)
+    // Get available sources using the new view that respects exponential backoff
+    // This view automatically filters:
+    // - enabled = true
+    // - auto_disabled = false  
+    // - backoff_until IS NULL OR backoff_until < NOW()
     let query = supabase
-      .from("scraper_sources")
-      .select("id, name")
-      .eq("enabled", true)
-      .eq("auto_disabled", false);
+      .from("scraper_sources_available")
+      .select("id, name");
     
     if (sourceIds && sourceIds.length > 0) {
       query = query.in("id", sourceIds);
@@ -94,21 +105,35 @@ serve(async (req: Request): Promise<Response> => {
     const jobsCreated = insertedJobs?.length || 0;
     console.log(`Coordinator: Enqueued ${jobsCreated} jobs for sources: ${sources.map((s) => s.name).join(", ")}`);
 
-    // Optionally trigger the first worker to start processing
+    // Trigger multiple workers in parallel to scale beyond 40 sources
+    // Spawn workers based on job count (1 per JOBS_PER_WORKER jobs, up to MAX_CONCURRENT_WORKERS)
     if (triggerWorker && jobsCreated > 0) {
       try {
         const workerUrl = `${supabaseUrl}/functions/v1/scrape-worker`;
-        // Fire and forget - don't await
-        fetch(workerUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ chain: true }),
-        }).catch((e) => console.warn("Worker trigger failed:", e));
+        const workersToSpawn = Math.min(MAX_CONCURRENT_WORKERS, Math.ceil(jobsCreated / JOBS_PER_WORKER));
+        
+        console.log(`Spawning ${workersToSpawn} parallel workers for ${jobsCreated} jobs (${JOBS_PER_WORKER} jobs per worker)`);
+        
+        // Spawn workers in parallel (non-blocking)
+        const workerPromises = Array.from({ length: workersToSpawn }, (_, i) => 
+          fetch(workerUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${supabaseKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ chain: true, workerId: i + 1 }),
+          }).catch((e) => console.warn(`Worker ${i + 1} trigger failed:`, e))
+        );
+        
+        // Fire and forget - don't await, but log when all complete
+        Promise.all(workerPromises).then(() => {
+          console.log(`All ${workersToSpawn} workers triggered successfully`);
+        }).catch((e) => {
+          console.warn("Some workers failed to trigger:", e);
+        });
       } catch (e) {
-        console.warn("Failed to trigger worker:", e);
+        console.warn("Failed to spawn workers:", e);
       }
     }
 

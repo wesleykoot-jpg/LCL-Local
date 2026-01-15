@@ -367,7 +367,16 @@ interface JobRecord {
   max_attempts: number;
 }
 
-async function claimNextJob(supabase: SupabaseClient): Promise<JobRecord | null> {
+async function claimNextJob(
+  supabase: SupabaseClient,
+  retryCount = 0
+): Promise<JobRecord | null> {
+  // Prevent infinite recursion - max 3 retries
+  if (retryCount >= 3) {
+    console.warn("Max retry attempts reached for job claiming, giving up");
+    return null;
+  }
+
   // First, find the next pending job
   const { data: pendingJobs, error: selectError } = await supabase
     .from("scrape_jobs")
@@ -406,9 +415,11 @@ async function claimNextJob(supabase: SupabaseClient): Promise<JobRecord | null>
   }
 
   if (!claimedJobs || claimedJobs.length === 0) {
-    // Job was claimed by another worker, try again
-    console.log("Job was claimed by another worker, retrying...");
-    return claimNextJob(supabase);
+    // Job was claimed by another worker, try again with exponential backoff
+    console.log(`Job claimed by another worker (retry ${retryCount + 1}/3), backing off...`);
+    const backoffMs = Math.pow(2, retryCount) * 100; // 100ms, 200ms, 400ms exponential backoff
+    await new Promise(resolve => setTimeout(resolve, backoffMs));
+    return claimNextJob(supabase, retryCount + 1);
   }
 
   return claimedJobs[0] as JobRecord;

@@ -163,16 +163,17 @@ async function validateSourceWithLLM(
 
 /**
  * Insert a discovered source into the database
- * Auto-enables sources with high confidence (≥90%)
+ * Auto-enables sources with confidence ≥70% (lowered from 90% to increase activation rate)
  */
 async function insertDiscoveredSource(
   supabase: ReturnType<typeof createClient>,
   source: DiscoveredSource
 ): Promise<boolean> {
   try {
-    // Auto-enable sources with confidence ≥90%
-    const shouldEnable = source.confidence >= 90;
+    // Auto-enable sources with confidence ≥70% (lowered threshold for better scaling)
+    const shouldEnable = source.confidence >= 70;
     
+    // Remove .single() to prevent errors when insert doesn't return data
     const { error } = await supabase
       .from("scraper_sources")
       .insert({
@@ -203,8 +204,10 @@ async function insertDiscoveredSource(
         default_coordinates: source.coordinates,
         auto_discovered: true,
         location_name: source.municipality,
-      })
-      .single();
+        // Reset auto_disabled to false for new sources to ensure they can be processed
+        auto_disabled: false,
+        consecutive_failures: 0,
+      });
 
     if (error) {
       if (error.code === "23505") {
@@ -337,8 +340,8 @@ async function processMunicipality(
                       {
                         type: "mrkdwn",
                         text: isAutoEnabled
-                          ? "✨ This source has been auto-discovered and *auto-enabled* (confidence ≥90%). It will be included in the next scraper run for nationwide geofencing coverage."
-                          : "💡 This source has been auto-discovered and added as _disabled_ (confidence <90%). Review and enable it in the admin panel for nationwide geofencing coverage.",
+                          ? "✨ This source has been auto-discovered and *auto-enabled* (confidence ≥70%). It will be included in the next scraper run for nationwide geofencing coverage."
+                          : "💡 This source has been auto-discovered and added as _disabled_ (confidence <70%). Review and enable it in the admin panel for nationwide geofencing coverage.",
                       },
                     ],
                   },
@@ -401,7 +404,7 @@ interface DiscoveryOptions {
  * Defaults:
  * - minPopulation: 20000 (regional hubs)
  * - maxMunicipalities: 20 (controlled rollout)
- * - Auto-enables sources with confidence ≥90%
+ * - Auto-enables sources with confidence ≥70% (lowered for better scaling)
  */
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

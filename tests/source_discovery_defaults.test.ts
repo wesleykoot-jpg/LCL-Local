@@ -66,28 +66,28 @@ describe('Source Discovery Defaults', () => {
 });
 
 describe('Auto-Enable Logic', () => {
-  it('should enable sources with 90% confidence', () => {
+  it('should enable sources with 70% confidence (new threshold)', () => {
     // Test the logic that would be used in insertDiscoveredSource
-    const highConfidence = 90;
-    const shouldEnable = highConfidence >= 90;
+    const highConfidence = 70;
+    const shouldEnable = highConfidence >= 70;
     expect(shouldEnable).toBe(true);
   });
 
-  it('should enable sources with >90% confidence', () => {
-    const veryHighConfidence = 95;
-    const shouldEnable = veryHighConfidence >= 90;
+  it('should enable sources with >70% confidence', () => {
+    const veryHighConfidence = 85;
+    const shouldEnable = veryHighConfidence >= 70;
     expect(shouldEnable).toBe(true);
   });
 
-  it('should not enable sources with <90% confidence', () => {
-    const mediumConfidence = 85;
-    const shouldEnable = mediumConfidence >= 90;
+  it('should not enable sources with <70% confidence', () => {
+    const mediumConfidence = 65;
+    const shouldEnable = mediumConfidence >= 70;
     expect(shouldEnable).toBe(false);
   });
 
   it('should not enable sources with low confidence', () => {
-    const lowConfidence = 60;
-    const shouldEnable = lowConfidence >= 90;
+    const lowConfidence = 50;
+    const shouldEnable = lowConfidence >= 70;
     expect(shouldEnable).toBe(false);
   });
 });
