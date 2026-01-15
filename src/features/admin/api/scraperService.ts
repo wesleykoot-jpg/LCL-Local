@@ -303,6 +303,12 @@ export interface LogsResult {
   from?: string;
   to?: string;
   count?: number;
+  summary?: {
+    total: number;
+    errors: number;
+    warnings: number;
+    info: number;
+  };
   logs?: LogEntry[];
   error?: string;
 }
@@ -326,7 +332,8 @@ export async function fetchLogs(minutes: number = 15): Promise<LogsResult> {
     success: true,
     from: data?.from,
     to: data?.to,
-    count: data?.count ?? (Array.isArray(data?.logs) ? data.logs.length : 0),
+    count: data?.count ?? data?.summary?.total ?? (Array.isArray(data?.logs) ? data.logs.length : 0),
+    summary: data?.summary,
     logs: data?.logs || [],
   };
 }
