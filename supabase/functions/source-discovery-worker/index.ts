@@ -5,6 +5,7 @@ import {
   CATEGORIES, 
   classifyTextToCategory 
 } from "../_shared/categoryMapping.ts";
+import { logError, logWarning, logInfo, logSupabaseError } from "../_shared/errorLogging.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
