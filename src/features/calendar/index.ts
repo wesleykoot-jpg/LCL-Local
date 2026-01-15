@@ -16,11 +16,21 @@ export {
   type GoogleCalendarEventResponse
 } from './api/client';
 
-// Service
+// Service functions
 export {
-  GoogleCalendarService,
-  type CalendarEvent,
-  type GoogleCalendarError
+  exchangeCodeForTokens,
+  storeCalendarTokens,
+  getCalendarTokens,
+  isCalendarConnected,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  disconnectCalendar,
+  storeSyncedEvent,
+  getSyncedEventId,
+  deleteSyncedEvent,
+  type CalendarTokens,
+  type SyncResult
 } from './api/service';
 
 // Hooks
