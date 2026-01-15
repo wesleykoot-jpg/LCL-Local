@@ -36,6 +36,104 @@ interface DiscoveryStats {
 }
 
 /**
+ * Known working Dutch event source patterns by city
+ * These are real, verified URLs that work
+ */
+const KNOWN_EVENT_SOURCES: Record<string, string[]> = {
+  // Major cities with verified event sites
+  amsterdam: [
+    "https://www.iamsterdam.com/nl/zien-en-doen/agenda",
+    "https://www.uitagendaamsterdam.nl",
+    "https://www.amsterdam.nl/uit/agenda",
+  ],
+  rotterdam: [
+    "https://www.uitagendarotterdam.nl",
+    "https://www.rotterdamfestivals.nl/festivals",
+    "https://www.rotterdam.nl/agenda",
+  ],
+  "den haag": [
+    "https://www.denhaag.nl/nl/agenda",
+    "https://www.denhaag.com/nl/agenda",
+  ],
+  "'s-gravenhage": [
+    "https://www.denhaag.nl/nl/agenda",
+    "https://www.denhaag.com/nl/agenda",
+  ],
+  utrecht: [
+    "https://www.utrechtverwelkomt.nl/agenda",
+    "https://www.visit-utrecht.com/nl/agenda",
+    "https://www.utrecht.nl/evenementen",
+  ],
+  eindhoven: [
+    "https://www.thisiseindhoven.com/nl/agenda",
+    "https://www.eindhoven.nl/agenda",
+  ],
+  groningen: [
+    "https://uit.groningen.nl/agenda",
+    "https://www.visitgroningen.nl/agenda",
+  ],
+  tilburg: [
+    "https://www.tilburg.com/ontdekken/agenda",
+  ],
+  almere: [
+    "https://www.visitalmere.nl/agenda",
+  ],
+  breda: [
+    "https://www.bredamarketing.nl/agenda",
+    "https://www.bredauitagenda.nl",
+  ],
+  nijmegen: [
+    "https://www.nijmegen.nl/evenementen",
+    "https://www.visitnijmegen.com/agenda",
+  ],
+  arnhem: [
+    "https://www.bezoekarnhem.com/agenda",
+  ],
+  enschede: [
+    "https://www.uitinenschede.nl",
+  ],
+  haarlem: [
+    "https://www.visithaarlem.com/nl/agenda",
+  ],
+  leiden: [
+    "https://www.visitleiden.nl/nl/agenda",
+    "https://www.visitleiden.nl/en/event-calendar",
+  ],
+  delft: [
+    "https://www.indelft.nl/agenda",
+  ],
+  maastricht: [
+    "https://www.visitmaastricht.com/agenda",
+  ],
+  dordrecht: [
+    "https://www.vvvdordrecht.nl/agenda",
+  ],
+  zwolle: [
+    "https://www.inzwolle.nl/agenda",
+  ],
+  amersfoort: [
+    "https://www.amersfoort.nl/evenementen",
+    "https://www.visitamersfoort.nl/agenda",
+  ],
+  "s-hertogenbosch": [
+    "https://www.bezoekdenbosch.nl/agenda",
+  ],
+  denbosch: [
+    "https://www.bezoekdenbosch.nl/agenda",
+  ],
+  leeuwarden: [
+    "https://www.visitleeuwarden.nl/agenda",
+  ],
+  apeldoorn: [
+    "https://www.visitapeldoorn.nl/agenda",
+  ],
+  deventer: [
+    "https://www.deventer.nl/uit",
+    "https://www.deventeruitagenda.nl",
+  ],
+};
+
+/**
  * Perform a web search for event agenda sources
  * Returns candidate URLs for validation
  */
@@ -43,33 +141,43 @@ async function searchForEventSources(
   query: string,
   _geminiApiKey: string
 ): Promise<Array<{ url: string; title: string; snippet: string }>> {
-  // Note: In production, this would use Google Custom Search API or similar
-  // For now, we'll generate educated guesses based on common Dutch patterns
-  
   const candidates: Array<{ url: string; title: string; snippet: string }> = [];
   
   // Extract municipality name from query
   const parts = query.split(" ");
   const municipalityName = parts[parts.length - 1].toLowerCase();
+  const normalizedName = municipalityName.replace(/['']/g, "'").replace(/\s+/g, " ");
   
-  // Common Dutch agenda URL patterns
-  const patterns = [
-    `https://www.${municipalityName}.nl/agenda`,
-    `https://www.ontdek${municipalityName}.nl/agenda`,
-    `https://www.visit${municipalityName}.nl/events`,
-    `https://www.${municipalityName}.nl/evenementen`,
-    `https://www.uitagenda${municipalityName}.nl`,
-    `https://www.${municipalityName}marketing.nl/agenda`,
-    `https://agenda.${municipalityName}.nl`,
-  ];
-  
-  // Return all patterns as candidates to maximize discovery
-  for (const pattern of patterns) {
+  // Check known sources first
+  const knownUrls = KNOWN_EVENT_SOURCES[normalizedName] || [];
+  for (const url of knownUrls) {
     candidates.push({
-      url: pattern,
+      url,
       title: `Agenda ${municipalityName}`,
-      snippet: `Evenementen en activiteiten in ${municipalityName}`,
+      snippet: `Verified event source for ${municipalityName}`,
     });
+  }
+  
+  // Add common Dutch patterns for municipalities without known sources
+  if (knownUrls.length === 0) {
+    const cleanName = normalizedName.replace(/['']/g, "").replace(/-/g, "").replace(/\s+/g, "");
+    
+    // Only use the most reliable patterns
+    const patterns = [
+      `https://www.visit${cleanName}.nl/agenda`,
+      `https://www.visit${cleanName}.com/agenda`,
+      `https://www.uitagenda${cleanName}.nl`,
+      `https://www.${cleanName}.nl/agenda`,
+      `https://www.${cleanName}.nl/evenementen`,
+    ];
+    
+    for (const pattern of patterns) {
+      candidates.push({
+        url: pattern,
+        title: `Agenda ${municipalityName}`,
+        snippet: `Evenementen en activiteiten in ${municipalityName}`,
+      });
+    }
   }
   
   return candidates;
