@@ -42,7 +42,7 @@ BEGIN
   v_supabase_url := regexp_replace(v_supabase_url, '/+$', '');
 
   -- Accept http/https URLs with optional port and path; tightened to avoid trailing junk or quotes
-  IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?(/[A-Za-z0-9._~:/?#@!$&()*+,;=%-]*)?$' THEN
+  IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?(/[A-Za-z0-9._~/?#=&%-]*)?$' THEN
     RAISE EXCEPTION 'Supabase URL not configured correctly for scrape coordinator';
   END IF;
 
@@ -74,6 +74,10 @@ BEGIN
 
   IF v_cron_schema !~ '^[A-Za-z_][A-Za-z0-9_]*$' THEN
     RAISE EXCEPTION 'Invalid pg_cron schema name detected: %', v_cron_schema;
+  END IF;
+
+  IF v_cron_schema NOT IN ('cron', 'extensions') THEN
+    RAISE EXCEPTION 'Unexpected pg_cron schema: %', v_cron_schema;
   END IF;
 
   IF NOT EXISTS (
