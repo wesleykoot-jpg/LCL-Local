@@ -1,6 +1,4 @@
--- Ensure pg_cron extension is available for scheduling
-CREATE SCHEMA IF NOT EXISTS cron;
-CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA cron;
+CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 -- Harden trigger to fall back to app.settings when app_secrets is empty
 CREATE OR REPLACE FUNCTION public.trigger_scrape_coordinator()
@@ -35,6 +33,16 @@ BEGIN
     WHERE key = 'supabase_url';
   END IF;
 
+  IF v_supabase_url IS NOT NULL THEN
+    -- Normalize and validate format
+    v_supabase_url := trim(both ' ' from v_supabase_url);
+    v_supabase_url := regexp_replace(v_supabase_url, '/+$', '');
+
+    IF v_supabase_url !~* '^https?://[^\\s]+' THEN
+      RAISE EXCEPTION 'Supabase URL not configured correctly for scrape coordinator';
+    END IF;
+  END IF;
+
   IF v_supabase_url IS NULL OR v_supabase_url = '' THEN
     RAISE EXCEPTION 'Supabase URL not configured for scrape coordinator';
   END IF;
@@ -55,16 +63,19 @@ DO $$
 DECLARE
   v_job_id integer;
 BEGIN
-  SELECT jobid INTO v_job_id FROM cron.job WHERE jobname = 'daily-scrape-coordinator';
+  -- Make pg_cron objects discoverable regardless of schema placement
+  PERFORM set_config('search_path', 'public, cron, extensions', true);
+
+  SELECT jobid INTO v_job_id FROM job WHERE jobname = 'daily-scrape-coordinator';
 
   IF v_job_id IS NULL THEN
-    PERFORM cron.schedule(
+    PERFORM schedule(
       'daily-scrape-coordinator',
       '0 3 * * *',
       $$SELECT public.trigger_scrape_coordinator()$$
     );
   ELSE
-    PERFORM cron.alter_job(
+    PERFORM alter_job(
       jobid := v_job_id,
       schedule := '0 3 * * *',
       active := true
