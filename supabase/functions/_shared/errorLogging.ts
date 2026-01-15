@@ -2,6 +2,7 @@
 // Logs errors to the error_logs table for debugging and monitoring
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { sendSlackNotification } from './slack.ts';
 
 export interface ErrorLogEntry {
   level?: 'debug' | 'info' | 'warn' | 'error' | 'fatal';
@@ -17,6 +18,7 @@ export interface ErrorLogEntry {
 }
 
 let supabaseClient: ReturnType<typeof createClient> | null = null;
+const SLACK_FIELD_LIMIT = 1800;
 
 function getSupabaseClient() {
   if (!supabaseClient) {
@@ -31,34 +33,73 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
+function truncateValue(value: string | undefined, limit = SLACK_FIELD_LIMIT): string | undefined {
+  if (!value) return undefined;
+  return value.length > limit ? `${value.slice(0, limit)}…(truncated)` : value;
+}
+
 /**
  * Log an error to the centralized error_logs table
  * Non-blocking - won't throw if logging fails
  */
 export async function logError(entry: ErrorLogEntry): Promise<void> {
   try {
+    const level = entry.level || 'error';
     const client = getSupabaseClient();
     if (!client) {
       console.error('[ErrorLogging] No client available, falling back to console:', entry);
-      return;
+    } else {
+      // Use type assertion since error_logs table was just created and types may not be updated yet
+      const { error } = await (client.from('error_logs') as any).insert({
+        level,
+        source: entry.source,
+        function_name: entry.function_name,
+        message: entry.message,
+        error_code: entry.error_code,
+        error_type: entry.error_type,
+        stack_trace: entry.stack_trace,
+        context: entry.context || {},
+        request_id: entry.request_id,
+        user_agent: entry.user_agent,
+      });
+
+      if (error) {
+        console.error('[ErrorLogging] Failed to insert log:', error.message);
+      }
     }
 
-    // Use type assertion since error_logs table was just created and types may not be updated yet
-    const { error } = await (client.from('error_logs') as any).insert({
-      level: entry.level || 'error',
-      source: entry.source,
-      function_name: entry.function_name,
-      message: entry.message,
-      error_code: entry.error_code,
-      error_type: entry.error_type,
-      stack_trace: entry.stack_trace,
-      context: entry.context || {},
-      request_id: entry.request_id,
-      user_agent: entry.user_agent,
-    });
+    // Forward errors to Slack for real-time visibility
+    if (level === 'error' || level === 'fatal') {
+      let contextString: string | undefined;
+      try {
+        contextString = truncateValue(
+          entry.context ? JSON.stringify(entry.context, null, 2) : undefined,
+          SLACK_FIELD_LIMIT
+        );
+      } catch (contextError) {
+        console.error('[ErrorLogging] Failed to serialize context for Slack:', contextError);
+        const contextErrorMessage = contextError instanceof Error ? contextError.message : String(contextError);
+        contextString = `[ErrorLogging] Context serialization failed: ${contextErrorMessage}`;
+      }
+      const stackTrace = truncateValue(entry.stack_trace, SLACK_FIELD_LIMIT);
+      const messageText = truncateValue(entry.message, SLACK_FIELD_LIMIT) || 'No message provided';
 
-    if (error) {
-      console.error('[ErrorLogging] Failed to insert log:', error.message);
+      const slackMessageLines = [
+        `*${level.toUpperCase()}* ${entry.source}${entry.function_name ? ` | ${entry.function_name}` : ''}`,
+        `*Message*: ${messageText}`,
+        entry.error_type ? `*Type*: ${entry.error_type}` : undefined,
+        entry.error_code ? `*Code*: ${entry.error_code}` : undefined,
+        entry.request_id ? `*Request ID*: ${entry.request_id}` : undefined,
+        entry.user_agent ? `*User Agent*: ${entry.user_agent}` : undefined,
+        contextString ? `*Context*:\n${contextString}` : undefined,
+        stackTrace ? `*Stack*:\n${stackTrace}` : undefined,
+      ].filter(Boolean);
+
+      try {
+        await sendSlackNotification(slackMessageLines.join('\n'), true);
+      } catch (notifyError) {
+        console.error('[ErrorLogging] Failed to send Slack notification:', notifyError);
+      }
     }
   } catch (err) {
     console.error('[ErrorLogging] Exception during logging:', err);
