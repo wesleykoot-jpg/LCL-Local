@@ -6,6 +6,7 @@ import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification, createScraperBlockNotification } from "../_shared/slack.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
+import { withErrorLogging, logSupabaseError, logHttpError } from "../_shared/errorLogging.ts";
 
 /**
  * Run Scraper Edge Function
@@ -263,6 +264,24 @@ async function callGemini(
       }
     }
 
+    // Log non-429 errors or final 429 failure
+    if (attempt === maxRetries || response.status !== 429) {
+      await logHttpError(
+        'run-scraper',
+        'callGemini',
+        'Gemini API call',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        response.status,
+        text,
+        undefined,
+        {
+          attempt: attempt + 1,
+          max_retries: maxRetries + 1,
+          rate_limited: response.status === 429,
+        }
+      );
+    }
+
     console.error("Gemini error", response.status, text);
 
     if (response.status !== 429) {
@@ -345,6 +364,13 @@ async function fingerprintExists(supabase: SupabaseClient, sourceId: string, fin
     .limit(1);
   if (error) {
     console.warn("Fingerprint lookup failed", error.message);
+    await logSupabaseError(
+      'run-scraper',
+      'fingerprintExists',
+      'Check event fingerprint existence',
+      error,
+      { source_id: sourceId, fingerprint }
+    );
     return false;
   }
   return (data && data.length > 0) || false;
@@ -354,6 +380,18 @@ async function insertEvent(supabase: SupabaseClient, event: Record<string, unkno
   const { error } = await supabase.from("events").insert(event);
   if (error) {
     console.error("Insert failed", error.message);
+    await logSupabaseError(
+      'run-scraper',
+      'insertEvent',
+      'Insert event to database',
+      error,
+      {
+        event_title: event.title,
+        event_date: event.event_date,
+        source_id: event.source_id,
+        fingerprint: event.event_fingerprint,
+      }
+    );
     return false;
   }
   return true;
@@ -636,10 +674,14 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  try {
-    // Get environment variables
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return withErrorLogging(
+    'run-scraper',
+    'handler',
+    'Process scraper request',
+    async () => {
+      // Get environment variables
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
 
     if (!supabaseUrl || !supabaseKey) {
@@ -712,7 +754,14 @@ serve(async (req: Request): Promise<Response> => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+    },
+    {
+      // Context for error logging
+      method: req.method,
+      url: req.url,
+    }
+  ).catch(async (error) => {
+    // Fallback error handler - withErrorLogging will log, we just send Slack notification
     console.error("Scraper error:", error);
     
     // Send Slack notification for errors
@@ -726,5 +775,5 @@ serve(async (req: Request): Promise<Response> => {
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  }
+  });
 });
