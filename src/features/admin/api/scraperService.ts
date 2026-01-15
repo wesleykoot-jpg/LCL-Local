@@ -235,3 +235,57 @@ export async function pruneEvents(): Promise<number> {
 
   return data?.length ?? 0;
 }
+
+export interface DiscoveryResult {
+  success: boolean;
+  sourcesDiscovered?: number;
+  sourcesEnabled?: number;
+  municipalities?: string[];
+  error?: string;
+}
+
+export interface DiscoveredSource {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  auto_discovered: boolean;
+  location_name: string | null;
+  created_at: string;
+}
+
+/**
+ * Trigger source discovery for Dutch municipalities
+ */
+export async function triggerSourceDiscovery(options?: {
+  maxMunicipalities?: number;
+  minPopulation?: number;
+}): Promise<DiscoveryResult> {
+  const { data, error } = await supabase.functions.invoke('source-discovery', {
+    body: options,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return data as DiscoveryResult;
+}
+
+/**
+ * Get recently discovered sources
+ */
+export async function getDiscoveredSources(): Promise<DiscoveredSource[]> {
+  const { data, error } = await supabase
+    .from('scraper_sources')
+    .select('id, name, url, enabled, auto_discovered, location_name, created_at')
+    .eq('auto_discovered', true)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data || []) as DiscoveredSource[];
+}
