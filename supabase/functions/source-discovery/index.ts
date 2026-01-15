@@ -22,6 +22,7 @@ interface DiscoveredSource {
   categoryHint: string;
   confidence: number;
   coordinates: { lat: number; lng: number };
+  enabled?: boolean; // Track if source should be auto-enabled
 }
 
 interface DiscoveryStats {
@@ -62,10 +63,10 @@ async function searchForEventSources(
     `https://agenda.${municipalityName}.nl`,
   ];
   
-  // Return first 3 patterns as candidates
-  for (let i = 0; i < Math.min(3, patterns.length); i++) {
+  // Return all patterns as candidates to maximize discovery
+  for (const pattern of patterns) {
     candidates.push({
-      url: patterns[i],
+      url: pattern,
       title: `Agenda ${municipalityName}`,
       snippet: `Evenementen en activiteiten in ${municipalityName}`,
     });
@@ -162,19 +163,23 @@ async function validateSourceWithLLM(
 
 /**
  * Insert a discovered source into the database
+ * Auto-enables sources with high confidence (≥90%)
  */
 async function insertDiscoveredSource(
   supabase: ReturnType<typeof createClient>,
   source: DiscoveredSource
 ): Promise<boolean> {
   try {
+    // Auto-enable sources with confidence ≥90%
+    const shouldEnable = source.confidence >= 90;
+    
     const { error } = await supabase
       .from("scraper_sources")
       .insert({
         name: source.name,
         description: `Auto-discovered event source for ${source.municipality}`,
         url: source.url,
-        enabled: false, // Start disabled for manual review
+        enabled: shouldEnable, // Auto-enable high-confidence sources
         config: {
           selectors: [
             "article.event",
@@ -211,6 +216,9 @@ async function insertDiscoveredSource(
       return false;
     }
 
+    // Store enabled status in source for later use
+    source.enabled = shouldEnable;
+    
     return true;
   } catch (error) {
     console.error(`Insert error for ${source.url}:`, error);
@@ -276,6 +284,7 @@ async function processMunicipality(
               // Criteria: Major municipality (population > 100k) AND high confidence (>= 80)
               const isMajorMunicipality = municipality.population >= 100000;
               const isHighConfidence = validation.confidence >= 80;
+              const isAutoEnabled = source.enabled === true;
               
               if (isMajorMunicipality && isHighConfidence) {
                 const blocks = [
@@ -283,7 +292,9 @@ async function processMunicipality(
                     type: "header",
                     text: {
                       type: "plain_text",
-                      text: "🎯 High-Value Anchor Source Discovered!",
+                      text: isAutoEnabled 
+                        ? "🎯 High-Value Anchor Source Discovered & Enabled!"
+                        : "🎯 High-Value Anchor Source Discovered!",
                       emoji: true,
                     },
                   },
@@ -308,6 +319,10 @@ async function processMunicipality(
                       },
                       {
                         type: "mrkdwn",
+                        text: `*Status:*\n${isAutoEnabled ? "✅ Enabled" : "⏸️ Pending Review"}`,
+                      },
+                      {
+                        type: "mrkdwn",
                         text: `*Coordinates:*\n\`${source.coordinates.lat.toFixed(4)}, ${source.coordinates.lng.toFixed(4)}\``,
                       },
                       {
@@ -321,7 +336,9 @@ async function processMunicipality(
                     elements: [
                       {
                         type: "mrkdwn",
-                        text: "💡 This source has been auto-discovered and added as _disabled_. Review and enable it in the admin panel for nationwide geofencing coverage.",
+                        text: isAutoEnabled
+                          ? "✨ This source has been auto-discovered and *auto-enabled* (confidence ≥90%). It will be included in the next scraper run for nationwide geofencing coverage."
+                          : "💡 This source has been auto-discovered and added as _disabled_ (confidence <90%). Review and enable it in the admin panel for nationwide geofencing coverage.",
                       },
                     ],
                   },
@@ -355,9 +372,9 @@ async function processMunicipality(
 }
 
 interface DiscoveryOptions {
-  /** Minimum population for municipalities to process (default: 1000) */
+  /** Minimum population for municipalities to process (default: 20000) */
   minPopulation?: number;
-  /** Maximum municipalities to process in one run (default: unlimited) */
+  /** Maximum municipalities to process in one run (default: 20) */
   maxMunicipalities?: number;
   /** Specific municipality names to process */
   municipalities?: string[];
@@ -380,6 +397,11 @@ interface DiscoveryOptions {
  *   "categories": ["music", "family"],
  *   "dryRun": true
  * }
+ * 
+ * Defaults:
+ * - minPopulation: 20000 (regional hubs)
+ * - maxMunicipalities: 20 (controlled rollout)
+ * - Auto-enables sources with confidence ≥90%
  */
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -414,10 +436,11 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Default to processing all municipalities that meet the population threshold to ensure nationwide coverage
+    // Default to processing regional hubs (20k+ population) with controlled rollout
+    // maxMunicipalities defaults to 20 to accelerate coverage while maintaining quality
     const {
-      minPopulation = 1000,
-      maxMunicipalities,
+      minPopulation = 20000,
+      maxMunicipalities = 20,
       municipalities: municipalityFilter,
       categories: categoryFilter,
       dryRun = false,
