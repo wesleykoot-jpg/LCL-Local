@@ -92,6 +92,60 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          error_code: string | null
+          error_type: string | null
+          function_name: string | null
+          id: string
+          level: string
+          message: string
+          request_id: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          source: string
+          stack_trace: string | null
+          timestamp: string
+          user_agent: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          error_code?: string | null
+          error_type?: string | null
+          function_name?: string | null
+          id?: string
+          level?: string
+          message: string
+          request_id?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          source: string
+          stack_trace?: string | null
+          timestamp?: string
+          user_agent?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          error_code?: string | null
+          error_type?: string | null
+          function_name?: string | null
+          id?: string
+          level?: string
+          message?: string
+          request_id?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          source?: string
+          stack_trace?: string | null
+          timestamp?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       event_attendees: {
         Row: {
           checked_in: boolean | null
@@ -710,6 +764,7 @@ export type Database = {
             }
             Returns: string
           }
+      cleanup_old_error_logs: { Args: never; Returns: number }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
