@@ -42,7 +42,7 @@ BEGIN
   v_supabase_url := regexp_replace(v_supabase_url, '/+$', '');
 
   -- Accept http/https URLs with optional port and path; tightened to avoid trailing junk or quotes
-  IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?(/[A-Za-z0-9._~/?#=&%-]*)?$' THEN
+  IF v_supabase_url !~* '^https?://[A-Za-z0-9.-]+(:\\d+)?$' THEN
     RAISE EXCEPTION 'Supabase URL not configured correctly for scrape coordinator';
   END IF;
 
@@ -76,10 +76,6 @@ BEGIN
     RAISE EXCEPTION 'Invalid pg_cron schema name detected: %', v_cron_schema;
   END IF;
 
-  IF v_cron_schema NOT IN ('cron', 'extensions') THEN
-    RAISE EXCEPTION 'Unexpected pg_cron schema: %', v_cron_schema;
-  END IF;
-
   IF NOT EXISTS (
     SELECT 1
     FROM pg_proc p
@@ -92,16 +88,23 @@ BEGIN
     RAISE EXCEPTION 'pg_cron functions not found in schema %', v_cron_schema;
   END IF;
 
-  EXECUTE format('SELECT jobid FROM %I.job WHERE jobname = $1', v_cron_schema)
-    INTO v_job_id
-    USING 'daily-scrape-coordinator';
+  -- Pin search_path to the validated pg_cron schema to avoid ambiguous resolution
+  PERFORM set_config('search_path', format('%I,public', v_cron_schema), true);
+
+  SELECT jobid INTO v_job_id FROM job WHERE jobname = 'daily-scrape-coordinator';
 
   IF v_job_id IS NULL THEN
-    EXECUTE format('SELECT %I.schedule($1, $2, $3)', v_cron_schema)
-      USING 'daily-scrape-coordinator', '0 3 * * *', 'SELECT public.trigger_scrape_coordinator()';
+    PERFORM schedule(
+      'daily-scrape-coordinator',
+      '0 3 * * *',
+      $$SELECT public.trigger_scrape_coordinator()$$
+    );
   ELSE
-    EXECUTE format('SELECT %I.alter_job(jobid := $1, schedule := $2, active := true)', v_cron_schema)
-      USING v_job_id, '0 3 * * *';
+    PERFORM alter_job(
+      jobid := v_job_id,
+      schedule := '0 3 * * *',
+      active := true
+    );
   END IF;
 END;
 $$;
