@@ -159,6 +159,7 @@ export default function Admin() {
   // Logs state
   const [logsLoading, setLogsLoading] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsSummary, setLogsSummary] = useState<{ total: number; errors: number; warnings: number; info: number } | null>(null);
   const [showLogs, setShowLogs] = useState(false);
 
 
@@ -451,8 +452,15 @@ export default function Admin() {
       const result = await fetchLogs(15);
       if (result.success) {
         setLogs(result.logs || []);
+        setLogsSummary(result.summary || null);
         setShowLogs(true);
-        toast.success(`Fetched ${result.count ?? 0} log entries`);
+        const errCount = result.summary?.errors ?? 0;
+        const warnCount = result.summary?.warnings ?? 0;
+        if (errCount > 0 || warnCount > 0) {
+          toast.warning(`Fetched ${result.count ?? 0} entries: ${errCount} errors, ${warnCount} warnings`);
+        } else {
+          toast.success(`Fetched ${result.count ?? 0} log entries`);
+        }
       } else {
         toast.error(result.error || 'Failed to fetch logs');
       }
@@ -831,9 +839,23 @@ export default function Admin() {
             <p className="text-sm text-muted-foreground">Fetch and download recent Supabase edge function logs</p>
           </div>
           {logs.length > 0 && (
-            <Badge variant="outline" className="gap-1">
-              {logs.length} entries
-            </Badge>
+            <div className="flex gap-2">
+              <Badge variant="outline" className="gap-1">
+                {logs.length} entries
+              </Badge>
+              {logsSummary?.errors ? (
+                <Badge variant="destructive" className="gap-1">
+                  <XCircle size={10} />
+                  {logsSummary.errors} errors
+                </Badge>
+              ) : null}
+              {logsSummary?.warnings ? (
+                <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                  <AlertTriangle size={10} />
+                  {logsSummary.warnings} warnings
+                </Badge>
+              ) : null}
+            </div>
           )}
         </div>
 
