@@ -289,3 +289,44 @@ export async function getDiscoveredSources(): Promise<DiscoveredSource[]> {
 
   return (data || []) as DiscoveredSource[];
 }
+
+export interface LogEntry {
+  timestamp: string;
+  level?: string;
+  message?: string;
+  function_name?: string;
+  [key: string]: unknown;
+}
+
+export interface LogsResult {
+  success: boolean;
+  from?: string;
+  to?: string;
+  count?: number;
+  logs?: LogEntry[];
+  error?: string;
+}
+
+/**
+ * Fetch recent Supabase edge function logs
+ */
+export async function fetchLogs(minutes: number = 15): Promise<LogsResult> {
+  const { data, error } = await supabase.functions.invoke('fetch-last-15min-logs', {
+    body: {},
+    headers: {
+      // Add minutes param via query string is not possible in invoke, so we pass default
+    }
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    from: data?.from,
+    to: data?.to,
+    count: data?.count ?? (Array.isArray(data?.logs) ? data.logs.length : 0),
+    logs: data?.logs || [],
+  };
+}

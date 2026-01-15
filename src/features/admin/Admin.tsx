@@ -19,7 +19,9 @@ import {
   Trash2,
   Search,
   Globe,
-  MapPin
+  MapPin,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Switch } from '@/shared/components/ui/switch';
@@ -39,10 +41,12 @@ import {
   pruneEvents,
   triggerSourceDiscovery,
   getDiscoveredSources,
+  fetchLogs,
   type ScraperSource,
   type ScrapeResult,
   type DryRunResult,
-  type DiscoveredSource
+  type DiscoveredSource,
+  type LogEntry
 } from './api/scraperService';
 import { 
   Dialog, 
@@ -151,6 +155,11 @@ export default function Admin() {
   const [jobs, setJobs] = useState<ScrapeJob[]>([]);
   const [jobStats, setJobStats] = useState<JobStats>({ pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 });
   const [showJobQueue] = useState(true);
+  
+  // Logs state
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
 
   // Load sources and jobs
@@ -434,6 +443,37 @@ export default function Admin() {
       setPruning(false);
       setPruneDialogOpen(false);
     }
+  }
+
+  async function handleFetchLogs() {
+    setLogsLoading(true);
+    try {
+      const result = await fetchLogs(15);
+      if (result.success) {
+        setLogs(result.logs || []);
+        setShowLogs(true);
+        toast.success(`Fetched ${result.count ?? 0} log entries`);
+      } else {
+        toast.error(result.error || 'Failed to fetch logs');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch logs');
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+
+  function downloadLogs() {
+    if (logs.length === 0) return;
+    const jsonl = logs.map(l => JSON.stringify(l)).join('\n');
+    const blob = new Blob([jsonl], { type: 'application/x-ndjson' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supabase-logs-${new Date().toISOString().slice(0, 10)}.jsonl`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Logs downloaded');
   }
 
   function toggleSelectSource(id: string) {
@@ -772,6 +812,114 @@ export default function Admin() {
         {discoveredSources.length === 0 && !discoveryLoading && (
           <p className="text-sm text-muted-foreground text-center py-4">
             No sources discovered yet. Click "Start Discovery" to find new event sources.
+          </p>
+        )}
+      </motion.div>
+
+      {/* Logs Section */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-4 py-4 border-b border-border bg-gradient-to-r from-green-500/5 to-emerald-500/5"
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <FileText size={18} />
+              Edge Function Logs
+            </h2>
+            <p className="text-sm text-muted-foreground">Fetch and download recent Supabase edge function logs</p>
+          </div>
+          {logs.length > 0 && (
+            <Badge variant="outline" className="gap-1">
+              {logs.length} entries
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Button
+            onClick={handleFetchLogs}
+            disabled={logsLoading}
+            className="gap-2"
+          >
+            {logsLoading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Fetching...
+              </>
+            ) : (
+              <>
+                <FileText size={16} />
+                Fetch Last 15min Logs
+              </>
+            )}
+          </Button>
+          {logs.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadLogs}
+                className="gap-1"
+              >
+                <Download size={14} />
+                Download JSONL
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowLogs(!showLogs)}
+                className="gap-1"
+              >
+                {showLogs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {showLogs ? 'Hide' : 'Show'} Logs
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Logs Preview */}
+        <AnimatePresence>
+          {showLogs && logs.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-background border border-border rounded-lg p-3 max-h-64 overflow-y-auto font-mono text-xs space-y-1">
+                {logs.slice(0, 50).map((log, i) => (
+                  <div 
+                    key={i} 
+                    className={`py-1 px-2 rounded ${
+                      log.level === 'error' ? 'bg-red-500/10 text-red-600' :
+                      log.level === 'warn' ? 'bg-amber-500/10 text-amber-600' :
+                      'bg-muted/50'
+                    }`}
+                  >
+                    <span className="text-muted-foreground">
+                      {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ''}
+                    </span>
+                    {log.function_name && (
+                      <span className="ml-2 text-primary">[{log.function_name}]</span>
+                    )}
+                    <span className="ml-2">{log.message || JSON.stringify(log).slice(0, 200)}</span>
+                  </div>
+                ))}
+                {logs.length > 50 && (
+                  <p className="text-center text-muted-foreground py-2">
+                    ... and {logs.length - 50} more entries. Download for full logs.
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {logs.length === 0 && !logsLoading && (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            Click "Fetch Last 15min Logs" to load recent edge function logs.
           </p>
         )}
       </motion.div>
