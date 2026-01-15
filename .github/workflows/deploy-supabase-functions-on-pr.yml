@@ -1,0 +1,112 @@
+name: Deploy Changed Supabase Functions on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'supabase/functions/**'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-changed-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Determine changed functions and deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+
+          # Check required secrets
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ] || [ -z "${SUPABASE_PROJECT_ID:-}" ]; then
+            echo "❌ SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_ID secrets are required." >&2
+            exit 1
+          fi
+
+          # Get the base branch (typically main or master)
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          echo "📋 Base branch: $BASE_REF"
+          echo "📋 PR head SHA: ${{ github.event.pull_request.head.sha }}"
+
+          # Fetch the base branch
+          git fetch origin "$BASE_REF:refs/remotes/origin/$BASE_REF" || true
+
+          # Get changed files in supabase/functions directory
+          echo "🔍 Detecting changed files..."
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_REF"...${{ github.event.pull_request.head.sha }} -- 'supabase/functions/**' || echo "")
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "ℹ️  No changes detected in supabase/functions/"
+            exit 0
+          fi
+
+          echo "📝 Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Extract unique function directories (excluding _* directories)
+          # Note: Supabase functions must be in subdirectories with an index.ts/js file
+          # Files directly in supabase/functions/ are not valid function deployments
+          CHANGED_FUNCTIONS=$(echo "$CHANGED_FILES" | \
+            grep '^supabase/functions/' | \
+            sed 's|^supabase/functions/||' | \
+            cut -d'/' -f1 | \
+            grep -v '^_' | \
+            sort -u || echo "")
+
+          if [ -z "$CHANGED_FUNCTIONS" ]; then
+            echo "ℹ️  No deployable function changes detected (only _shared or _templates changed)"
+            exit 0
+          fi
+
+          echo "🚀 Functions to deploy:"
+          echo "$CHANGED_FUNCTIONS"
+
+          # Deploy each changed function
+          DEPLOY_SUCCESS=0
+          DEPLOY_FAILED=0
+
+          while IFS= read -r FUNCTION_NAME; do
+            if [ -z "$FUNCTION_NAME" ]; then
+              continue
+            fi
+
+            echo ""
+            echo "===================================="
+            echo "Deploying function: $FUNCTION_NAME"
+            echo "===================================="
+
+            if supabase functions deploy "$FUNCTION_NAME" --project-ref "$SUPABASE_PROJECT_ID"; then
+              echo "✅ Successfully deployed: $FUNCTION_NAME"
+              DEPLOY_SUCCESS=$((DEPLOY_SUCCESS + 1))
+            else
+              echo "❌ Failed to deploy: $FUNCTION_NAME"
+              DEPLOY_FAILED=$((DEPLOY_FAILED + 1))
+            fi
+          done <<< "$CHANGED_FUNCTIONS"
+
+          echo ""
+          echo "===================================="
+          echo "Deployment Summary"
+          echo "===================================="
+          echo "✅ Successful: $DEPLOY_SUCCESS"
+          echo "❌ Failed: $DEPLOY_FAILED"
+
+          if [ $DEPLOY_FAILED -gt 0 ]; then
+            echo ""
+            echo "❌ Some deployments failed. Please check the logs above."
+            exit 1
+          fi
+
+          echo ""
+          echo "🎉 All functions deployed successfully!"
