@@ -516,6 +516,8 @@ export default function Admin() {
   const lastScrapedAt = sources
     .filter(s => s.last_scraped_at)
     .sort((a, b) => new Date(b.last_scraped_at!).getTime() - new Date(a.last_scraped_at!).getTime())[0]?.last_scraped_at;
+  const lastSourcesFetched = lastResult ? (lastResult.sources?.length ?? 0) : '-';
+  const lastNewEvents = lastResult ? (lastResult.totals?.inserted ?? lastResult.inserted ?? 0) : '-';
 
   if (loading) {
     return (
@@ -569,6 +571,14 @@ export default function Admin() {
               Automation & Scheduling
             </h2>
             <p className="text-sm text-muted-foreground">Trigger the daily scheduler and monitor automation</p>
+            <div className="mt-1 flex flex-wrap gap-4 text-xs text-muted-foreground">
+              <span>
+                Sources fetched: <strong className="text-foreground">{lastSourcesFetched}</strong>
+              </span>
+              <span className="text-green-600">
+                New events: <strong>{lastNewEvents}</strong>
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock size={14} />
@@ -849,7 +859,7 @@ export default function Admin() {
               <FileText size={18} />
               Edge Function Logs
             </h2>
-            <p className="text-sm text-muted-foreground">Fetch and download recent Supabase edge function logs</p>
+            <p className="text-sm text-muted-foreground">Fetch and download recent Supabase edge function logs for error triage</p>
           </div>
           {logs.length > 0 && (
             <div className="flex gap-2 flex-wrap">
@@ -1211,7 +1221,11 @@ export default function Admin() {
             </button>
             
             <div className="px-4 py-3 max-h-48 overflow-y-auto">
-              <div className="grid grid-cols-5 gap-2 text-center text-xs mb-3">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-center text-xs mb-3">
+                <div>
+                  <p className="text-2xl font-bold">{lastResult.sources?.length ?? 0}</p>
+                  <p className="text-muted-foreground">Sources</p>
+                </div>
                 <div>
                   <p className="text-2xl font-bold">{lastResult.totals?.totalScraped ?? lastResult.totalScraped ?? 0}</p>
                   <p className="text-muted-foreground">Scraped</p>

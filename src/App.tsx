@@ -52,6 +52,7 @@ const App = () => (
                   
                   {/* Admin routes (dev mode only) */}
                   <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/scraper-admin" element={<AdminPage />} />
                   
                   {/* Auth routes */}
                   <Route path="/login" element={<LoginPage />} />
