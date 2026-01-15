@@ -16,6 +16,18 @@ export interface SlackBlock {
   }>;
 }
 
+type HeaderBlock = {
+  type: "header";
+  text: { type: string; text: string; emoji: boolean };
+};
+type SectionBlock = {
+  type: "section";
+  text?: { type: string; text: string };
+  fields?: Array<{ type: string; text: string }>;
+};
+type DividerBlock = { type: "divider" };
+type AnyBlock = HeaderBlock | SectionBlock | DividerBlock;
+
 export interface SlackBlockMessage {
   blocks: SlackBlock[];
 }
@@ -103,7 +115,7 @@ export function createScraperBlockNotification(params: {
     totalSources 
   } = params;
 
-  const blocks = [
+  const blocks: SlackBlock[] = [
     {
       type: "header",
       text: {
@@ -159,18 +171,16 @@ export function createScraperBlockNotification(params: {
 
   // Add failure info if there were failures
   if (eventsFailed > 0) {
-    blocks.push(
-      {
-        type: "divider",
+    blocks.push({
+      type: "divider",
+    });
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*⚠️ Failures:*\n${eventsFailed} event${eventsFailed !== 1 ? 's' : ''} failed to process`,
       },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*⚠️ Failures:*\n${eventsFailed} event${eventsFailed !== 1 ? 's' : ''} failed to process`,
-        },
-      }
-    );
+    });
   }
 
   return { blocks };
