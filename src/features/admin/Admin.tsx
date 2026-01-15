@@ -16,7 +16,10 @@ import {
   Clock,
   Loader2,
   ListChecks,
-  Trash2
+  Trash2,
+  Search,
+  Globe,
+  MapPin
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Switch } from '@/shared/components/ui/switch';
@@ -34,9 +37,12 @@ import {
   triggerCoordinator,
   updateSourceConfig,
   pruneEvents,
+  triggerSourceDiscovery,
+  getDiscoveredSources,
   type ScraperSource,
   type ScrapeResult,
-  type DryRunResult
+  type DryRunResult,
+  type DiscoveredSource
 } from './api/scraperService';
 import { 
   Dialog, 
@@ -57,6 +63,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from '@/shared/components/ui/alert-dialog';
+import { Input } from '@/shared/components/ui/input';
 
 interface ScrapeJob {
   id: string;
@@ -134,6 +141,12 @@ export default function Admin() {
   const [pruneDialogOpen, setPruneDialogOpen] = useState(false);
   const [pruning, setPruning] = useState(false);
   
+  // Source discovery state
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [discoveredSources, setDiscoveredSources] = useState<DiscoveredSource[]>([]);
+  const [maxMunicipalities, setMaxMunicipalities] = useState<number>(10);
+  const [minPopulation, setMinPopulation] = useState<number>(50000);
+  
   // Job queue state
   const [jobs, setJobs] = useState<ScrapeJob[]>([]);
   const [jobStats, setJobStats] = useState<JobStats>({ pending: 0, processing: 0, completed: 0, failed: 0, total_scraped: 0, total_inserted: 0 });
@@ -144,6 +157,7 @@ export default function Admin() {
   useEffect(() => {
     loadSources();
     loadJobs();
+    loadDiscoveredSources();
     
     // Poll jobs every 3 seconds when there are pending/processing jobs
     const interval = setInterval(() => {
@@ -154,6 +168,53 @@ export default function Admin() {
     
     return () => clearInterval(interval);
   }, [jobStats.pending, jobStats.processing]);
+
+  async function loadDiscoveredSources() {
+    try {
+      const data = await getDiscoveredSources();
+      setDiscoveredSources(data);
+    } catch (error) {
+      console.error('Failed to load discovered sources:', error);
+    }
+  }
+
+  async function handleTriggerDiscovery() {
+    setDiscoveryLoading(true);
+    try {
+      const result = await triggerSourceDiscovery({
+        maxMunicipalities,
+        minPopulation,
+      });
+      if (result.success) {
+        toast.success(`Discovery started! Found ${result.sourcesDiscovered ?? 0} sources, ${result.sourcesEnabled ?? 0} enabled`);
+        // Reload after a delay to get new sources
+        setTimeout(() => {
+          loadDiscoveredSources();
+          loadSources();
+        }, 5000);
+      } else {
+        // If it timed out, that's OK - it's running in the background
+        if (result.error?.includes('timeout') || result.error?.includes('context canceled')) {
+          toast.info('Discovery running in background - check back in a few minutes');
+          setTimeout(() => {
+            loadDiscoveredSources();
+            loadSources();
+          }, 30000);
+        } else {
+          toast.error(result.error || 'Discovery failed');
+        }
+      }
+    } catch (error) {
+      // Edge functions timeout is expected for long-running discovery
+      toast.info('Discovery running in background - check back in a few minutes');
+      setTimeout(() => {
+        loadDiscoveredSources();
+        loadSources();
+      }, 30000);
+    } finally {
+      setDiscoveryLoading(false);
+    }
+  }
 
   async function loadJobs() {
     try {
@@ -591,7 +652,130 @@ export default function Admin() {
         )}
       </div>
 
-      {/* Stats Bar */}
+      {/* Source Discovery Section */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-4 py-4 border-b border-border bg-gradient-to-r from-blue-500/5 to-purple-500/5"
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <Search size={18} />
+              Source Discovery
+            </h2>
+            <p className="text-sm text-muted-foreground">Automatically find new event sources from Dutch municipalities</p>
+          </div>
+          <Badge variant="outline" className="gap-1">
+            <Globe size={12} />
+            {discoveredSources.length} discovered
+          </Badge>
+        </div>
+
+        {/* Discovery Controls */}
+        <div className="flex flex-wrap items-end gap-3 mb-4">
+          <div className="flex-1 min-w-[120px]">
+            <label className="text-xs text-muted-foreground block mb-1">Max Municipalities</label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={maxMunicipalities}
+              onChange={(e) => setMaxMunicipalities(Number(e.target.value) || 10)}
+              className="h-9 w-full"
+            />
+          </div>
+          <div className="flex-1 min-w-[120px]">
+            <label className="text-xs text-muted-foreground block mb-1">Min Population</label>
+            <Input
+              type="number"
+              min={1000}
+              step={10000}
+              value={minPopulation}
+              onChange={(e) => setMinPopulation(Number(e.target.value) || 50000)}
+              className="h-9 w-full"
+            />
+          </div>
+          <Button
+            onClick={handleTriggerDiscovery}
+            disabled={discoveryLoading}
+            className="gap-2"
+            variant="default"
+          >
+            {discoveryLoading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Discovering...
+              </>
+            ) : (
+              <>
+                <Search size={16} />
+                Start Discovery
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadDiscoveredSources}
+            className="gap-1"
+          >
+            <RefreshCw size={14} />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Recently Discovered Sources */}
+        {discoveredSources.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <MapPin size={14} />
+              Recently Discovered
+            </h3>
+            <div className="grid gap-2 max-h-48 overflow-y-auto">
+              {discoveredSources.slice(0, 8).map((source) => (
+                <div
+                  key={source.id}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-background border border-border text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Globe size={14} className="text-primary flex-shrink-0" />
+                    <div className="min-w-0">
+                      <span className="font-medium truncate block">{source.name}</span>
+                      {source.location_name && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin size={10} />
+                          {source.location_name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant={source.enabled ? "default" : "secondary"} className="text-[10px]">
+                      {source.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary"
+                    >
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {discoveredSources.length === 0 && !discoveryLoading && (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No sources discovered yet. Click "Start Discovery" to find new event sources.
+          </p>
+        )}
+      </motion.div>
+
       <div className="px-4 py-3 bg-muted/30 border-b border-border">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-4">
