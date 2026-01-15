@@ -1,0 +1,32 @@
+name: Export Supabase Edge Logs
+on:
+  schedule:
+    - cron: '*/15 * * * *' # every 15 minutes; adjust as needed
+  workflow_dispatch:
+
+jobs:
+  fetch-and-commit-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch logs and write to repo
+        env:
+          LOGS_FETCH_URL: ${{ secrets.LOGS_FETCH_URL }}
+          LOGS_FETCH_SECRET: ${{ secrets.LOGS_FETCH_SECRET }} # optional
+          MINUTES: '15'
+        run: |
+          node scripts/fetch_edge_logs.mjs
+
+      - name: Commit logs
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore(logs): export supabase logs"
+          file_pattern: "logs/supabase/**"
+          branch: main
