@@ -62,6 +62,9 @@ const TARGET_YEAR = 2026;
 
 const DEFAULT_EVENT_TYPE = "anchor";
 
+// Maximum length for input strings in log messages to prevent log overflow
+const MAX_LOG_INPUT_LENGTH = 100;
+
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -210,7 +213,7 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   }
   
   // Log unexpected category results for debugging
-  console.warn(`classifyTextToCategory returned unexpected value: "${category}" for input: "${input?.slice(0, 100)}". Using fallback "community"`);
+  console.warn(`classifyTextToCategory returned unexpected value: "${category}" for input: "${input?.slice(0, MAX_LOG_INPUT_LENGTH)}". Using fallback "community"`);
   
   // Default fallback to community (most general category)
   return "community";
@@ -589,7 +592,13 @@ export async function scrapeEventCards(
  * Database constraint allows: active, gaming, entertainment, social, family, 
  * outdoors, music, workshops, foodie, community
  */
-function ensureValidCategory(category: string): InternalCategory {
+function ensureValidCategory(category: unknown): InternalCategory {
+  // Type guard: ensure we're working with a string
+  if (typeof category !== 'string') {
+    console.warn(`Category is not a string (type: ${typeof category}). Falling back to "community"`);
+    return "community";
+  }
+  
   const normalized = category.toLowerCase().trim();
   
   // Validate against the allowed categories
@@ -608,8 +617,8 @@ async function insertEvent(
   event: Record<string, unknown>
 ): Promise<boolean> {
   // Final defensive validation: ensure category is valid before insert
-  if (event.category) {
-    event.category = ensureValidCategory(event.category as string);
+  if (event.category !== undefined) {
+    event.category = ensureValidCategory(event.category);
   } else {
     console.warn("Event missing category field, defaulting to community");
     event.category = "community";

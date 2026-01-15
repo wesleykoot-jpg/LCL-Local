@@ -75,8 +75,9 @@ describe('Category Mapping Edge Cases', () => {
   });
 
   it('should return valid category for null/undefined input', () => {
-    const result1 = classifyTextToCategory(null as any);
-    const result2 = classifyTextToCategory(undefined as any);
+    // Test that the function handles invalid inputs gracefully
+    const result1 = classifyTextToCategory(null as unknown as string);
+    const result2 = classifyTextToCategory(undefined as unknown as string);
     expect(INTERNAL_CATEGORIES).toContain(result1);
     expect(INTERNAL_CATEGORIES).toContain(result2);
   });
