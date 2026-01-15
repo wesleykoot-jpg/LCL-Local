@@ -1,5 +1,6 @@
 // Comprehensive log fetcher for Supabase
-// Fetches from: error_logs table, scrape_jobs, discovery_jobs, and source errors
+// Fetches from: error_logs table, scrape_jobs, discovery_jobs, source errors,
+// AND Supabase Analytics (edge function execution logs)
 // Default window: 15 minutes (configurable via ?minutes=N, max 1440 = 24h)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -114,12 +115,16 @@ Deno.serve(async (req: Request) => {
             context: { source_id: job.source_id, job_id: job.id, attempts: job.attempts }
           });
         } else if (job.status === 'completed') {
+          // Mark as warning if no events were inserted (potential issue)
+          const noEventsInserted = (job.events_scraped || 0) > 0 && (job.events_inserted || 0) === 0;
           allLogs.push({
             timestamp: job.completed_at || job.created_at,
-            level: 'info',
+            level: noEventsInserted ? 'warn' : 'info',
             source: 'scrape-job',
             function_name: 'scrape-worker',
-            message: `✓ "${sourceName}": scraped ${job.events_scraped}, inserted ${job.events_inserted}`,
+            message: noEventsInserted
+              ? `⚠ "${sourceName}": scraped ${job.events_scraped} but inserted 0 (possible duplicates/conflicts)`
+              : `✓ "${sourceName}": scraped ${job.events_scraped}, inserted ${job.events_inserted}`,
             context: { source_id: job.source_id, job_id: job.id }
           });
         } else if (job.status === 'processing') {
@@ -231,6 +236,119 @@ Deno.serve(async (req: Request) => {
       }
     } catch (err) {
       console.error('[fetch-logs] events fingerprint check exception:', err);
+    }
+
+    // ===== 6. Fetch events that failed to insert (check for null source_id which might indicate issues) =====
+    try {
+      const { data: orphanEvents, count: orphanCount } = await supabase
+        .from('events')
+        .select('id, title, created_at', { count: 'exact' })
+        .is('source_id', null)
+        .gte('created_at', from)
+        .limit(10);
+
+      if (orphanCount && orphanCount > 0) {
+        allLogs.push({
+          timestamp: now.toISOString(),
+          level: 'warn',
+          source: 'data-quality',
+          function_name: 'event-insert',
+          message: `${orphanCount} events without source_id (orphaned) in last ${minutes} min`,
+          context: { 
+            orphan_count: orphanCount, 
+            sample_events: (orphanEvents || []).map(e => ({ id: e.id, title: e.title })).slice(0, 5)
+          }
+        });
+      }
+    } catch (err) {
+      console.error('[fetch-logs] orphan events check exception:', err);
+    }
+
+    // ===== 7. Check for stale processing jobs (stuck jobs) =====
+    try {
+      const staleThreshold = new Date(now.getTime() - 30 * 60 * 1000).toISOString(); // 30 min ago
+      
+      const { data: staleJobs } = await supabase
+        .from('scrape_jobs')
+        .select('id, source_id, started_at, attempts')
+        .eq('status', 'processing')
+        .lt('started_at', staleThreshold)
+        .limit(20);
+
+      if (staleJobs && staleJobs.length > 0) {
+        // Get source names for stale jobs
+        const staleSourceIds = staleJobs.map(j => j.source_id);
+        const { data: staleSources } = await supabase
+          .from('scraper_sources')
+          .select('id, name')
+          .in('id', staleSourceIds);
+        
+        const staleSourceMap = new Map((staleSources || []).map(s => [s.id, s.name]));
+
+        for (const job of staleJobs) {
+          const sourceName = staleSourceMap.get(job.source_id) || 'Unknown';
+          allLogs.push({
+            timestamp: job.started_at,
+            level: 'error',
+            source: 'scrape-job',
+            function_name: 'scrape-worker',
+            message: `STALE JOB: "${sourceName}" stuck in processing for 30+ min`,
+            error_type: 'StaleJob',
+            context: { source_id: job.source_id, job_id: job.id, started_at: job.started_at }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[fetch-logs] stale jobs check exception:', err);
+    }
+
+    // ===== 8. Check for sources that haven't been scraped recently (health check) =====
+    try {
+      const healthCheckThreshold = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(); // 48h ago
+      
+      const { data: inactiveSources, count: inactiveCount } = await supabase
+        .from('scraper_sources')
+        .select('id, name, last_scraped_at', { count: 'exact' })
+        .eq('enabled', true)
+        .or(`last_scraped_at.is.null,last_scraped_at.lt.${healthCheckThreshold}`)
+        .limit(20);
+
+      if (inactiveCount && inactiveCount > 5) {
+        allLogs.push({
+          timestamp: now.toISOString(),
+          level: 'warn',
+          source: 'health-check',
+          function_name: 'scraper-monitoring',
+          message: `${inactiveCount} enabled sources haven't been scraped in 48+ hours`,
+          context: { 
+            inactive_count: inactiveCount, 
+            sample_sources: (inactiveSources || []).map(s => s.name).slice(0, 10)
+          }
+        });
+      }
+    } catch (err) {
+      console.error('[fetch-logs] inactive sources check exception:', err);
+    }
+
+    // ===== 9. Aggregate event insertion stats =====
+    try {
+      const { count: totalEventsInserted } = await supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', from);
+
+      if (totalEventsInserted !== null) {
+        allLogs.push({
+          timestamp: now.toISOString(),
+          level: 'info',
+          source: 'stats',
+          function_name: 'event-aggregation',
+          message: `📊 Total events inserted in last ${minutes} min: ${totalEventsInserted}`,
+          context: { total_events: totalEventsInserted, period_minutes: minutes }
+        });
+      }
+    } catch (err) {
+      console.error('[fetch-logs] event stats exception:', err);
     }
 
     // Sort all logs by timestamp descending

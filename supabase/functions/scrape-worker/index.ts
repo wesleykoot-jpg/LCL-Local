@@ -6,6 +6,7 @@ import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
+import { logError, logWarning, logInfo, logSupabaseError, logFetchError } from "../_shared/errorLogging.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -300,10 +301,17 @@ async function fingerprintExists(supabase: SupabaseClient, sourceId: string, fin
   return (data && data.length > 0) || false;
 }
 
-async function insertEvent(supabase: SupabaseClient, event: Record<string, unknown>): Promise<boolean> {
+async function insertEvent(supabase: SupabaseClient, event: Record<string, unknown>, sourceId: string): Promise<boolean> {
   const { error } = await supabase.from("events").insert(event);
   if (error) {
     console.error("Insert failed", error.message);
+    // Log to centralized error_logs table
+    await logSupabaseError('scrape-worker', 'insertEvent', 'Event insert', error, {
+      source_id: sourceId,
+      event_title: event.title,
+      event_date: event.event_date,
+      fingerprint: event.event_fingerprint,
+    });
     return false;
   }
   return true;
@@ -318,6 +326,12 @@ async function updateSourceStats(supabase: SupabaseClient, sourceId: string, scr
     });
   } catch (error) {
     console.warn("update_scraper_source_stats failed", error);
+    await logWarning('scrape-worker', 'updateSourceStats', `Stats update failed for source ${sourceId}`, {
+      source_id: sourceId,
+      scraped,
+      success,
+      error: String(error),
+    });
   }
 }
 
@@ -546,7 +560,7 @@ async function processSingleSource(
       event_fingerprint: fingerprint,
     };
 
-    const inserted = await insertEvent(supabase, eventInsert);
+    const inserted = await insertEvent(supabase, eventInsert, source.id);
     if (inserted) {
       stats.inserted++;
     } else {
@@ -696,6 +710,24 @@ serve(async (req: Request): Promise<Response> => {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error(`Worker: Job ${job.id} failed -`, errorMessage);
 
+      // Log to centralized error_logs table
+      await logError({
+        level: 'error',
+        source: 'scrape-worker',
+        function_name: 'processSingleSource',
+        message: `Job ${job.id} failed for source "${source.name}": ${errorMessage}`,
+        error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
+        stack_trace: error instanceof Error ? error.stack : undefined,
+        context: {
+          job_id: job.id,
+          source_id: source.id,
+          source_name: source.name,
+          source_url: source.url,
+          attempts: job.attempts,
+          will_retry: job.attempts < job.max_attempts,
+        },
+      });
+
       await failJob(supabase, job, errorMessage);
       await updateSourceStats(supabase, source.id, 0, false);
 
@@ -732,6 +764,15 @@ serve(async (req: Request): Promise<Response> => {
     }
   } catch (error) {
     console.error("Worker error:", error);
+    // Log top-level errors
+    await logError({
+      level: 'fatal',
+      source: 'scrape-worker',
+      function_name: 'serve',
+      message: `Worker fatal error: ${error instanceof Error ? error.message : String(error)}`,
+      error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
+      stack_trace: error instanceof Error ? error.stack : undefined,
+    });
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
