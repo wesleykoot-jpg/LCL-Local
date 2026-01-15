@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { sendSlackNotification } from "../_shared/slack.ts";
+import { withErrorLogging, logSupabaseError } from "../_shared/errorLogging.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,21 +33,25 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return withErrorLogging(
+    'scrape-coordinator',
+    'handler',
+    'Process coordinator request',
+    async () => {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Missing Supabase env vars");
-    }
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Missing Supabase env vars");
+      }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+      const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse optional request body
-    let options: { priority?: number; sourceIds?: string[]; triggerWorker?: boolean } = {};
-    if (req.method === "POST") {
-      try {
-        const body = await req.text();
+      // Parse optional request body
+      let options: { priority?: number; sourceIds?: string[]; triggerWorker?: boolean } = {};
+      if (req.method === "POST") {
+        try {
+          const body = await req.text();
         options = body ? JSON.parse(body) : {};
       } catch {
         options = {};
@@ -78,11 +83,21 @@ serve(async (req: Request): Promise<Response> => {
 
     // Clear any stale pending jobs for these sources (from previous failed runs)
     const sourceIdList = sources.map((s) => s.id);
-    await supabase
+    const { error: deleteError } = await supabase
       .from("scrape_jobs")
       .delete()
       .in("source_id", sourceIdList)
       .eq("status", "pending");
+    
+    if (deleteError) {
+      await logSupabaseError(
+        'scrape-coordinator',
+        'handler',
+        'Delete stale pending jobs',
+        deleteError,
+        { source_count: sourceIdList.length }
+      );
+    }
 
     // Create new pending jobs for each source
     const jobs = sources.map((source) => ({
@@ -98,7 +113,16 @@ serve(async (req: Request): Promise<Response> => {
       .insert(jobs)
       .select("id");
 
-    if (insertError) throw new Error(insertError.message);
+    if (insertError) {
+      await logSupabaseError(
+        'scrape-coordinator',
+        'handler',
+        'Insert scrape jobs',
+        insertError,
+        { job_count: jobs.length }
+      );
+      throw new Error(insertError.message);
+    }
 
     const jobsCreated = insertedJobs?.length || 0;
     console.log(`Coordinator: Enqueued ${jobsCreated} jobs for sources: ${sources.map((s) => s.name).join(", ")}`);
@@ -139,40 +163,85 @@ serve(async (req: Request): Promise<Response> => {
     // Get recent events inserted (last 24 hours) and persona breakdown
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
-    const { count: recentEventsCount } = await supabase
+    const { count: recentEventsCount, error: recentEventsError } = await supabase
       .from("events")
       .select("id", { count: "exact", head: true })
       .gte("created_at", twentyFourHoursAgo);
+    
+    if (recentEventsError) {
+      await logSupabaseError(
+        'scrape-coordinator',
+        'handler',
+        'Fetch recent events count',
+        recentEventsError
+      );
+    }
 
     // Get persona breakdown (Family vs Social/Culture)
-    const { count: familyCount } = await supabase
+    const { count: familyCount, error: familyCountError } = await supabase
       .from("events")
       .select("id", { count: "exact", head: true })
       .eq("category", "family")
       .gte("created_at", twentyFourHoursAgo);
+    
+    if (familyCountError) {
+      await logSupabaseError(
+        'scrape-coordinator',
+        'handler',
+        'Fetch family events count',
+        familyCountError
+      );
+    }
 
-    const { count: socialCount } = await supabase
+    const { count: socialCount, error: socialCountError } = await supabase
       .from("events")
       .select("id", { count: "exact", head: true })
       .in("category", ["culture", "nightlife", "food"])
       .gte("created_at", twentyFourHoursAgo);
+    
+    if (socialCountError) {
+      await logSupabaseError(
+        'scrape-coordinator',
+        'handler',
+        'Fetch social events count',
+        socialCountError
+      );
+    }
 
     // Get error/failure stats from scraper_sources (sources with recent failures)
-    const { data: failedSources } = await supabase
+    const { data: failedSources, error: failedSourcesError } = await supabase
       .from("scraper_sources")
       .select("name, url, last_scrape_at, last_error")
       .eq("enabled", true)
       .not("last_error", "is", null)
       .gte("last_scrape_at", twentyFourHoursAgo)
       .limit(10);
+    
+    if (failedSourcesError) {
+      await logSupabaseError(
+        'scrape-coordinator',
+        'handler',
+        'Fetch failed sources',
+        failedSourcesError
+      );
+    }
 
     // Get sources with coordinates for geofencing verification
-    const { data: sourcesWithCoords } = await supabase
+    const { data: sourcesWithCoords, error: sourcesWithCoordsError } = await supabase
       .from("scraper_sources")
       .select("name, location_name, default_coordinates")
       .in("id", sourceIdList)
       .not("default_coordinates", "is", null)
       .limit(5);
+    
+    if (sourcesWithCoordsError) {
+      await logSupabaseError(
+        'scrape-coordinator',
+        'handler',
+        'Fetch sources with coordinates',
+        sourcesWithCoordsError
+      );
+    }
 
     // Send comprehensive Slack notification using Block Kit
     const blocks = [
@@ -303,11 +372,16 @@ serve(async (req: Request): Promise<Response> => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+    },
+    {
+      method: req.method,
+      url: req.url,
+    }
+  ).catch((error) => {
     console.error("Coordinator error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  }
+  });
 });

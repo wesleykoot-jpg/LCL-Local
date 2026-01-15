@@ -134,7 +134,7 @@ export async function logSupabaseError(
 }
 
 /**
- * Log a fetch/network error
+ * Log a fetch/network error with optional response body and headers
  */
 export async function logFetchError(
   source: string,
@@ -157,6 +157,40 @@ export async function logFetchError(
       ...context,
       url,
       status,
+    },
+  });
+}
+
+/**
+ * Log a generic HTTP/API error with response details
+ * Use this for third-party API calls where you want to capture response body, headers, and status
+ */
+export async function logHttpError(
+  source: string,
+  functionName: string,
+  operation: string,
+  url: string,
+  statusCode: number,
+  responseBody?: string,
+  responseHeaders?: Record<string, string>,
+  context?: Record<string, unknown>
+): Promise<void> {
+  // Truncate response body to prevent massive log entries
+  const truncatedBody = truncateValue(responseBody, SLACK_FIELD_LIMIT);
+  
+  await logError({
+    level: 'error',
+    source,
+    function_name: functionName,
+    message: `${operation} failed: HTTP ${statusCode} from ${url}`,
+    error_code: statusCode.toString(),
+    error_type: 'HttpError',
+    context: {
+      ...context,
+      url,
+      status_code: statusCode,
+      response_body: truncatedBody,
+      response_headers: responseHeaders ? JSON.stringify(responseHeaders).slice(0, 500) : undefined,
     },
   });
 }

@@ -6,6 +6,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withErrorLogging, logSupabaseError, logHttpError } from '../_shared/errorLogging.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,29 +34,33 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
-    const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  return withErrorLogging(
+    'google-calendar-auth',
+    'handler',
+    'Process Google Calendar OAuth request',
+    async () => {
+      const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
+      const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      console.error('[google-calendar-auth] Missing Google OAuth credentials');
-      return new Response(
-        JSON.stringify({ error: 'Google Calendar integration not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+        console.error('[google-calendar-auth] Missing Google OAuth credentials');
+        return new Response(
+          JSON.stringify({ error: 'Google Calendar integration not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('[google-calendar-auth] Missing Supabase credentials');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+        console.error('[google-calendar-auth] Missing Supabase credentials');
+        return new Response(
+          JSON.stringify({ error: 'Server configuration error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    const body: RequestBody = await req.json();
+      const body: RequestBody = await req.json();
 
     if (body.action === 'exchange') {
       // Exchange authorization code for tokens
@@ -86,6 +91,16 @@ Deno.serve(async (req) => {
 
       if (!response.ok) {
         console.error('[google-calendar-auth] Token exchange failed:', data);
+        await logHttpError(
+          'google-calendar-auth',
+          'exchange',
+          'Google OAuth token exchange',
+          GOOGLE_TOKEN_ENDPOINT,
+          response.status,
+          JSON.stringify(data),
+          undefined,
+          { code_provided: !!code, redirect_uri: redirectUri }
+        );
         return new Response(
           JSON.stringify({ error: data.error_description || 'Token exchange failed' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -124,6 +139,15 @@ Deno.serve(async (req) => {
 
       if (dbError || !tokenData?.refresh_token) {
         console.error('[google-calendar-auth] No refresh token found:', dbError);
+        if (dbError) {
+          await logSupabaseError(
+            'google-calendar-auth',
+            'refresh',
+            'Fetch refresh token from database',
+            dbError,
+            { profile_id: profileId }
+          );
+        }
         return new Response(
           JSON.stringify({ error: 'No refresh token available' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -148,6 +172,16 @@ Deno.serve(async (req) => {
 
       if (!response.ok) {
         console.error('[google-calendar-auth] Token refresh failed:', data);
+        await logHttpError(
+          'google-calendar-auth',
+          'refresh',
+          'Google OAuth token refresh',
+          GOOGLE_TOKEN_ENDPOINT,
+          response.status,
+          JSON.stringify(data),
+          undefined,
+          { profile_id: profileId }
+        );
         return new Response(
           JSON.stringify({ error: data.error_description || 'Token refresh failed' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -168,6 +202,13 @@ Deno.serve(async (req) => {
 
       if (updateError) {
         console.error('[google-calendar-auth] Failed to update tokens:', updateError);
+        await logSupabaseError(
+          'google-calendar-auth',
+          'refresh',
+          'Update refreshed tokens in database',
+          updateError,
+          { profile_id: profileId }
+        );
         return new Response(
           JSON.stringify({ error: 'Failed to save refreshed token' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -188,12 +229,16 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-  } catch (error) {
+    },
+    {
+      method: req.method,
+      url: req.url,
+    }
+  ).catch((error) => {
     console.error('[google-calendar-auth] Error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  }
+  });
 });

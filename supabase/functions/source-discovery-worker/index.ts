@@ -5,7 +5,14 @@ import {
   CATEGORIES, 
   classifyTextToCategory 
 } from "../_shared/categoryMapping.ts";
-import { logError, logWarning, logInfo, logSupabaseError } from "../_shared/errorLogging.ts";
+import { 
+  logError, 
+  logWarning, 
+  logInfo, 
+  logSupabaseError,
+  withErrorLogging,
+  logHttpError 
+} from "../_shared/errorLogging.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -192,6 +199,17 @@ ${html.slice(0, CONFIG.MAX_HTML_CHARS_FOR_LLM)}`
     );
 
     if (!geminiResponse.ok) {
+      const responseBody = await geminiResponse.text();
+      await logHttpError(
+        'source-discovery-worker',
+        'validateSourceWithLLM',
+        'Gemini API validation',
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
+        geminiResponse.status,
+        responseBody,
+        undefined,
+        { municipality, url }
+      );
       return { isValid: hasAgendaContent && hasDateContent, confidence: 50, suggestedName: `Agenda ${municipality}` };
     }
 
@@ -211,6 +229,15 @@ ${html.slice(0, CONFIG.MAX_HTML_CHARS_FOR_LLM)}`
     return { isValid: false, confidence: 0, suggestedName: "" };
   } catch (error) {
     console.warn(`Validation failed for ${url}:`, error);
+    await logError({
+      level: 'warn',
+      source: 'source-discovery-worker',
+      function_name: 'validateSourceWithLLM',
+      message: `Validation failed for ${url}: ${error instanceof Error ? error.message : String(error)}`,
+      error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
+      stack_trace: error instanceof Error ? error.stack : undefined,
+      context: { municipality, url },
+    });
     return { isValid: false, confidence: 0, suggestedName: "" };
   }
 }
@@ -258,6 +285,17 @@ async function insertDiscoveredSource(
         return false;
       }
       console.error(`Insert failed for ${source.url}:`, error.message);
+      await logSupabaseError(
+        'source-discovery-worker',
+        'insertDiscoveredSource',
+        'Insert discovered source to database',
+        error,
+        {
+          url: source.url,
+          municipality: source.municipality,
+          confidence: source.confidence,
+        }
+      );
       return false;
     }
 
@@ -265,6 +303,15 @@ async function insertDiscoveredSource(
     return true;
   } catch (error) {
     console.error(`Insert error for ${source.url}:`, error);
+    await logError({
+      level: 'error',
+      source: 'source-discovery-worker',
+      function_name: 'insertDiscoveredSource',
+      message: `Insert error for ${source.url}: ${error instanceof Error ? error.message : String(error)}`,
+      error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
+      stack_trace: error instanceof Error ? error.stack : undefined,
+      context: { url: source.url, municipality: source.municipality },
+    });
     return false;
   }
 }
@@ -342,7 +389,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
+  return withErrorLogging(
+    'source-discovery-worker',
+    'handler',
+    'Process municipality discovery job',
+    async () => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const serperApiKey = Deno.env.get("SERPER_API_KEY");
@@ -497,11 +548,16 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+    },
+    {
+      method: req.method,
+      url: req.url,
+    }
+  ).catch((error) => {
     console.error("[Worker] Error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  }
+  });
 });
