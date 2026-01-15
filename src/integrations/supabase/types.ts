@@ -384,45 +384,66 @@ export type Database = {
       scraper_sources: {
         Row: {
           auto_disabled: boolean | null
+          auto_discovered: boolean | null
           config: Json
           consecutive_failures: number | null
+          country: string | null
           created_at: string
+          default_coordinates: Json | null
+          description: string | null
           enabled: boolean
           id: string
+          language: string | null
           last_error: string | null
           last_scraped_at: string | null
           last_success: boolean | null
+          location_name: string | null
           name: string
+          requires_render: boolean | null
           total_events_scraped: number | null
           updated_at: string
           url: string
         }
         Insert: {
           auto_disabled?: boolean | null
+          auto_discovered?: boolean | null
           config?: Json
           consecutive_failures?: number | null
+          country?: string | null
           created_at?: string
+          default_coordinates?: Json | null
+          description?: string | null
           enabled?: boolean
           id?: string
+          language?: string | null
           last_error?: string | null
           last_scraped_at?: string | null
           last_success?: boolean | null
+          location_name?: string | null
           name: string
+          requires_render?: boolean | null
           total_events_scraped?: number | null
           updated_at?: string
           url: string
         }
         Update: {
           auto_disabled?: boolean | null
+          auto_discovered?: boolean | null
           config?: Json
           consecutive_failures?: number | null
+          country?: string | null
           created_at?: string
+          default_coordinates?: Json | null
+          description?: string | null
           enabled?: boolean
           id?: string
+          language?: string | null
           last_error?: string | null
           last_scraped_at?: string | null
           last_success?: boolean | null
+          location_name?: string | null
           name?: string
+          requires_render?: boolean | null
           total_events_scraped?: number | null
           updated_at?: string
           url?: string
