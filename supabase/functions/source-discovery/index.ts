@@ -40,6 +40,38 @@ const NOISE_DOMAINS = [
 ];
 
 /**
+ * Configuration constants for rate limiting and processing
+ */
+const CONFIG = {
+  /** Maximum characters of HTML to send to LLM for validation */
+  MAX_HTML_CHARS_FOR_LLM: 5000,
+  /** Delay between Serper API queries (ms) */
+  SERPER_QUERY_DELAY_MS: 200,
+  /** Delay between URL validation requests (ms) */
+  VALIDATION_DELAY_MS: 300,
+  /** Delay between processing municipalities (ms) */
+  MUNICIPALITY_DELAY_MS: 500,
+  /** Timeout for fetching URLs (ms) */
+  URL_FETCH_TIMEOUT_MS: 10000,
+  /** Timeout for Serper API requests (ms) */
+  SERPER_API_TIMEOUT_MS: 15000,
+  /** Maximum retries for Serper API */
+  SERPER_MAX_RETRIES: 3,
+  /** Confidence threshold for auto-enabling sources */
+  AUTO_ENABLE_CONFIDENCE_THRESHOLD: 90,
+  /** Minimum confidence to validate a source */
+  MIN_VALIDATION_CONFIDENCE: 60,
+};
+
+/**
+ * Dutch month names for date pattern detection
+ */
+const DUTCH_MONTHS = [
+  "januari", "februari", "maart", "april", "mei", "juni",
+  "juli", "augustus", "september", "oktober", "november", "december"
+];
+
+/**
  * Serper.dev search result interface
  */
 interface SerperSearchResult {
@@ -255,7 +287,7 @@ async function callSerperWithRetry(
           hl: "nl", // Language: Dutch
           num: 10,  // Number of results
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(CONFIG.SERPER_API_TIMEOUT_MS),
       });
 
       if (response.ok) {
@@ -364,7 +396,7 @@ async function searchForEventSources(
       }
       
       // Rate limiting between Serper queries
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, CONFIG.SERPER_QUERY_DELAY_MS));
     }
   } else {
     // Fallback to pattern-based discovery when Serper API key is not available
@@ -413,7 +445,7 @@ async function validateSourceWithLLM(
         "User-Agent": "LCL-SourceDiscovery/1.0 (Event aggregator for local social app)",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(CONFIG.URL_FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -424,7 +456,8 @@ async function validateSourceWithLLM(
     
     // Check for basic event-related content
     const hasAgendaContent = /agenda|evenement|activiteit|programma|kalender/i.test(html);
-    const hasDateContent = /\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december/i.test(html);
+    const dutchMonthsPattern = DUTCH_MONTHS.join("|");
+    const hasDateContent = new RegExp(`\\d{1,2}[-/]\\d{1,2}[-/]\\d{2,4}|${dutchMonthsPattern}`, "i").test(html);
     
     if (!hasAgendaContent || !hasDateContent) {
       return { isValid: false, confidence: 0, suggestedName: "" };
@@ -436,8 +469,8 @@ async function validateSourceWithLLM(
     Antwoord in JSON formaat: {"isEventAgenda": boolean, "confidence": 0-100, "suggestedName": "string"}`;
 
     const userPrompt = `URL: ${url}
-    HTML (first 5000 chars):
-    ${html.slice(0, 5000)}`;
+    HTML (first ${CONFIG.MAX_HTML_CHARS_FOR_LLM} chars):
+    ${html.slice(0, CONFIG.MAX_HTML_CHARS_FOR_LLM)}`;
 
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
@@ -494,8 +527,8 @@ async function insertDiscoveredSource(
   stats: DiscoveryStats
 ): Promise<boolean> {
   try {
-    // Auto-enable sources with confidence >90% (bypass manual review)
-    const shouldEnable = source.confidence > 90;
+    // Auto-enable sources with confidence > threshold (bypass manual review)
+    const shouldEnable = source.confidence > CONFIG.AUTO_ENABLE_CONFIDENCE_THRESHOLD;
     if (shouldEnable) {
       stats.autoEnabledSources++;
     }
@@ -594,7 +627,7 @@ async function processMunicipality(
           console.log(`[DRY RUN] LLM Score for ${candidate.url}: isValid=${validation.isValid}, confidence=${validation.confidence}`);
         }
 
-        if (validation.isValid && validation.confidence >= 60) {
+        if (validation.isValid && validation.confidence >= CONFIG.MIN_VALIDATION_CONFIDENCE) {
           stats.sourcesValidated++;
 
           // Determine category from snippet or use default
@@ -612,8 +645,8 @@ async function processMunicipality(
           // Skip DB write in dry run mode
           if (dryRun) {
             console.log(`[DRY RUN] Would insert source: ${source.name} (${source.url}) - confidence: ${source.confidence}%`);
-            const wouldAutoEnable = source.confidence > 90;
-            console.log(`[DRY RUN] Auto-enable: ${wouldAutoEnable ? "YES (>90%)" : "NO (≤90%)"}`);
+            const wouldAutoEnable = source.confidence > CONFIG.AUTO_ENABLE_CONFIDENCE_THRESHOLD;
+            console.log(`[DRY RUN] Auto-enable: ${wouldAutoEnable ? `YES (>${CONFIG.AUTO_ENABLE_CONFIDENCE_THRESHOLD}%)` : `NO (≤${CONFIG.AUTO_ENABLE_CONFIDENCE_THRESHOLD}%)`}`);
             discovered.push(source);
             continue;
           }
@@ -700,7 +733,7 @@ async function processMunicipality(
       }
 
       // Rate limiting between validations
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, CONFIG.VALIDATION_DELAY_MS));
     }
   } catch (error) {
     const msg = `Search error for ${municipality.name}: ${error instanceof Error ? error.message : "Unknown"}`;
@@ -860,7 +893,7 @@ serve(async (req: Request): Promise<Response> => {
       allDiscovered.push(...discovered);
 
       // Rate limiting between municipalities
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, CONFIG.MUNICIPALITY_DELAY_MS));
     }
 
     const duration = Date.now() - startTime;

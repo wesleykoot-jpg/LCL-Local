@@ -40,9 +40,9 @@ describe('Source Discovery Defaults', () => {
     const allAboveThreshold = result.every(m => m.population >= 15000);
     expect(allAboveThreshold).toBe(true);
 
-    // Should exclude very small municipalities
+    // Should exclude very small municipalities (below threshold)
     const names = result.map(m => m.name);
-    expect(names).not.toContain('Het Bildt'); // population: 10655
+    expect(names).not.toContain('Het Bildt');
   });
 
   it('prioritizes largest municipalities when limited', () => {
