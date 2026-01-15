@@ -64,8 +64,14 @@ export async function isCircuitClosed(
     .maybeSingle();
   
   if (error) {
-    console.warn(`Circuit breaker check failed for ${sourceId}:`, error.message);
-    // On error, allow request (fail open)
+    // On database error, fail open (allow request) but log prominently
+    // This ensures the scraper continues working even if the circuit breaker
+    // infrastructure has issues, but the error is visible for investigation
+    console.error(
+      `[CIRCUIT_BREAKER_DB_ERROR] Failed to check circuit for ${sourceId}: ${error.message}. ` +
+      `Failing open (allowing request). This may mask persistent infrastructure issues.`
+    );
+    // Consider: In production, you might want to send a Slack alert here
     return true;
   }
   

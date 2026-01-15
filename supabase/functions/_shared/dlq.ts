@@ -23,6 +23,8 @@ const DEFAULT_CONFIG = {
   baseRetryDelayMs: 60 * 60 * 1000,
   /** Alert threshold - Slack alert when DLQ size exceeds this */
   alertThreshold: 50,
+  /** Initial retry count for new items */
+  initialRetryCount: 0,
 };
 
 // ============================================================================
@@ -78,9 +80,9 @@ export async function addToDLQ(
       error_message: item.errorMessage || null,
       error_stack: item.errorStack || null,
       payload: item.payload || null,
-      retry_count: 0,
+      retry_count: DEFAULT_CONFIG.initialRetryCount,
       max_retries: DEFAULT_CONFIG.maxRetries,
-      next_retry_at: calculateNextRetry(0).toISOString(),
+      next_retry_at: calculateNextRetry(DEFAULT_CONFIG.initialRetryCount).toISOString(),
       status: 'pending'
     })
     .select('id')

@@ -440,11 +440,11 @@ $$ LANGUAGE plpgsql;
 -- PROACTIVE RATE LIMITING (add columns to scraper_sources)
 -- ============================================================================
 
-ALTER TABLE scraper_sources 
-ADD COLUMN IF NOT EXISTS requests_this_window INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS window_start_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS max_requests_per_window INTEGER DEFAULT 60,
-ADD COLUMN IF NOT EXISTS window_duration_seconds INTEGER DEFAULT 60;
+-- Add columns individually to handle partial existence
+ALTER TABLE scraper_sources ADD COLUMN IF NOT EXISTS requests_this_window INTEGER DEFAULT 0;
+ALTER TABLE scraper_sources ADD COLUMN IF NOT EXISTS window_start_at TIMESTAMPTZ;
+ALTER TABLE scraper_sources ADD COLUMN IF NOT EXISTS max_requests_per_window INTEGER DEFAULT 60;
+ALTER TABLE scraper_sources ADD COLUMN IF NOT EXISTS window_duration_seconds INTEGER DEFAULT 60;
 
 -- Function to check if request is allowed
 CREATE OR REPLACE FUNCTION rate_limit_check(p_source_id UUID)
@@ -526,16 +526,24 @@ BEGIN
   DELETE FROM raw_events WHERE created_at < v_cutoff AND status IN ('normalized', 'skipped');
   GET DIAGNOSTICS v_re = ROW_COUNT;
   
-  -- Delete old raw pages
-  DELETE FROM raw_pages WHERE created_at < v_cutoff;
+  -- Delete old raw pages that don't have pending raw_events
+  DELETE FROM raw_pages rp
+  WHERE rp.created_at < v_cutoff
+    AND NOT EXISTS (
+      SELECT 1 FROM raw_events re 
+      WHERE re.page_id = rp.id AND re.status = 'pending'
+    );
   GET DIAGNOSTICS v_rp = ROW_COUNT;
   
   -- Delete old completed pipeline jobs
   DELETE FROM pipeline_jobs WHERE created_at < v_cutoff AND current_stage = 'completed';
   GET DIAGNOSTICS v_pj = ROW_COUNT;
   
-  -- Delete old resolved DLQ items
-  DELETE FROM dead_letter_queue WHERE resolved_at < v_cutoff AND status = 'resolved';
+  -- Delete old resolved DLQ items (with NULL check for resolved_at)
+  DELETE FROM dead_letter_queue 
+  WHERE status IN ('resolved', 'discarded')
+    AND resolved_at IS NOT NULL 
+    AND resolved_at < v_cutoff;
   GET DIAGNOSTICS v_dlq = ROW_COUNT;
   
   RETURN QUERY SELECT v_pj, v_rp, v_re, v_se, v_dlq;
