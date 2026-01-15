@@ -32,6 +32,66 @@ export type Database = {
         }
         Relationships: []
       }
+      discovery_jobs: {
+        Row: {
+          attempts: number | null
+          batch_id: string | null
+          completed_at: string | null
+          coordinates: Json | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          max_attempts: number | null
+          municipality: string
+          population: number | null
+          priority: number | null
+          province: string | null
+          sources_added: number | null
+          sources_found: number | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          batch_id?: string | null
+          completed_at?: string | null
+          coordinates?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          municipality: string
+          population?: number | null
+          priority?: number | null
+          province?: string | null
+          sources_added?: number | null
+          sources_found?: number | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          batch_id?: string | null
+          completed_at?: string | null
+          coordinates?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          municipality?: string
+          population?: number | null
+          priority?: number | null
+          province?: string | null
+          sources_added?: number | null
+          sources_found?: number | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       event_attendees: {
         Row: {
           checked_in: boolean | null
@@ -394,6 +454,7 @@ export type Database = {
           enabled: boolean
           id: string
           language: string | null
+          last_discovery_at: string | null
           last_error: string | null
           last_scraped_at: string | null
           last_success: boolean | null
@@ -416,6 +477,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           language?: string | null
+          last_discovery_at?: string | null
           last_error?: string | null
           last_scraped_at?: string | null
           last_success?: boolean | null
@@ -438,6 +500,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           language?: string | null
+          last_discovery_at?: string | null
           last_error?: string | null
           last_scraped_at?: string | null
           last_success?: boolean | null

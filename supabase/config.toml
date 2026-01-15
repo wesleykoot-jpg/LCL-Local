@@ -110,6 +110,14 @@ verify_jwt = false
 # Processes one source per invocation - protected by service role key usage
 verify_jwt = false
 
+[functions.source-discovery-coordinator]
+# Queues discovery jobs for municipalities - protected by service role key usage
+verify_jwt = false
+
+[functions.source-discovery-worker]
+# Processes one municipality discovery job at a time - protected by service role key usage
+verify_jwt = false
+
 [db.seed]
 # Seed file to run on startup - automatically seeds dev data
 sql_paths = ["./seed.sql"]
