@@ -155,7 +155,10 @@ export function getEventCoordinates(
 ): { lat: number; lng: number } | null {
   // Prefer structured location coordinates
   if (structuredLocation?.coordinates) {
-    return structuredLocation.coordinates;
+    const { lat, lng } = structuredLocation.coordinates;
+    if (Number.isFinite(lat) && Number.isFinite(lng) && !(Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6)) {
+      return structuredLocation.coordinates;
+    }
   }
   
   // Parse legacy POINT format
@@ -164,14 +167,22 @@ export function getEventCoordinates(
   if (typeof location === 'string') {
     const match = location.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
     if (match) {
-      return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
+      const lng = parseFloat(match[1]);
+      const lat = parseFloat(match[2]);
+      if (!(Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6)) {
+        return { lng, lat };
+      }
     }
   }
   
   if (typeof location === 'object' && (location as { coordinates?: number[] }).coordinates) {
     const coords = (location as { coordinates?: number[] }).coordinates;
     if (Array.isArray(coords) && coords.length >= 2) {
-      return { lng: Number(coords[0]), lat: Number(coords[1]) };
+      const lng = Number(coords[0]);
+      const lat = Number(coords[1]);
+      if (!(Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6)) {
+        return { lng, lat };
+      }
     }
   }
   

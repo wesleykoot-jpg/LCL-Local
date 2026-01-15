@@ -20,6 +20,7 @@ import {
   getEffectiveRateLimit 
 } from "../_shared/scraperObservability.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
+import { toPostgisPoint } from "../../src/shared/lib/postgis.ts";
 
 // Default CSS selectors for event scraping
 const SELECTORS = [
@@ -47,6 +48,15 @@ const DEFAULT_EVENT_TYPE = "anchor";
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
+
+const stripHtml = (value?: string) =>
+  (value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const toTitleCase = (value: string) =>
+  value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
 
 function normalizeMatchedTime(hours: string, minutes: string, ampm?: string): string | null {
   let hourNum = parseInt(hours, 10);
@@ -787,18 +797,18 @@ export async function handleRequest(req: Request): Promise<Response> {
             normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
           );
           const defaultCoords = source.default_coordinates || source.config.default_coordinates;
-          const point = defaultCoords
-            ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})`
-            : "POINT(0 0)";
+          const { point, isFallback } = toPostgisPoint(defaultCoords);
+          const sanitizedTitle = toTitleCase(normalized.title);
+          const sanitizedDescription = stripHtml(normalized.description || "");
           
-          // Log warning if coordinates are missing
-          if (!defaultCoords) {
+          // Log warning if coordinates are missing or fallback
+          if (isFallback) {
             console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);
           }
 
           const eventInsert = {
-            title: normalized.title,
-            description: normalized.description || "",
+            title: sanitizedTitle,
+            description: sanitizedDescription,
             category: normalized.internal_category,
             event_type: DEFAULT_EVENT_TYPE,
             venue_name: normalized.venue_name || source.name,
@@ -812,7 +822,14 @@ export async function handleRequest(req: Request): Promise<Response> {
             event_fingerprint: fingerprint,
             // New structured fields
             structured_date: normalized.structured_date || null,
-            structured_location: normalized.structured_location || null,
+            structured_location: normalized.structured_location
+              ? {
+                  ...normalized.structured_location,
+                  coordinates: normalized.structured_location.coordinates || (!isFallback ? defaultCoords : undefined),
+                }
+              : (!isFallback && defaultCoords
+                  ? { name: normalized.venue_name || source.name, coordinates: defaultCoords }
+                  : null),
             organizer: normalized.organizer || null,
           };
 

@@ -36,6 +36,35 @@ export interface CreateEventParams {
   max_attendees?: number;
 }
 
+const stripHtmlTags = (value?: string) =>
+  (value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const toTitleCase = (value: string) =>
+  value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+
+const normalizeEventTime = (value: string) => {
+  const trimmed = (value || '').trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return trimmed;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return trimmed;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const buildUtcTimestamp = (date: string, time: string) => {
+  const [year, month, day] = (date || '').split('-').map(Number);
+  const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+  const hours = timeMatch ? Number(timeMatch[1]) : 12;
+  const minutes = timeMatch ? Number(timeMatch[2]) : 0;
+  if (!year || !month || !day) return date;
+  const utc = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  return utc.toISOString();
+};
+
 /**
  * Adds a user to an event as an attendee, with automatic waitlist handling
  * @param eventId - ID of the event to join
@@ -158,9 +187,28 @@ export async function checkEventAttendance(eventId: string, profileId: string) {
  */
 export async function createEvent(params: CreateEventParams) {
   try {
-    const { creator_profile_id, ...eventParams } = params;
+    const { creator_profile_id, parent_event_id, ...eventParams } = params;
+    const cleanedTitle = stripHtmlTags(eventParams.title).trim();
+    const normalizedTitle = toTitleCase(cleanedTitle);
+    const normalizedDescription = stripHtmlTags(eventParams.description);
+    const normalizedTime = normalizeEventTime(eventParams.event_time);
+    const eventDateIso = buildUtcTimestamp(eventParams.event_date, normalizedTime);
+
+    if (eventParams.event_type === 'fork' && !parent_event_id) {
+      throw new Error('Fork events require parent_event_id');
+    }
+
+    if (eventParams.event_type !== 'fork' && parent_event_id) {
+      throw new Error('Only fork events can include parent_event_id');
+    }
+
     const event = {
       ...eventParams,
+      title: normalizedTitle,
+      description: normalizedDescription,
+      event_time: normalizedTime,
+      event_date: eventDateIso,
+      parent_event_id: eventParams.event_type === 'fork' ? parent_event_id : undefined,
       created_by: creator_profile_id,
       created_at: new Date().toISOString(),
       status: 'active',

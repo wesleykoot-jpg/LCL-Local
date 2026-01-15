@@ -95,6 +95,16 @@ const CONFIG = {
   DISTANCE_MIN_SCORE: 0.1,
 } as const;
 
+const parsePointString = (value: unknown): { lat: number; lng: number } | null => {
+  if (typeof value !== 'string') return null;
+  const match = value.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
+  if (!match) return null;
+  const lng = parseFloat(match[1]);
+  const lat = parseFloat(match[2]);
+  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+  return { lat, lng };
+};
+
 /**
  * Calculates category preference score (0-1)
  * Returns 1.0 if event category matches user preferences, otherwise returns a penalty score
@@ -247,11 +257,17 @@ function scoreEvent<T extends EventForRanking>(
   const userLocation = preferences?.userLocation;
   const radiusKm = preferences?.radiusKm || CONFIG.DEFAULT_RADIUS_KM;
   
+  const eventCoordinates =
+    event.coordinates ||
+    (event as { location?: { coordinates?: { lat: number; lng: number } } }).location?.coordinates ||
+    parsePointString((event as { location?: unknown }).location) ||
+    null;
+
   const categoryScore = calculateCategoryScore(event.category, userCategories);
   const timeScore = calculateTimeScore(event.event_date);
   const socialScore = calculateSocialScore(event.attendee_count);
   const matchScore = calculateMatchScore(event.match_percentage);
-  const distanceScore = calculateDistanceScore(event.coordinates, userLocation, radiusKm);
+  const distanceScore = calculateDistanceScore(eventCoordinates, userLocation, radiusKm);
   
   // Weighted sum of all factors
   const baseScore = 

@@ -59,6 +59,8 @@ vi.mock('@/integrations/supabase/client', () => ({
 describe('E2E Sidecar Model Audit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockSingle.mockResolvedValue({ data: null, error: null });
   });
 
   describe('Anchor Event Creation', () => {
@@ -184,8 +186,7 @@ describe('E2E Sidecar Model Audit', () => {
         // Missing parent_event_id - should fail validation
       });
 
-      // If the system allows this, it's a bug
-      // The createEvent function should validate that forks have parents
+      expect(result.error).toBeInstanceOf(Error);
     });
   });
 
@@ -287,6 +288,44 @@ describe('E2E Sidecar Model Audit', () => {
       expect(hierarchy.anchor.hasParent).toBe(false);
       expect(hierarchy.fork.hasParent).toBe(true);
       expect(hierarchy.signal.hasParent).toBe(false);
+    });
+  });
+
+  describe('Data hygiene', () => {
+    it('sanitizes titles, descriptions, and timestamps', async () => {
+      mockSingle.mockResolvedValueOnce({
+        data: {
+          id: 'clean-event',
+          title: 'Clean Event',
+          event_type: 'anchor',
+          parent_event_id: null,
+        },
+        error: null,
+      });
+
+      mockMaybeSingle.mockResolvedValueOnce({
+        data: { max_attendees: null },
+        error: null,
+      });
+
+      const result = await createEvent({
+        title: 'meppel summer <b>fest</b>',
+        description: '<p>Great vibes</p>',
+        category: 'cinema',
+        event_type: 'anchor',
+        event_date: '2026-02-01',
+        event_time: '8:30',
+        venue_name: 'Town Hall',
+        location: 'POINT(6.1944 52.6957)',
+        creator_profile_id: 'user-123',
+      });
+
+      expect(result.error).toBeNull();
+      const insertCall = mockInsert.mock.calls[0][0];
+      expect(insertCall.title).toBe('Meppel Summer Fest');
+      expect(insertCall.description).toBe('Great vibes');
+      expect(insertCall.event_time).toBe('08:30');
+      expect(insertCall.event_date).toContain('2026-02-01T08:30:00.000Z');
     });
   });
 });
