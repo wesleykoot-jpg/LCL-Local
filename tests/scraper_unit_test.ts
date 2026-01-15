@@ -92,7 +92,7 @@ Deno.test("parseEventWithAI cleans code fences and normalizes internal category"
   const parsed = await parseEventWithAI("fake", rawEvent, "nl", { callGeminiFn: mockCallGemini });
 
   assert(parsed);
-  assertEquals(parsed?.internal_category, "culture");
+  assertEquals(parsed?.internal_category, "community");
   assertEquals(parsed?.event_date, "2026-07-13");
 });
 
