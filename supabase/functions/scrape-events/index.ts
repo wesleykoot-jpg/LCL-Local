@@ -62,6 +62,9 @@ const TARGET_YEAR = 2026;
 
 const DEFAULT_EVENT_TYPE = "anchor";
 
+// Maximum length for input strings in log messages to prevent log overflow
+const MAX_LOG_INPUT_LENGTH = 100;
+
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -208,6 +211,9 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
     return category as InternalCategory;
   }
+  
+  // Log unexpected category results for debugging
+  console.warn(`classifyTextToCategory returned unexpected value: "${category}" for input: "${input?.slice(0, MAX_LOG_INPUT_LENGTH)}". Using fallback "community"`);
   
   // Default fallback to community (most general category)
   return "community";
@@ -581,14 +587,62 @@ export async function scrapeEventCards(
   return rawEvents;
 }
 
+/**
+ * Validates that a category value is allowed by the database constraint.
+ * Database constraint allows: active, gaming, entertainment, social, family, 
+ * outdoors, music, workshops, foodie, community
+ */
+function ensureValidCategory(category: unknown): InternalCategory {
+  // Type guard: ensure we're working with a string
+  if (typeof category !== 'string') {
+    console.warn(`Category is not a string (type: ${typeof category}, value: ${JSON.stringify(category)}). Falling back to "community"`);
+    return "community";
+  }
+  
+  const normalized = category.toLowerCase().trim();
+  
+  // Validate against the allowed categories
+  if (INTERNAL_CATEGORIES.includes(normalized as InternalCategory)) {
+    return normalized as InternalCategory;
+  }
+  
+  // Log invalid category attempts for debugging
+  console.warn(`Invalid category detected: "${category}". Falling back to "community"`);
+  return "community";
+}
+
 // deno-lint-ignore no-explicit-any
 async function insertEvent(
   supabase: any,
   event: Record<string, unknown>
 ): Promise<boolean> {
+  // Final defensive validation: ensure category is valid before insert
+  if (event.category !== undefined) {
+    event.category = ensureValidCategory(event.category);
+  } else {
+    console.warn("Event missing category field, defaulting to community");
+    event.category = "community";
+  }
+  
   const { error } = await supabase.from("events").insert(event);
   if (error) {
-    console.error("Insert failed", error.message);
+    // Enhanced error logging for constraint violations
+    if (error.code === '23514') {
+      console.error("CHECK CONSTRAINT VIOLATION:", {
+        error_message: error.message,
+        error_code: error.code,
+        event_title: event.title,
+        attempted_category: event.category,
+        valid_categories: INTERNAL_CATEGORIES,
+        hint: "Category value does not match database constraint"
+      });
+    } else {
+      console.error("Insert failed", {
+        error_message: error.message,
+        error_code: error.code,
+        event_title: event.title
+      });
+    }
     return false;
   }
   return true;
