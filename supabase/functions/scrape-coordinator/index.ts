@@ -55,14 +55,12 @@ serve(async (req: Request): Promise<Response> => {
 
     const { priority = 0, sourceIds, triggerWorker = true } = options;
 
-    // Get available sources using the new view that respects exponential backoff
-    // This view automatically filters:
-    // - enabled = true
-    // - auto_disabled = false  
-    // - backoff_until IS NULL OR backoff_until < NOW()
+    // Get available sources - filter for enabled, not auto-disabled sources
     let query = supabase
-      .from("scraper_sources_available")
-      .select("id, name");
+      .from("scraper_sources")
+      .select("id, name")
+      .eq("enabled", true)
+      .or("auto_disabled.is.null,auto_disabled.eq.false");
     
     if (sourceIds && sourceIds.length > 0) {
       query = query.in("id", sourceIds);
