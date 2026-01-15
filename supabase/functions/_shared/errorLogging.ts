@@ -2,6 +2,7 @@
 // Logs errors to the error_logs table for debugging and monitoring
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { sendSlackNotification } from './slack.ts';
 
 export interface ErrorLogEntry {
   level?: 'debug' | 'info' | 'warn' | 'error' | 'fatal';
@@ -31,34 +32,63 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
+function truncateValue(value: string | undefined, limit = 2500): string | undefined {
+  if (!value) return undefined;
+  return value.length > limit ? `${value.slice(0, limit)}…(truncated)` : value;
+}
+
 /**
  * Log an error to the centralized error_logs table
  * Non-blocking - won't throw if logging fails
  */
 export async function logError(entry: ErrorLogEntry): Promise<void> {
   try {
+    const level = entry.level || 'error';
     const client = getSupabaseClient();
     if (!client) {
       console.error('[ErrorLogging] No client available, falling back to console:', entry);
-      return;
+    } else {
+      // Use type assertion since error_logs table was just created and types may not be updated yet
+      const { error } = await (client.from('error_logs') as any).insert({
+        level,
+        source: entry.source,
+        function_name: entry.function_name,
+        message: entry.message,
+        error_code: entry.error_code,
+        error_type: entry.error_type,
+        stack_trace: entry.stack_trace,
+        context: entry.context || {},
+        request_id: entry.request_id,
+        user_agent: entry.user_agent,
+      });
+
+      if (error) {
+        console.error('[ErrorLogging] Failed to insert log:', error.message);
+      }
     }
 
-    // Use type assertion since error_logs table was just created and types may not be updated yet
-    const { error } = await (client.from('error_logs') as any).insert({
-      level: entry.level || 'error',
-      source: entry.source,
-      function_name: entry.function_name,
-      message: entry.message,
-      error_code: entry.error_code,
-      error_type: entry.error_type,
-      stack_trace: entry.stack_trace,
-      context: entry.context || {},
-      request_id: entry.request_id,
-      user_agent: entry.user_agent,
-    });
+    // Forward errors to Slack for real-time visibility
+    if (level === 'error' || level === 'fatal') {
+      const contextString = truncateValue(
+        entry.context ? JSON.stringify(entry.context, null, 2) : undefined,
+        1800
+      );
+      const stackTrace = truncateValue(entry.stack_trace, 1800);
 
-    if (error) {
-      console.error('[ErrorLogging] Failed to insert log:', error.message);
+      const slackMessageLines = [
+        `*${level.toUpperCase()}* ${entry.source}${entry.function_name ? ` › ${entry.function_name}` : ''}`,
+        `*Message*: ${entry.message}`,
+        entry.error_type ? `*Type*: ${entry.error_type}` : undefined,
+        entry.error_code ? `*Code*: ${entry.error_code}` : undefined,
+        entry.request_id ? `*Request ID*: ${entry.request_id}` : undefined,
+        entry.user_agent ? `*User Agent*: ${entry.user_agent}` : undefined,
+        contextString ? `*Context*:\n${contextString}` : undefined,
+        stackTrace ? `*Stack*:\n${stackTrace}` : undefined,
+      ].filter(Boolean);
+
+      if (slackMessageLines.length > 0) {
+        await sendSlackNotification(slackMessageLines.join('\n'), true);
+      }
     }
   } catch (err) {
     console.error('[ErrorLogging] Exception during logging:', err);
