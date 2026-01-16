@@ -21,4 +21,5 @@ export const queryKeys = {
     all: ['profile'] as const,
     commitments: (userId: string) => ['profile', userId, 'commitments'] as const,
   },
+  friendsPulse: (userId: string) => ['friends-pulse', userId] as const,
 } as const;
