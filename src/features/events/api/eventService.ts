@@ -237,3 +237,77 @@ export async function createEvent(params: CreateEventParams) {
     return { data: null, error: error as Error };
   }
 }
+
+/**
+ * Fetches all events a user is attending
+ * @param userId - User ID (from auth)
+ * @returns Array of events with attendee info
+ */
+export async function fetchUserEvents(userId: string) {
+  try {
+    // First get the user's profile ID
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profileError) throw profileError;
+    
+    // If no profile exists, try querying by profile id directly (for dev test users)
+    const profileId = profile?.id || userId;
+
+    // Fetch events the user is attending
+    const { data, error } = await supabase
+      .from('event_attendees')
+      .select(`
+        *,
+        event:events(
+          *,
+          attendee_count:event_attendees(count)
+        )
+      `)
+      .eq('profile_id', profileId)
+      .eq('status', 'going');
+
+    if (error) throw error;
+
+    // Transform to event format expected by timeline
+    return (data || [])
+      .map(attendance => {
+        const event = attendance.event as any;
+        if (!event) return null;
+        
+        const count = Array.isArray(event.attendee_count)
+          ? event.attendee_count[0]?.count || 0
+          : 0;
+
+        return {
+          id: event.id,
+          title: event.title,
+          date: event.event_date,
+          event_time: event.event_time,
+          location: event.venue_name,
+          venue_name: event.venue_name,
+          category: event.category,
+          image_url: event.image_url,
+          attendee_count: count,
+          ticket_number: attendance.ticket_number,
+        };
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.error('Error fetching user events:', error);
+    return [];
+  }
+}
+
+/**
+ * Service object for event-related API calls
+ */
+export const eventService = {
+  joinEvent,
+  checkEventAttendance,
+  createEvent,
+  fetchUserEvents,
+};

@@ -1,68 +1,144 @@
 import React from 'react';
 import { ItineraryItem } from '../hooks/useUnifiedItinerary';
-import { TimelineEventCard } from './TimelineEventCard';
-import { Calendar, MapPin, Clock } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CATEGORY_MAP } from '@/shared/lib/categories';
+import { motion } from 'framer-motion';
 
-export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<string, ItineraryItem[]> }) => {
+// Format time like "7:00 PM"
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+const ItineraryEventCard = ({ item }: { item: ItineraryItem }) => {
+  const categoryLabel = item.category ? (CATEGORY_MAP[item.category] || item.category) : null;
+
   return (
-    <div className="w-full pb-32 px-4">
-      {Object.entries(groupedItems).map(([dateHeader, items]) => (
-        <div key={dateHeader} className="mb-8 relative">
-          {/* Sticky Header */}
-          <div className="sticky top-[60px] z-20 py-3 mb-6 backdrop-blur-xl bg-black/40 border-b border-white/10 -mx-4 px-8">
-            <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-primary-400" />
-              {dateHeader}
-            </h3>
+    <motion.div
+      className="relative rounded-2xl border-2 bg-card p-4 transition-all border-border hover:border-primary/30 hover:shadow-sm"
+      whileTap={{ scale: 0.98 }}
+    >
+      {/* Row 1: Time + Attendee Count */}
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[15px] font-semibold text-foreground">
+          {formatTime(item.startTime)}
+        </span>
+        {item.attendeeCount !== undefined && (
+          <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <Users size={14} />
+            <span className="font-medium">{item.attendeeCount} going</span>
           </div>
+        )}
+      </div>
 
-          {/* Vertical Thread */}
-          <div className="absolute left-[23px] top-12 bottom-0 w-[2px] bg-white/10" />
+      {/* Row 2: Event Title */}
+      <h4 className="text-[17px] font-semibold leading-tight line-clamp-1 mb-1 text-foreground">
+        {item.title}
+      </h4>
 
-          <div className="space-y-8">
-            {items.map((item) => (
-              <div key={item.id} className="relative pl-10">
-                {/* Time Node */}
-                <div className={cn(
-                  "absolute left-[16px] top-6 w-4 h-4 rounded-full border-2 border-black z-10",
-                  item.type === 'LCL_EVENT' ? "bg-primary-500 shadow-[0_0_10px_rgba(56,189,248,0.5)]" : "bg-white/30"
-                )} />
+      {/* Row 3: Location + Category */}
+      <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        {item.location && (
+          <div className="flex items-center gap-1 min-w-0 flex-1">
+            <MapPin size={12} className="flex-shrink-0" />
+            <span className="truncate">{item.location}</span>
+          </div>
+        )}
+        {categoryLabel && (
+          <>
+            <span className="text-border">•</span>
+            <span className="flex-shrink-0 capitalize">{categoryLabel}</span>
+          </>
+        )}
+      </div>
 
-                {/* Time Label */}
-                <div className="mb-2 flex items-center text-xs font-medium text-white/60 gap-3">
-                  <span className="bg-white/5 px-2 py-1 rounded border border-white/10">
-                    {item.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {item.location && (
-                    <span className="flex items-center gap-1 truncate max-w-[200px]">
-                      <MapPin className="w-3 h-3" /> {item.location}
-                    </span>
-                  )}
-                </div>
-
-                {/* Card */}
-                {item.type === 'LCL_EVENT' ? (
-                  <div className="transform transition-all hover:scale-[1.01]">
-                    <TimelineEventCard event={item.originalData} />
-                  </div>
-                ) : (
-                  // Ghost Card for Calendar Items
-                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="text-white font-medium">{item.title}</h4>
-                        <p className="text-white/40 text-xs mt-1">Google Calendar</p>
-                      </div>
-                      <Clock className="w-4 h-4 text-white/40" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+      {/* Optional: Ticket Number Badge */}
+      {item.ticketNumber && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            <Ticket size={12} />
+            <span className="font-mono font-medium">{item.ticketNumber}</span>
           </div>
         </div>
-      ))}
+      )}
+    </motion.div>
+  );
+};
+
+export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<string, ItineraryItem[]> }) => {
+  const today = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', month: 'short', day: 'numeric' 
+  });
+
+  return (
+    <div className="w-full pb-32 px-4">
+      {Object.entries(groupedItems).map(([dateHeader, items]) => {
+        const isToday = dateHeader === today;
+        
+        return (
+          <div key={dateHeader} className="mb-8 relative">
+            {/* Sticky Header */}
+            <div className="sticky top-[60px] z-20 py-3 mb-6 backdrop-blur-xl bg-background/80 border-b border-border -mx-4 px-8">
+              <h3 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                {dateHeader}
+                {isToday && (
+                  <span className="ml-2 text-xs px-2 py-0.5 bg-primary text-primary-foreground rounded-full">
+                    Today
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            {/* Vertical Thread */}
+            <div className="absolute left-[23px] top-12 bottom-0 w-[2px] bg-border" />
+
+            <div className="space-y-8">
+              {items.map((item) => (
+                <div key={item.id} className="relative pl-10">
+                  {/* Time Node */}
+                  <div className={cn(
+                    "absolute left-[16px] top-6 w-4 h-4 rounded-full border-2 border-background z-10",
+                    item.type === 'LCL_EVENT' 
+                      ? "bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.5)]" 
+                      : "bg-muted-foreground/30"
+                  )} />
+
+                  {/* Time Label */}
+                  <div className="mb-2 flex items-center text-xs font-medium text-muted-foreground gap-3">
+                    <span className="bg-muted px-2 py-1 rounded border border-border">
+                      {formatTime(item.startTime)}
+                    </span>
+                    {item.location && (
+                      <span className="flex items-center gap-1 truncate max-w-[200px]">
+                        <MapPin className="w-3 h-3" /> {item.location}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Card */}
+                  {item.type === 'LCL_EVENT' ? (
+                    <div className="transform transition-all hover:scale-[1.01]">
+                      <ItineraryEventCard item={item} />
+                    </div>
+                  ) : (
+                    // Ghost Card for Calendar Items
+                    <div className="p-4 rounded-2xl bg-muted/50 border border-border backdrop-blur-md">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-foreground font-medium">{item.title}</h4>
+                          <p className="text-muted-foreground text-xs mt-1">Google Calendar</p>
+                        </div>
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
