@@ -28,22 +28,24 @@ function getEventStatus(event: EventWithAttendees): EventStatus {
   const eventStart = new Date(now);
   eventStart.setHours(hours, minutes, 0, 0);
   
-  // Event is happening if it started within the last 3 hours
+  // Event time boundaries
   const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
-  const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
-  
-  // If event started more than 2 hours ago, it's "closing soon"
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
   
+  // Event started within last 2 hours = Open Now
   if (eventStart <= now && eventStart >= twoHoursAgo) {
     return 'open';
-  } else if (eventStart <= twoHoursAgo && eventStart >= threeHoursAgo) {
+  }
+  
+  // Event started 2-3 hours ago = Closing Soon
+  if (eventStart < twoHoursAgo && eventStart >= threeHoursAgo) {
     return 'closing_soon';
-  } else if (eventStart > now && eventStart <= new Date(now.getTime() + 60 * 60 * 1000)) {
-    // Starting within the next hour
+  }
+  
+  // Event starts within next hour = Starting Soon
+  if (eventStart > now && eventStart <= oneHourFromNow) {
     return 'upcoming';
-  } else if (eventStart <= oneHourAgo && eventStart >= threeHoursAgo) {
-    return 'open';
   }
   
   return 'upcoming';

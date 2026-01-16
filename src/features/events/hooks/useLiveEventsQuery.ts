@@ -226,7 +226,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
       });
 
       // Boost daypart-relevant categories to the top (while maintaining distance order within groups)
-      const daypartCategories = DAYPART_CATEGORIES[getDaypartMode()];
+      const daypartCategories = DAYPART_CATEGORIES[daypartMode];
       const relevantEvents = eventsWithData.filter(
         e => e.category && daypartCategories.includes(e.category)
       );

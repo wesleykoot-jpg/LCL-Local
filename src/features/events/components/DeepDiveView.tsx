@@ -273,7 +273,7 @@ export const DeepDiveView = memo(function DeepDiveView({
   return (
     <div className="min-h-screen pb-24">
       {/* Sticky Header with Glass Background - fixes "ugly scroll" */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-white/10 pb-4 pt-safe-top">
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-white/10 pb-4 pt-safe">
         <div className="px-6 pt-4">
           {/* Filter Row: Pills + Filter Button */}
           <div className="flex items-center gap-3">
