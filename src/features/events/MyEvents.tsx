@@ -1,44 +1,54 @@
-import { useNavigate } from 'react-router-dom';
-import { FloatingNav, LoadingSkeleton } from '@/shared/components';
-import { Button } from '@/shared/components/ui/button';
-import { ItineraryTimeline } from './components/ItineraryTimeline';
+import React from 'react';
 import { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
+import { ItineraryTimeline } from './components/ItineraryTimeline';
+import { LoadingSkeleton } from '@/shared/components/LoadingSkeleton';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { Compass, RefreshCw } from 'lucide-react';
 
-export default function MyEvents() {
+const MyEvents = () => {
+  const { groupedTimeline, isLoading, isEmpty, refresh } = useUnifiedItinerary();
   const navigate = useNavigate();
-  const { groupedTimeline, isLoading } = useUnifiedItinerary();
-  const hasItems = Object.keys(groupedTimeline).length > 0;
+
+  if (isLoading) {
+    return (
+      <div className="pt-24 px-4 h-screen bg-black">
+        <h1 className="text-3xl font-bold text-white mb-6">My Plan</h1>
+        <LoadingSkeleton />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="px-5 pt-6 pb-4">
-        <h1 className="text-[24px] font-bold text-foreground">My Events</h1>
+    <div className="min-h-screen bg-black pt-20">
+      <div className="px-6 mb-2 flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-bold text-white">My Plan</h1>
+          <p className="text-white/40 text-sm">Your upcoming journey</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={refresh} className="text-white/50">
+          <RefreshCw className="w-5 h-5" />
+        </Button>
       </div>
 
-      <div className="pb-24">
-        {isLoading ? (
-          <div className="px-5">
-            <LoadingSkeleton className="h-40 w-full rounded-2xl" />
+      {isEmpty ? (
+        <div className="flex flex-col items-center justify-center h-[60vh] px-8 text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+            <Compass className="w-10 h-10 text-white/40" />
           </div>
-        ) : hasItems ? (
-          <ItineraryTimeline groupedTimeline={groupedTimeline} />
-        ) : (
-          <div className="flex flex-col items-center px-6 py-16 text-center">
-            <h2 className="text-[20px] font-semibold text-foreground">No plans yet</h2>
-            <p className="mt-2 text-[15px] text-muted-foreground">
-              Explore events to start building your itinerary.
-            </p>
-            <Button
-              onClick={() => navigate('/feed')}
-              className="mt-6 rounded-xl px-6 py-3 text-[15px] font-semibold"
-            >
-              Explore Feed
-            </Button>
+          <div>
+            <h3 className="text-xl font-semibold text-white">No plans yet</h3>
+            <p className="text-white/50 mt-2 text-sm">Join a Fork to start your journey.</p>
           </div>
-        )}
-      </div>
-
-      <FloatingNav />
+          <Button onClick={() => navigate('/')} className="bg-white text-black rounded-full">
+            Explore Feed
+          </Button>
+        </div>
+      ) : (
+        <ItineraryTimeline groupedItems={groupedTimeline} />
+      )}
     </div>
   );
-}
+};
+
+export default MyEvents;
