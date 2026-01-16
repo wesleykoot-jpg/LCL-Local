@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { eventService } from '../api/eventService';
 import { useAuth } from '@/features/auth';
 import { useGoogleCalendar } from '@/features/calendar/hooks/useGoogleCalendar';
+import { queryKeys } from '@/shared/config/queryKeys';
 
 export type ItineraryItemType = 'LCL_EVENT' | 'GOOGLE_CALENDAR';
 
@@ -31,7 +32,7 @@ export const useUnifiedItinerary = () => {
 
   // 1. Fetch "My Events" (Joined/Attending)
   const { data: myEvents, isLoading: isEventsLoading } = useQuery({
-    queryKey: ['my-events', effectiveUserId],
+    queryKey: queryKeys.profile.myEvents(effectiveUserId || ''),
     queryFn: () => effectiveUserId ? eventService.fetchUserEvents(effectiveUserId) : Promise.resolve([]),
     enabled: !!effectiveUserId,
     staleTime: 0, // Always fetch fresh
@@ -116,6 +117,6 @@ export const useUnifiedItinerary = () => {
     timelineItems,
     isLoading: isEventsLoading,
     isEmpty: timelineItems.length === 0,
-    refresh: () => queryClient.invalidateQueries({ queryKey: ['my-events'] })
+    refresh: () => queryClient.invalidateQueries({ queryKey: queryKeys.profile.myEvents(effectiveUserId || '') })
   };
 };

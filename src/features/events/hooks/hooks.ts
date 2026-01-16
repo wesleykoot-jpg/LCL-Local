@@ -428,10 +428,11 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
           toast.success("You're in! Event added to your calendar");
         }
 
-        // Invalidate both events feed and user commitments queries concurrently
+        // Invalidate both events feed, user commitments, and myEvents queries concurrently
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.profile.commitments(profileId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.profile.myEvents(profileId) }),
         ]);
 
         // Call refetch callback if provided
