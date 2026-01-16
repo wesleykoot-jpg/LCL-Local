@@ -100,15 +100,6 @@ export const TimelineEventCard = memo(function TimelineEventCard({
 
         {/* Content Section */}
         <div className="p-4">
-          {/* Category Badge - Inline at top when no image */}
-          {!event.image_url && (
-            <div className="mb-2">
-              <span className="inline-flex px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold uppercase tracking-wide">
-                {categoryLabel}
-              </span>
-            </div>
-          )}
-
           {/* Title - Large and Bold */}
           <h4 className="text-base font-bold text-foreground leading-tight line-clamp-2 mb-2">
             {event.title}
@@ -122,10 +113,18 @@ export const TimelineEventCard = memo(function TimelineEventCard({
             </div>
           )}
 
-          {/* Action Bar - Attendee Count */}
-          <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-            <Users size={14} />
-            <span className="font-medium">{attendeeCount} going</span>
+          {/* Action Bar - Attendee Count + Category */}
+          <div className="flex items-center justify-between text-[13px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Users size={14} />
+              <span className="font-medium">{attendeeCount} going</span>
+            </div>
+            {/* Category Badge - Right bottom, smaller */}
+            {!event.image_url && (
+              <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+                {categoryLabel}
+              </span>
+            )}
           </div>
 
           {/* Join Button - Only show if not past and showJoinButton is true */}
