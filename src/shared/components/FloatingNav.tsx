@@ -1,11 +1,11 @@
-import { Home, Calendar, User, Users, Baby, Settings } from 'lucide-react';
+import { Home, Map, User, Users, Baby, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedMode } from '@/contexts/FeedContext';
 import { useState } from 'react';
 
-type NavView = 'feed' | 'my-events' | 'profile' | 'scraper';
+type NavView = 'feed' | 'planning' | 'profile' | 'scraper';
 
 interface FloatingNavProps {
   activeView?: NavView;
@@ -14,7 +14,7 @@ interface FloatingNavProps {
 
 const NAV_ITEMS: { id: NavView; icon: typeof Home; label: string; path: string }[] = [
   { id: 'feed', icon: Home, label: 'Home', path: '/feed' },
-  { id: 'my-events', icon: Calendar, label: 'My Events', path: '/my-events' },
+  { id: 'planning', icon: Map, label: 'Planning', path: '/planning' },
   { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   { id: 'scraper', icon: Settings, label: 'Scraper', path: '/scraper-admin' },
 ];
@@ -29,7 +29,7 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   const currentPath = location.pathname;
   const derivedActiveView = activeView || 
     (currentPath.includes('scraper-admin') || currentPath.startsWith('/admin') ? 'scraper' :
-     currentPath.includes('my-events') ? 'my-events' : 
+     currentPath.includes('planning') ? 'planning' : 
      currentPath.includes('profile') ? 'profile' : 'feed');
 
   const handleNav = async (view: NavView, path: string) => {

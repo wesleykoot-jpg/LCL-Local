@@ -1,7 +1,7 @@
-import { memo } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { MapPin, Users, Ticket, Loader2 } from 'lucide-react';
+import { MapPin, Users, Ticket, Loader2, Check } from 'lucide-react';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { useJoinEvent } from '../hooks/hooks';
@@ -39,13 +39,38 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   const { handleJoinEvent, isJoining } = useJoinEvent(profile?.id);
   const queryClient = useQueryClient();
   
-  const hasJoined = Boolean(
+  // Optimistic UI state - starts as false, becomes true immediately on click
+  const [optimisticJoined, setOptimisticJoined] = useState(false);
+  
+  const hasJoined = optimisticJoined || Boolean(
     profile?.id && event.attendees?.some(
       attendee => attendee.profile?.id === profile.id
     )
   );
   
   const isCurrentEventJoining = isJoining(event.id);
+  
+  // Optimistic join handler with immediate UI feedback
+  const handleOptimisticJoin = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Immediate optimistic update - show "Going ✓" right away
+    setOptimisticJoined(true);
+    
+    try {
+      await handleJoinEvent(event.id);
+      // Force refresh of Planning page and events feed
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['my-events'] }),
+        queryClient.invalidateQueries({ queryKey: ['events'] }),
+      ]);
+    } catch (error) {
+      // Revert optimistic update on error
+      setOptimisticJoined(false);
+      // Error is already handled by useJoinEvent hook with toast
+      console.error('Error in join button handler:', error);
+    }
+  }, [event.id, handleJoinEvent, queryClient]);
 
   return (
     <motion.div
@@ -100,20 +125,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
       {!isPast && showJoinButton && !hasJoined && (
         <div className="mt-3 pt-3 border-t border-border">
           <button
-            onClick={async (e) => {
-              e.stopPropagation();
-              try {
-                await handleJoinEvent(event.id);
-                await Promise.all([
-                  queryClient.invalidateQueries({ queryKey: ['my-events'] }),
-                  queryClient.invalidateQueries({ queryKey: ['events'] }),
-                ]);
-              } catch (error) {
-                // Error is already handled by useJoinEvent hook
-                // This catch prevents unhandled promise rejections if component unmounts
-                console.error('Error in join button handler:', error);
-              }
-            }}
+            onClick={handleOptimisticJoin}
             disabled={isCurrentEventJoining}
             className={`w-full h-[44px] rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98] ${
               isCurrentEventJoining
@@ -133,11 +145,12 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         </div>
       )}
 
-      {/* Already Joined Badge */}
+      {/* Already Joined Badge - Shows immediately via optimistic update */}
       {!isPast && showJoinButton && hasJoined && (
         <div className="mt-3 pt-3 border-t border-border">
-          <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center bg-secondary text-foreground border-2 border-primary/20">
-            ✓ Going
+          <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
+            <Check size={16} className="text-primary" />
+            <span>Going</span>
           </div>
         </div>
       )}
