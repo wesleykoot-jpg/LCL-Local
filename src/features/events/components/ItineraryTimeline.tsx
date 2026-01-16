@@ -122,46 +122,69 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                       <ItineraryEventCard item={item} />
                     </div>
                   ) : (
-                    // 💎 HOLOGRAPHIC MEMO (Google Calendar)
+                    // 💎 Google Calendar Ghost Card
                     <motion.div 
-                      className="relative rounded-xl bg-white/5 border border-white/10 border-l-2 border-l-blue-500/50 p-4 backdrop-blur-sm group hover:bg-white/[0.08] transition-all overflow-hidden"
+                      className="relative rounded-xl border-2 border-dashed border-[#4285F4]/40 bg-[#4285F4]/5 p-4 group hover:border-[#4285F4]/60 hover:bg-[#4285F4]/10 transition-all overflow-hidden"
                       whileTap={{ scale: 0.98 }}
                     >
-                      {/* Subtle Calendar Icon Watermark */}
-                      <div className="absolute top-3 right-3 opacity-[0.15] pointer-events-none">
-                        <Calendar className="w-16 h-16 text-white" />
+                      {/* Google Calendar Badge - Always Visible */}
+                      <div className="absolute -top-2.5 left-3 px-2 py-0.5 rounded-full bg-[#4285F4] text-white flex items-center gap-1.5">
+                        <Calendar size={10} className="flex-shrink-0" />
+                        <span className="text-[9px] font-semibold uppercase tracking-wide">
+                          Google Calendar
+                        </span>
                       </div>
                       
                       {/* Content Container */}
-                      <div className="relative z-10">
-                        {/* Row 1: Title + External Badge */}
+                      <div className="relative z-10 mt-1">
+                        {/* Row 1: Title + External Link */}
                         <div className="flex items-start justify-between gap-3 mb-2">
-                          <h4 className="text-white/90 font-medium text-[16px] leading-snug flex-1 line-clamp-2">
+                          <h4 className="text-foreground font-medium text-[16px] leading-snug flex-1 line-clamp-2">
                             {item.title}
                           </h4>
-                          <div className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.08] border border-white/10">
-                            <ExternalLink className="w-3 h-3 text-blue-400" />
-                            <span className="text-[10px] font-medium text-white/60 uppercase tracking-wide">External</span>
-                          </div>
+                          <a
+                            href={(item.data as { htmlLink?: string })?.htmlLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0 p-2 rounded-full bg-[#4285F4]/10 hover:bg-[#4285F4]/20 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label="Open in Google Calendar"
+                          >
+                            <ExternalLink size={14} className="text-[#4285F4]" />
+                          </a>
                         </div>
                         
                         {/* Row 2: Time Range • Location */}
-                        <div className="flex items-center gap-2 text-[13px] text-white/50">
-                          <span className="font-mono font-medium text-white/70">
+                        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                          <span className="font-mono font-medium text-[#4285F4]">
                             {formatTime(item.startTime)}
                             {item.endTime && ` - ${formatTime(item.endTime)}`}
                           </span>
                           {item.location && (
                             <>
-                              <span className="text-white/20">•</span>
+                              <span className="text-border">•</span>
                               <div className="flex items-center gap-1 min-w-0 flex-1">
-                                <MapPin size={11} className="flex-shrink-0 text-white/40" />
+                                <MapPin size={11} className="flex-shrink-0" />
                                 <span className="truncate">{item.location}</span>
                               </div>
                             </>
                           )}
                         </div>
                       </div>
+                      
+                      {/* Subtle diagonal pattern overlay */}
+                      <div 
+                        className="absolute inset-0 rounded-xl pointer-events-none opacity-[0.03]"
+                        style={{
+                          backgroundImage: `repeating-linear-gradient(
+                            45deg,
+                            transparent,
+                            transparent 10px,
+                            currentColor 10px,
+                            currentColor 11px
+                          )`
+                        }}
+                      />
                     </motion.div>
                   )}
                 </div>
