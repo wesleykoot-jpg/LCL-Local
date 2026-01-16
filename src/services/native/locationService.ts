@@ -133,6 +133,9 @@ export const locationService = {
     if (isTestEnvironment()) {
       return;
     }
+    if (watchId === 'test-watch' || watchId === 'web-watch-unsupported') {
+      return;
+    }
     if (Capacitor.isNativePlatform()) {
       await Geolocation.clearWatch({ id: watchId });
       return;

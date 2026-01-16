@@ -303,10 +303,16 @@ export const EventFeed = memo(function EventFeed({
       const containerHeight = parentRef.current?.getBoundingClientRect().height;
       const fallbackHeight = typeof window !== 'undefined' ? window.innerHeight * 0.7 : 600;
       const baseHeight = containerHeight && containerHeight > 0 ? containerHeight : fallbackHeight;
-      setListHeight(Math.min(baseHeight, virtualItems.length * VIRTUAL_ITEM_ESTIMATED_SIZE));
+      setListHeight(baseHeight);
     };
 
     updateHeight();
+
+    if (typeof window !== 'undefined' && parentRef.current && 'ResizeObserver' in window) {
+      const observer = new ResizeObserver(() => updateHeight());
+      observer.observe(parentRef.current);
+      return () => observer.disconnect();
+    }
 
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', updateHeight);

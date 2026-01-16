@@ -3,13 +3,16 @@ import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 const attendeeProfileSchema = z.object({
   id: z.string(),
-  avatar_url: z.string().nullable().optional(),
-  full_name: z.string().nullable().optional(),
+  avatar_url: z.string().nullable().default(null),
+  full_name: z.string().nullable().default(null),
 });
 
 const attendeeSchema = z.object({
   profile: attendeeProfileSchema.nullable(),
 });
+
+// Backend can return JSON, strings, or null for location-related fields.
+const flexibleValue = z.any();
 
 const eventWithAttendeesSchema = z.object({
   id: z.string(),
@@ -19,7 +22,7 @@ const eventWithAttendeesSchema = z.object({
   event_type: z.string(),
   parent_event_id: z.string().nullable().optional(),
   venue_name: z.string().nullable().optional(),
-  location: z.unknown().nullable().optional(),
+  location: flexibleValue.nullable().optional(),
   event_date: z.string(),
   event_time: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
@@ -33,9 +36,9 @@ const eventWithAttendeesSchema = z.object({
   event_fingerprint: z.string().nullable().optional(),
   max_attendees: z.number().nullable().optional(),
   structured_date: z.string().nullable().optional(),
-  structured_location: z.unknown().nullable().optional(),
+  structured_location: flexibleValue.nullable().optional(),
   organizer: z.string().nullable().optional(),
-  parent_event: z.unknown().nullable().optional(),
+  parent_event: flexibleValue.nullable().optional(),
 }).passthrough();
 
 const eventsWithAttendeesSchema = z.array(eventWithAttendeesSchema);
@@ -48,7 +51,7 @@ const personalizedFeedRowSchema = z.object({
   event_type: z.string(),
   parent_event_id: z.string().nullable().optional(),
   venue_name: z.string().nullable().optional(),
-  location: z.unknown().nullable().optional(),
+  location: flexibleValue.nullable().optional(),
   event_date: z.string(),
   event_time: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
