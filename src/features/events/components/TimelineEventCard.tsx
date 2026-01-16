@@ -11,6 +11,7 @@ interface TimelineEventCardProps {
   event: EventWithAttendees & { ticket_number?: string };
   isPast?: boolean;
   showJoinButton?: boolean;
+  variant?: 'default' | 'minimal';
 }
 
 // Format time like "7:00 PM"
@@ -32,6 +33,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   event,
   isPast = false,
   showJoinButton = false,
+  variant = 'default',
 }: TimelineEventCardProps) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const attendeeCount = event.attendee_count || 0;
@@ -81,35 +83,56 @@ export const TimelineEventCard = memo(function TimelineEventCard({
       }`}
       whileTap={{ scale: 0.98 }}
     >
-      {/* Row 1: Time + Attendee Count */}
-      <div className="flex items-center justify-between mb-1">
-        <span className={`text-[15px] font-semibold ${
-          isPast ? 'text-muted-foreground' : 'text-foreground'
-        }`}>
-          {formatTime(event.event_time)}
-        </span>
+      {/* Row 1: Time + Attendee Count (hidden in minimal variant) */}
+      {variant === 'default' && (
+        <div className="flex items-center justify-between mb-1">
+          <span className={`text-[15px] font-semibold ${
+            isPast ? 'text-muted-foreground' : 'text-foreground'
+          }`}>
+            {formatTime(event.event_time)}
+          </span>
+          <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <Users size={14} />
+            <span className="font-medium">{attendeeCount} going</span>
+          </div>
+        </div>
+      )}
+
+      {/* Category Badge - Top Right Corner for minimal variant */}
+      {variant === 'minimal' && (
+        <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-primary/10 text-primary">
+          <span className="text-[11px] font-semibold uppercase tracking-wide capitalize">
+            {categoryLabel}
+          </span>
+        </div>
+      )}
+
+      {/* Row 2: Event Title */}
+      <h4 className={`text-[17px] font-semibold leading-tight line-clamp-1 ${
+        variant === 'default' ? 'mb-1' : 'mb-2'
+      } ${isPast ? 'text-muted-foreground' : 'text-foreground'}`}>
+        {event.title}
+      </h4>
+
+      {/* Row 3: Location + Category (hidden in minimal variant) */}
+      {variant === 'default' && (
+        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          <div className="flex items-center gap-1 min-w-0 flex-1">
+            <MapPin size={12} className="flex-shrink-0" />
+            <span className="truncate">{event.venue_name}</span>
+          </div>
+          <span className="text-border">•</span>
+          <span className="flex-shrink-0 capitalize">{categoryLabel}</span>
+        </div>
+      )}
+
+      {/* Attendee Count for minimal variant (moved below title) */}
+      {variant === 'minimal' && (
         <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
           <Users size={14} />
           <span className="font-medium">{attendeeCount} going</span>
         </div>
-      </div>
-
-      {/* Row 2: Event Title */}
-      <h4 className={`text-[17px] font-semibold leading-tight line-clamp-1 mb-1 ${
-        isPast ? 'text-muted-foreground' : 'text-foreground'
-      }`}>
-        {event.title}
-      </h4>
-
-      {/* Row 3: Location + Category */}
-      <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-        <div className="flex items-center gap-1 min-w-0 flex-1">
-          <MapPin size={12} className="flex-shrink-0" />
-          <span className="truncate">{event.venue_name}</span>
-        </div>
-        <span className="text-border">•</span>
-        <span className="flex-shrink-0 capitalize">{categoryLabel}</span>
-      </div>
+      )}
 
       {/* Optional: Ticket Number Badge */}
       {event.ticket_number && (
