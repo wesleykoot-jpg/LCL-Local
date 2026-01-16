@@ -8,10 +8,8 @@ import { IdentityCard } from '../components/IdentityCard';
 import { PassportGrid } from '../components/PassportGrid';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { hapticImpact } from '@/shared/lib/haptics';
+import { APP_VERSION, APP_NAME } from '@/lib/version';
 import toast from 'react-hot-toast';
-
-// Import version from package.json
-import packageJson from '../../../../package.json';
 
 /**
  * Profile Page - The Holographic Identity
@@ -183,7 +181,7 @@ const Profile = () => {
 
                   {/* App Version */}
                   <div className="px-5 py-6 text-center">
-                    <p className="text-xs text-white/40">LCL · Version {packageJson.version}</p>
+                    <p className="text-xs text-white/40">{APP_NAME} · Version {APP_VERSION}</p>
                   </div>
                 </div>
               </motion.div>
