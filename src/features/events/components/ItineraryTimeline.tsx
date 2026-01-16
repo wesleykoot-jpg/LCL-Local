@@ -120,13 +120,23 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                             Event data unavailable
                           </div>
                         ) : (
-                          /* Google Calendar Ghost Card - Styled like Discovery */
+                          /* Google Calendar Ghost Card - Light blue with diagonal pattern */
                           <motion.div 
-                            className="relative rounded-2xl bg-card border-2 border-dashed border-primary/20 p-4 transition-all hover:border-primary/40 hover:shadow-md overflow-hidden"
+                            className="relative rounded-2xl border-2 border-dashed border-sky-300/60 p-4 transition-all hover:border-sky-400/80 hover:shadow-md overflow-hidden"
                             whileTap={{ scale: 0.98 }}
+                            style={{
+                              backgroundColor: 'hsl(204, 100%, 97%)',
+                              backgroundImage: `repeating-linear-gradient(
+                                135deg,
+                                transparent,
+                                transparent 8px,
+                                hsl(204, 100%, 92%) 8px,
+                                hsl(204, 100%, 92%) 9px
+                              )`
+                            }}
                           >
                             {/* Google Calendar Badge */}
-                            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-[#4285F4]/10 flex items-center gap-1.5">
+                            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-white/80 flex items-center gap-1.5 shadow-sm">
                               <Calendar size={12} className="text-[#4285F4]" />
                               <span className="text-[10px] font-semibold text-[#4285F4] uppercase tracking-wide">
                                 Calendar
@@ -134,20 +144,20 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                             </div>
 
                             {/* Title */}
-                            <h4 className="text-base font-semibold text-foreground leading-snug line-clamp-2 mb-2 pr-20">
+                            <h4 className="text-base font-semibold text-sky-900 leading-snug line-clamp-2 mb-2 pr-20">
                               {item.title}
                             </h4>
 
                             {/* Location + Time */}
-                            <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
+                            <div className="flex items-center gap-3 text-[13px] text-sky-700/80">
                               {item.location && (
                                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                  <MapPin size={13} className="flex-shrink-0 text-primary/60" />
+                                  <MapPin size={13} className="flex-shrink-0 text-sky-500" />
                                   <span className="truncate">{item.location}</span>
                                 </div>
                               )}
                               {item.endTime && (
-                                <span className="flex-shrink-0 text-muted-foreground/60">
+                                <span className="flex-shrink-0 text-sky-600/60">
                                   ends {formatTime(item.endTime)}
                                 </span>
                               )}
