@@ -117,4 +117,52 @@ describe('TimelineEventCard', () => {
     // Category should be inline (cinema maps to entertainment)
     expect(screen.getByText('entertainment')).toBeInTheDocument();
   });
+
+  describe('trip-card variant', () => {
+    it('hides time and location in trip-card variant', () => {
+      render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+      
+      // Time should not be visible
+      expect(screen.queryByText('7:00 PM')).not.toBeInTheDocument();
+      // Location should not be visible
+      expect(screen.queryByText('Test Venue')).not.toBeInTheDocument();
+      // But title should still be visible
+      expect(screen.getByText('Test Event')).toBeInTheDocument();
+    });
+
+    it('shows large bold title and attendee count in trip-card variant', () => {
+      render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+      
+      expect(screen.getByText('Test Event')).toBeInTheDocument();
+      expect(screen.getByText('5 going')).toBeInTheDocument();
+    });
+
+    it('shows category badge over image in trip-card variant with image', () => {
+      const eventWithImage = { 
+        ...mockEvent, 
+        image_url: 'https://example.com/image.jpg' 
+      };
+      const { container } = render(<TimelineEventCard event={eventWithImage} variant="trip-card" />);
+      
+      // Category badge should be visible
+      expect(screen.getByText('entertainment')).toBeInTheDocument();
+      // Image should be present
+      const image = container.querySelector('img');
+      expect(image).toBeInTheDocument();
+      expect(image?.getAttribute('src')).toBe('https://example.com/image.jpg');
+    });
+
+    it('shows join button in trip-card variant when showJoinButton is true', () => {
+      render(<TimelineEventCard event={mockEvent} variant="trip-card" showJoinButton={true} />);
+      
+      expect(screen.getByText('Join Event')).toBeInTheDocument();
+    });
+
+    it('shows ticket number in trip-card variant when present', () => {
+      const eventWithTicket = { ...mockEvent, ticket_number: 'TICKET-456' };
+      render(<TimelineEventCard event={eventWithTicket} variant="trip-card" />);
+      
+      expect(screen.getByText('TICKET-456')).toBeInTheDocument();
+    });
+  });
 });
