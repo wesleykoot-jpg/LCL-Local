@@ -84,4 +84,37 @@ describe('TimelineEventCard', () => {
     const card = container.querySelector('.border-border\\/50.opacity-60');
     expect(card).toBeInTheDocument();
   });
+
+  it('hides time and location in minimal variant', () => {
+    render(<TimelineEventCard event={mockEvent} variant="minimal" />);
+    
+    // Time should not be visible
+    expect(screen.queryByText('7:00 PM')).not.toBeInTheDocument();
+    // Location should not be visible in location row
+    expect(screen.queryByText(/•/)).not.toBeInTheDocument();
+    // But title and attendees should still be visible
+    expect(screen.getByText('Test Event')).toBeInTheDocument();
+    expect(screen.getByText('5 going')).toBeInTheDocument();
+  });
+
+  it('shows category badge in top-right for minimal variant', () => {
+    const { container } = render(<TimelineEventCard event={mockEvent} variant="minimal" />);
+    
+    // Category badge should be visible (cinema maps to entertainment)
+    expect(screen.getByText('entertainment')).toBeInTheDocument();
+    // Should have absolute positioning class
+    const badge = container.querySelector('.absolute.top-3.right-3');
+    expect(badge).toBeInTheDocument();
+  });
+
+  it('shows full details in default variant', () => {
+    render(<TimelineEventCard event={mockEvent} variant="default" />);
+    
+    // Time should be visible
+    expect(screen.getByText('7:00 PM')).toBeInTheDocument();
+    // Location should be visible
+    expect(screen.getByText('Test Venue')).toBeInTheDocument();
+    // Category should be inline (cinema maps to entertainment)
+    expect(screen.getByText('entertainment')).toBeInTheDocument();
+  });
 });
