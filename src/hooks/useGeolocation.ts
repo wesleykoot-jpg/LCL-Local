@@ -13,8 +13,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Geolocation, Position, PermissionStatus } from '@capacitor/geolocation';
-import { Capacitor } from '@capacitor/core';
+import type { Position, PermissionStatus } from '@capacitor/geolocation';
+import { locationService } from '@/services/native/locationService';
 
 export interface UserLocation {
   lat: number;
@@ -63,7 +63,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
     isLoading: true,
     error: null,
     permissionState: 'unknown',
-    isNative: Capacitor.isNativePlatform(),
+    isNative: locationService.isNativePlatform(),
   });
 
   /**
@@ -71,7 +71,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
    */
   const checkPermissions = useCallback(async (): Promise<LocationPermissionState> => {
     try {
-      const status: PermissionStatus = await Geolocation.checkPermissions();
+      const status: PermissionStatus = await locationService.checkPermissions();
       
       // Capacitor returns 'prompt' | 'granted' | 'denied' for location
       if (status.location === 'granted' || status.coarseLocation === 'granted') {
@@ -92,7 +92,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
    */
   const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
-      const status = await Geolocation.requestPermissions();
+      const status = await locationService.requestPermissions();
       const granted = status.location === 'granted' || status.coarseLocation === 'granted';
       
       setState(prev => ({
@@ -119,7 +119,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const position: Position = await Geolocation.getCurrentPosition({
+      const position: Position = await locationService.getCurrentPosition({
         enableHighAccuracy: mergedOptions.enableHighAccuracy,
         maximumAge: mergedOptions.maximumAge,
         timeout: mergedOptions.timeout,
@@ -160,7 +160,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
    */
   const startWatching = useCallback(async (): Promise<string | null> => {
     try {
-      const watchId = await Geolocation.watchPosition(
+      const watchId = await locationService.watchPosition(
         {
           enableHighAccuracy: mergedOptions.enableHighAccuracy,
           maximumAge: mergedOptions.maximumAge,
@@ -207,7 +207,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
    */
   const stopWatching = useCallback(async (watchId: string) => {
     try {
-      await Geolocation.clearWatch({ id: watchId });
+      await locationService.clearWatch(watchId);
     } catch (error) {
       console.warn('[Geolocation] Clear watch failed:', error);
     }

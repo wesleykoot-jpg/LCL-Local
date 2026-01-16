@@ -1,7 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { EventWithAttendees, AttendeeProfile, EventAttendee } from './hooks';
+import type { EventWithAttendees, EventAttendee } from './hooks';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  parseAttendeeRows,
+  parseEventsWithAttendees,
+  parsePersonalizedFeedRows,
+  parseUserAttendanceRows,
+} from '@/lib/api/schemas';
 
 type Event = Database['public']['Tables']['events']['Row'];
 
@@ -14,26 +20,6 @@ interface UseEventsQueryOptions {
   radiusKm?: number;
   currentUserProfileId?: string;
   usePersonalizedFeed?: boolean;
-}
-
-interface PersonalizedFeedRow {
-  event_id: string;
-  title: string;
-  description: string;
-  category: string;
-  event_type: string;
-  parent_event_id: string | null;
-  venue_name: string;
-  location: unknown;
-  event_date: string;
-  event_time: string;
-  status: string;
-  image_url: string | null;
-  match_percentage: number;
-  attendee_count: number;
-  host_reliability: number;
-  distance_km: number | null;
-  final_score: number;
 }
 
 /**
@@ -86,8 +72,12 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
         if (error) throw error;
 
         // Transform RPC result to EventWithAttendees format
-        const rpcEvents = (data || []) as PersonalizedFeedRow[];
+        const rpcEvents = parsePersonalizedFeedRows(data);
         
+        if (rpcEvents.length === 0) {
+          return [];
+        }
+
         // Fetch attendees for these events separately
         const eventIds = rpcEvents.map(e => e.event_id);
         const { data: attendeesData } = await supabase
@@ -105,28 +95,29 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
         // Group attendees by event
         const attendeesByEvent = new Map<string, EventAttendee[]>();
-        (attendeesData || []).forEach((att: any) => {
+        const attendeesRows = parseAttendeeRows(attendeesData);
+        attendeesRows.forEach(att => {
           if (!attendeesByEvent.has(att.event_id)) {
             attendeesByEvent.set(att.event_id, []);
           }
           attendeesByEvent.get(att.event_id)!.push({
-            profile: att.profile as AttendeeProfile | null,
+            profile: att.profile,
           });
         });
 
         // Combine RPC data with attendees
-        return rpcEvents.map(rpcEvent => ({
+        const mappedEvents = rpcEvents.map(rpcEvent => ({
           id: rpcEvent.event_id,
           title: rpcEvent.title,
           description: rpcEvent.description,
-          category: rpcEvent.category as any,
-          event_type: rpcEvent.event_type as any,
+          category: rpcEvent.category as Event['category'],
+          event_type: rpcEvent.event_type as Event['event_type'],
           parent_event_id: rpcEvent.parent_event_id,
           venue_name: rpcEvent.venue_name,
           location: rpcEvent.location,
           event_date: rpcEvent.event_date,
           event_time: rpcEvent.event_time,
-          status: rpcEvent.status as any,
+          status: rpcEvent.status as Event['status'],
           image_url: rpcEvent.image_url,
           match_percentage: rpcEvent.match_percentage,
           attendee_count: rpcEvent.attendee_count,
@@ -140,7 +131,9 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           structured_location: null,
           organizer: null,
           parent_event: null,
-        } as EventWithAttendees));
+        }));
+
+        return parseEventsWithAttendees(mappedEvents);
       }
 
       // Fallback to standard query (existing behavior)
@@ -197,9 +190,10 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           .eq('profile_id', currentUserProfileId)
           .in('event_id', eventIds);
 
-        if (userAttendances) {
+        const attendanceRows = parseUserAttendanceRows(userAttendances);
+        if (attendanceRows.length > 0) {
           eventsWithData = eventsWithData.map(event => {
-            const userAttendance = userAttendances.find(a => a.event_id === event.id);
+            const userAttendance = attendanceRows.find(a => a.event_id === event.id);
             if (userAttendance) {
               const isInList = event.attendees?.some(a => a.profile?.id === currentUserProfileId);
               if (!isInList && userAttendance.profiles) {
@@ -220,7 +214,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
         }
       }
 
-      return eventsWithData;
+      return parseEventsWithAttendees(eventsWithData);
     },
     staleTime: 1000 * 60 * 2, // Consider data fresh for 2 minutes
     gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes (formerly cacheTime)
