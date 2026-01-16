@@ -76,6 +76,43 @@ const getMockItems = (): ItineraryItem[] => {
   ];
 };
 
+// Dev fallback sample data for when not authenticated
+const DEV_SAMPLE_EVENTS = [
+  {
+    id: 'dev-1',
+    title: 'South African Roadtrip - We Are Family',
+    date: new Date().toISOString(),
+    event_time: '14:00',
+    venue_name: 'Sneek Agenda',
+    category: 'family',
+    image_url: null,
+    attendee_count: 12,
+    ticket_number: 'TKT-DEV-001',
+  },
+  {
+    id: 'dev-2',
+    title: 'Creative Workshop: Art & Design',
+    date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+    event_time: '10:00',
+    venue_name: 'Adoroble Studio',
+    category: 'entertainment',
+    image_url: null,
+    attendee_count: 8,
+    ticket_number: 'TKT-DEV-002',
+  },
+  {
+    id: 'dev-3',
+    title: 'Leeuwarden Free Tour',
+    date: new Date(Date.now() + 86400000 * 2).toISOString(), // Day after tomorrow
+    event_time: '12:00',
+    venue_name: 'A Guide to Leeuwarden',
+    category: 'music',
+    image_url: null,
+    attendee_count: 25,
+    ticket_number: 'TKT-DEV-003',
+  },
+];
+
 export const useUnifiedItinerary = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -83,12 +120,13 @@ export const useUnifiedItinerary = () => {
 
   // Use profile.id if available, fallback to user.id for dev test users
   const effectiveUserId = profile?.id || user?.id;
+  const isDevMode = !effectiveUserId;
 
   // 1. Fetch "My Events" (Joined/Attending)
   const { data: myEvents, isLoading: isEventsLoading } = useQuery({
-    queryKey: queryKeys.profile.myEvents(effectiveUserId || ''),
-    queryFn: () => effectiveUserId ? eventService.fetchUserEvents(effectiveUserId) : Promise.resolve([]),
-    enabled: !!effectiveUserId,
+    queryKey: queryKeys.profile.myEvents(effectiveUserId || 'dev-user'),
+    queryFn: () => effectiveUserId ? eventService.fetchUserEvents(effectiveUserId) : Promise.resolve(DEV_SAMPLE_EVENTS),
+    enabled: true, // Always enabled - uses dev data if not authenticated
     staleTime: 0, // Always fetch fresh
   });
 
