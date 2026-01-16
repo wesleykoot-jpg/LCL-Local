@@ -1,48 +1,20 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar } from 'lucide-react';
+import { Calendar, Link2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FloatingNav } from '@/shared/components';
 import { Button } from '@/shared/components/ui/button';
-import { EventTimeline } from './components/EventTimeline';
-import { useAuth } from '@/features/auth';
-import { useAllUserCommitments } from './hooks/hooks';
+import { ItineraryTimeline } from './components/ItineraryTimeline';
+import { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
 
 type FilterTab = 'upcoming' | 'past';
 
-// Dev fallback profile for testing when not authenticated
-const DEV_TEST_PROFILE_ID = 'de595401-5c4f-40fc-8d3a-a627e49780ff';
-
 export default function MyEvents() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  
-  // Use dev profile as fallback when not logged in (development only)
-  const profileId = profile?.id || (import.meta.env.DEV ? DEV_TEST_PROFILE_ID : '');
-  
-  const { loading, groupedByMonth } = useAllUserCommitments(profileId);
   const [activeTab, setActiveTab] = useState<FilterTab>('upcoming');
 
-  // Filter events based on tab
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const filteredGrouped = Object.entries(groupedByMonth).reduce((acc, [month, events]) => {
-    const filtered = events.filter(event => {
-      const eventDate = new Date(event.event_date.split('T')[0] + 'T00:00:00');
-      if (activeTab === 'upcoming') {
-        return eventDate >= today;
-      } else {
-        return eventDate < today;
-      }
-    });
-    if (filtered.length > 0) {
-      acc[month] = filtered;
-    }
-    return acc;
-  }, {} as typeof groupedByMonth);
-
-  const totalFiltered = Object.values(filteredGrouped).flat().length;
+  // Use the unified itinerary hook that merges LCL events with Google Calendar
+  const { dayGroups, totalItems, loading, isGoogleConnected } = useUnifiedItinerary(activeTab);
 
   // Get current month for header
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -90,6 +62,16 @@ export default function MyEvents() {
 
       {/* Content */}
       <div className="pb-24">
+        {/* Google Calendar Connection Status */}
+        {isGoogleConnected && (
+          <div className="mx-5 mt-3 mb-2">
+            <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+              <Link2 size={12} />
+              <span>Synced with Google Calendar</span>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-pulse flex flex-col items-center gap-4">
@@ -97,13 +79,13 @@ export default function MyEvents() {
               <div className="h-4 w-32 bg-muted rounded" />
             </div>
           </div>
-        ) : totalFiltered === 0 ? (
+        ) : totalItems === 0 ? (
           <EmptyState 
             tab={activeTab} 
             onBrowse={() => navigate('/feed')} 
           />
         ) : (
-          <EventTimeline groupedByMonth={filteredGrouped} />
+          <ItineraryTimeline dayGroups={dayGroups} />
         )}
       </div>
 
@@ -119,25 +101,58 @@ function EmptyState({ tab, onBrowse }: { tab: FilterTab; onBrowse: () => void })
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center justify-center px-8 py-20 text-center"
     >
-      <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
-        <Calendar className="w-10 h-10 text-muted-foreground" />
+      {/* Animated Timeline Illustration */}
+      <div className="relative mb-8">
+        {/* Vertical Line */}
+        <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-gradient-to-b from-muted via-muted/50 to-transparent transform -translate-x-1/2" />
+        
+        {/* Empty Nodes */}
+        <div className="flex flex-col items-center gap-4 py-4">
+          <motion.div 
+            className="w-12 h-12 rounded-full bg-muted/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <span className="text-lg">📅</span>
+          </motion.div>
+          <motion.div 
+            className="w-10 h-10 rounded-full bg-muted/30 border-2 border-dashed border-muted-foreground/20"
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
+          />
+          <motion.div 
+            className="w-8 h-8 rounded-full bg-muted/20 border-2 border-dashed border-muted-foreground/10"
+            animate={{ opacity: [0.2, 0.4, 0.2] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
+          />
+        </div>
       </div>
+
       <h2 className="text-[20px] font-bold text-foreground mb-2">
-        {tab === 'upcoming' ? 'No upcoming events' : 'No past events'}
+        {tab === 'upcoming' ? 'Your timeline is empty' : 'No past events'}
       </h2>
       <p className="text-[15px] text-muted-foreground mb-8 max-w-xs leading-relaxed">
         {tab === 'upcoming' 
-          ? "You haven't joined any upcoming events yet. Explore the feed to find something fun!"
+          ? "Start building your itinerary by joining events or connecting your calendar."
           : "You don't have any past events to show."
         }
       </p>
       {tab === 'upcoming' && (
-        <Button
-          onClick={onBrowse}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-xl text-[15px] font-semibold"
-        >
-          Browse Events
-        </Button>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button
+            onClick={onBrowse}
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-xl text-[15px] font-semibold"
+          >
+            Browse Events
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onBrowse}
+            className="w-full px-6 py-3 rounded-xl text-[15px] font-semibold border-dashed"
+          >
+            Suggest a Plan
+          </Button>
+        </div>
       )}
     </motion.div>
   );

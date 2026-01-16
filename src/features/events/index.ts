@@ -22,6 +22,9 @@ export {
 } from './hooks/hooks';
 export type { EventWithAttendees, EventAttendee, AttendeeProfile } from './hooks/hooks';
 
+export { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
+export type { ItineraryItem, ItineraryItemType, ItineraryVisualStyle, DayGroup } from './hooks/useUnifiedItinerary';
+
 export { useImageFallback, getEventImage } from './hooks/useImageFallback';
 
 // Components
@@ -29,6 +32,8 @@ export { EventStackCard } from './components/EventStackCard';
 export { default as EventDetailModal } from './components/EventDetailModal';
 export { EventTimeline } from './components/EventTimeline';
 export { TimelineEventCard } from './components/TimelineEventCard';
+export { ItineraryTimeline } from './components/ItineraryTimeline';
+export { ShadowEventCard } from './components/ShadowEventCard';
 export { CreateEventModal } from './components/CreateEventModal';
 export { TimeFilterPills } from './components/TimeFilterPills';
 export type { TimeFilter } from './components/TimeFilterPills';
