@@ -181,8 +181,9 @@ export async function recordFailure(
 /**
  * Transition circuit from OPEN to HALF_OPEN (internal use).
  */
+// deno-lint-ignore no-explicit-any
 async function transitionToHalfOpen(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   sourceId: string
 ): Promise<void> {
   const { error } = await supabase
