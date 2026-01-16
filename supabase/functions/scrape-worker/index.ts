@@ -774,14 +774,16 @@ serve(async (req: Request): Promise<Response> => {
       }
     );
 
+    const allJobsSucceeded = summary.failed === 0;
     return new Response(
       JSON.stringify({
-        success: summary.failed === 0,
+        success: allJobsSucceeded,
+        allJobsSucceeded,
         processed: true,
         batchSize: jobs.length,
         summary,
       }),
-      { status: summary.failed === 0 ? 200 : 207, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: allJobsSucceeded ? 200 : 207, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Worker error:", error);

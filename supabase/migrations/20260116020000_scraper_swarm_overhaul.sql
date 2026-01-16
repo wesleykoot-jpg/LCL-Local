@@ -8,6 +8,9 @@ ADD COLUMN IF NOT EXISTS volatility_score numeric DEFAULT 0.5 CHECK (volatility_
 ADD COLUMN IF NOT EXISTS next_scrape_at timestamptz,
 ADD COLUMN IF NOT EXISTS consecutive_errors integer DEFAULT 0;
 
+COMMENT ON COLUMN public.scraper_sources.consecutive_errors IS
+'Scheduler-facing consecutive error counter used for coordinator circuit breaker decisions.';
+
 CREATE INDEX IF NOT EXISTS idx_scraper_sources_next_scrape_at
 ON public.scraper_sources (next_scrape_at);
 
