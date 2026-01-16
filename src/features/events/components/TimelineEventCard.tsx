@@ -82,27 +82,37 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         className="relative rounded-2xl overflow-hidden bg-card border-2 border-border hover:border-primary/30 transition-all hover:shadow-lg"
         whileTap={{ scale: 0.98 }}
       >
-        {/* Image - Cinema Style (2:1 aspect ratio) */}
-        {event.image_url && (
-          <div className="relative w-full aspect-[2/1] bg-gradient-to-br from-primary/10 to-primary/5">
+        {/* Image - Cinema Style (2:1 aspect ratio) with integrated title overlay */}
+        {event.image_url ? (
+          <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-[28px] bg-gradient-to-br from-primary/10 to-primary/5">
             <img
               src={event.image_url}
               alt={event.title}
               className="w-full h-full object-cover"
+              loading="lazy"
             />
+            {/* Gradient overlay for title readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
+            {/* Title overlaid on poster - integrated visual unit */}
+            <h4 className="absolute left-4 bottom-4 z-20 text-lg font-bold text-white leading-tight line-clamp-2 pr-4">
+              {event.title}
+            </h4>
+          </div>
+        ) : (
+          // Fallback: show gradient background with title when no image
+          <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-[28px] bg-gradient-to-br from-primary/10 to-primary/5">
+            <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
+            <h4 className="absolute left-4 bottom-4 z-20 text-lg font-bold text-foreground leading-tight line-clamp-2 pr-4">
+              {event.title}
+            </h4>
           </div>
         )}
 
-        {/* Content Section */}
-        <div className="p-4">
-          {/* Title - Large and Bold */}
-          <h4 className="text-base font-bold text-foreground leading-tight line-clamp-2 mb-2">
-            {event.title}
-          </h4>
-
-          {/* Venue */}
+        {/* Content Section - No duplicate title, adjusted padding */}
+        <div className="p-4 pt-0">
+          {/* Venue - moved to top of body */}
           {event.venue_name && (
-            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-2">
+            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-2 mt-3">
               <MapPin size={13} className="flex-shrink-0 text-primary/60" />
               <span className="truncate">{event.venue_name}</span>
             </div>
@@ -119,6 +129,13 @@ export const TimelineEventCard = memo(function TimelineEventCard({
               {categoryLabel}
             </span>
           </div>
+
+          {/* Ticket Number - if present */}
+          {event.ticket_number && (
+            <div className="mt-2 text-[11px] text-muted-foreground font-mono">
+              {event.ticket_number}
+            </div>
+          )}
 
           {/* Join Button - Only show if not past and showJoinButton is true */}
           {!isPast && showJoinButton && !hasJoined && (

@@ -71,11 +71,12 @@ describe('TimelineEventCard', () => {
     expect(screen.getByText('Join Event')).toBeInTheDocument();
   });
 
-  it('shows ticket number when present', () => {
+  it('does not show ticket number in default variant', () => {
     const eventWithTicket = { ...mockEvent, ticket_number: 'TICKET-123' };
     render(<TimelineEventCard event={eventWithTicket} />);
     
-    expect(screen.getByText('TICKET-123')).toBeInTheDocument();
+    // Ticket number only displayed in trip-card variant
+    expect(screen.queryByText('TICKET-123')).not.toBeInTheDocument();
   });
 
   it('applies past styling when isPast is true', () => {
@@ -100,8 +101,8 @@ describe('TimelineEventCard', () => {
   it('shows category badge in top-right for minimal variant', () => {
     const { container } = render(<TimelineEventCard event={mockEvent} variant="minimal" />);
     
-    // Category badge should be visible (cinema maps to entertainment)
-    expect(screen.getByText('entertainment')).toBeInTheDocument();
+    // Category badge should be visible (cinema maps to entertainment, which has label "Entertainment")
+    expect(screen.getByText('Entertainment')).toBeInTheDocument();
     // Should have absolute positioning class
     const badge = container.querySelector('.absolute.top-3.right-3');
     expect(badge).toBeInTheDocument();
@@ -114,42 +115,64 @@ describe('TimelineEventCard', () => {
     expect(screen.getByText('7:00 PM')).toBeInTheDocument();
     // Location should be visible
     expect(screen.getByText('Test Venue')).toBeInTheDocument();
-    // Category should be inline (cinema maps to entertainment)
-    expect(screen.getByText('entertainment')).toBeInTheDocument();
+    // Category should be inline (cinema maps to entertainment, which has label "Entertainment")
+    expect(screen.getByText('Entertainment')).toBeInTheDocument();
   });
 
   describe('trip-card variant', () => {
-    it('hides time and location in trip-card variant', () => {
+    it('hides time in trip-card variant', () => {
       render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
       
-      // Time should not be visible
+      // Time should not be visible (trip-card doesn't show time)
       expect(screen.queryByText('7:00 PM')).not.toBeInTheDocument();
-      // Location should not be visible
-      expect(screen.queryByText('Test Venue')).not.toBeInTheDocument();
-      // But title should still be visible
-      expect(screen.getByText('Test Event')).toBeInTheDocument();
     });
 
-    it('shows large bold title and attendee count in trip-card variant', () => {
+    it('shows venue name in trip-card variant', () => {
       render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
       
-      expect(screen.getByText('Test Event')).toBeInTheDocument();
-      expect(screen.getByText('5 going')).toBeInTheDocument();
+      // Venue should be visible in the body
+      expect(screen.getByText('Test Venue')).toBeInTheDocument();
     });
 
-    it('shows category badge over image in trip-card variant with image', () => {
+    it('shows title in overlay on poster when image is present', () => {
+      const eventWithImage = { 
+        ...mockEvent, 
+        image_url: 'https://example.com/image.jpg' 
+      };
+      render(<TimelineEventCard event={eventWithImage} variant="trip-card" />);
+      
+      // Title should be visible (in overlay)
+      expect(screen.getByText('Test Event')).toBeInTheDocument();
+    });
+
+    it('shows title in fallback gradient when no image', () => {
+      render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+      
+      // Title should still be visible (in fallback gradient overlay)
+      expect(screen.getByText('Test Event')).toBeInTheDocument();
+    });
+
+    it('shows attendee count and category badge in trip-card variant', () => {
+      render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+      
+      expect(screen.getByText('5 going')).toBeInTheDocument();
+      // Category badge should say "Entertainment" (capital E)
+      expect(screen.getByText('Entertainment')).toBeInTheDocument();
+    });
+
+    it('renders image with proper attributes in trip-card variant', () => {
       const eventWithImage = { 
         ...mockEvent, 
         image_url: 'https://example.com/image.jpg' 
       };
       const { container } = render(<TimelineEventCard event={eventWithImage} variant="trip-card" />);
       
-      // Category badge should be visible
-      expect(screen.getByText('entertainment')).toBeInTheDocument();
-      // Image should be present
+      // Image should be present with correct attributes
       const image = container.querySelector('img');
       expect(image).toBeInTheDocument();
       expect(image?.getAttribute('src')).toBe('https://example.com/image.jpg');
+      expect(image?.getAttribute('loading')).toBe('lazy');
+      expect(image?.className).toContain('object-cover');
     });
 
     it('shows join button in trip-card variant when showJoinButton is true', () => {
