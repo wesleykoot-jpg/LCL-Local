@@ -10,6 +10,9 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { hapticImpact } from '@/shared/lib/haptics';
 import toast from 'react-hot-toast';
 
+// Import version from package.json
+import packageJson from '../../../../package.json';
+
 /**
  * Profile Page - The Holographic Identity
  * 
@@ -180,7 +183,7 @@ const Profile = () => {
 
                   {/* App Version */}
                   <div className="px-5 py-6 text-center">
-                    <p className="text-xs text-white/40">LCL · Version 1.0.0</p>
+                    <p className="text-xs text-white/40">LCL · Version {packageJson.version}</p>
                   </div>
                 </div>
               </motion.div>

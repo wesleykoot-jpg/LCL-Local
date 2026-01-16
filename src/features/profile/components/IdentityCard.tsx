@@ -12,6 +12,16 @@ import { useAuth } from '@/features/auth';
  * Credit card aspect ratio: 1.58:1
  */
 
+// Mock profile data for development
+const MOCK_PROFILE = {
+  full_name: 'Demo User',
+  avatar_url: null,
+  current_persona: 'social',
+};
+
+// Default persona pills - TODO: Derive from user profile data
+const DEFAULT_PERSONA_PILLS = ['Foodie', 'Nightlife', 'Art'];
+
 export function IdentityCard() {
   const { profile } = useAuth();
   const prefersReducedMotion = useReducedMotion();
@@ -26,19 +36,15 @@ export function IdentityCard() {
     enabled: !prefersReducedMotion,
   });
 
-  // Mock data - replace with actual profile data
-  const displayProfile = profile || {
-    full_name: 'Demo User',
-    avatar_url: null,
-    current_persona: 'social',
-  };
+  // Use profile data or fallback to mock
+  const displayProfile = profile || MOCK_PROFILE;
 
   const avatarInitial = displayProfile.full_name
     ? displayProfile.full_name.charAt(0).toUpperCase()
     : 'U';
 
-  // Hardcoded persona pills (as per requirements)
-  const personaPills = ['Foodie', 'Nightlife', 'Art'];
+  // Use persona pills from configuration - TODO: Derive from user profile
+  const personaPills = DEFAULT_PERSONA_PILLS;
 
   // Handle long press on avatar
   const handlePressStart = () => {

@@ -4,6 +4,15 @@ import { useUnifiedItinerary, ItineraryItem } from '@/features/events/hooks/useU
 import { useMemo } from 'react';
 
 /**
+ * Format date as "MON YY" (e.g., "OCT 26")
+ */
+function formatStampDate(date: Date): string {
+  const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const year = date.toLocaleDateString('en-US', { year: '2-digit' });
+  return `${month} ${year}`;
+}
+
+/**
  * PassportGrid - Travel History Stamps
  * 
  * Displays past events as "passport stamps" in a 3-column grid.
@@ -20,13 +29,6 @@ export function PassportGrid() {
     const now = new Date();
     return timelineItems.filter(item => item.startTime < now);
   }, [timelineItems]);
-
-  // Format date as "MON YY" (e.g., "OCT 26")
-  const formatStampDate = (date: Date): string => {
-    const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-    const year = date.toLocaleDateString('en-US', { year: '2-digit' });
-    return `${month} ${year}`;
-  };
 
   // Empty state
   if (!isLoading && pastEvents.length === 0) {
@@ -126,11 +128,4 @@ function PassportStamp({ event, index, prefersReducedMotion }: PassportStampProp
       </motion.div>
     </motion.div>
   );
-}
-
-// Helper function to format date
-function formatStampDate(date: Date): string {
-  const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const year = date.toLocaleDateString('en-US', { year: '2-digit' });
-  return `${month} ${year}`;
 }
