@@ -439,6 +439,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_relationships: {
+        Row: {
+          id: string
+          follower_id: string
+          following_id: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          follower_id: string
+          following_id: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          follower_id?: string
+          following_id?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_relationships_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_relationships_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       scrape_jobs: {
         Row: {
           attempts: number | null
@@ -972,6 +1014,10 @@ export type Database = {
           max_concurrent: number
           requests_per_minute: number
         }[]
+      }
+      get_friends_pulse: {
+        Args: { current_user_id: string }
+        Returns: Json
       }
       gettransactionid: { Args: never; Returns: unknown }
       longtransactionsenabled: { Args: never; Returns: boolean }
