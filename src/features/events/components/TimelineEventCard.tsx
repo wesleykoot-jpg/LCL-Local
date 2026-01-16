@@ -1,7 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { MapPin, Users, Ticket, Loader2, Check } from 'lucide-react';
+import { MapPin, Users, Loader2, Check } from 'lucide-react';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { useJoinEvent } from '../hooks/hooks';
@@ -98,19 +98,19 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           </div>
         )}
 
-        {/* Category Badge - Show inline when no image */}
-        {!event.image_url && (
-          <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-            <span className="text-[11px] font-semibold uppercase tracking-wide">
-              {categoryLabel}
-            </span>
-          </div>
-        )}
-
         {/* Content Section */}
         <div className="p-4">
+          {/* Category Badge - Inline at top when no image */}
+          {!event.image_url && (
+            <div className="mb-2">
+              <span className="inline-flex px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold uppercase tracking-wide">
+                {categoryLabel}
+              </span>
+            </div>
+          )}
+
           {/* Title - Large and Bold */}
-          <h4 className="text-base font-bold text-foreground leading-tight line-clamp-2 mb-2 pr-16">
+          <h4 className="text-base font-bold text-foreground leading-tight line-clamp-2 mb-2">
             {event.title}
           </h4>
 
@@ -162,15 +162,6 @@ export const TimelineEventCard = memo(function TimelineEventCard({
             </div>
           )}
 
-          {/* Optional: Ticket Number Badge */}
-          {event.ticket_number && (
-            <div className="mt-3 pt-3 border-t border-border">
-              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                <Ticket size={12} />
-                <span className="font-mono font-medium">{event.ticket_number}</span>
-              </div>
-            </div>
-          )}
         </div>
       </motion.div>
     );
@@ -237,15 +228,6 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         </div>
       )}
 
-      {/* Optional: Ticket Number Badge */}
-      {event.ticket_number && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-            <Ticket size={12} />
-            <span className="font-mono font-medium">{event.ticket_number}</span>
-          </div>
-        </div>
-      )}
 
       {/* Join Button - Only show if not past and showJoinButton is true */}
       {!isPast && showJoinButton && !hasJoined && (
