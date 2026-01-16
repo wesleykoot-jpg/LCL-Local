@@ -90,7 +90,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
               className="w-full h-full object-cover"
             />
             {/* Category Badge - Floating over image */}
-            <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-primary/90 backdrop-blur-sm text-white shadow-lg">
+            <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-primary/90 backdrop-blur-sm text-primary-foreground shadow-lg">
               <span className="text-[11px] font-semibold uppercase tracking-wide">
                 {categoryLabel}
               </span>
@@ -98,15 +98,32 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           </div>
         )}
 
+        {/* Category Badge - Show inline when no image */}
+        {!event.image_url && (
+          <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+            <span className="text-[11px] font-semibold uppercase tracking-wide">
+              {categoryLabel}
+            </span>
+          </div>
+        )}
+
         {/* Content Section */}
         <div className="p-4">
           {/* Title - Large and Bold */}
-          <h4 className="text-lg font-bold text-white leading-tight line-clamp-2 mb-3">
+          <h4 className="text-base font-bold text-foreground leading-tight line-clamp-2 mb-2 pr-16">
             {event.title}
           </h4>
 
-          {/* Action Bar - Attendee Count (Facepile placeholder) */}
-          <div className="flex items-center gap-1.5 text-[13px] text-white/60">
+          {/* Venue */}
+          {event.venue_name && (
+            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-2">
+              <MapPin size={13} className="flex-shrink-0 text-primary/60" />
+              <span className="truncate">{event.venue_name}</span>
+            </div>
+          )}
+
+          {/* Action Bar - Attendee Count */}
+          <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
             <Users size={14} />
             <span className="font-medium">{attendeeCount} going</span>
           </div>
@@ -135,7 +152,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
             </div>
           )}
 
-          {/* Already Joined Badge - Shows immediately via optimistic update */}
+          {/* Already Joined Badge */}
           {!isPast && showJoinButton && hasJoined && (
             <div className="mt-3 pt-3 border-t border-border">
               <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
@@ -148,7 +165,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           {/* Optional: Ticket Number Badge */}
           {event.ticket_number && (
             <div className="mt-3 pt-3 border-t border-border">
-              <div className="flex items-center gap-2 text-[12px] text-white/60">
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
                 <Ticket size={12} />
                 <span className="font-mono font-medium">{event.ticket_number}</span>
               </div>
