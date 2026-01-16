@@ -1,212 +1,90 @@
 /**
  * Itinerary Timeline Component
- * 
- * TripAdvisor-style unified timeline view that displays both LCL events
- * and external calendar events in a visual journey format.
- * 
- * Features:
- * - Vertical glass rail connecting events
- * - Time nodes instead of numbers
- * - Sticky day headers with blur effect
- * - Staggered entry animations
- * - Ghost cards for external events
+ *
+ * Displays LCL and Google Calendar events in a unified, day-grouped timeline.
+ * Uses a continuous vertical rail, glass time nodes, and sticky day headers.
  */
 
 import { memo } from 'react';
-import { motion } from 'framer-motion';
 import { TimelineEventCard } from './TimelineEventCard';
-import { ShadowEventCard } from './ShadowEventCard';
-import type { DayGroup, ItineraryItem } from '../hooks/useUnifiedItinerary';
-import type { EventWithAttendees } from '../hooks/hooks';
+import type { ItineraryItem, GroupedTimeline } from '../hooks/useUnifiedItinerary';
 
 interface ItineraryTimelineProps {
-  dayGroups: DayGroup[];
+  groupedTimeline: GroupedTimeline;
 }
 
-/**
- * Time node component - displays time in a glassmorphism bubble on the timeline rail
- */
-const TimeNode = memo(function TimeNode({ 
-  time, 
-  isAllDay,
-  isPast 
-}: { 
-  time: string; 
-  isAllDay: boolean;
-  isPast: boolean;
+const timeFormatter = new Intl.DateTimeFormat('en-US', {
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+const TimeNode = memo(function TimeNode({
+  label,
+}: {
+  label: string;
 }) {
   return (
-    <div className={`
-      relative z-10 flex items-center justify-center
-      min-w-[52px] h-7 px-2 rounded-full
-      text-[11px] font-semibold tracking-tight
-      backdrop-blur-md border shadow-sm
-      ${isPast 
-        ? 'bg-muted/40 border-border/30 text-muted-foreground' 
-        : 'bg-card/80 border-white/20 text-foreground'
-      }
-    `}>
-      {isAllDay ? '📅' : time}
+    <div className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[11px] font-semibold text-foreground/90 backdrop-blur-md shadow-sm">
+      {label}
     </div>
   );
 });
 
-/**
- * Single timeline item with rail connection
- */
-const TimelineItem = memo(function TimelineItem({
+const GoogleCalendarCard = memo(function GoogleCalendarCard({
   item,
-  index,
-  isLast,
-  isPast,
 }: {
-  item: ItineraryItem;
-  index: number;
-  isLast: boolean;
-  isPast: boolean;
+  item: Extract<ItineraryItem, { type: 'GOOGLE_CALENDAR' }>;
 }) {
-  const isAllDay = item.time === 'All Day';
+  const googleEvent = item.data;
+  const timeLabel = item.isAllDay ? 'All Day' : timeFormatter.format(item.startTime);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ 
-        delay: index * 0.05, 
-        duration: 0.3,
-        ease: [0.25, 0.46, 0.45, 0.94] 
-      }}
-      className="relative flex gap-3"
-    >
-      {/* Left Rail with Time Node */}
-      <div className="flex flex-col items-center flex-shrink-0">
-        {/* Time Node */}
-        <TimeNode time={item.time} isAllDay={isAllDay} isPast={isPast} />
-        
-        {/* Connecting Line (unless last item) */}
-        {!isLast && (
-          <div className={`
-            flex-1 w-[2px] min-h-[16px] mt-2
-            ${isPast 
-              ? 'bg-gradient-to-b from-border/30 to-border/10' 
-              : 'bg-gradient-to-b from-white/20 to-white/5'
-            }
-          `} />
-        )}
-      </div>
-
-      {/* Card Content */}
-      <div className="flex-1 pb-4 min-w-0">
-        {item.visualStyle === 'shadow' ? (
-          <ShadowEventCard item={item} isPast={isPast} />
-        ) : (
-          <TimelineEventCard 
-            event={item.data as EventWithAttendees & { ticket_number?: string }}
-            isPast={isPast}
-          />
-        )}
-      </div>
-    </motion.div>
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm backdrop-blur-md">
+      <div className="text-[12px] text-muted-foreground">{timeLabel}</div>
+      <div className="text-[15px] font-semibold text-foreground/80">{item.title}</div>
+      {googleEvent.location && (
+        <div className="mt-1 text-[12px] text-muted-foreground/80">{googleEvent.location}</div>
+      )}
+    </div>
   );
 });
 
-/**
- * Day section with sticky header
- */
-const DaySection = memo(function DaySection({
-  group,
-  groupIndex,
-}: {
-  group: DayGroup;
-  groupIndex: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ 
-        delay: groupIndex * 0.1, 
-        duration: 0.4,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }}
-      className="mb-6"
-    >
-      {/* Sticky Day Header */}
-      <div className={`
-        sticky top-[120px] z-20 -mx-5 px-5 py-2 mb-4
-        backdrop-blur-xl border-b
-        ${group.isToday 
-          ? 'bg-primary/5 border-primary/20' 
-          : group.isPast 
-            ? 'bg-muted/30 border-border/30' 
-            : 'bg-card/80 border-border/50'
-        }
-      `}>
-        <div className="flex items-center gap-3">
-          <h3 className={`text-[16px] font-bold ${
-            group.isToday 
-              ? 'text-primary' 
-              : group.isPast 
-                ? 'text-muted-foreground' 
-                : 'text-foreground'
-          }`}>
-            {group.label}
-          </h3>
-          
-          {group.isToday && (
-            <span className="px-2 py-0.5 text-[10px] font-bold bg-primary text-primary-foreground rounded-full uppercase tracking-wider">
-              Now
-            </span>
-          )}
-          
-          <span className="text-[12px] text-muted-foreground">
-            {group.items.length} {group.items.length === 1 ? 'event' : 'events'}
-          </span>
-        </div>
-      </div>
-
-      {/* Timeline Items */}
-      <div className="relative pl-1">
-        {/* Main vertical rail line (background) */}
-        <div className="absolute left-[25px] top-3 bottom-3 w-[2px] bg-gradient-to-b from-white/10 via-white/5 to-transparent rounded-full" />
-        
-        {/* Items */}
-        <div className="relative">
-          {group.items.map((item, index) => (
-            <TimelineItem
-              key={item.id}
-              item={item}
-              index={index}
-              isLast={index === group.items.length - 1}
-              isPast={group.isPast}
-            />
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-});
-
-/**
- * Main Itinerary Timeline Component
- */
 export const ItineraryTimeline = memo(function ItineraryTimeline({
-  dayGroups,
+  groupedTimeline,
 }: ItineraryTimelineProps) {
+  const groupedEntries = Object.entries(groupedTimeline);
+
   return (
-    <motion.div 
-      className="px-5 py-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      {dayGroups.map((group, index) => (
-        <DaySection 
-          key={group.dateKey} 
-          group={group} 
-          groupIndex={index} 
-        />
-      ))}
-    </motion.div>
+    <div className="px-5 py-4">
+      <div className="relative border-l-2 border-white/10 pl-6">
+        {groupedEntries.map(([label, items]) => (
+          <div key={label} className="pb-8">
+            <div className="sticky top-[96px] z-20 -ml-6 mb-4 flex items-center bg-background/70 py-2 pl-6 backdrop-blur-xl">
+              <h3 className="text-[15px] font-semibold text-foreground">{label}</h3>
+            </div>
+            <div className="space-y-6">
+              {items.map((item) => {
+                const timeLabel = item.isAllDay ? 'All Day' : timeFormatter.format(item.startTime);
+
+                return (
+                  <div key={item.id} className="relative">
+                    <div className="absolute -left-[30px] top-4">
+                      <TimeNode label={timeLabel} />
+                    </div>
+                    <div className="pl-2">
+                      {item.type === 'LCL_EVENT' ? (
+                        <TimelineEventCard event={item.data} />
+                      ) : (
+                        <GoogleCalendarCard item={item} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 });

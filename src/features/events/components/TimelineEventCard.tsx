@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { MapPin, Users, Ticket, Loader2 } from 'lucide-react';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
@@ -36,6 +37,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   const attendeeCount = event.attendee_count || 0;
   const { profile } = useAuth();
   const { handleJoinEvent, isJoining } = useJoinEvent(profile?.id);
+  const queryClient = useQueryClient();
   
   const hasJoined = Boolean(
     profile?.id && event.attendees?.some(
@@ -102,6 +104,10 @@ export const TimelineEventCard = memo(function TimelineEventCard({
               e.stopPropagation();
               try {
                 await handleJoinEvent(event.id);
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ['my-events'] }),
+                  queryClient.invalidateQueries({ queryKey: ['events'] }),
+                ]);
               } catch (error) {
                 // Error is already handled by useJoinEvent hook
                 // This catch prevents unhandled promise rejections if component unmounts

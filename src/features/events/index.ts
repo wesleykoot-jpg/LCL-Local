@@ -23,7 +23,12 @@ export {
 export type { EventWithAttendees, EventAttendee, AttendeeProfile } from './hooks/hooks';
 
 export { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
-export type { ItineraryItem, ItineraryItemType, ItineraryVisualStyle, DayGroup } from './hooks/useUnifiedItinerary';
+export type {
+  ItineraryItem,
+  ItineraryItemType,
+  ItineraryItemStatus,
+  GroupedTimeline,
+} from './hooks/useUnifiedItinerary';
 
 export { useImageFallback, getEventImage } from './hooks/useImageFallback';
 

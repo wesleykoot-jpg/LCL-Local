@@ -17,6 +17,12 @@ vi.mock('@/features/auth', () => ({
   }),
 }));
 
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    invalidateQueries: vi.fn(),
+  }),
+}));
+
 describe('TimelineEventCard', () => {
   const mockEvent: EventWithAttendees & { ticket_number?: string } = {
     id: 'event-1',
