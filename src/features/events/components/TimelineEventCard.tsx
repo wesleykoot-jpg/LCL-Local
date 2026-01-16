@@ -100,7 +100,13 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           <button
             onClick={async (e) => {
               e.stopPropagation();
-              await handleJoinEvent(event.id);
+              try {
+                await handleJoinEvent(event.id);
+              } catch (error) {
+                // Error is already handled by useJoinEvent hook
+                // This catch prevents unhandled promise rejections if component unmounts
+                console.error('Error in join button handler:', error);
+              }
             }}
             disabled={isCurrentEventJoining}
             className={`w-full h-[44px] rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98] ${
