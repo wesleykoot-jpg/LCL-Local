@@ -116,12 +116,12 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
         // Group attendees by event
         const attendeesByEvent = new Map<string, EventAttendee[]>();
-        (attendeesData || []).forEach((att: any) => {
+        (attendeesData || []).forEach((att: { event_id: string; profile: AttendeeProfile | null }) => {
           if (!attendeesByEvent.has(att.event_id)) {
             attendeesByEvent.set(att.event_id, []);
           }
           attendeesByEvent.get(att.event_id)!.push({
-            profile: att.profile as AttendeeProfile | null,
+            profile: att.profile,
           });
         });
 
@@ -147,14 +147,14 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
             id: rpcEvent.event_id,
             title: rpcEvent.title,
             description: rpcEvent.description,
-            category: rpcEvent.category as any,
-            event_type: rpcEvent.event_type as any,
+            category: rpcEvent.category as Event['category'],
+            event_type: rpcEvent.event_type as Event['event_type'],
             parent_event_id: rpcEvent.parent_event_id,
             venue_name: rpcEvent.venue_name,
             location: rpcEvent.location,
             event_date: rpcEvent.event_date,
             event_time: rpcEvent.event_time,
-            status: rpcEvent.status as any,
+            status: rpcEvent.status as Event['status'],
             image_url: rpcEvent.image_url,
             match_percentage: rpcEvent.match_percentage,
             attendee_count: rpcEvent.attendee_count,
