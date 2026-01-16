@@ -17,15 +17,51 @@ const MOCK_PROFILE = {
   full_name: 'Demo User',
   avatar_url: null,
   current_persona: 'social',
+  bio: 'Living life one event at a time ✨',
+};
+
+// Mock social stats - TODO: Wire to real backend data
+const MOCK_STATS = {
+  events: 12,
+  friends: 84,
+  score: 98,
 };
 
 // Default persona pills - TODO: Derive from user profile data
 const DEFAULT_PERSONA_PILLS = ['Foodie', 'Nightlife', 'Art'];
 
+/**
+ * VibeEQ - Animated Waveform Component
+ * 
+ * Small animated bars that signify "Live Status" next to the user's name.
+ */
+function VibeEQ() {
+  return (
+    <div className="flex items-center gap-0.5 h-4">
+      <motion.div
+        className="w-0.5 bg-white/80 rounded-full"
+        animate={{ height: ['40%', '100%', '60%', '80%', '40%'] }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="w-0.5 bg-white/80 rounded-full"
+        animate={{ height: ['80%', '40%', '100%', '50%', '80%'] }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.1 }}
+      />
+      <motion.div
+        className="w-0.5 bg-white/80 rounded-full"
+        animate={{ height: ['60%', '90%', '50%', '100%', '60%'] }}
+        transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+      />
+    </div>
+  );
+}
+
 export function IdentityCard() {
   const { profile } = useAuth();
   const prefersReducedMotion = useReducedMotion();
   const [isPressed, setIsPressed] = useState(false);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Enable device tilt for 3D effect
@@ -68,6 +104,10 @@ export function IdentityCard() {
   const sheenX = -tilt.tiltX * 2;
   const sheenY = -tilt.tiltY * 2;
 
+  // Use stats from profile or mock data
+  const stats = MOCK_STATS; // TODO: Wire to real profile stats
+  const bio = displayProfile.bio || MOCK_PROFILE.bio;
+
   return (
     <div className="w-full max-w-md mx-auto px-6 py-8">
       {/* Tilt Transform Container */}
@@ -105,6 +145,25 @@ export function IdentityCard() {
                   rgba(255, 255, 255, 0) 100%)`,
                 opacity: tilt.glintOpacity,
                 transition: 'opacity 0.15s ease-out',
+              }}
+            />
+          )}
+
+          {/* Holographic Foil Animation - Sweeps every 5 seconds */}
+          {!prefersReducedMotion && (
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)',
+              }}
+              animate={{
+                x: ['-100%', '200%'],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatDelay: 3,
+                ease: 'easeInOut',
               }}
             />
           )}
@@ -148,19 +207,45 @@ export function IdentityCard() {
                 )}
               </motion.button>
 
-              {/* Name and Handle */}
+              {/* Name and Handle with Vibe EQ */}
               <div className="text-right flex-1 ml-4">
-                <h2 className="text-xl font-bold text-white leading-tight">
-                  {displayProfile.full_name}
-                </h2>
-                <p className="text-white/60 text-sm mt-1">
+                <div className="flex items-center justify-end gap-2 mb-1">
+                  <h2 className="text-xl font-bold text-white leading-tight">
+                    {displayProfile.full_name}
+                  </h2>
+                  {/* Vibe EQ - Animated Waveform */}
+                  {!prefersReducedMotion && <VibeEQ />}
+                </div>
+                <p className="text-white/60 text-sm">
                   @{displayProfile.full_name?.toLowerCase().replace(/\s+/g, '') || 'username'}
                 </p>
               </div>
             </div>
 
-            {/* Bottom Row: Persona Pills */}
-            <div className="flex gap-2 flex-wrap">
+            {/* Bio Section - Collapsible */}
+            {bio && (
+              <motion.div 
+                className="mb-3"
+                initial={prefersReducedMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <button
+                  onClick={() => setIsBioExpanded(!isBioExpanded)}
+                  className="text-white/80 text-sm text-left w-full"
+                >
+                  <motion.p
+                    animate={{ height: isBioExpanded ? 'auto' : '1.25rem' }}
+                    className="overflow-hidden"
+                  >
+                    {bio}
+                  </motion.p>
+                </button>
+              </motion.div>
+            )}
+
+            {/* Persona Pills */}
+            <div className="flex gap-2 flex-wrap mb-3">
               {personaPills.map((pill, index) => (
                 <motion.div
                   key={pill}
@@ -173,6 +258,29 @@ export function IdentityCard() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Social Stats Bar */}
+            <motion.div 
+              className="flex items-center justify-around pt-3 border-t border-white/20"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <div className="text-center">
+                <p className="text-white font-bold text-lg">{stats.events}</p>
+                <p className="text-white/60 text-xs">Events</p>
+              </div>
+              <div className="w-px h-8 bg-white/20" />
+              <div className="text-center">
+                <p className="text-white font-bold text-lg">{stats.friends}</p>
+                <p className="text-white/60 text-xs">Friends</p>
+              </div>
+              <div className="w-px h-8 bg-white/20" />
+              <div className="text-center">
+                <p className="text-green-400 font-bold text-lg">{stats.score}%</p>
+                <p className="text-white/60 text-xs">Score</p>
+              </div>
+            </motion.div>
           </div>
         </motion.div>
       </motion.div>

@@ -161,6 +161,20 @@ export default {
             backgroundPosition: "0% 50%",
           },
         },
+        "blob": {
+          "0%, 100%": {
+            transform: "translate(0, 0) scale(1)",
+          },
+          "25%": {
+            transform: "translate(20px, -20px) scale(1.1)",
+          },
+          "50%": {
+            transform: "translate(-20px, 20px) scale(0.9)",
+          },
+          "75%": {
+            transform: "translate(20px, 20px) scale(1.05)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -169,6 +183,7 @@ export default {
         "liquid-pulse": "liquid-pulse 8s ease-in-out infinite",
         "proximity-glow": "proximity-glow 2s ease-in-out alternate infinite",
         "refraction-glide": "refraction-glide 6s ease-in-out infinite",
+        "blob": "blob 20s ease-in-out infinite",
       },
     },
   },
