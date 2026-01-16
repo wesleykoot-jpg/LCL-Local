@@ -1,56 +1,43 @@
 import { ItineraryItem } from '../hooks/useUnifiedItinerary';
-import { Calendar, MapPin, Users, Ticket, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, Users, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import { motion } from 'framer-motion';
+import { TimelineEventCard } from './TimelineEventCard';
+import type { EventWithAttendees } from '../hooks/hooks';
 
 // Format time like "7:00 PM"
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-const ItineraryEventCard = ({ item }: { item: ItineraryItem }) => {
-  const categoryLabel = item.category ? (CATEGORY_MAP[item.category] || item.category) : null;
+// Calculate duration between two times
+function calculateDuration(start: Date, end?: Date): string | null {
+  if (!end) return null;
+  const diffMs = end.getTime() - start.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (diffHours > 0 && diffMinutes > 0) {
+    return `${diffHours}h ${diffMinutes}m • Ends ${formatTime(end)}`;
+  } else if (diffHours > 0) {
+    return `${diffHours}h • Ends ${formatTime(end)}`;
+  } else if (diffMinutes > 0) {
+    return `${diffMinutes}m • Ends ${formatTime(end)}`;
+  }
+  return null;
+}
 
+// Type guard to check if originalData is EventWithAttendees
+function isEventWithAttendees(data: any): data is EventWithAttendees {
   return (
-    <motion.div
-      className="relative rounded-2xl border-2 bg-card p-4 transition-all border-border hover:border-primary/30 hover:shadow-sm"
-      whileTap={{ scale: 0.98 }}
-    >
-      {/* Category Badge - Top Right Corner */}
-      {categoryLabel && (
-        <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-primary/10 text-primary">
-          <span className="text-[11px] font-semibold uppercase tracking-wide capitalize">
-            {categoryLabel}
-          </span>
-        </div>
-      )}
-
-      {/* Event Title */}
-      <h4 className="text-[17px] font-semibold leading-tight line-clamp-1 mb-2 text-foreground pr-16">
-        {item.title}
-      </h4>
-
-      {/* Attendee Count */}
-      {item.attendeeCount !== undefined && (
-        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-          <Users size={14} />
-          <span className="font-medium">{item.attendeeCount} going</span>
-        </div>
-      )}
-
-      {/* Optional: Ticket Number Badge */}
-      {item.ticketNumber && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-            <Ticket size={12} />
-            <span className="font-mono font-medium">{item.ticketNumber}</span>
-          </div>
-        </div>
-      )}
-    </motion.div>
+    data &&
+    typeof data === 'object' &&
+    'id' in data &&
+    'title' in data &&
+    'category' in data
   );
-};
+}
 
 export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<string, ItineraryItem[]> }) => {
   const today = new Date().toLocaleDateString('en-US', { 
@@ -77,102 +64,108 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
               </h3>
             </div>
 
-            <div className="space-y-8">
-              {items.map((item) => {
+            {/* Timeline Items with Generous Spacing */}
+            <div className="space-y-12">
+              {items.map((item, index) => {
                 const startTime = formatTime(item.startTime);
-                const endTime = item.endTime ? formatTime(item.endTime) : null;
+                const duration = calculateDuration(item.startTime, item.endTime);
+                const isLastItem = index === items.length - 1;
                 
                 return (
-                  <div key={item.id} className="flex gap-4 pb-8">
-                    {/* Column 1: Time Anchor (Fixed Width, Right-Aligned) */}
-                    <div className="w-[80px] flex-shrink-0 text-right pt-1">
-                      <div className="text-[18px] font-bold text-foreground leading-tight">
-                        {startTime}
+                  <div key={item.id} className="relative">
+                    {/* 3-Column Grid: Chronometer | Journey Line | Experience */}
+                    <div className="flex gap-6">
+                      {/* Column 1: The Chronometer - Fixed 80px, Right-Aligned */}
+                      <div className="w-[80px] flex-shrink-0 text-right pt-0.5">
+                        <div className="text-xl font-bold text-white leading-tight">
+                          {startTime}
+                        </div>
+                        {duration && (
+                          <div className="text-xs text-white/40 mt-1 leading-tight">
+                            {duration}
+                          </div>
+                        )}
                       </div>
-                      {endTime && (
-                        <div className="text-[12px] text-muted-foreground mt-0.5">
-                          {endTime}
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Column 2: Thread (Center) */}
-                    <div className="flex flex-col items-center flex-shrink-0 relative">
-                      {/* Node (aligned with start time) */}
-                      <div className={cn(
-                        "w-3 h-3 rounded-full border-2 border-background z-10 mt-1.5",
-                        item.type === 'LCL_EVENT' 
-                          ? "bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)]" 
-                          : "bg-muted-foreground/30"
-                      )} />
-                      {/* Vertical Line */}
-                      <div className="w-[2px] flex-1 bg-border" />
-                    </div>
+                      {/* Column 2: The Journey Line - Fixed 24px */}
+                      <div className="w-[24px] flex-shrink-0 flex flex-col items-center relative">
+                        {/* Waypoint Icon - Different for LCL vs Google Calendar */}
+                        <div className={cn(
+                          "w-4 h-4 rounded-full border-2 border-background z-10 mt-1.5 flex-shrink-0",
+                          item.type === 'LCL_EVENT' 
+                            ? "bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.6)] ring-2 ring-primary/20" 
+                            : "bg-white/20 border-white/40"
+                        )} />
+                        
+                        {/* Vertical Connecting Line - Break behind the node using z-index */}
+                        {!isLastItem && (
+                          <div className="w-[2px] flex-1 bg-white/10 mt-2 min-h-[60px]" />
+                        )}
+                      </div>
 
-                    {/* Column 3: Content (Flex-Grow) */}
-                    <div className="flex-1 min-w-0">
-                      {/* Location Header (Section Title) */}
-                      {item.location && (
-                        <div className="flex items-center gap-1.5 mb-2 text-[13px] text-muted-foreground">
-                          <MapPin size={13} className="flex-shrink-0" />
-                          <span className="font-medium truncate">{item.location}</span>
-                        </div>
-                      )}
-
-                      {/* Card */}
-                      {item.type === 'LCL_EVENT' ? (
-                        <div className="transform transition-all hover:scale-[1.01]">
-                          <ItineraryEventCard item={item} />
-                        </div>
-                      ) : (
-                        // 💎 Google Calendar Ghost Card (Minimal Layout)
-                        <motion.div 
-                          className="relative rounded-xl border-2 border-dashed border-[#4285F4]/40 bg-[#4285F4]/5 p-4 group hover:border-[#4285F4]/60 hover:bg-[#4285F4]/10 transition-all overflow-hidden"
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          {/* Google Calendar Badge */}
-                          <div className="absolute -top-2.5 left-3 px-2 py-0.5 rounded-full bg-[#4285F4] text-white flex items-center gap-1.5">
-                            <Calendar size={10} className="flex-shrink-0" />
-                            <span className="text-[9px] font-semibold uppercase tracking-wide">
-                              Google Calendar
-                            </span>
+                      {/* Column 3: The Experience - Flexible Width */}
+                      <div className="flex-1 min-w-0 pb-12">
+                        {/* Element A: Location Header (Logistics) */}
+                        {item.location && (
+                          <div className="flex items-center gap-2 text-sm text-white/60 mb-3 font-medium uppercase tracking-wide">
+                            <MapPin size={14} className="flex-shrink-0" />
+                            <span className="truncate">{item.location}</span>
+                            {/* TODO: Add distance calculation when available */}
                           </div>
-                          
-                          {/* Content Container */}
-                          <div className="relative z-10 mt-1">
-                            {/* Title + External Link */}
-                            <div className="flex items-start justify-between gap-3">
-                              <h4 className="text-foreground font-medium text-[16px] leading-snug flex-1 line-clamp-2">
-                                {item.title}
-                              </h4>
-                              <a
-                                href={(item.originalData as { htmlLink?: string })?.htmlLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-shrink-0 p-2 rounded-full bg-[#4285F4]/10 hover:bg-[#4285F4]/20 transition-colors"
-                                onClick={(e) => e.stopPropagation()}
-                                aria-label="Open in Google Calendar"
-                              >
-                                <ExternalLink size={14} className="text-[#4285F4]" />
-                              </a>
+                        )}
+
+                        {/* Element B: The Card (Visual) */}
+                        {item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) ? (
+                          <div className="transform transition-all hover:scale-[1.01]">
+                            <TimelineEventCard
+                              event={item.originalData}
+                              variant="trip-card"
+                              showJoinButton={false}
+                            />
+                          </div>
+                        ) : item.type === 'LCL_EVENT' ? (
+                          /* Fallback for LCL events without valid data */
+                          <div className="text-white/40 text-sm">Event data unavailable</div>
+                        ) : (
+                          /* Phase 3: Google Calendar Ghost Card - Travel Notes Style */
+                          <motion.div 
+                            className="relative rounded-xl bg-white/5 border-2 border-dashed border-white/20 p-4 transition-all hover:bg-white/[0.07] hover:border-white/30"
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {/* Horizontal Flex Layout */}
+                            <div className="flex items-start gap-3">
+                              {/* Left: Icon Box */}
+                              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-[#4285F4]/10 flex items-center justify-center">
+                                <Calendar size={18} className="text-[#4285F4]" />
+                              </div>
+                              
+                              {/* Right: Title + Subtext */}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-medium text-[16px] leading-snug line-clamp-2 mb-1">
+                                  {item.title}
+                                </h4>
+                                <p className="text-white/40 text-[12px] font-medium uppercase tracking-wide">
+                                  Imported from Calendar
+                                </p>
+                              </div>
+                              
+                              {/* External Link */}
+                              {(item.originalData as { htmlLink?: string })?.htmlLink && (
+                                <a
+                                  href={(item.originalData as { htmlLink?: string })?.htmlLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-shrink-0 p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label="Open in Google Calendar"
+                                >
+                                  <ExternalLink size={14} className="text-white/60" />
+                                </a>
+                              )}
                             </div>
-                          </div>
-                          
-                          {/* Subtle diagonal pattern overlay */}
-                          <div 
-                            className="absolute inset-0 rounded-xl pointer-events-none opacity-[0.03]"
-                            style={{
-                              backgroundImage: `repeating-linear-gradient(
-                                45deg,
-                                transparent,
-                                transparent 10px,
-                                currentColor 10px,
-                                currentColor 11px
-                              )`
-                            }}
-                          />
-                        </motion.div>
-                      )}
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
