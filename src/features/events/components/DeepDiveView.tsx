@@ -1,11 +1,12 @@
 import { memo, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Map, Clock, Users, MapPin, Heart, Loader2, Check } from 'lucide-react';
+import { Map, Clock, Users, MapPin, Heart, Loader2, Check, SlidersHorizontal } from 'lucide-react';
 import { LoadingSkeleton } from '@/shared/components';
 import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { getEventImage } from '../hooks/useImageFallback';
 import type { EventWithAttendees } from '../hooks/hooks';
+import { Button } from '@/shared/components/ui/button';
 
 interface DeepDiveViewProps {
   events: EventWithAttendees[];
@@ -14,6 +15,8 @@ interface DeepDiveViewProps {
   isJoining: (eventId: string) => boolean;
   currentUserProfileId?: string;
   loading?: boolean;
+  /** Callback when filter button is clicked */
+  onFilterClick?: () => void;
 }
 
 // Helper to parse date as local
@@ -212,7 +215,8 @@ const MasonryEventCard = memo(function MasonryEventCard({
  * DeepDiveView - Search/filter view with masonry layout
  * 
  * Features:
- * - Sticky filter bar with date pills
+ * - Sticky filter bar with date pills and filter button
+ * - Glass header that hides scrolling content
  * - 2-column masonry grid
  * - Floating map toggle button
  */
@@ -223,6 +227,7 @@ export const DeepDiveView = memo(function DeepDiveView({
   isJoining,
   currentUserProfileId,
   loading,
+  onFilterClick,
 }: DeepDiveViewProps) {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [showMap, setShowMap] = useState(false);
@@ -243,6 +248,11 @@ export const DeepDiveView = memo(function DeepDiveView({
     // Map view implementation would go here
   }, [showMap]);
 
+  const handleFilterClick = useCallback(async () => {
+    await hapticImpact('light');
+    onFilterClick?.();
+  }, [onFilterClick]);
+
   // Split events into two columns for masonry effect
   const columns = useMemo(() => {
     const col1: { event: EventWithAttendees; tall: boolean }[] = [];
@@ -262,12 +272,31 @@ export const DeepDiveView = memo(function DeepDiveView({
 
   return (
     <div className="min-h-screen pb-24">
-      {/* Sticky Filter Bar */}
-      <div className="sticky top-[116px] z-30 bg-background border-b border-border py-3 px-6">
-        <TimeFilterPills
-          activeFilter={timeFilter}
-          onFilterChange={handleTimeFilterChange}
-        />
+      {/* Sticky Header with Glass Background - fixes "ugly scroll" */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-white/10 pb-4 pt-safe">
+        <div className="px-6 pt-4">
+          {/* Filter Row: Pills + Filter Button */}
+          <div className="flex items-center gap-3">
+            {/* Time Filter Pills - takes available space */}
+            <div className="flex-1 min-w-0">
+              <TimeFilterPills
+                activeFilter={timeFilter}
+                onFilterChange={handleTimeFilterChange}
+              />
+            </div>
+            
+            {/* Filter Button */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleFilterClick}
+              className="flex-shrink-0 rounded-full w-11 h-11"
+              aria-label="Open filters"
+            >
+              <SlidersHorizontal size={18} />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Content */}

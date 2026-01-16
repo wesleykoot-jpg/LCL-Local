@@ -1,9 +1,53 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { EventWithAttendees, EventAttendee } from './hooks';
 import { parseEventsWithAttendees } from '@/lib/api/schemas';
 
 const ATTENDEE_LIMIT = 4;
+
+/** Daypart mode based on time of day */
+export type DaypartMode = 'morning' | 'afternoon' | 'evening';
+
+/** Categories suggested for each daypart */
+export const DAYPART_CATEGORIES: Record<DaypartMode, string[]> = {
+  morning: ['cafe', 'park', 'market', 'wellness', 'outdoor'],
+  afternoon: ['museum', 'crafts', 'food', 'family', 'outdoor'],
+  evening: ['music', 'food', 'cinema', 'gaming', 'sports'],
+};
+
+/**
+ * Determines the current "vibe" mode based on the user's local time.
+ * Morning: 5:00 - 11:59
+ * Afternoon: 12:00 - 16:59
+ * Evening: 17:00 - 4:59
+ */
+export function getDaypartMode(date: Date = new Date()): DaypartMode {
+  const currentHour = date.getHours();
+  
+  if (currentHour >= 5 && currentHour < 12) {
+    return 'morning';
+  } else if (currentHour >= 12 && currentHour < 17) {
+    return 'afternoon';
+  } else {
+    return 'evening';
+  }
+}
+
+/**
+ * Gets a friendly greeting based on the daypart mode
+ */
+export function getDaypartGreeting(mode: DaypartMode, userName?: string): string {
+  const name = userName ? `, ${userName}` : '';
+  switch (mode) {
+    case 'morning':
+      return `Good Morning${name}`;
+    case 'afternoon':
+      return `Good Afternoon${name}`;
+    case 'evening':
+      return `Good Evening${name}`;
+  }
+}
 
 interface UseLiveEventsQueryOptions {
   /** Time offset in minutes from now (0 = live, 60 = 1 hour from now, etc.) */
@@ -19,13 +63,39 @@ interface UseLiveEventsQueryOptions {
 }
 
 /**
+ * Calculate distance between two coordinates using Haversine formula
+ * Returns distance in kilometers
+ */
+function calculateDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
  * Fetches live events happening within a time window.
  * 
- * Mode: 'live' - filters events by:
- * - Time range: Now to Now + timeOffsetMinutes
- * - Sort: Distance (proximity is king for spontaneous decisions)
+ * Smart Context (Dayparting):
+ * - Morning (5-12): Prioritizes cafes, parks, markets, wellness
+ * - Afternoon (12-17): Prioritizes museums, crafts, food, family
+ * - Evening (17-5): Prioritizes music, food, cinema, gaming, sports
  * 
- * Designed to be used with debounced timeOffset updates from the TimeDial.
+ * Sorting: Distance-first (proximity is king for spontaneous decisions)
+ * 
+ * Designed to be used with the "Now" page for real-time discovery.
  */
 export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
   const {
@@ -36,6 +106,10 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
     enabled = true,
   } = options;
 
+  // Compute current daypart mode
+  const daypartMode = useMemo(() => getDaypartMode(), []);
+  const suggestedCategories = useMemo(() => DAYPART_CATEGORIES[daypartMode], [daypartMode]);
+
   const queryKey = [
     'events',
     'live',
@@ -44,6 +118,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
       location: userLocation ? `${userLocation.lat},${userLocation.lng}` : 'none',
       radius: radiusKm,
       userId: currentUserProfileId || 'anonymous',
+      daypart: daypartMode,
     },
   ];
 
@@ -58,7 +133,6 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
       const endDateStr = endTime.toISOString().split('T')[0];
       
       // Format times as HH:MM
-      const nowTime = now.toTimeString().slice(0, 5);
       const endTimeStr = endTime.toTimeString().slice(0, 5);
 
       // Fetch blocked user IDs
@@ -73,10 +147,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
       }
 
       // Build query for events happening now or starting soon
-      // Events that:
-      // 1. Are happening today
-      // 2. Start time is between now and now + offset, OR already started (for "Happening Now")
-      const query = supabase
+      const dbQuery = supabase
         .from('events')
         .select(`
           *,
@@ -93,7 +164,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
         .lte('event_date', endDateStr)
         .limit(ATTENDEE_LIMIT, { foreignTable: 'event_attendees' });
 
-      const { data, error } = await query;
+      const { data, error } = await dbQuery;
 
       if (error) throw error;
 
@@ -117,7 +188,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
         return eventDate <= endDateStr;
       });
 
-      // Transform to EventWithAttendees format
+      // Transform to EventWithAttendees format with distance calculation
       const eventsWithData = filteredEvents.map(event => {
         const count = Array.isArray(event.attendee_count)
           ? event.attendee_count[0]?.count || 0
@@ -127,18 +198,46 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
           ? event.attendees as EventAttendee[]
           : [];
 
+        // Calculate distance if user location and event location are available
+        let distanceKm: number | undefined;
+        if (userLocation && event.latitude && event.longitude) {
+          distanceKm = calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            event.latitude,
+            event.longitude
+          );
+        }
+
         return {
           ...event,
           attendee_count: count,
           attendees,
+          distanceKm,
         };
       });
 
-      // Sort by distance if user location is available
-      // For now, we'll keep the default order and let the component handle distance display
-      // In a production app, you'd use PostGIS for distance-based sorting
+      // Sort by distance (proximity is king for "Now" page)
+      // Events without location go to the end
+      eventsWithData.sort((a, b) => {
+        const distA = a.distanceKm ?? Infinity;
+        const distB = b.distanceKm ?? Infinity;
+        return distA - distB;
+      });
 
-      return parseEventsWithAttendees(eventsWithData);
+      // Boost daypart-relevant categories to the top (while maintaining distance order within groups)
+      const daypartCategories = DAYPART_CATEGORIES[daypartMode];
+      const relevantEvents = eventsWithData.filter(
+        e => e.category && daypartCategories.includes(e.category)
+      );
+      const otherEvents = eventsWithData.filter(
+        e => !e.category || !daypartCategories.includes(e.category)
+      );
+
+      // Combine: relevant events first (sorted by distance), then others (sorted by distance)
+      const sortedEvents = [...relevantEvents, ...otherEvents];
+
+      return parseEventsWithAttendees(sortedEvents);
     },
     enabled,
     staleTime: 1000 * 30, // 30 seconds for live events
@@ -153,5 +252,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
     error: query.error,
     isRefetching: query.isRefetching,
     refetch: query.refetch,
+    daypartMode,
+    suggestedCategories,
   };
 }
