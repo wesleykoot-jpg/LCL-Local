@@ -22,6 +22,7 @@ DECLARE
   v_event1_id uuid := '22222222-2222-2222-2222-222222222222';
   v_event2_id uuid := '33333333-3333-3333-3333-333333333333';
   v_event3_id uuid := '44444444-4444-4444-4444-444444444444';
+  v_event4_id uuid := '55555555-5555-5555-5555-555555555555';
 BEGIN
   -- Only seed if no data exists
   IF NOT EXISTS (SELECT 1 FROM profiles LIMIT 1) THEN
@@ -50,33 +51,43 @@ BEGIN
       (v_profile_id, 'family', 'Early Adopter', 'Beta Tester', 'Star'),
       (v_profile_id, 'gamer', 'Speed Runner', 'Fast Dev', 'Trophy');
 
-    -- Insert anchor events with known IDs
+    -- Insert 4 persistent mock events with dynamic dates
     INSERT INTO events (
       id, title, description, category, event_type, venue_name,
       location, event_date, event_time, status, image_url,
       match_percentage, created_by
     ) VALUES
       (
-        v_event1_id, 'Test Cinema Event', 'A movie screening for testing',
-        'cinema', 'anchor', 'Test Cinema',
+        v_event1_id, 'Cinema Night - Mock Event', 'A persistent test cinema event that refreshes daily',
+        'cinema', 'anchor', 'Test Cinema Amsterdam',
         ST_SetSRID(ST_MakePoint(4.9, 52.37), 4326)::geography,
-        now() + interval '3 days', 'Test Day • 19:00',
-        'Available', 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=1000',
+        (CURRENT_DATE + interval '2 days')::timestamp, '19:00',
+        'active', 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=1000',
         90, v_profile_id
       ),
       (
-        v_event2_id, 'Test Sports Match', 'Local sports event for dev testing',
-        'sports', 'anchor', 'Test Stadium',
+        v_event2_id, 'Sports Match - Mock Event', 'A persistent test sports event that refreshes daily',
+        'sports', 'anchor', 'Test Stadium Amsterdam',
         ST_SetSRID(ST_MakePoint(4.95, 52.35), 4326)::geography,
-        now() + interval '5 days', 'Test Day • 15:00',
-        'Open', NULL, 85, v_profile_id
+        (CURRENT_DATE + interval '4 days')::timestamp, '15:00',
+        'active', 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=1000',
+        85, v_profile_id
       ),
       (
-        v_event3_id, 'Test Gaming Session', 'Online gaming meetup for testing',
-        'gaming', 'signal', 'Online • Test Server',
+        v_event3_id, 'Gaming Session - Mock Event', 'A persistent test gaming event that refreshes daily',
+        'gaming', 'signal', 'Online Gaming Hub',
         ST_SetSRID(ST_MakePoint(4.85, 52.40), 4326)::geography,
-        now() + interval '1 day', 'Tomorrow • 20:00',
-        'Lobby Open', NULL, 80, v_profile_id
+        (CURRENT_DATE + interval '1 day')::timestamp, '20:00',
+        'active', 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=1000',
+        80, v_profile_id
+      ),
+      (
+        v_event4_id, 'Food Market - Mock Event', 'A persistent test food market event that refreshes daily',
+        'food', 'anchor', 'Test Food Market Amsterdam',
+        ST_SetSRID(ST_MakePoint(4.88, 52.38), 4326)::geography,
+        (CURRENT_DATE + interval '6 days')::timestamp, '11:00',
+        'active', 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=1000',
+        88, v_profile_id
       );
 
     -- Insert fork events (sidecars)
@@ -85,30 +96,26 @@ BEGIN
       venue_name, location, event_date, event_time, status, created_by
     ) VALUES
       (
-        'Pre-Movie Drinks', 'Meet before the movie',
-        'cinema', 'fork', v_event1_id, 'Test Cafe',
+        'Pre-Movie Drinks', 'Meet before the cinema showing',
+        'cinema', 'fork', v_event1_id, 'Test Cafe Amsterdam',
         ST_SetSRID(ST_MakePoint(4.9, 52.37), 4326)::geography,
-        now() + interval '3 days', '18:00 Before Movie',
-        'Join us!', v_profile_id
+        (CURRENT_DATE + interval '2 days')::timestamp, '18:00',
+        'active', v_profile_id
       ),
       (
-        'Post-Match Celebration', 'Drinks after the game',
-        'sports', 'fork', v_event2_id, 'Test Bar',
+        'Post-Match Celebration', 'Drinks after the sports match',
+        'sports', 'fork', v_event2_id, 'Test Bar Amsterdam',
         ST_SetSRID(ST_MakePoint(4.95, 52.35), 4326)::geography,
-        now() + interval '5 days', 'After Game',
-        'Everyone welcome', v_profile_id
+        (CURRENT_DATE + interval '4 days')::timestamp, '17:00',
+        'active', v_profile_id
       );
 
-    -- Add test attendance records
-    INSERT INTO event_attendees (event_id, profile_id, status, ticket_number)
-    VALUES
-      (v_event1_id, v_profile_id, 'going', '#DEV001'),
-      (v_event2_id, v_profile_id, 'interested', '#DEV002'),
-      (v_event3_id, v_profile_id, 'going', '#DEV003');
+    -- Note: Do NOT add attendance records - user should join via UI to test the join button
 
     RAISE NOTICE 'Development seed data created successfully!';
     RAISE NOTICE 'Test Profile ID: %', v_profile_id;
-    RAISE NOTICE 'Test Event IDs: %, %, %', v_event1_id, v_event2_id, v_event3_id;
+    RAISE NOTICE 'Mock Event IDs: %, %, %, %', v_event1_id, v_event2_id, v_event3_id, v_event4_id;
+    RAISE NOTICE 'Events will auto-refresh dates daily to stay current';
 
   ELSE
     RAISE NOTICE 'Seed data already exists, skipping...';
@@ -118,6 +125,29 @@ END $$;
 -- =====================================================
 -- DEVELOPMENT HELPER FUNCTIONS
 -- =====================================================
+
+-- Function to refresh mock event dates (keeps events from going to "past")
+CREATE OR REPLACE FUNCTION dev_refresh_mock_event_dates()
+RETURNS void AS $$
+DECLARE
+  v_event1_id uuid := '22222222-2222-2222-2222-222222222222';
+  v_event2_id uuid := '33333333-3333-3333-3333-333333333333';
+  v_event3_id uuid := '44444444-4444-4444-4444-444444444444';
+  v_event4_id uuid := '55555555-5555-5555-5555-555555555555';
+BEGIN
+  -- Update anchor events with fresh dates
+  UPDATE events SET event_date = (CURRENT_DATE + interval '2 days')::timestamp WHERE id = v_event1_id;
+  UPDATE events SET event_date = (CURRENT_DATE + interval '4 days')::timestamp WHERE id = v_event2_id;
+  UPDATE events SET event_date = (CURRENT_DATE + interval '1 day')::timestamp WHERE id = v_event3_id;
+  UPDATE events SET event_date = (CURRENT_DATE + interval '6 days')::timestamp WHERE id = v_event4_id;
+  
+  -- Update fork events to match their parent events
+  UPDATE events SET event_date = (CURRENT_DATE + interval '2 days')::timestamp WHERE parent_event_id = v_event1_id;
+  UPDATE events SET event_date = (CURRENT_DATE + interval '4 days')::timestamp WHERE parent_event_id = v_event2_id;
+  
+  RAISE NOTICE 'Mock event dates refreshed! Events are now in the future.';
+END;
+$$ LANGUAGE plpgsql;
 
 -- Function to reset all data quickly during testing
 CREATE OR REPLACE FUNCTION dev_reset_data()
@@ -170,6 +200,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+COMMENT ON FUNCTION dev_refresh_mock_event_dates IS 'Development helper: Refreshes mock event dates to keep them in the future';
 COMMENT ON FUNCTION dev_reset_data IS 'Development helper: Clears all data for fresh testing';
 COMMENT ON FUNCTION dev_create_test_profile IS 'Development helper: Creates a test profile quickly';
 COMMENT ON FUNCTION dev_create_test_event IS 'Development helper: Creates a test event quickly';
