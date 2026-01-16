@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, Fragment, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Calendar, Clock } from 'lucide-react';
+import { Sparkles, Calendar, Clock, Wand2, X } from 'lucide-react';
 import { EventStackCard } from './EventStackCard';
 import { CategorySubscribeCard } from './CategorySubscribeCard';
 import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
@@ -8,6 +8,8 @@ import { groupEventsIntoStacks, type EventStack } from '@/lib/feedGrouping';
 import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 import { getCategoryConfig } from '@/lib/categories';
 import { useJoinEvent } from '@/features/events/hooks/hooks';
+import { usePersonaAI } from '@/hooks/usePersonaAI';
+import { hapticImpact } from '@/shared/lib/haptics';
 import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 
 // Vibe header configuration
@@ -207,6 +209,80 @@ const VibeHeaderSection = memo(function VibeHeaderSection({ vibe }: { vibe: Vibe
   );
 });
 
+// IO26: Persona Suggestion Banner - Luminous Glass style
+interface PersonaSuggestionBannerProps {
+  suggestedPersonaInfo: {
+    label: string;
+    emoji: string;
+    description: string;
+  };
+  reason: string;
+  onAccept: () => void;
+  onDismiss: () => void;
+}
+
+const PersonaSuggestionBanner = memo(function PersonaSuggestionBanner({
+  suggestedPersonaInfo,
+  reason,
+  onAccept,
+  onDismiss,
+}: PersonaSuggestionBannerProps) {
+  const handleAccept = useCallback(async () => {
+    await hapticImpact('medium');
+    onAccept();
+  }, [onAccept]);
+
+  const handleDismiss = useCallback(() => {
+    onDismiss();
+  }, [onDismiss]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+      transition={{
+        type: 'spring',
+        stiffness: 300,
+        damping: 30,
+      }}
+      className="luminous-glass-banner p-4 mb-4"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <Wand2 size={20} className="text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">{suggestedPersonaInfo.emoji}</span>
+            <span className="font-semibold text-foreground">
+              Switch to {suggestedPersonaInfo.label}?
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            {reason}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAccept}
+              className="min-touch flex-1 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-sm transition-all hover:bg-primary/90 active:scale-95"
+            >
+              Switch
+            </button>
+            <button
+              onClick={handleDismiss}
+              className="min-touch p-2 rounded-xl text-muted-foreground hover:bg-muted transition-all"
+              aria-label="Dismiss suggestion"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 export const EventFeed = memo(function EventFeed({
   events,
   onEventClick,
@@ -217,6 +293,15 @@ export const EventFeed = memo(function EventFeed({
   userLocation,
 }: EventFeedProps) {
   const [activeFilter, setActiveFilter] = useState<TimeFilter>('all');
+
+  // IO26: Persona AI integration
+  const {
+    prediction,
+    shouldSuggest,
+    suggestedPersonaInfo,
+    acceptSuggestion,
+    dismissSuggestion,
+  } = usePersonaAI();
 
   // Use real Supabase join event hook
   const { handleJoinEvent, isJoining } = useJoinEvent(profileId, onEventsChange);
@@ -293,6 +378,18 @@ export const EventFeed = memo(function EventFeed({
           onFilterChange={setActiveFilter}
         />
       </div>
+
+      {/* IO26: Persona Suggestion Banner */}
+      <AnimatePresence>
+        {shouldSuggest && suggestedPersonaInfo && prediction && (
+          <PersonaSuggestionBanner
+            suggestedPersonaInfo={suggestedPersonaInfo}
+            reason={prediction.reason}
+            onAccept={acceptSuggestion}
+            onDismiss={dismissSuggestion}
+          />
+        )}
+      </AnimatePresence>
 
       <motion.div 
         className="max-w-md mx-auto w-full flex flex-col gap-5 overflow-hidden"
