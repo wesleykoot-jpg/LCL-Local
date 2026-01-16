@@ -2,11 +2,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
-import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
+import type { ScrapeJobPayload, ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
-import { logError, logWarning, logInfo, logSupabaseError, logFetchError } from "../_shared/errorLogging.ts";
+import { logError, logWarning, logSupabaseError } from "../_shared/errorLogging.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +15,14 @@ const corsHeaders = {
 
 const TARGET_YEAR = 2026;
 const DEFAULT_EVENT_TYPE = "anchor";
+const BATCH_SIZE = 5;
+
+class ProxyRetryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProxyRetryError";
+  }
+}
 
 // ============ Helper Functions (copied from scrape-events for isolation) ============
 
@@ -69,6 +77,12 @@ function mapToInternalCategory(input?: string): InternalCategory {
   return "community";
 }
 
+function getProxyApiKey(): string | undefined {
+  return Deno.env.get("SCRAPER_PROXY_API_KEY") ||
+    Deno.env.get("PROXY_PROVIDER_API_KEY") ||
+    Deno.env.get("SCRAPINGBEE_API_KEY");
+}
+
 function isTargetYear(isoDate: string | null): boolean {
   return !!isoDate && isoDate.startsWith(`${TARGET_YEAR}-`);
 }
@@ -80,6 +94,10 @@ async function sha256Hex(input: string): Promise<string> {
 
 async function createEventFingerprint(title: string, eventDate: string, sourceId: string): Promise<string> {
   return sha256Hex(`${title}|${eventDate}|${sourceId}`);
+}
+
+async function createContentHash(title: string, eventDate: string): Promise<string> {
+  return sha256Hex(`${title}|${eventDate}`);
 }
 
 function extractTimeFromHtml(html: string): string | null {
@@ -287,6 +305,19 @@ ${rawEvent.rawHtml}`;
   };
 }
 
+async function contentHashExists(supabase: SupabaseClient, contentHash: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id")
+    .eq("content_hash", contentHash)
+    .limit(1);
+  if (error) {
+    console.warn("Content hash lookup failed", error.message);
+    return false;
+  }
+  return (data && data.length > 0) || false;
+}
+
 async function fingerprintExists(supabase: SupabaseClient, sourceId: string, fingerprint: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("events")
@@ -317,12 +348,19 @@ async function insertEvent(supabase: SupabaseClient, event: Record<string, unkno
   return true;
 }
 
-async function updateSourceStats(supabase: SupabaseClient, sourceId: string, scraped: number, success: boolean) {
+async function updateSourceStats(
+  supabase: SupabaseClient,
+  sourceId: string,
+  scraped: number,
+  success: boolean,
+  lastError?: string
+) {
   try {
     await supabase.rpc("update_scraper_source_stats", {
       p_source_id: sourceId,
       p_events_scraped: scraped,
       p_success: success,
+      p_last_error: lastError ?? null,
     });
   } catch (error) {
     console.warn("update_scraper_source_stats failed", error);
@@ -374,69 +412,28 @@ async function checkAndHealFetcher(
 
 // ============ Worker Logic ============
 
-interface JobRecord {
+interface ScrapeJobRecord {
   id: string;
   source_id: string;
+  payload: ScrapeJobPayload | null;
   attempts: number;
   max_attempts: number;
 }
 
-async function claimNextJob(
+async function claimScrapeJobs(
   supabase: SupabaseClient,
-  retryCount = 0
-): Promise<JobRecord | null> {
-  // Prevent infinite recursion - max 3 retries
-  if (retryCount >= 3) {
-    console.warn("Max retry attempts reached for job claiming, giving up");
-    return null;
+  batchSize: number
+): Promise<ScrapeJobRecord[]> {
+  const { data, error } = await supabase.rpc("claim_scrape_jobs", {
+    p_batch_size: batchSize,
+  });
+
+  if (error) {
+    console.error("Failed to claim jobs:", error.message);
+    return [];
   }
 
-  // First, find the next pending job
-  const { data: pendingJobs, error: selectError } = await supabase
-    .from("scrape_jobs")
-    .select("id, source_id, attempts, max_attempts")
-    .eq("status", "pending")
-    .order("priority", { ascending: false })
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if (selectError) {
-    console.error("Failed to find pending job:", selectError.message);
-    return null;
-  }
-
-  if (!pendingJobs || pendingJobs.length === 0) {
-    return null;
-  }
-
-  const job = pendingJobs[0] as JobRecord;
-
-  // Try to claim it by updating status (could race with other workers)
-  const { data: claimedJobs, error: updateError } = await supabase
-    .from("scrape_jobs")
-    .update({
-      status: "processing",
-      started_at: new Date().toISOString(),
-      attempts: job.attempts + 1,
-    })
-    .eq("id", job.id)
-    .eq("status", "pending") // Only claim if still pending (optimistic lock)
-    .select("id, source_id, attempts, max_attempts");
-
-  if (updateError) {
-    console.error("Failed to claim job:", updateError.message);
-    return null;
-  }
-
-  if (!claimedJobs || claimedJobs.length === 0) {
-    // Job was claimed by another worker, try again with exponential backoff
-    console.log(`Job claimed by another worker (retry ${retryCount + 1}/3), backing off...`);
-    const backoffMs = Math.pow(2, retryCount) * 100; // 100ms, 200ms, 400ms exponential backoff
-    await new Promise(resolve => setTimeout(resolve, backoffMs));
-    return claimNextJob(supabase, retryCount + 1);
-  }
-
-  return claimedJobs[0] as JobRecord;
+  return (data ?? []) as ScrapeJobRecord[];
 }
 
 async function completeJob(
@@ -456,16 +453,21 @@ async function completeJob(
     .eq("id", jobId);
 }
 
-async function failJob(supabase: SupabaseClient, job: JobRecord, errorMessage: string) {
-  const shouldRetry = job.attempts < job.max_attempts;
+async function failJob(
+  supabase: SupabaseClient,
+  jobId: string,
+  payload: ScrapeJobPayload,
+  errorMessage: string
+) {
   await supabase
     .from("scrape_jobs")
     .update({
-      status: shouldRetry ? "pending" : "failed",
+      status: "failed",
       error_message: errorMessage,
-      completed_at: shouldRetry ? null : new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      payload,
     })
-    .eq("id", job.id);
+    .eq("id", jobId);
 }
 
 async function processSingleSource(
@@ -479,6 +481,7 @@ async function processSingleSource(
   const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
   const fetcher = createSpoofedFetch({ headers: source.config.headers });
   const rateLimit = source.config.rate_limit_ms ?? 200;
+  const proxyApiKey = getProxyApiKey();
 
   // Discover and fetch listing
   const candidates = await strategy.discoverListingUrls(fetcher);
@@ -487,6 +490,13 @@ async function processSingleSource(
 
   for (const candidate of candidates) {
     const resp = await strategy.fetchListing(candidate, fetcher);
+    if (resp.status === 403 || resp.status === 429) {
+      const message = `Source ${source.name} returned ${resp.status} for ${candidate}`;
+      console.warn(message);
+      if (proxyApiKey) {
+        throw new ProxyRetryError(message);
+      }
+    }
     if (resp.status === 404 || !resp.html) continue;
     listingHtml = resp.html;
     listingUrl = resp.finalUrl || candidate;
@@ -525,6 +535,13 @@ async function processSingleSource(
       continue;
     }
 
+    const contentHash = await createContentHash(normalized.title, normalized.event_date);
+    const contentExists = await contentHashExists(supabase, contentHash);
+    if (contentExists) {
+      stats.duplicates++;
+      continue;
+    }
+
     const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, source.id);
     const exists = await fingerprintExists(supabase, source.id, fingerprint);
     if (exists) {
@@ -558,6 +575,7 @@ async function processSingleSource(
       status: "published",
       source_id: source.id,
       event_fingerprint: fingerprint,
+      content_hash: contentHash,
     };
 
     const inserted = await insertEvent(supabase, eventInsert, source.id);
@@ -573,15 +591,107 @@ async function processSingleSource(
   return stats;
 }
 
+async function processJob(
+  supabase: SupabaseClient,
+  job: ScrapeJobRecord,
+  geminiApiKey: string | undefined,
+  enableDeepScraping: boolean
+): Promise<{
+  jobId: string;
+  sourceId: string;
+  status: "completed" | "failed";
+  stats?: { scraped: number; inserted: number; duplicates: number; failed: number };
+  error?: string;
+}> {
+  const payload: ScrapeJobPayload = {
+    sourceId: job.payload?.sourceId ?? job.source_id,
+    scheduledAt: job.payload?.scheduledAt ?? new Date().toISOString(),
+    proxyRetry: job.payload?.proxyRetry,
+  };
+
+  const { data: sourceData, error: sourceError } = await supabase
+    .from("scraper_sources")
+    .select("*")
+    .eq("id", job.source_id)
+    .single();
+
+  if (sourceError || !sourceData) {
+    const errorMessage = `Source not found: ${sourceError?.message || "Unknown"}`;
+    await failJob(supabase, job.id, payload, errorMessage);
+    await updateSourceStats(supabase, job.source_id, 0, false, errorMessage);
+    return { jobId: job.id, sourceId: job.source_id, status: "failed", error: errorMessage };
+  }
+
+  const source = sourceData as ScraperSource;
+
+  try {
+    const stats = await processSingleSource(supabase, source, geminiApiKey, enableDeepScraping);
+
+    await updateSourceStats(supabase, source.id, stats.scraped, stats.scraped > 0);
+
+    if (stats.scraped === 0) {
+      await checkAndHealFetcher(supabase, source.id, stats.scraped, 200);
+    }
+
+    await completeJob(supabase, job.id, stats.scraped, stats.inserted);
+
+    const defaultCoords = source.default_coordinates || source.config?.default_coordinates;
+    const coordsInfo = defaultCoords
+      ? `📍 ${defaultCoords.lat.toFixed(4)}, ${defaultCoords.lng.toFixed(4)}`
+      : "📍 No coordinates";
+
+    const message = `✅ Job ${job.id} completed\n` +
+      `Source: ${source.name}\n` +
+      `Scraped: ${stats.scraped} | Inserted: ${stats.inserted} | Duplicates: ${stats.duplicates}\n` +
+      `${coordsInfo}`;
+    await sendSlackNotification(message, false);
+
+    return { jobId: job.id, sourceId: source.id, status: "completed", stats };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const proxyRetry = error instanceof ProxyRetryError;
+    if (proxyRetry) {
+      payload.proxyRetry = true;
+    }
+
+    await logError({
+      level: 'error',
+      source: 'scrape-worker',
+      function_name: 'processSingleSource',
+      message: `Job ${job.id} failed for source "${source.name}": ${errorMessage}`,
+      error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
+      stack_trace: error instanceof Error ? error.stack : undefined,
+      context: {
+        job_id: job.id,
+        source_id: source.id,
+        source_name: source.name,
+        source_url: source.url,
+        attempts: job.attempts,
+        proxy_retry: proxyRetry,
+      },
+    });
+
+    await failJob(supabase, job.id, payload, errorMessage);
+    await updateSourceStats(supabase, source.id, 0, false, errorMessage);
+
+    const message = `❌ Job ${job.id} failed\n` +
+      `Source: ${source.name}\n` +
+      `Error: ${errorMessage}\n` +
+      `Proxy retry: ${proxyRetry ? "queued" : "no"}`;
+    await sendSlackNotification(message, true);
+
+    return { jobId: job.id, sourceId: source.id, status: "failed", error: errorMessage };
+  }
+}
+
 /**
  * Scrape Worker
  *
- * Processes ONE source per invocation, giving each source its own 2-second CPU budget.
- * Can optionally chain to the next job after completion.
+ * Processes a batch of sources per invocation using concurrent execution.
  *
  * Usage:
  * POST /functions/v1/scrape-worker
- * Body (optional): { "chain": true, "enableDeepScraping": true }
+ * Body (optional): { "enableDeepScraping": true }
  */
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -600,7 +710,7 @@ serve(async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse options
-    let options: { chain?: boolean; enableDeepScraping?: boolean } = {};
+    let options: { enableDeepScraping?: boolean } = {};
     if (req.method === "POST") {
       try {
         const body = await req.text();
@@ -610,12 +720,11 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    const { chain = false, enableDeepScraping = true } = options;
+    const { enableDeepScraping = true } = options;
 
-    // Claim the next pending job
-    const job = await claimNextJob(supabase);
+    const jobs = await claimScrapeJobs(supabase, BATCH_SIZE);
 
-    if (!job) {
+    if (jobs.length === 0) {
       console.log("Worker: No pending jobs to process");
       return new Response(
         JSON.stringify({ success: true, message: "No pending jobs", processed: false }),
@@ -623,145 +732,59 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Worker: Processing job ${job.id} for source ${job.source_id} (attempt ${job.attempts})`);
+    console.log(`Worker: Processing ${jobs.length} jobs`);
 
-    // Get the source details
-    const { data: sourceData, error: sourceError } = await supabase
-      .from("scraper_sources")
-      .select("*")
-      .eq("id", job.source_id)
-      .single();
+    const results = await Promise.allSettled(
+      jobs.map((job) => processJob(supabase, job, geminiApiKey, enableDeepScraping))
+    );
 
-    if (sourceError || !sourceData) {
-      await failJob(supabase, job, `Source not found: ${sourceError?.message || "Unknown"}`);
-      throw new Error(`Source not found: ${job.source_id}`);
-    }
-
-    const source = sourceData as ScraperSource;
-
-    try {
-      // Process the single source
-      const stats = await processSingleSource(supabase, source, geminiApiKey, enableDeepScraping);
-
-      // Update source stats
-      await updateSourceStats(supabase, source.id, stats.scraped, stats.scraped > 0);
-
-      // Self-healing: Check if fetcher_type needs to be upgraded
-      // Only if we got valid response but 0 events
-      if (stats.scraped === 0) {
-        await checkAndHealFetcher(supabase, source.id, stats.scraped, 200);
-      }
-
-      // Mark job as completed
-      await completeJob(supabase, job.id, stats.scraped, stats.inserted);
-
-      // Get coordinates for logging
-      const defaultCoords = source.default_coordinates || source.config?.default_coordinates;
-      const coordsLog = defaultCoords 
-        ? `Coordinates: ${defaultCoords.lat.toFixed(4)}, ${defaultCoords.lng.toFixed(4)}`
-        : "Coordinates: Not configured";
-
-      console.log(`Worker: Completed job ${job.id} - scraped: ${stats.scraped}, inserted: ${stats.inserted}, duplicates: ${stats.duplicates} | ${coordsLog}`);
-
-      // Send Slack notification for job completion
-      const coordsInfo = defaultCoords 
-        ? `📍 ${defaultCoords.lat.toFixed(4)}, ${defaultCoords.lng.toFixed(4)}`
-        : "📍 No coordinates";
-      
-      const message = `✅ Job ${job.id} completed\n` +
-        `Source: ${source.name}\n` +
-        `Scraped: ${stats.scraped} | Inserted: ${stats.inserted} | Duplicates: ${stats.duplicates}\n` +
-        `${coordsInfo}`;
-      await sendSlackNotification(message, false);
-
-      // Chain to the next job if requested
-      if (chain) {
-        // Check if there are more pending jobs
-        const { count } = await supabase
-          .from("scrape_jobs")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending");
-
-        if (count && count > 0) {
-          console.log(`Worker: Chaining to next job (${count} remaining)`);
-          // Fire and forget - trigger next worker
-          fetch(`${supabaseUrl}/functions/v1/scrape-worker`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${supabaseKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ chain: true, enableDeepScraping }),
-          }).catch((e) => console.warn("Chain trigger failed:", e));
+    const summary = results.reduce(
+      (acc, result) => {
+        if (result.status === "fulfilled") {
+          acc.processed += 1;
+          if (result.value.status === "completed") {
+            acc.completed += 1;
+          } else {
+            acc.failed += 1;
+          }
+          acc.results.push(result.value);
+        } else {
+          acc.processed += 1;
+          acc.failed += 1;
+          acc.results.push({
+            jobId: "unknown",
+            sourceId: "unknown",
+            status: "failed",
+            error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+          });
         }
+        return acc;
+      },
+      {
+        processed: 0,
+        completed: 0,
+        failed: 0,
+        results: [] as Array<{
+          jobId: string;
+          sourceId: string;
+          status: "completed" | "failed";
+          stats?: { scraped: number; inserted: number; duplicates: number; failed: number };
+          error?: string;
+        }>,
       }
+    );
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          processed: true,
-          jobId: job.id,
-          source: source.name,
-          stats,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error(`Worker: Job ${job.id} failed -`, errorMessage);
-
-      // Log to centralized error_logs table
-      await logError({
-        level: 'error',
-        source: 'scrape-worker',
-        function_name: 'processSingleSource',
-        message: `Job ${job.id} failed for source "${source.name}": ${errorMessage}`,
-        error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
-        stack_trace: error instanceof Error ? error.stack : undefined,
-        context: {
-          job_id: job.id,
-          source_id: source.id,
-          source_name: source.name,
-          source_url: source.url,
-          attempts: job.attempts,
-          will_retry: job.attempts < job.max_attempts,
-        },
-      });
-
-      await failJob(supabase, job, errorMessage);
-      await updateSourceStats(supabase, source.id, 0, false);
-
-      // Send Slack notification for job failure
-      const message = `❌ Job ${job.id} failed\n` +
-        `Source: ${source.name}\n` +
-        `Error: ${errorMessage}\n` +
-        `Will retry: ${job.attempts < job.max_attempts}`;
-      await sendSlackNotification(message, true);
-
-      // Still chain to next job on failure
-      if (chain) {
-        fetch(`${supabaseUrl}/functions/v1/scrape-worker`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ chain: true, enableDeepScraping }),
-        }).catch((e) => console.warn("Chain trigger failed:", e));
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: false,
-          processed: true,
-          jobId: job.id,
-          source: source.name,
-          error: errorMessage,
-          willRetry: job.attempts < job.max_attempts,
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const allJobsSucceeded = summary.failed === 0;
+    return new Response(
+      JSON.stringify({
+        success: allJobsSucceeded,
+        allJobsSucceeded,
+        processed: true,
+        batchSize: jobs.length,
+        summary,
+      }),
+      { status: allJobsSucceeded ? 200 : 207, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
     console.error("Worker error:", error);
     // Log top-level errors

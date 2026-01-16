@@ -103,10 +103,14 @@ export interface ScraperSource {
   fetcher_type?: FetcherType;
   auto_disabled?: boolean;
   consecutive_failures?: number;
+  consecutive_errors?: number;
   last_probe_urls?: Record<string, unknown>;
   language?: string;
   country?: string;
   default_coordinates?: { lat: number; lng: number };
+  volatility_score?: number;
+  last_scraped_at?: string | null;
+  next_scrape_at?: string | null;
   config: {
     selectors?: string[];
     headers?: Record<string, string>;
@@ -165,6 +169,16 @@ export interface PipelineJob {
   created_at: string;
   started_at?: string;
   completed_at?: string;
+}
+
+// ============================================================================
+// SCRAPE JOB PAYLOAD TYPES
+// ============================================================================
+
+export interface ScrapeJobPayload {
+  sourceId: string;
+  scheduledAt: string;
+  proxyRetry?: boolean;
 }
 
 // ============================================================================
