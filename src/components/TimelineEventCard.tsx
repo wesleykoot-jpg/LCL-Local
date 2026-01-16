@@ -81,7 +81,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
 
         {/* IO26: Edge-to-edge 16:9 imagery (Airbnb-style) */}
         {event.image_url && (
-          <div className="relative w-full aspect-video -mt-0 mb-3 overflow-hidden rounded-t-[26px]">
+          <div className="relative w-full aspect-video -mt-0 mb-3 overflow-hidden rounded-t-[28px]">
             <img 
               src={event.image_url} 
               alt={event.title}

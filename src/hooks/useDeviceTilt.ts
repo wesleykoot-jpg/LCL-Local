@@ -141,13 +141,14 @@ export function useDeviceTilt(options: UseDeviceTiltOptions = {}): DeviceTiltSta
    */
   const requestPermission = useCallback(async (): Promise<boolean> => {
     // Check if DeviceOrientationEvent.requestPermission exists (iOS 13+)
-    const DeviceOrientationEventClass = DeviceOrientationEvent as unknown as {
-      requestPermission?: () => Promise<'granted' | 'denied'>;
-    };
-
-    if (typeof DeviceOrientationEventClass.requestPermission === 'function') {
+    // This is a Safari-specific API that doesn't exist in the standard TypeScript DOM types
+    if (
+      typeof DeviceOrientationEvent !== 'undefined' &&
+      'requestPermission' in DeviceOrientationEvent &&
+      typeof (DeviceOrientationEvent as { requestPermission?: () => Promise<string> }).requestPermission === 'function'
+    ) {
       try {
-        const permission = await DeviceOrientationEventClass.requestPermission();
+        const permission = await (DeviceOrientationEvent as { requestPermission: () => Promise<string> }).requestPermission();
         return permission === 'granted';
       } catch (error) {
         console.warn('[useDeviceTilt] Permission request failed:', error);

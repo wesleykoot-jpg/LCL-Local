@@ -19,7 +19,12 @@ import {
 // Prediction interval (check every 5 minutes)
 const PREDICTION_INTERVAL_MS = 5 * 60 * 1000;
 
-// Map FeedMode to PersonaType
+/**
+ * Map FeedMode to PersonaType
+ * 
+ * FeedMode is the app's feed filter state, while PersonaType is the AI prediction.
+ * 'default' mode doesn't correspond to a specific persona - it's the neutral state.
+ */
 function feedModeToPersona(mode: FeedMode): PersonaType | null {
   const mapping: Record<FeedMode, PersonaType | null> = {
     family: 'family',
@@ -29,10 +34,19 @@ function feedModeToPersona(mode: FeedMode): PersonaType | null {
   return mapping[mode];
 }
 
-// Map PersonaType to FeedMode
+/**
+ * Map PersonaType to FeedMode
+ * 
+ * Core business logic decision:
+ * - 'professional' persona maps to 'default' feed mode because:
+ *   1. Business events are shown in the default feed alongside other events
+ *   2. Professional networking events are not siloed into their own category
+ *   3. The 'default' mode represents a general-purpose feed suitable for work contexts
+ * - 'family' and 'social' have direct 1:1 mappings to their feed modes
+ */
 function personaToFeedMode(persona: PersonaType): FeedMode {
   const mapping: Record<PersonaType, FeedMode> = {
-    professional: 'default', // Professional uses default feed with business events highlighted
+    professional: 'default',
     family: 'family',
     social: 'social',
   };

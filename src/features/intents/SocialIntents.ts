@@ -244,10 +244,12 @@ export function getSiriShortcutsConfig(): {
 } {
   return {
     shortcuts: AllIntents
-      .filter(intent => intent.suggestedInvocationPhrase)
+      .filter((intent): intent is AppIntentMetadata & { suggestedInvocationPhrase: string } => 
+        typeof intent.suggestedInvocationPhrase === 'string'
+      )
       .map(intent => ({
         identifier: intent.identifier,
-        phrase: intent.suggestedInvocationPhrase!,
+        phrase: intent.suggestedInvocationPhrase,
         title: intent.title,
       })),
   };
