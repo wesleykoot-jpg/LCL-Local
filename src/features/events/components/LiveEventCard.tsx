@@ -1,28 +1,27 @@
 import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Users, ExternalLink, Share2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import type { EventWithAttendees } from '@/features/events/hooks/hooks';
 import { hapticImpact } from '@/shared/lib/haptics';
+import { getEventImage } from '../hooks/useImageFallback';
 
 interface LiveEventCardProps {
-  event: EventWithAttendees;
-  /** Calculated walking distance in minutes */
-  walkingMinutes?: number;
-  /** Callback when "Go" button is pressed (opens map) */
-  onGo?: (event: EventWithAttendees) => void;
-  /** Callback when "Summon" button is pressed (share location) */
-  onSummon?: (event: EventWithAttendees) => void;
+  event: EventWithAttendees & { distanceKm?: number };
+  /** Callback when the card or navigation arrow is pressed */
+  onClick?: (event: EventWithAttendees) => void;
 }
 
+type EventStatus = 'open' | 'closing_soon' | 'upcoming';
+
 /**
- * Check if event is currently happening
+ * Get the status of an event (Open Now, Closing Soon, or Upcoming)
  */
-function isHappeningNow(event: EventWithAttendees): boolean {
+function getEventStatus(event: EventWithAttendees): EventStatus {
   const now = new Date();
   const today = now.toISOString().split('T')[0];
   const eventDate = event.event_date?.split('T')[0];
   
-  if (eventDate !== today) return false;
+  if (eventDate !== today) return 'upcoming';
   
   const eventTime = event.event_time || '00:00';
   const [hours, minutes] = eventTime.split(':').map(Number);
@@ -31,148 +30,111 @@ function isHappeningNow(event: EventWithAttendees): boolean {
   
   // Event is happening if it started within the last 3 hours
   const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
   
-  return eventStart <= now && eventStart >= threeHoursAgo;
-}
-
-/**
- * Format time for display
- */
-function formatTime(timeStr: string | null): string {
-  if (!timeStr) return '';
+  // If event started more than 2 hours ago, it's "closing soon"
+  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   
-  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  if (eventStart <= now && eventStart >= twoHoursAgo) {
+    return 'open';
+  } else if (eventStart <= twoHoursAgo && eventStart >= threeHoursAgo) {
+    return 'closing_soon';
+  } else if (eventStart > now && eventStart <= new Date(now.getTime() + 60 * 60 * 1000)) {
+    // Starting within the next hour
+    return 'upcoming';
+  } else if (eventStart <= oneHourAgo && eventStart >= threeHoursAgo) {
+    return 'open';
   }
   
-  return timeStr;
+  return 'upcoming';
 }
 
 /**
- * LiveEventCard - Night Mode Event Card
+ * Format distance for display
+ */
+function formatDistance(distanceKm?: number): string {
+  if (distanceKm === undefined) return '';
+  if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)}m`;
+  }
+  return `${distanceKm.toFixed(1)}km`;
+}
+
+/**
+ * LiveEventCard - Compact Row Card for Now Page
  * 
- * Exclusive UI for the "Now" page with dark glass aesthetic.
- * - Background: Dark Glass (bg-white/10) with backdrop blur
- * - Layout: Compact, Horizontal (Image Left, Info Right) - "Ticket Stub" shape
- * - Typography: White text, high contrast
- * - Indicators: Pulsing green dot for "Happening Now", walking distance
- * - Actions: "Go" (Opens Map), "Summon" (Share location to friends)
+ * Social Concierge design with light/glass theme:
+ * - Layout: Compact Row (not big card) with square image left, info right
+ * - Image: Square (w-20 h-20) with rounded-lg
+ * - Right side: Title, Distance (bold), and Status indicator
+ * - Action: Simple navigation arrow button on the far right
+ * - Status: 🟢 Open Now or 🟡 Closing Soon
  */
 export const LiveEventCard = memo(function LiveEventCard({
   event,
-  walkingMinutes,
-  onGo,
-  onSummon,
+  onClick,
 }: LiveEventCardProps) {
-  const happening = useMemo(() => isHappeningNow(event), [event]);
-  const attendeeCount = event.attendee_count || 0;
+  const status = useMemo(() => getEventStatus(event), [event]);
+  const imageUrl = getEventImage(event.image_url, event.category);
+  const distanceText = formatDistance((event as EventWithAttendees & { distanceKm?: number }).distanceKm);
 
-  const handleGo = async () => {
-    await hapticImpact('medium');
-    onGo?.(event);
-  };
-
-  const handleSummon = async () => {
+  const handleClick = async () => {
     await hapticImpact('light');
-    onSummon?.(event);
+    onClick?.(event);
   };
+
+  const statusConfig = {
+    open: { emoji: '🟢', text: 'Open Now', className: 'text-green-600' },
+    closing_soon: { emoji: '🟡', text: 'Closing Soon', className: 'text-yellow-600' },
+    upcoming: { emoji: '🔵', text: 'Starting Soon', className: 'text-blue-600' },
+  };
+
+  const currentStatus = statusConfig[status];
 
   return (
-    <motion.div
-      className="relative overflow-hidden rounded-2xl border border-white/10"
-      style={{
-        background: 'rgba(255, 255, 255, 0.08)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-      }}
+    <motion.button
+      onClick={handleClick}
+      className="w-full flex items-center gap-3 p-3 bg-card/80 backdrop-blur-xl rounded-xl border border-border/50 shadow-sm transition-all active:scale-[0.98]"
       whileTap={{ scale: 0.98 }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
     >
-      <div className="flex">
-        {/* Image Section - Left */}
-        <div className="w-24 h-28 flex-shrink-0 relative overflow-hidden">
-          {event.image_url ? (
-            <img
-              src={event.image_url}
-              alt={event.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div 
-              className="w-full h-full flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,107,44,0.3) 0%, rgba(107,70,193,0.3) 100%)',
-              }}
-            >
-              <span className="text-3xl opacity-50">🎉</span>
-            </div>
-          )}
-          
-          {/* Happening Now indicator */}
-          {happening && (
-            <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/90">
-              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              <span className="text-[10px] font-semibold text-white uppercase tracking-wide">
-                Live
-              </span>
-            </div>
-          )}
-        </div>
+      {/* Square Image - Left */}
+      <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+        <img
+          src={imageUrl}
+          alt={event.title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </div>
 
-        {/* Info Section - Right */}
-        <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-          {/* Title & Time */}
-          <div>
-            <h3 className="text-white font-semibold text-[15px] leading-tight line-clamp-1">
-              {event.title}
-            </h3>
-            <p className="text-white/60 text-[13px] mt-0.5">
-              {formatTime(event.event_time)}
-            </p>
-          </div>
-
-          {/* Meta info */}
-          <div className="flex items-center gap-3 mt-2">
-            {/* Location / Walking distance */}
-            <div className="flex items-center gap-1 text-white/70">
-              <MapPin size={12} />
-              <span className="text-[12px]">
-                {walkingMinutes 
-                  ? `${walkingMinutes} min walk` 
-                  : event.venue_name?.slice(0, 15) || 'Nearby'}
-              </span>
-            </div>
-            
-            {/* Attendee count */}
-            <div className="flex items-center gap-1 text-white/70">
-              <Users size={12} />
-              <span className="text-[12px]">{attendeeCount}</span>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={handleGo}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white text-black font-semibold text-[13px] min-h-[36px] transition-transform active:scale-95"
-            >
-              <ExternalLink size={14} />
-              Go
-            </button>
-            <button
-              onClick={handleSummon}
-              className="flex items-center justify-center w-10 rounded-xl bg-white/10 text-white transition-transform active:scale-95"
-            >
-              <Share2 size={16} />
-            </button>
-          </div>
+      {/* Info Section - Center/Right */}
+      <div className="flex-1 min-w-0 text-left">
+        {/* Title */}
+        <h3 className="text-foreground font-semibold text-[15px] leading-tight line-clamp-1">
+          {event.title}
+        </h3>
+        
+        {/* Distance (bold) */}
+        {distanceText && (
+          <p className="text-foreground font-bold text-[14px] mt-1">
+            {distanceText}
+          </p>
+        )}
+        
+        {/* Status indicator */}
+        <div className={`flex items-center gap-1.5 mt-1 ${currentStatus.className}`}>
+          <span className="text-[12px]">{currentStatus.emoji}</span>
+          <span className="text-[12px] font-medium">{currentStatus.text}</span>
         </div>
       </div>
-    </motion.div>
+
+      {/* Navigation Arrow - Far Right */}
+      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-muted/50">
+        <ChevronRight size={20} className="text-muted-foreground" />
+      </div>
+    </motion.button>
   );
 });
