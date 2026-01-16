@@ -35,9 +35,10 @@ describe('Category Validation', () => {
     });
   });
 
-  it('should have categories matching database constraint', () => {
-    // These are the exact categories from the database constraint
-    const dbCategories = [
+  it('should have categories matching application standard', () => {
+    // These are the standard categories used across the application
+    // Note: Database constraint was removed to allow flexibility (see migration 20260116120000)
+    const standardCategories = [
       'active',
       'gaming',
       'entertainment',
@@ -50,7 +51,7 @@ describe('Category Validation', () => {
       'community'
     ];
     
-    expect(INTERNAL_CATEGORIES.sort()).toEqual(dbCategories.sort());
+    expect(INTERNAL_CATEGORIES.sort()).toEqual(standardCategories.sort());
   });
 
   it('should not contain old legacy categories', () => {

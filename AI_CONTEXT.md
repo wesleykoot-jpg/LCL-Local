@@ -44,7 +44,7 @@ geocode_cache     - Nominatim API result caching for coordinates
 - **Profile linking**: `profiles.id` (UUID) linked to `auth.users` via `profiles.user_id`
 - **RLS**: All tables have row-level security enabled
 - **Haptics**: Native iOS feedback via `src/lib/haptics.ts`
-- **Categories**: cinema, crafts, sports, gaming, market, food, music, wellness, family, outdoor
+- **Categories**: active, gaming, entertainment, social, family, outdoors, music, workshops, foodie, community (no database constraint - validated at application layer)
 
 ## Current Status
 - ~94 events in database (mostly scraped from Dutch sources)

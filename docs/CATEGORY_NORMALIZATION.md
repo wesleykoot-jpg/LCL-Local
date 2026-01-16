@@ -2,28 +2,17 @@
 
 ## Overview
 
-This document describes the category validation and normalization system that ensures all events in the database have valid categories that match the database constraint.
+This document describes the category validation and normalization system that ensures all events in the database have valid categories according to the application standard.
 
-## Database Constraint
+## Category Standard
 
-The `events` table has a check constraint `events_category_check` that only allows these 10 categories:
+The application uses these 10 standard categories:
 
-```sql
-CHECK (category = ANY (ARRAY[
-  'active',
-  'gaming', 
-  'entertainment',
-  'social',
-  'family',
-  'outdoors',
-  'music',
-  'workshops',
-  'foodie',
-  'community'
-]))
+```
+'active', 'gaming', 'entertainment', 'social', 'family', 'outdoors', 'music', 'workshops', 'foodie', 'community'
 ```
 
-**Location**: `supabase/migrations/20260114160000_update_category_constraint_modern.sql`
+**Note**: The database constraint was removed in migration `20260116120000_remove_category_constraint.sql` to allow flexibility. Category validation is now handled at the application layer.
 
 ## Category System Components
 
@@ -59,7 +48,7 @@ ensureValidCategory(category)
     - Log warning if invalid
     - Default fallback → "community"
     ↓
-Database INSERT (constraint validation)
+Database INSERT (no constraint - application handles validation)
 ```
 
 ### 3. Defense Layers
@@ -69,7 +58,7 @@ Database INSERT (constraint validation)
 | 1 | `classifyTextToCategory()` | Keyword-based classification with default fallback |
 | 2 | `mapToInternalCategory()` | Validation against whitelist with logging |
 | 3 | `ensureValidCategory()` | Final defensive check before database |
-| 4 | Database constraint | Hard enforcement at data layer |
+| 4 | Application layer | Standard enforcement via categoryMapping.ts |
 
 ## Implementation Details
 
@@ -102,7 +91,7 @@ All category functions handle these edge cases:
 **Warning logs are emitted for**:
 1. `classifyTextToCategory()` returns unexpected value (not in INTERNAL_CATEGORIES)
 2. `ensureValidCategory()` receives invalid category value
-3. Database insert fails with constraint violation (error code 23514)
+3. Any application-layer validation failures
 
 **Enhanced error logging includes**:
 - Event title
@@ -128,44 +117,42 @@ All category functions handle these edge cases:
 
 When adding or modifying categories:
 
-1. **Update database migration**
-   - Modify or create migration file to update constraint
-   - Apply to all environments
-
-2. **Update `categoryMapping.ts`**
+1. **Update `categoryMapping.ts`**
    - Update `INTERNAL_CATEGORIES` constant
    - Update `CATEGORIES` array with keywords
    - Update keyword matching logic if needed
 
-3. **Update tests**
+2. **Update tests**
    - Update `tests/category_validation.test.ts`
    - Ensure all tests pass
 
-4. **Update documentation**
+3. **Update documentation**
    - Update this document
    - Update AI_CONTEXT.md if categories change
 
-5. **Verify deployment**
+4. **Verify deployment**
    - Check scraper logs for warnings
-   - Monitor error rates for constraint violations
    - Verify existing events still display correctly
+   - Monitor category distribution
+
+**Note**: Database constraint was removed, so no database migration needed for category changes.
 
 ## Troubleshooting
 
-### "CHECK CONSTRAINT VIOLATION" errors in logs
+### Category validation warnings in logs
 
-**Symptoms**: Insert failures with error code 23514
+**Symptoms**: Application-layer validation warnings
 
 **Possible causes**:
 1. Category mapping returned unexpected value
 2. Old code deployed without latest fixes
-3. Migration not applied to database
+3. New categories added without updating INTERNAL_CATEGORIES
 
 **Resolution**:
 1. Check logs for "Invalid category detected" warnings
-2. Verify database constraint matches `INTERNAL_CATEGORIES`
+2. Verify `INTERNAL_CATEGORIES` in categoryMapping.ts
 3. Ensure latest scraper code is deployed
-4. Check if migration was applied: `SELECT * FROM events LIMIT 1;` should work with new categories
+4. Check if categories are being processed correctly
 
 ### Events assigned wrong category
 
@@ -195,7 +182,7 @@ When adding or modifying categories:
 
 - `supabase/functions/_shared/categoryMapping.ts` - Category definitions and classification
 - `supabase/functions/scrape-events/index.ts` - Scraper implementation
-- `supabase/migrations/20260114160000_update_category_constraint_modern.sql` - Database constraint
+- `supabase/migrations/20260116120000_remove_category_constraint.sql` - Constraint removal migration
 - `tests/category_validation.test.ts` - Test suite
 - `AI_CONTEXT.md` - High-level overview
 - `src/lib/categories.ts` - Frontend category configuration (should match backend)
@@ -204,9 +191,9 @@ When adding or modifying categories:
 
 ### Key Metrics to Track
 
-1. **Constraint violation rate**
-   - Query: Count of error code 23514 in logs
-   - Target: 0 violations
+1. **Category validation warnings**
+   - Query: Count of validation warnings in logs
+   - Target: 0 warnings
 
 2. **Category distribution**
    - Query: `SELECT category, COUNT(*) FROM events GROUP BY category;`
@@ -220,9 +207,9 @@ When adding or modifying categories:
 ### Alerts
 
 Set up alerts for:
-- Any constraint violation errors (23514)
-- Sudden spike in "community" category usage
 - Repeated warnings from category validation
+- Sudden spike in "community" category usage
+- Application errors related to category processing
 
 ## Contact
 
