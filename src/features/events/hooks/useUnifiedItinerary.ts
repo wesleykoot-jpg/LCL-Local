@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { eventService } from '../api/eventService';
-import { useAuth } from '@/contexts/useAuth';
+import { useAuth } from '@/features/auth';
 import { useGoogleCalendar } from '@/features/calendar/hooks/useGoogleCalendar';
 
 export type ItineraryItemType = 'LCL_EVENT' | 'GOOGLE_CALENDAR';
