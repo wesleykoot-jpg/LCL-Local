@@ -64,15 +64,21 @@ serve(async (req) => {
         const body: DeleteAccountRequest = await req.json();
         confirmationText = body.confirmationText || '';
       } catch (e) {
-        // Body is optional, continue without it
-        console.log('[delete-user-account] No body or invalid JSON, continuing...');
+        // Body is required for account deletion
+        return new Response(
+          JSON.stringify({ error: 'Request body required with confirmationText field' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
       }
     }
 
-    // Optional: Validate confirmation text (can be enforced in frontend)
-    if (confirmationText && confirmationText.toUpperCase() !== 'DELETE') {
+    // Validate confirmation text (mandatory)
+    if (confirmationText.toUpperCase() !== 'DELETE') {
       return new Response(
-        JSON.stringify({ error: 'Invalid confirmation text. Please type DELETE to confirm.' }),
+        JSON.stringify({ error: 'Confirmation required. Please type DELETE to confirm account deletion.' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

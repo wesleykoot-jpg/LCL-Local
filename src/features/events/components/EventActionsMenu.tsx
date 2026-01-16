@@ -31,6 +31,9 @@ import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { hapticImpact } from '@/shared/lib/haptics';
 
+// PostgreSQL error codes
+const PG_ERROR_UNIQUE_VIOLATION = '23505';
+
 interface EventActionsMenuProps {
   eventId?: string;
   hostUserId?: string;
@@ -129,7 +132,7 @@ export function EventActionsMenu({
 
       if (error) {
         // Check if already blocked (unique constraint violation)
-        if (error.code === '23505') {
+        if (error.code === PG_ERROR_UNIQUE_VIOLATION) {
           toast.error('User is already blocked');
         } else {
           throw error;

@@ -110,31 +110,32 @@ CREATE POLICY "Users can view their own reports"
   );
 
 -- RLS Policy: Admins can view all reports
--- Note: This will need to be configured with admin role checks
--- For now, we'll use a simple approach that can be enhanced later
+-- NOTE: This policy should be updated to check a proper admin role field
+-- For now, it's intentionally restrictive - only the original reporter can see their reports
+-- When adding admin functionality, create an 'is_admin' or 'role' field in profiles
 CREATE POLICY "Admins can view all reports"
   ON public.content_reports
   FOR SELECT
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE user_id = auth.uid()
-      AND (full_name ILIKE '%admin%' OR full_name ILIKE '%moderator%')
+    -- TODO: Replace with proper admin role check when admin system is implemented
+    -- For now, restrict to original reporter only (same as user policy)
+    reporter_id IN (
+      SELECT id FROM public.profiles WHERE user_id = auth.uid()
     )
   );
 
 -- RLS Policy: Admins can update reports (resolve, dismiss)
+-- NOTE: This policy should be updated to check a proper admin role field
+-- For now, no one can update reports except via service role (server-side admin panel)
 CREATE POLICY "Admins can update reports"
   ON public.content_reports
   FOR UPDATE
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE user_id = auth.uid()
-      AND (full_name ILIKE '%admin%' OR full_name ILIKE '%moderator%')
-    )
+    -- TODO: Replace with proper admin role check when admin system is implemented
+    -- For now, restrict updates to service role only
+    false
   );
 
 -- Create function to update updated_at timestamp

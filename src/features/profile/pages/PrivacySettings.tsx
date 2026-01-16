@@ -63,9 +63,14 @@ export function PrivacySettings() {
     setIsDeleting(true);
 
     try {
-      // Get the current session token
-      if (!session?.access_token) {
-        throw new Error('No active session');
+      // Check for active session
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+
+      // Verify access token
+      if (!session.access_token) {
+        throw new Error('Invalid session. Please log in again.');
       }
 
       // Call the delete-user-account Edge Function
