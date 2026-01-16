@@ -1,12 +1,15 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Users, Ticket } from 'lucide-react';
+import { MapPin, Users, Ticket, Loader2 } from 'lucide-react';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
+import { useJoinEvent } from '../hooks/hooks';
+import { useAuth } from '@/features/auth';
 
 interface TimelineEventCardProps {
   event: EventWithAttendees & { ticket_number?: string };
   isPast?: boolean;
+  showJoinButton?: boolean;
 }
 
 // Format time like "7:00 PM"
@@ -27,9 +30,20 @@ function formatTime(timeStr: string): string {
 export const TimelineEventCard = memo(function TimelineEventCard({
   event,
   isPast = false,
+  showJoinButton = false,
 }: TimelineEventCardProps) {
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
   const attendeeCount = event.attendee_count || 0;
+  const { profile } = useAuth();
+  const { handleJoinEvent, isJoining } = useJoinEvent(profile?.id);
+  
+  const hasJoined = Boolean(
+    profile?.id && event.attendees?.some(
+      attendee => attendee.profile?.id === profile.id
+    )
+  );
+  
+  const isCurrentEventJoining = isJoining(event.id);
 
   return (
     <motion.div
@@ -76,6 +90,42 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
             <Ticket size={12} />
             <span className="font-mono font-medium">{event.ticket_number}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Join Button - Only show if not past and showJoinButton is true */}
+      {!isPast && showJoinButton && !hasJoined && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              await handleJoinEvent(event.id);
+            }}
+            disabled={isCurrentEventJoining}
+            className={`w-full h-[44px] rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98] ${
+              isCurrentEventJoining
+                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            }`}
+          >
+            {isCurrentEventJoining ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                <span>Joining...</span>
+              </div>
+            ) : (
+              'Join Event'
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Already Joined Badge */}
+      {!isPast && showJoinButton && hasJoined && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center bg-secondary text-foreground border-2 border-primary/20">
+            ✓ Going
           </div>
         </div>
       )}
