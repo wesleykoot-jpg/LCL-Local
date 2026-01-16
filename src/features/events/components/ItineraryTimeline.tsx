@@ -1,90 +1,68 @@
-/**
- * Itinerary Timeline Component
- *
- * Displays LCL and Google Calendar events in a unified, day-grouped timeline.
- * Uses a continuous vertical rail, glass time nodes, and sticky day headers.
- */
-
-import { memo } from 'react';
+import React from 'react';
+import { ItineraryItem } from '../hooks/useUnifiedItinerary';
 import { TimelineEventCard } from './TimelineEventCard';
-import type { ItineraryItem, GroupedTimeline } from '../hooks/useUnifiedItinerary';
+import { Calendar, MapPin, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface ItineraryTimelineProps {
-  groupedTimeline: GroupedTimeline;
-}
-
-const timeFormatter = new Intl.DateTimeFormat('en-US', {
-  hour: 'numeric',
-  minute: '2-digit',
-});
-
-const TimeNode = memo(function TimeNode({
-  label,
-}: {
-  label: string;
-}) {
+export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<string, ItineraryItem[]> }) => {
   return (
-    <div className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[11px] font-semibold text-foreground/90 backdrop-blur-md shadow-sm">
-      {label}
-    </div>
-  );
-});
+    <div className="w-full pb-32 px-4">
+      {Object.entries(groupedItems).map(([dateHeader, items]) => (
+        <div key={dateHeader} className="mb-8 relative">
+          {/* Sticky Header */}
+          <div className="sticky top-[60px] z-20 py-3 mb-6 backdrop-blur-xl bg-black/40 border-b border-white/10 -mx-4 px-8">
+            <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary-400" />
+              {dateHeader}
+            </h3>
+          </div>
 
-const GoogleCalendarCard = memo(function GoogleCalendarCard({
-  item,
-}: {
-  item: Extract<ItineraryItem, { type: 'GOOGLE_CALENDAR' }>;
-}) {
-  const googleEvent = item.data;
-  const timeLabel = item.isAllDay ? 'All Day' : timeFormatter.format(item.startTime);
+          {/* Vertical Thread */}
+          <div className="absolute left-[23px] top-12 bottom-0 w-[2px] bg-white/10" />
 
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm backdrop-blur-md">
-      <div className="text-[12px] text-muted-foreground">{timeLabel}</div>
-      <div className="text-[15px] font-semibold text-foreground/80">{item.title}</div>
-      {googleEvent.location && (
-        <div className="mt-1 text-[12px] text-muted-foreground/80">{googleEvent.location}</div>
-      )}
-    </div>
-  );
-});
+          <div className="space-y-8">
+            {items.map((item) => (
+              <div key={item.id} className="relative pl-10">
+                {/* Time Node */}
+                <div className={cn(
+                  "absolute left-[16px] top-6 w-4 h-4 rounded-full border-2 border-black z-10",
+                  item.type === 'LCL_EVENT' ? "bg-primary-500 shadow-[0_0_10px_rgba(56,189,248,0.5)]" : "bg-white/30"
+                )} />
 
-export const ItineraryTimeline = memo(function ItineraryTimeline({
-  groupedTimeline,
-}: ItineraryTimelineProps) {
-  const groupedEntries = Object.entries(groupedTimeline);
+                {/* Time Label */}
+                <div className="mb-2 flex items-center text-xs font-medium text-white/60 gap-3">
+                  <span className="bg-white/5 px-2 py-1 rounded border border-white/10">
+                    {item.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {item.location && (
+                    <span className="flex items-center gap-1 truncate max-w-[200px]">
+                      <MapPin className="w-3 h-3" /> {item.location}
+                    </span>
+                  )}
+                </div>
 
-  return (
-    <div className="px-5 py-4">
-      <div className="relative border-l-2 border-white/10 pl-6">
-        {groupedEntries.map(([label, items]) => (
-          <div key={label} className="pb-8">
-            <div className="sticky top-[96px] z-20 -ml-6 mb-4 flex items-center bg-background/70 py-2 pl-6 backdrop-blur-xl">
-              <h3 className="text-[15px] font-semibold text-foreground">{label}</h3>
-            </div>
-            <div className="space-y-6">
-              {items.map((item) => {
-                const timeLabel = item.isAllDay ? 'All Day' : timeFormatter.format(item.startTime);
-
-                return (
-                  <div key={item.id} className="relative">
-                    <div className="absolute -left-[30px] top-4">
-                      <TimeNode label={timeLabel} />
-                    </div>
-                    <div className="pl-2">
-                      {item.type === 'LCL_EVENT' ? (
-                        <TimelineEventCard event={item.data} />
-                      ) : (
-                        <GoogleCalendarCard item={item} />
-                      )}
+                {/* Card */}
+                {item.type === 'LCL_EVENT' ? (
+                  <div className="transform transition-all hover:scale-[1.01]">
+                    <TimelineEventCard event={item.originalData} />
+                  </div>
+                ) : (
+                  // Ghost Card for Calendar Items
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-white font-medium">{item.title}</h4>
+                        <p className="text-white/40 text-xs mt-1">Google Calendar</p>
+                      </div>
+                      <Clock className="w-4 h-4 text-white/40" />
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
-});
+};
