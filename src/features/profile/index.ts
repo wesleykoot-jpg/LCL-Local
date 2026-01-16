@@ -2,7 +2,6 @@
 // Contains user profile, settings, badges, stats, and onboarding
 
 // Components
-export { ProfileView } from './components/ProfileView';
 export { OnboardingWizard } from './components/OnboardingWizard';
 export { ConfirmModal } from './components/ConfirmModal';
 
