@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, MapPin, Check, Loader2, Navigation } from 'lucide-react';
+import { X, ChevronRight, MapPin, Check, Loader2, Navigation, Shield, AlertCircle } from 'lucide-react';
 import { CATEGORIES, type CategoryConfig } from '@/shared/lib/categories';
 import { cn } from '@/shared/lib/utils';
 import { useGeolocation, type UserLocation } from '@/features/location/hooks/useGeolocation';
@@ -47,6 +47,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
   const [zone, setZone] = useState('');
   const [coordinates, setCoordinates] = useState<UserLocation | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   // Use geolocation hook for getting position
   const { getCurrentPosition, requestPermission, permissionState } = useGeolocation();
@@ -124,6 +125,8 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
       setStep(2);
     } else if (step === 2 && zone.trim()) {
       setStep(3);
+    } else if (step === 3 && agreedToTerms) {
+      setStep(4);
     }
   };
 
@@ -150,6 +153,8 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
     ? selectedCategories.size > 0 
     : step === 2 
     ? zone.trim().length > 0 
+    : step === 3
+    ? agreedToTerms
     : true;
 
   return (
@@ -182,12 +187,13 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
             )}
             <div>
               <p className="text-[13px] text-muted-foreground font-medium">
-                Step {step} of 3
+                Step {step} of 4
               </p>
               <h2 className="text-[20px] font-bold text-foreground">
                 {step === 1 && 'What are you interested in?'}
                 {step === 2 && 'Where are you located?'}
-                {step === 3 && 'All set!'}
+                {step === 3 && 'Terms & Safety'}
+                {step === 4 && 'All set!'}
               </h2>
             </div>
           </div>
@@ -203,8 +209,8 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
         <div className="h-1 bg-muted">
           <motion.div
             className="h-full bg-primary"
-            initial={{ width: '33%' }}
-            animate={{ width: `${(step / 3) * 100}%` }}
+            initial={{ width: '25%' }}
+            animate={{ width: `${(step / 4) * 100}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
@@ -350,6 +356,94 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
+                className="flex flex-col items-center justify-center py-8 px-4"
+              >
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                  <Shield size={36} className="text-primary" />
+                </div>
+                
+                <h3 className="text-[22px] font-bold text-foreground mb-2 text-center">
+                  Safety & Terms
+                </h3>
+                <p className="text-muted-foreground text-[15px] max-w-md mb-6 text-center">
+                  Before you join LCL, please review and accept our terms
+                </p>
+
+                <div className="w-full max-w-md space-y-4">
+                  {/* Terms Checkbox */}
+                  <div className="bg-card border-2 border-border rounded-xl p-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => setAgreedToTerms(e.target.checked)}
+                        className="mt-1 w-5 h-5 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                      />
+                      <div className="flex-1">
+                        <p className="text-[15px] text-foreground font-medium mb-2">
+                          I agree to the Terms of Service and EULA
+                        </p>
+                        <p className="text-[13px] text-muted-foreground leading-relaxed">
+                          I understand that LCL does not tolerate objectionable content, harassment, or illegal activity. 
+                          I agree to follow community guidelines and acknowledge that violations may result in account suspension.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Links to legal documents */}
+                  <div className="flex flex-wrap gap-3 justify-center text-[13px]">
+                    <a 
+                      href="/terms" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Terms of Service
+                    </a>
+                    <span className="text-muted-foreground">•</span>
+                    <a 
+                      href="/eula" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      End User License Agreement
+                    </a>
+                    <span className="text-muted-foreground">•</span>
+                    <a 
+                      href="/privacy" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Privacy Policy
+                    </a>
+                  </div>
+
+                  {/* Safety highlights */}
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-foreground text-[14px] mb-1">Community Safety</h4>
+                        <p className="text-[13px] text-muted-foreground">
+                          Objectionable content including hate speech, harassment, violence, or illegal activity 
+                          will result in immediate action. We maintain a safe, inclusive environment for all users.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 4 && (
+              <motion.div
+                key="step3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
                 className="flex flex-col items-center justify-center py-12 text-center"
               >
                 <motion.div
@@ -408,7 +502,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
         {/* Footer */}
         <div className="p-5 border-t border-border pb-safe">
           <button
-            onClick={step === 3 ? handleFinish : handleNext}
+            onClick={step === 4 ? handleFinish : handleNext}
             disabled={!canProceed}
             className={cn(
               'w-full py-4 rounded-xl font-semibold text-[16px] transition-all min-h-[52px]',
@@ -418,8 +512,8 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             )}
           >
-            <span>{step === 3 ? 'Start Exploring' : 'Continue'}</span>
-            {step !== 3 && <ChevronRight size={18} />}
+            <span>{step === 4 ? 'Start Exploring' : 'Continue'}</span>
+            {step !== 4 && <ChevronRight size={18} />}
           </button>
         </div>
       </motion.div>
