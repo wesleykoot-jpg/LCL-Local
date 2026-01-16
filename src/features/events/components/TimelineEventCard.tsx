@@ -89,12 +89,6 @@ export const TimelineEventCard = memo(function TimelineEventCard({
               alt={event.title}
               className="w-full h-full object-cover"
             />
-            {/* Category Badge - Floating over image */}
-            <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-primary/90 backdrop-blur-sm text-primary-foreground shadow-lg">
-              <span className="text-[11px] font-semibold uppercase tracking-wide">
-                {categoryLabel}
-              </span>
-            </div>
           </div>
         )}
 
@@ -119,12 +113,10 @@ export const TimelineEventCard = memo(function TimelineEventCard({
               <Users size={14} />
               <span className="font-medium">{attendeeCount} going</span>
             </div>
-            {/* Category Badge - Right bottom, smaller */}
-            {!event.image_url && (
-              <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
-                {categoryLabel}
-              </span>
-            )}
+            {/* Category Badge - Always at bottom right */}
+            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+              {categoryLabel}
+            </span>
           </div>
 
           {/* Join Button - Only show if not past and showJoinButton is true */}
