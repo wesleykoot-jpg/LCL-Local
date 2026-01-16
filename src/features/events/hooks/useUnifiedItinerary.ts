@@ -4,6 +4,7 @@ import { eventService } from '../api/eventService';
 import { useAuth } from '@/features/auth';
 import { useGoogleCalendar } from '@/features/calendar/hooks/useGoogleCalendar';
 import { queryKeys } from '@/shared/config/queryKeys';
+import { addDays, startOfToday, setHours } from 'date-fns';
 
 export type ItineraryItemType = 'LCL_EVENT' | 'GOOGLE_CALENDAR';
 
@@ -22,6 +23,59 @@ export interface ItineraryItem {
   originalData: any;
 }
 
+// 🎭 STATIC MOCK DATA GENERATOR
+const getMockItems = (): ItineraryItem[] => {
+  const today = startOfToday();
+  return [
+    {
+      id: 'mock-1',
+      type: 'GOOGLE_CALENDAR',
+      title: 'Strategy Sync w/ Design Team',
+      startTime: setHours(today, 10), // 10:00 AM Today
+      location: 'Google Meet',
+      status: 'tentative',
+      originalData: {},
+    },
+    {
+      id: 'mock-2',
+      type: 'GOOGLE_CALENDAR',
+      title: 'Lunch with Sarah',
+      startTime: setHours(today, 13), // 1:00 PM Today
+      location: 'De Pijp, Amsterdam',
+      status: 'confirmed',
+      originalData: {},
+    },
+    {
+      id: 'mock-3',
+      type: 'LCL_EVENT',
+      title: 'Jazz & Wine Tasting',
+      startTime: setHours(addDays(today, 1), 19), // 7:00 PM Tomorrow
+      location: 'Blue Note Club',
+      image: 'https://images.unsplash.com/photo-1514525253440-b393452e8d26?auto=format&fit=crop&w=800&q=80',
+      status: 'confirmed',
+      originalData: {
+        id: 'mock-3-data',
+        title: 'Jazz & Wine Tasting',
+        venue_name: 'Blue Note Club',
+        event_date: setHours(addDays(today, 1), 19).toISOString(),
+        event_time: '19:00',
+        image_url: 'https://images.unsplash.com/photo-1514525253440-b393452e8d26?auto=format&fit=crop&w=800&q=80',
+        category: 'music',
+        attendee_count: 12,
+      },
+    },
+    {
+      id: 'mock-4',
+      type: 'GOOGLE_CALENDAR',
+      title: 'Flight to Berlin',
+      startTime: setHours(addDays(today, 2), 9), // 9:00 AM Day after Tomorrow
+      location: 'Schiphol Airport',
+      status: 'tentative',
+      originalData: {},
+    }
+  ];
+};
+
 export const useUnifiedItinerary = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -38,11 +92,11 @@ export const useUnifiedItinerary = () => {
     staleTime: 0, // Always fetch fresh
   });
 
-  // 2. Merge & Transform
+  // 2. Merge Real + Mock
   const timelineItems = useMemo(() => {
-    const items: ItineraryItem[] = [];
+    const items: ItineraryItem[] = [...getMockItems()]; // Start with Mocks
 
-    // Transform LCL Events
+    // Add Real Joined Events
     if (myEvents && Array.isArray(myEvents)) {
       myEvents.forEach((event: any) => {
         // Parse the date, handling both ISO strings and date-only formats
@@ -79,7 +133,7 @@ export const useUnifiedItinerary = () => {
       });
     }
 
-    // Transform Google Calendar
+    // Transform Google Calendar (Real)
     if (calendarEvents && Array.isArray(calendarEvents)) {
       calendarEvents.forEach((evt: any) => {
         items.push({
@@ -115,7 +169,7 @@ export const useUnifiedItinerary = () => {
   return {
     groupedTimeline,
     timelineItems,
-    isLoading: isEventsLoading,
+    isLoading: false, // Always false so we see mocks immediately
     isEmpty: timelineItems.length === 0,
     refresh: () => queryClient.invalidateQueries({ queryKey: queryKeys.profile.myEvents(effectiveUserId || '') })
   };
