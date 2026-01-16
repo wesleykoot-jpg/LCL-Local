@@ -1,6 +1,6 @@
 import React from 'react';
 import { ItineraryItem } from '../hooks/useUnifiedItinerary';
-import { Calendar, MapPin, Users, Ticket } from 'lucide-react';
+import { Calendar, MapPin, Users, Ticket, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import { motion } from 'framer-motion';
@@ -122,24 +122,47 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                       <ItineraryEventCard item={item} />
                     </div>
                   ) : (
-                    // 👻 GHOST CARD (Google Calendar)
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm flex justify-between items-center group hover:bg-white/10 transition-colors">
-                      <div className="flex gap-4 items-center">
-                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                          <Calendar className="w-5 h-5" />
+                    // 💎 HOLOGRAPHIC MEMO (Google Calendar)
+                    <motion.div 
+                      className="relative rounded-xl bg-white/5 border border-white/10 border-l-2 border-l-blue-500/50 p-4 backdrop-blur-sm group hover:bg-white/[0.08] transition-all overflow-hidden"
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {/* Subtle Calendar Icon Watermark */}
+                      <div className="absolute top-3 right-3 opacity-[0.15] pointer-events-none">
+                        <Calendar className="w-16 h-16 text-white" />
+                      </div>
+                      
+                      {/* Content Container */}
+                      <div className="relative z-10">
+                        {/* Row 1: Title + External Badge */}
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h4 className="text-white/90 font-medium text-[16px] leading-snug flex-1 line-clamp-2">
+                            {item.title}
+                          </h4>
+                          <div className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.08] border border-white/10">
+                            <ExternalLink className="w-3 h-3 text-blue-400" />
+                            <span className="text-[10px] font-medium text-white/60 uppercase tracking-wide">External</span>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-white font-medium text-base">{item.title}</h4>
-                          <p className="text-white/40 text-xs flex items-center gap-1 mt-0.5">
-                            {item.location && <span>{item.location} • </span>}
-                            Google Calendar
-                          </p>
+                        
+                        {/* Row 2: Time Range • Location */}
+                        <div className="flex items-center gap-2 text-[13px] text-white/50">
+                          <span className="font-mono font-medium text-white/70">
+                            {formatTime(item.startTime)}
+                            {item.endTime && ` - ${formatTime(item.endTime)}`}
+                          </span>
+                          {item.location && (
+                            <>
+                              <span className="text-white/20">•</span>
+                              <div className="flex items-center gap-1 min-w-0 flex-1">
+                                <MapPin size={11} className="flex-shrink-0 text-white/40" />
+                                <span className="truncate">{item.location}</span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        {/* Optional Action for Calendar items */}
-                      </div>
-                    </div>
+                    </motion.div>
                   )}
                 </div>
               ))}
