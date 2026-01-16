@@ -2,15 +2,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { withErrorLogging, logSupabaseError } from "../_shared/errorLogging.ts";
+import type { ScrapeJobPayload } from "../_shared/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Scaling configuration constants
-const MAX_CONCURRENT_WORKERS = 5;  // Maximum number of parallel workers to spawn
-const JOBS_PER_WORKER = 10;         // Target number of jobs per worker for optimal distribution
+const MIN_INTERVAL_MINUTES = 15;
+const MAX_INTERVAL_MINUTES = 24 * 60;
+const CIRCUIT_BREAKER_THRESHOLD = 3;
 
 /**
  * Scrape Coordinator
@@ -20,13 +21,12 @@ const JOBS_PER_WORKER = 10;         // Target number of jobs per worker for opti
  * Sends comprehensive Slack notifications with Block Kit formatting.
  * 
  * Scaling Improvements:
- * - Spawns multiple workers in parallel (up to 5 concurrent workers)
- * - Uses scraper_sources_available view to respect exponential backoff
- * - Supports processing 100+ sources by distributing load across workers
+ * - Uses next_scrape_at scheduling with volatility-based intervals
+ * - Respects circuit breaker logic for consecutive errors
  * 
  * Usage:
  * POST /functions/v1/scrape-coordinator
- * Body (optional): { "priority": 0, "sourceIds": ["uuid1", "uuid2"], "triggerWorker": true }
+ * Body (optional): { "sourceIds": ["uuid1", "uuid2"] }
  */
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -47,23 +47,35 @@ serve(async (req: Request): Promise<Response> => {
 
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-      // Parse optional request body
-      let options: { priority?: number; sourceIds?: string[]; triggerWorker?: boolean } = {};
-      if (req.method === "POST") {
-        try {
-          const body = await req.text();
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const cooldownCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+    const calculateNextScrapeAt = (volatilityScore: number): string => {
+      const score = Math.min(1, Math.max(0, volatilityScore));
+      const intervalMinutes = Math.round(
+        MAX_INTERVAL_MINUTES - score * (MAX_INTERVAL_MINUTES - MIN_INTERVAL_MINUTES)
+      );
+      return new Date(now.getTime() + intervalMinutes * 60 * 1000).toISOString();
+    };
+
+    // Parse optional request body
+    let options: { sourceIds?: string[] } = {};
+    if (req.method === "POST") {
+      try {
+        const body = await req.text();
         options = body ? JSON.parse(body) : {};
       } catch {
         options = {};
       }
     }
 
-    const { priority = 0, sourceIds, triggerWorker = true } = options;
+    const { sourceIds } = options;
 
     // Get available sources - filter for enabled, not auto-disabled sources
     let query = supabase
       .from("scraper_sources")
-      .select("id, name")
+      .select("id, name, volatility_score, next_scrape_at, last_scraped_at, consecutive_errors")
       .eq("enabled", true)
       .or("auto_disabled.is.null,auto_disabled.eq.false");
     
@@ -74,44 +86,40 @@ serve(async (req: Request): Promise<Response> => {
     const { data: sources, error: sourcesError } = await query;
     if (sourcesError) throw new Error(sourcesError.message);
 
-    if (!sources || sources.length === 0) {
+    const eligibleSources = (sources || []).filter((source) => {
+      const nextScrapeAt = source.next_scrape_at ?? null;
+      if (nextScrapeAt && new Date(nextScrapeAt) > now) {
+        return false;
+      }
+      const lastScrapedAt = source.last_scraped_at ?? null;
+      const consecutiveErrors = source.consecutive_errors ?? 0;
+      if (consecutiveErrors < CIRCUIT_BREAKER_THRESHOLD) {
+        return true;
+      }
+      if (!lastScrapedAt) {
+        return false;
+      }
+      return new Date(lastScrapedAt) <= new Date(cooldownCutoff);
+    });
+
+    if (eligibleSources.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: "No enabled sources to queue", jobsCreated: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Clear any stale pending jobs for these sources (from previous failed runs)
-    const sourceIdList = sources.map((s) => s.id);
-    const { error: deleteError } = await supabase
-      .from("scrape_jobs")
-      .delete()
-      .in("source_id", sourceIdList)
-      .eq("status", "pending");
-    
-    if (deleteError) {
-      await logSupabaseError(
-        'scrape-coordinator',
-        'handler',
-        'Delete stale pending jobs',
-        deleteError,
-        { source_count: sourceIdList.length }
-      );
-    }
-
-    // Create new pending jobs for each source
-    const jobs = sources.map((source) => ({
+    const jobs = eligibleSources.map((source) => ({
       source_id: source.id,
-      status: "pending",
-      priority,
-      attempts: 0,
-      max_attempts: 3,
+      payload: {
+        sourceId: source.id,
+        scheduledAt: nowIso,
+      } satisfies ScrapeJobPayload,
+      next_scrape_at: calculateNextScrapeAt(source.volatility_score ?? 0.5),
     }));
 
     const { data: insertedJobs, error: insertError } = await supabase
-      .from("scrape_jobs")
-      .insert(jobs)
-      .select("id");
+      .rpc("enqueue_scrape_jobs", { p_jobs: jobs });
 
     if (insertError) {
       await logSupabaseError(
@@ -125,250 +133,18 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const jobsCreated = insertedJobs?.length || 0;
-    console.log(`Coordinator: Enqueued ${jobsCreated} jobs for sources: ${sources.map((s) => s.name).join(", ")}`);
+    console.log(`Coordinator: Enqueued ${jobsCreated} jobs for sources: ${eligibleSources.map((s) => s.name).join(", ")}`);
 
-    // Trigger multiple workers in parallel to scale beyond 40 sources
-    // Spawn workers based on job count (1 per JOBS_PER_WORKER jobs, up to MAX_CONCURRENT_WORKERS)
-    if (triggerWorker && jobsCreated > 0) {
-      try {
-        const workerUrl = `${supabaseUrl}/functions/v1/scrape-worker`;
-        const workersToSpawn = Math.min(MAX_CONCURRENT_WORKERS, Math.ceil(jobsCreated / JOBS_PER_WORKER));
-        
-        console.log(`Spawning ${workersToSpawn} parallel workers for ${jobsCreated} jobs (${JOBS_PER_WORKER} jobs per worker)`);
-        
-        // Spawn workers in parallel (non-blocking)
-        const workerPromises = Array.from({ length: workersToSpawn }, (_, i) => 
-          fetch(workerUrl, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${supabaseKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ chain: true, workerId: i + 1 }),
-          }).catch((e) => console.warn(`Worker ${i + 1} trigger failed:`, e))
-        );
-        
-        // Fire and forget - don't await, but log when all complete
-        Promise.all(workerPromises).then(() => {
-          console.log(`All ${workersToSpawn} workers triggered successfully`);
-        }).catch((e) => {
-          console.warn("Some workers failed to trigger:", e);
-        });
-      } catch (e) {
-        console.warn("Failed to spawn workers:", e);
-      }
-    }
-
-    // Fetch comprehensive statistics for Slack notification
-    // Get recent events inserted (last 24 hours) and persona breakdown
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    
-    const { count: recentEventsCount, error: recentEventsError } = await supabase
-      .from("events")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", twentyFourHoursAgo);
-    
-    if (recentEventsError) {
-      await logSupabaseError(
-        'scrape-coordinator',
-        'handler',
-        'Fetch recent events count',
-        recentEventsError
-      );
-    }
-
-    // Get persona breakdown (Family vs Social/Culture)
-    const { count: familyCount, error: familyCountError } = await supabase
-      .from("events")
-      .select("id", { count: "exact", head: true })
-      .eq("category", "family")
-      .gte("created_at", twentyFourHoursAgo);
-    
-    if (familyCountError) {
-      await logSupabaseError(
-        'scrape-coordinator',
-        'handler',
-        'Fetch family events count',
-        familyCountError
-      );
-    }
-
-    const { count: socialCount, error: socialCountError } = await supabase
-      .from("events")
-      .select("id", { count: "exact", head: true })
-      .in("category", ["culture", "nightlife", "food"])
-      .gte("created_at", twentyFourHoursAgo);
-    
-    if (socialCountError) {
-      await logSupabaseError(
-        'scrape-coordinator',
-        'handler',
-        'Fetch social events count',
-        socialCountError
-      );
-    }
-
-    // Get error/failure stats from scraper_sources (sources with recent failures)
-    const { data: failedSources, error: failedSourcesError } = await supabase
-      .from("scraper_sources")
-      .select("name, url, last_scrape_at, last_error")
-      .eq("enabled", true)
-      .not("last_error", "is", null)
-      .gte("last_scrape_at", twentyFourHoursAgo)
-      .limit(10);
-    
-    if (failedSourcesError) {
-      await logSupabaseError(
-        'scrape-coordinator',
-        'handler',
-        'Fetch failed sources',
-        failedSourcesError
-      );
-    }
-
-    // Get sources with coordinates for geofencing verification
-    const { data: sourcesWithCoords, error: sourcesWithCoordsError } = await supabase
-      .from("scraper_sources")
-      .select("name, location_name, default_coordinates")
-      .in("id", sourceIdList)
-      .not("default_coordinates", "is", null)
-      .limit(5);
-    
-    if (sourcesWithCoordsError) {
-      await logSupabaseError(
-        'scrape-coordinator',
-        'handler',
-        'Fetch sources with coordinates',
-        sourcesWithCoordsError
-      );
-    }
-
-    // Send comprehensive Slack notification using Block Kit
-    const blocks = [
-      {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: "🚀 Scrape Coordinator: Jobs Enqueued",
-          emoji: true,
-        },
-      },
-      {
-        type: "section",
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*Total Municipalities Checked:*\n${sources.length}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Jobs Created:*\n${jobsCreated}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*New Events (24h):*\n${recentEventsCount || 0}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Worker Triggered:*\n${triggerWorker ? "✅ Yes" : "❌ No"}`,
-          },
-        ],
-      },
-      {
-        type: "divider",
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: "*📊 Persona Impact (24h)*",
-        },
-      },
-      {
-        type: "section",
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*Family Events:*\n👨‍👩‍👧‍👦 ${familyCount || 0}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Social Events:*\n🍷 ${socialCount || 0}`,
-          },
-        ],
-      },
-    ];
-
-    // Add error section if there are failed sources
-    if (failedSources && failedSources.length > 0) {
-      blocks.push(
-        {
-          type: "divider",
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: "*⚠️ Recent Errors (24h)*",
-          },
-        }
-      );
-
-      const errorList = failedSources
-        .map((src) => `• *${src.name}*: ${src.last_error || "Unknown error"}\n  _URL:_ ${src.url}`)
-        .join("\n");
-
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: errorList.slice(0, 2000), // Slack limit
-        },
-      });
-    }
-
-    // Add geofencing preview section
-    if (sourcesWithCoords && sourcesWithCoords.length > 0) {
-      blocks.push(
-        {
-          type: "divider",
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: "*📍 Geofencing Sample*",
-          },
-        }
-      );
-
-      const coordsList = sourcesWithCoords
-        .map((src) => {
-          const coords = src.default_coordinates as { lat: number; lng: number } | null;
-          if (coords) {
-            return `• *${src.name}* (${src.location_name || "N/A"}): \`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}\``;
-          }
-          return `• *${src.name}*: No coordinates`;
-        })
-        .join("\n");
-
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: coordsList,
-        },
-      });
-    }
-
-    // Send the Slack notification
-    await sendSlackNotification({ blocks }, false);
+    await sendSlackNotification(
+      `🚀 Scrape Coordinator: queued ${jobsCreated} jobs for ${eligibleSources.length} sources`,
+      false
+    );
 
     return new Response(
       JSON.stringify({
         success: true,
         jobsCreated,
-        sources: sources.map((s) => ({ id: s.id, name: s.name })),
+        sources: eligibleSources.map((s) => ({ id: s.id, name: s.name })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

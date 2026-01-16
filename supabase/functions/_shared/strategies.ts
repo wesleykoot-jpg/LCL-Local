@@ -2,10 +2,36 @@ import type { ScraperSource, RawEventCard } from "./types.ts";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 
 const DEFAULT_HEADERS = {
-  "User-Agent": "LCL-EventScraper/1.0 (Event aggregator for local social app)",
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "en,nl;q=0.9,de;q=0.8",
 };
+
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.3; rv:121.0) Gecko/20100101 Firefox/121.0",
+  "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Mobile/15E148 Safari/604.1",
+  "Mozilla/5.0 (iPad; CPU OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36",
+  "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+  "Mozilla/5.0 (Linux; Android 14; Samsung Galaxy S23) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36",
+  "Mozilla/5.0 (Linux; Android 13; Samsung Galaxy S22) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+];
+
+function getRandomUserAgent(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
 
 export interface FetchOptions {
   headers?: Record<string, string>;
@@ -18,9 +44,11 @@ export function createSpoofedFetch(options: FetchOptions = {}): typeof fetch {
 
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const headers = { ...mergedHeaders, ...(init?.headers || {}) };
+    headers["User-Agent"] = getRandomUserAgent();
     return fetch(url, {
       ...init,
-      headers: { ...mergedHeaders, ...(init?.headers || {}) },
+      headers,
       signal: AbortSignal.timeout(timeout),
     });
   };
@@ -42,11 +70,6 @@ export interface ScraperStrategy {
   fetchListing(url: string, fetcher: typeof fetch): Promise<{ status: number; html: string; finalUrl: string }>;
   parseListing(html: string, listingUrl: string, options?: { enableDebug?: boolean; fetcher?: typeof fetch }): Promise<RawEventCard[]>;
 }
-
-const SELECTORS = [
-  "article.event", ".event-item", ".event-card", "[itemtype*='Event']", ".agenda-item",
-  ".calendar-event", "[class*='event']", "[class*='agenda']", "li.event", ".post-item",
-];
 
 export class DefaultStrategy implements ScraperStrategy {
   protected source: ScraperSource;
@@ -74,7 +97,11 @@ export class DefaultStrategy implements ScraperStrategy {
   async parseListing(html: string, listingUrl: string, _options?: { enableDebug?: boolean; fetcher?: typeof fetch }): Promise<RawEventCard[]> {
     const $ = cheerio.load(html);
     const results: RawEventCard[] = [];
-    const selectors = this.source.config.selectors || SELECTORS;
+    const selectors = this.source.config.selectors;
+    if (!selectors || selectors.length === 0) {
+      console.warn(`No selectors configured for source ${this.source.name}`);
+      return results;
+    }
 
     for (const selector of selectors) {
       const elements = $(selector);
