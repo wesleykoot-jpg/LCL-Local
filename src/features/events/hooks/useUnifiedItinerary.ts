@@ -4,7 +4,7 @@ import { eventService } from '../api/eventService';
 import { useAuth } from '@/features/auth';
 import { useGoogleCalendar } from '@/features/calendar/hooks/useGoogleCalendar';
 import { queryKeys } from '@/shared/config/queryKeys';
-import { addHours, addDays, startOfToday, setHours } from 'date-fns';
+import { addDays, startOfToday, setHours } from 'date-fns';
 
 export type ItineraryItemType = 'LCL_EVENT' | 'GOOGLE_CALENDAR';
 
