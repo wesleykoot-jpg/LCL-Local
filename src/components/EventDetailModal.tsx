@@ -14,6 +14,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
+import { EventActionsMenu } from '@/features/events/components/EventActionsMenu';
 import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
 import { CATEGORY_MAP } from '@/lib/categories';
@@ -27,6 +28,7 @@ interface EventDetailModalProps {
   onJoin?: () => Promise<void>;
   isJoining?: boolean;
   hasJoined?: boolean;
+  currentUserProfileId?: string;
 }
 
 // Fallback images by category
@@ -118,6 +120,7 @@ export const EventDetailModal = memo(function EventDetailModal({
   onJoin,
   isJoining = false,
   hasJoined = false,
+  currentUserProfileId,
 }: EventDetailModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -213,13 +216,25 @@ export const EventDetailModal = memo(function EventDetailModal({
             <div className="w-12 h-1.5 rounded-full bg-muted-foreground/20" />
           </div>
 
-          {/* Close button - 48pt touch target with squircle */}
-          <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 z-20 w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-[0.95] border-[0.5px] border-white/10"
-          >
-            <X size={22} strokeWidth={2.5} />
-          </button>
+          {/* Close button and actions menu - 48pt touch targets */}
+          <div className="absolute top-4 right-4 z-20 flex gap-2">
+            {/* Actions Menu (Report/Block) */}
+            <div className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-black/40 backdrop-blur-xl flex items-center justify-center border-[0.5px] border-white/10">
+              <EventActionsMenu
+                eventId={event.id}
+                hostUserId={event.created_by || undefined}
+                currentUserProfileId={currentUserProfileId}
+              />
+            </div>
+            
+            {/* Close button */}
+            <button
+              onClick={handleClose}
+              className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-[0.95] border-[0.5px] border-white/10"
+            >
+              <X size={22} strokeWidth={2.5} />
+            </button>
+          </div>
 
           <div className="overflow-y-auto max-h-[88vh]">
             {/* Netflix-style Hero Image - Full bleed, taller */}
