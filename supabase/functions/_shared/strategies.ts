@@ -44,7 +44,7 @@ export function createSpoofedFetch(options: FetchOptions = {}): typeof fetch {
 
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    const headers = { ...mergedHeaders, ...(init?.headers || {}) };
+    const headers: Record<string, string> = { ...mergedHeaders, ...(init?.headers as Record<string, string> || {}) };
     headers["User-Agent"] = getRandomUserAgent();
     return fetch(url, {
       ...init,
