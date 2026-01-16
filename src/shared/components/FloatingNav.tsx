@@ -12,8 +12,8 @@ interface FloatingNavProps {
   onNavigate?: (view: NavView) => void;
 }
 
-const NAV_ITEMS: { id: NavView; icon: typeof Home; label: string; path: string }[] = [
-  { id: 'feed', icon: Home, label: 'Home', path: '/' },
+const NAV_ITEMS: { id: NavView; icon: typeof Compass; label: string; path: string }[] = [
+  { id: 'feed', icon: Compass, label: 'Discover', path: '/' },
   { id: 'planning', icon: Map, label: 'Planning', path: '/planning' },
   { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
   { id: 'scraper', icon: Settings, label: 'Scraper', path: '/scraper-admin' },
