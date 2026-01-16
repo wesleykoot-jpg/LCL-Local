@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { FloatingNav, LoadingSkeleton } from '@/shared/components';
 import { Button } from '@/shared/components/ui/button';
-import { ItineraryTimeline } from './components/ItineraryTimeline';
+import { ItineraryTimeline } from './components/timeline/ItineraryTimeline';
 import { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
 
 export default function MyEvents() {
