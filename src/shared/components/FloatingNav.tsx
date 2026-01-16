@@ -1,4 +1,4 @@
-import { Home, Map, User, Users, Baby, Settings, Zap } from 'lucide-react';
+import { Compass, Map, User, Users, Baby, Settings, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -128,7 +128,7 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
                       : 'bg-muted border-2 border-transparent'
                   }`}
                 >
-                  <Home size={20} className="text-primary" />
+                  <Compass size={20} className="text-primary" />
                   <div className="flex-1 text-left">
                     <p className="text-sm font-semibold text-foreground">All Events</p>
                     <p className="text-xs text-muted-foreground">Show everything</p>
@@ -166,70 +166,7 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
         )}
 
         <div className="flex items-center justify-around h-[52px] max-w-lg mx-auto px-2">
-          {/* Home button */}
-          <button
-            onClick={() => handleNav('feed', '/')}
-            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
-          >
-            <div className="relative">
-              <Home 
-                size={24} 
-                strokeWidth={derivedActiveView === 'feed' ? 2.5 : 1.5}
-                className={`transition-colors ${
-                  derivedActiveView === 'feed' 
-                    ? 'text-primary' 
-                    : 'text-muted-foreground'
-                }`}
-                fill={derivedActiveView === 'feed' ? 'currentColor' : 'none'}
-              />
-            </div>
-            <span 
-              className={`text-[10px] font-medium transition-colors ${
-                derivedActiveView === 'feed' 
-                  ? 'text-primary' 
-                  : 'text-muted-foreground'
-              }`}
-            >
-              Home
-            </span>
-          </button>
-
-          {/* Now button - Center with glow effect */}
-          <button
-            onClick={handleNowClick}
-            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-all"
-          >
-            <div 
-              className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                isNowActive 
-                  ? 'bg-gradient-to-br from-orange-400 to-purple-600' 
-                  : 'bg-gradient-to-br from-orange-400/80 to-purple-500/80'
-              }`}
-              style={{
-                boxShadow: isNowActive 
-                  ? '0 0 20px rgba(255, 107, 44, 0.6), 0 0 40px rgba(107, 70, 193, 0.4)'
-                  : '0 2px 8px rgba(0, 0, 0, 0.15)',
-              }}
-            >
-              <Zap 
-                size={20} 
-                strokeWidth={2.5}
-                className="text-white"
-                fill="currentColor"
-              />
-            </div>
-            <span 
-              className={`text-[10px] font-medium transition-colors ${
-                isNowActive 
-                  ? 'text-orange-500' 
-                  : 'text-muted-foreground'
-              }`}
-            >
-              Now
-            </span>
-          </button>
-
-          {/* Planning button */}
+          {/* Planning button - now first */}
           <button
             onClick={() => handleNav('planning', '/planning')}
             className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
@@ -256,6 +193,63 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
               Planning
             </span>
           </button>
+
+          {/* Discover button - Center position with icon */}
+          <button
+            onClick={() => handleNav('feed', '/')}
+            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
+          >
+            <div className="relative">
+              <Compass 
+                size={24} 
+                strokeWidth={derivedActiveView === 'feed' ? 2.5 : 1.5}
+                className={`transition-colors ${
+                  derivedActiveView === 'feed' 
+                    ? 'text-primary' 
+                    : 'text-muted-foreground'
+                }`}
+                fill={derivedActiveView === 'feed' ? 'currentColor' : 'none'}
+              />
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-colors ${
+                derivedActiveView === 'feed' 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Discover
+            </span>
+          </button>
+
+          {/* Now button - Subtle styling */}
+          <button
+            onClick={handleNowClick}
+            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
+          >
+            <div className="relative">
+              <Sparkles 
+                size={24} 
+                strokeWidth={isNowActive ? 2.5 : 1.5}
+                className={`transition-colors ${
+                  isNowActive 
+                    ? 'text-amber-500' 
+                    : 'text-muted-foreground'
+                }`}
+                fill={isNowActive ? 'currentColor' : 'none'}
+              />
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-colors ${
+                isNowActive 
+                  ? 'text-amber-500' 
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Now
+            </span>
+          </button>
+
 
           {/* Profile button */}
           <button
