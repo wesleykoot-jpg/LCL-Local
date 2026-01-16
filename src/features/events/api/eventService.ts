@@ -243,19 +243,31 @@ export async function createEvent(params: CreateEventParams) {
  * @param userId - User ID (from auth)
  * @returns Array of events with attendee info
  */
-export async function fetchUserEvents(userId: string) {
+export async function fetchUserEvents(profileIdOrUserId: string) {
   try {
-    // First get the user's profile ID
-    const { data: profile, error: profileError } = await supabase
+    // Try to find profile by user_id first, then fall back to treating it as profile_id
+    let profileId = profileIdOrUserId;
+    
+    const { data: profileByUserId } = await supabase
       .from('profiles')
       .select('id')
-      .eq('user_id', userId)
+      .eq('user_id', profileIdOrUserId)
       .maybeSingle();
-
-    if (profileError) throw profileError;
     
-    // If no profile exists, try querying by profile id directly (for dev test users)
-    const profileId = profile?.id || userId;
+    if (profileByUserId?.id) {
+      profileId = profileByUserId.id;
+    } else {
+      // Check if the ID is actually a valid profile_id (for test users without user_id)
+      const { data: profileById } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', profileIdOrUserId)
+        .maybeSingle();
+      
+      if (profileById?.id) {
+        profileId = profileById.id;
+      }
+    }
 
     // Fetch events the user is attending
     const { data, error } = await supabase
