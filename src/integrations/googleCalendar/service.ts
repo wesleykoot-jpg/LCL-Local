@@ -397,3 +397,79 @@ export async function deleteSyncedEvent(
     return { error: error instanceof Error ? error.message : 'Failed to delete sync record' };
   }
 }
+
+/**
+ * External Google Calendar event structure
+ */
+export interface GoogleCalendarExternalEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  start: {
+    dateTime?: string;
+    date?: string; // For all-day events
+    timeZone?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  htmlLink?: string;
+}
+
+/**
+ * Fetch events from user's Google Calendar for a date range
+ * @param profileId - User's profile ID
+ * @param timeMin - Start of date range
+ * @param timeMax - End of date range  
+ * @param maxResults - Maximum number of events to return (default: 100)
+ */
+export async function fetchCalendarEvents(
+  profileId: string,
+  timeMin: Date,
+  timeMax: Date,
+  maxResults: number = 100
+): Promise<{ events: GoogleCalendarExternalEvent[]; error?: string }> {
+  try {
+    const accessToken = await getValidAccessToken(profileId);
+    if (!accessToken) {
+      return { events: [], error: 'Not connected to Google Calendar' };
+    }
+
+    const params = new URLSearchParams({
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: String(Math.min(maxResults, 2500)), // Google's max is 2500
+    });
+
+    const response = await fetch(
+      `${GOOGLE_CALENDAR_API_BASE}/calendars/primary/events?${params.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Failed to fetch calendar events');
+    }
+
+    const data = await response.json();
+
+    return { events: data.items || [] };
+  } catch (error) {
+    console.error('[Google Calendar] Fetch events error:', error);
+    return {
+      events: [],
+      error: error instanceof Error ? error.message : 'Failed to fetch calendar events'
+    };
+  }
+}
