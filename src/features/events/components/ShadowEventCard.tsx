@@ -27,6 +27,9 @@ export const ShadowEventCard = memo(function ShadowEventCard({
   const googleEvent = item.data as GoogleCalendarExternalEvent;
   const hasLocation = Boolean(item.location);
   const hasExternalLink = Boolean(googleEvent.htmlLink);
+  const timeLabel = item.isAllDay
+    ? 'All Day'
+    : new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(item.startTime);
 
   return (
     <motion.div
@@ -66,7 +69,7 @@ export const ShadowEventCard = memo(function ShadowEventCard({
           <span className={`text-[12px] font-medium ${
             isPast ? 'text-muted-foreground/70' : 'text-muted-foreground'
           }`}>
-            {item.time}
+            {timeLabel}
           </span>
 
           {/* Title */}

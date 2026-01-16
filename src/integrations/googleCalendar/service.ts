@@ -404,6 +404,7 @@ export async function deleteSyncedEvent(
 export interface GoogleCalendarExternalEvent {
   id: string;
   summary: string;
+  status?: string;
   description?: string;
   location?: string;
   start: {
