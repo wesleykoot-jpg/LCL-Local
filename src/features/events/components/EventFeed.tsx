@@ -1,7 +1,7 @@
-import { memo, useMemo, useState, Fragment, useCallback, useRef } from 'react';
+import { memo, useMemo, useState, Fragment, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Calendar, Clock } from 'lucide-react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { FixedSizeList, type ListChildComponentProps } from 'react-window';
 import { EventStackCard } from './EventStackCard';
 import { CategorySubscribeCard } from './CategorySubscribeCard';
 import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
@@ -254,6 +254,7 @@ export const EventFeed = memo(function EventFeed({
 
   // Create parent ref for virtualizer
   const parentRef = useRef<HTMLDivElement>(null);
+  const [listHeight, setListHeight] = useState(600);
 
   // Flatten items for virtualization (including headers)
   type VirtualItem = 
@@ -297,13 +298,28 @@ export const EventFeed = memo(function EventFeed({
     return items;
   }, [eventStacks, vibeGroups, activeFilter]);
 
-  // Setup virtualizer
-  const virtualizer = useVirtualizer({
-    count: virtualItems.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: useCallback(() => VIRTUAL_ITEM_ESTIMATED_SIZE, []),
-    overscan: 3, // Number of items to render outside visible area
-  });
+  useEffect(() => {
+    const updateHeight = () => {
+      const containerHeight = parentRef.current?.getBoundingClientRect().height;
+      const fallbackHeight = typeof window !== 'undefined' ? window.innerHeight * 0.7 : 600;
+      const baseHeight = containerHeight && containerHeight > 0 ? containerHeight : fallbackHeight;
+      setListHeight(baseHeight);
+    };
+
+    updateHeight();
+
+    if (typeof window !== 'undefined' && parentRef.current && 'ResizeObserver' in window) {
+      const observer = new ResizeObserver(() => updateHeight());
+      observer.observe(parentRef.current);
+      return () => observer.disconnect();
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateHeight);
+      return () => window.removeEventListener('resize', updateHeight);
+    }
+    return undefined;
+  }, [virtualItems.length]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -339,23 +355,17 @@ export const EventFeed = memo(function EventFeed({
                 ref={parentRef}
                 className="overflow-auto w-full h-full"
               >
-                <div
-                  className="relative w-full"
-                  style={{
-                    height: `${virtualizer.getTotalSize()}px`,
-                  }}
+                <FixedSizeList
+                  height={listHeight}
+                  itemCount={virtualItems.length}
+                  itemSize={VIRTUAL_ITEM_ESTIMATED_SIZE}
+                  width="100%"
+                  itemKey={(index) => virtualItems[index].key}
                 >
-                  {virtualizer.getVirtualItems().map((virtualRow) => {
-                    const item = virtualItems[virtualRow.index];
-                    
+                  {({ index, style }: ListChildComponentProps) => {
+                    const item = virtualItems[index];
                     return (
-                      <div
-                        key={item.key}
-                        className="absolute top-0 left-0 w-full"
-                        style={{
-                          transform: `translateY(${virtualRow.start}px)`,
-                        }}
-                      >
+                      <div style={{ ...style, width: '100%' }}>
                         {item.type === 'header' ? (
                           <VibeHeaderSection vibe={item.vibe} />
                         ) : (
@@ -389,8 +399,8 @@ export const EventFeed = memo(function EventFeed({
                         )}
                       </div>
                     );
-                  })}
-                </div>
+                  }}
+                </FixedSizeList>
               </div>
             ) : (
               <motion.div
