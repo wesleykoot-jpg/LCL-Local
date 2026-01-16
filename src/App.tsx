@@ -1,7 +1,7 @@
 import { Toaster } from "@/shared/components/ui/toaster";
 import { Toaster as Sonner } from "@/shared/components/ui/sonner";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -28,7 +28,18 @@ import { GoogleCalendarSettingsPage } from "@/features/calendar";
 import { AdminPage } from "@/features/admin";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours - cache persists for offline use
+      staleTime: 1000 * 60 * 5, // 5 minutes before refetch
+    },
+  },
+});
+
+const persister = createSyncStoragePersister({
+  storage: window.localStorage,
+});
 const storagePersister = typeof window !== 'undefined'
   ? createSyncStoragePersister({ storage: window.localStorage })
   : null;
@@ -118,7 +129,7 @@ const App = () => (
         </TooltipProvider>
       </PersistQueryClientProvider>
     ) : (
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
         <TooltipProvider>
           <AuthProvider>
             <LocationProvider>
@@ -156,7 +167,7 @@ const App = () => (
             </LocationProvider>
           </AuthProvider>
         </TooltipProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     )}
   </ErrorBoundary>
 );
