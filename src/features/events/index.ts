@@ -29,6 +29,7 @@ export type {
 } from './hooks/useUnifiedItinerary';
 
 export { useImageFallback, getEventImage } from './hooks/useImageFallback';
+export { useLiveEventsQuery } from './hooks/useLiveEventsQuery';
 
 // Components
 export { EventStackCard } from './components/EventStackCard';
@@ -50,7 +51,13 @@ export { DiscoveryRail } from './components/DiscoveryRail';
 export { GlassSearchBar } from './components/GlassSearchBar';
 export { DeepDiveView } from './components/DeepDiveView';
 
+// Now Mode Components
+export { TimeDial } from './components/TimeDial';
+export { LiveEventCard } from './components/LiveEventCard';
+export { WhosOutRail } from './components/WhosOutRail';
+
 // Pages (for route usage)
 export { default as FeedPage } from './Feed';
 export { default as DiscoveryPage } from './Discovery';
 export { default as MyPlanningPage } from './MyPlanning';
+export { default as NowPage } from './Now';
