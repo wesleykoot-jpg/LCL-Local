@@ -81,7 +81,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         className="relative rounded-2xl overflow-hidden bg-card border-2 border-border hover:border-primary/30 transition-all hover:shadow-lg"
         whileTap={{ scale: 0.98 }}
       >
-        {/* Image - Cinema Style (16:9 or 2:1 aspect ratio) */}
+        {/* Image - Cinema Style (2:1 aspect ratio) */}
         {event.image_url && (
           <div className="relative w-full aspect-[2/1] bg-gradient-to-br from-primary/10 to-primary/5">
             <img

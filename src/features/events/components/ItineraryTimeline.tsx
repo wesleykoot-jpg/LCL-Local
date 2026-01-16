@@ -28,6 +28,17 @@ function calculateDuration(start: Date, end?: Date): string | null {
   return null;
 }
 
+// Type guard to check if originalData is EventWithAttendees
+function isEventWithAttendees(data: any): data is EventWithAttendees {
+  return (
+    data &&
+    typeof data === 'object' &&
+    'id' in data &&
+    'title' in data &&
+    'category' in data
+  );
+}
+
 export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<string, ItineraryItem[]> }) => {
   const today = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', month: 'short', day: 'numeric' 
@@ -104,14 +115,17 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                         )}
 
                         {/* Element B: The Card (Visual) */}
-                        {item.type === 'LCL_EVENT' ? (
+                        {item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) ? (
                           <div className="transform transition-all hover:scale-[1.01]">
                             <TimelineEventCard
-                              event={item.originalData as EventWithAttendees}
+                              event={item.originalData}
                               variant="trip-card"
                               showJoinButton={false}
                             />
                           </div>
+                        ) : item.type === 'LCL_EVENT' ? (
+                          /* Fallback for LCL events without valid data */
+                          <div className="text-white/40 text-sm">Event data unavailable</div>
                         ) : (
                           /* Phase 3: Google Calendar Ghost Card - Travel Notes Style */
                           <motion.div 
