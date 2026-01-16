@@ -105,6 +105,8 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                       {/* Column 3: Event Card - Full Width */}
                       <div className="flex-1 min-w-0 pb-2">
                         {item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) ? (
+                          /* TimelineEventCard with trip-card variant handles title internally 
+                             as an overlay on the poster, so no external title is needed here */
                           <motion.div 
                             className="transform transition-all"
                             whileTap={{ scale: 0.98 }}
