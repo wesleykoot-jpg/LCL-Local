@@ -421,11 +421,16 @@ export interface GoogleCalendarExternalEvent {
 
 /**
  * Fetch events from user's Google Calendar for a date range
+ * @param profileId - User's profile ID
+ * @param timeMin - Start of date range
+ * @param timeMax - End of date range  
+ * @param maxResults - Maximum number of events to return (default: 100)
  */
 export async function fetchCalendarEvents(
   profileId: string,
   timeMin: Date,
-  timeMax: Date
+  timeMax: Date,
+  maxResults: number = 100
 ): Promise<{ events: GoogleCalendarExternalEvent[]; error?: string }> {
   try {
     const accessToken = await getValidAccessToken(profileId);
@@ -438,7 +443,7 @@ export async function fetchCalendarEvents(
       timeMax: timeMax.toISOString(),
       singleEvents: 'true',
       orderBy: 'startTime',
-      maxResults: '50',
+      maxResults: String(Math.min(maxResults, 2500)), // Google's max is 2500
     });
 
     const response = await fetch(

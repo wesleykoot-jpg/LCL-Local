@@ -149,7 +149,10 @@ function getSortableDateTime(
   const dateKey = eventDate.split('T')[0].split(' ')[0];
   
   if (eventTime && /^\d{1,2}:\d{2}$/.test(eventTime)) {
-    return `${dateKey}T${eventTime.padStart(5, '0')}:00`;
+    // Pad hours to 2 digits (e.g., "9:30" -> "09:30")
+    const [hours, minutes] = eventTime.split(':');
+    const paddedTime = `${hours.padStart(2, '0')}:${minutes}`;
+    return `${dateKey}T${paddedTime}:00`;
   }
 
   // All-day events sort at the start of the day
@@ -195,6 +198,7 @@ export function useUnifiedItinerary(filterTab: 'upcoming' | 'past' = 'upcoming')
   const [googleEvents, setGoogleEvents] = useState<GoogleCalendarExternalEvent[]>([]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Check Google Calendar connection and fetch events
   useEffect(() => {
@@ -215,13 +219,16 @@ export function useUnifiedItinerary(filterTab: 'upcoming' | 'past' = 'upcoming')
 
         setGoogleLoading(true);
 
-        // Fetch events for the next 7 days (and past 7 days for past tab)
+        // Fetch events for the next 14 days (and past 90 days for past tab)
         const now = new Date();
+        const todayMidnight = new Date(now);
+        todayMidnight.setHours(0, 0, 0, 0);
+        
         const timeMin = filterTab === 'past' 
           ? new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) // 90 days ago
-          : new Date(now.setHours(0, 0, 0, 0));
+          : todayMidnight;
         const timeMax = filterTab === 'past'
-          ? new Date(new Date().setHours(0, 0, 0, 0))
+          ? todayMidnight
           : new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days ahead
 
         const { events, error } = await fetchCalendarEvents(profileId, timeMin, timeMax);
@@ -240,7 +247,7 @@ export function useUnifiedItinerary(filterTab: 'upcoming' | 'past' = 'upcoming')
     }
 
     fetchGoogleEvents();
-  }, [profileId, filterTab]);
+  }, [profileId, filterTab, refreshKey]);
 
   // Merge and group events by day
   const dayGroups = useMemo(() => {
@@ -288,8 +295,25 @@ export function useUnifiedItinerary(filterTab: 'upcoming' | 'past' = 'upcoming')
 
     // Process Google Calendar events
     googleEvents.forEach((event) => {
-      // Skip events that are synced from LCL (they have LCL in description or match title)
-      if (event.description?.includes('LCL Local')) {
+      // Skip events that are synced from LCL 
+      // Check for LCL marker in description (added when syncing to Google)
+      const isLCLSynced = event.description?.toLowerCase().includes('lcl local') ||
+                          event.description?.toLowerCase().includes('event from lcl');
+      if (isLCLSynced) {
+        return;
+      }
+
+      // Also check for duplicate titles on the same date/time
+      const eventTitle = event.summary.toLowerCase().trim();
+      const isDuplicate = commitments.some(lcl => {
+        const lclTitle = lcl.title.toLowerCase().trim();
+        const lclDateKey = lcl.event_date.split('T')[0].split(' ')[0];
+        const googleDateKey = event.start.date || 
+          new Date(event.start.dateTime!).toISOString().split('T')[0];
+        return lclTitle === eventTitle && lclDateKey === googleDateKey;
+      });
+      
+      if (isDuplicate) {
         return;
       }
 
@@ -356,10 +380,9 @@ export function useUnifiedItinerary(filterTab: 'upcoming' | 'past' = 'upcoming')
     [dayGroups]
   );
 
-  // Refresh function
+  // Refresh function to re-fetch Google Calendar events
   const refresh = useCallback(() => {
-    // Re-fetch Google events by toggling a dependency
-    // The useAllUserCommitments hook handles its own refresh
+    setRefreshKey(prev => prev + 1);
   }, []);
 
   return {
