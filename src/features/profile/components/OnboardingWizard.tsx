@@ -1,18 +1,58 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, MapPin, Check } from 'lucide-react';
+import { X, ChevronRight, MapPin, Check, Loader2, Navigation } from 'lucide-react';
 import { CATEGORIES, type CategoryConfig } from '@/shared/lib/categories';
 import { cn } from '@/shared/lib/utils';
+import { useGeolocation, type UserLocation } from '@/features/location/hooks/useGeolocation';
+import { useLocation } from '@/features/location';
+import toast from 'react-hot-toast';
 
 interface OnboardingWizardProps {
-  onComplete: (selectedCategories: string[], zone: string) => void;
+  onComplete: (selectedCategories: string[], zone: string, coordinates?: UserLocation) => void;
   onClose: () => void;
+}
+
+/**
+ * Reverse geocode coordinates to get city name using BigDataCloud API
+ * @param lat Latitude
+ * @param lng Longitude
+ * @returns City name or null if failed
+ */
+async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+    );
+    
+    if (!response.ok) {
+      console.warn('[OnboardingWizard] Reverse geocode failed:', response.statusText);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Prefer city, then locality, then principalSubdivision
+    const cityName = data.city || data.locality || data.principalSubdivision || null;
+    
+    return cityName;
+  } catch (error) {
+    console.warn('[OnboardingWizard] Reverse geocode error:', error);
+    return null;
+  }
 }
 
 export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [zone, setZone] = useState('');
+  const [coordinates, setCoordinates] = useState<UserLocation | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  
+  // Use geolocation hook for getting position
+  const { getCurrentPosition, requestPermission, permissionState } = useGeolocation();
+  
+  // Use location context to update global location state
+  const { setManualZone } = useLocation();
 
   const toggleCategory = useCallback((categoryId: string) => {
     setSelectedCategories(prev => {
@@ -25,6 +65,59 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
       return next;
     });
   }, []);
+
+  /**
+   * Handle "Use Current Location" button click
+   * Gets GPS coordinates and reverse geocodes to city name
+   */
+  const handleUseCurrentLocation = useCallback(async () => {
+    setIsGettingLocation(true);
+    
+    try {
+      // Request permission if needed
+      if (permissionState === 'prompt' || permissionState === 'unknown') {
+        const granted = await requestPermission();
+        if (!granted) {
+          toast.error('Please enable location services or type your city manually.');
+          setIsGettingLocation(false);
+          return;
+        }
+      } else if (permissionState === 'denied') {
+        toast.error('Please enable location services or type your city manually.');
+        setIsGettingLocation(false);
+        return;
+      }
+      
+      // Get current position
+      const position = await getCurrentPosition();
+      
+      if (!position) {
+        toast.error('Unable to get your location. Please type your city manually.');
+        setIsGettingLocation(false);
+        return;
+      }
+      
+      // Store coordinates
+      setCoordinates(position);
+      
+      // Reverse geocode to get city name
+      const cityName = await reverseGeocode(position.lat, position.lng);
+      
+      if (cityName) {
+        setZone(cityName);
+        toast.success(`Location set to ${cityName}`);
+      } else {
+        // If reverse geocoding fails, just use coordinates display
+        setZone(`${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}`);
+        toast.success('Location detected successfully');
+      }
+    } catch (error) {
+      console.error('[OnboardingWizard] Error getting location:', error);
+      toast.error('Please enable location services or type your city manually.');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  }, [permissionState, requestPermission, getCurrentPosition]);
 
   const handleNext = () => {
     if (step === 1 && selectedCategories.size > 0) {
@@ -41,7 +134,16 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
   };
 
   const handleFinish = () => {
-    onComplete(Array.from(selectedCategories), zone.trim());
+    const trimmedZone = zone.trim();
+    
+    // Update global location context with the zone and coordinates
+    // Only set if we have both valid zone and coordinates
+    if (coordinates && trimmedZone) {
+      setManualZone(trimmedZone, coordinates);
+    }
+    
+    // Call onComplete with coordinates if available
+    onComplete(Array.from(selectedCategories), trimmedZone, coordinates || undefined);
   };
 
   const canProceed = step === 1 
@@ -170,6 +272,41 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                   <MapPin size={36} className="text-primary" />
                 </div>
+                
+                {/* Use Current Location Button */}
+                <div className="w-full max-w-sm mb-4">
+                  <button
+                    onClick={handleUseCurrentLocation}
+                    disabled={isGettingLocation}
+                    className={cn(
+                      'w-full py-4 rounded-xl font-semibold text-[16px] transition-all',
+                      'flex items-center justify-center gap-2',
+                      'bg-primary/10 border-2 border-primary text-primary',
+                      'hover:bg-primary/20 active:scale-[0.98]',
+                      isGettingLocation && 'opacity-70 cursor-not-allowed'
+                    )}
+                  >
+                    {isGettingLocation ? (
+                      <>
+                        <Loader2 size={20} className="animate-spin" />
+                        <span>Getting location...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Navigation size={20} />
+                        <span>📍 Use Current Location</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                {/* Divider */}
+                <div className="w-full max-w-sm flex items-center gap-3 mb-4">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[13px] text-muted-foreground font-medium">or</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                
                 <div className="w-full max-w-sm">
                   <label className="block text-[13px] text-muted-foreground font-medium mb-2">
                     City or postcode
@@ -177,12 +314,30 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                   <input
                     type="text"
                     value={zone}
-                    onChange={(e) => setZone(e.target.value)}
+                    onChange={(e) => {
+                      setZone(e.target.value);
+                      // Clear coordinates if user manually types
+                      if (coordinates) {
+                        setCoordinates(null);
+                      }
+                    }}
                     placeholder="e.g., Amsterdam, 1012 AB"
                     className="w-full px-4 py-4 bg-card border-2 border-border rounded-xl text-foreground placeholder:text-muted-foreground text-[16px] focus:outline-none focus:border-primary transition-colors"
-                    autoFocus
                   />
                 </div>
+                
+                {/* Success indicator when coordinates are set */}
+                {coordinates && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 mt-3 text-[13px] text-green-600 font-medium"
+                  >
+                    <Check size={16} />
+                    <span>Location coordinates captured</span>
+                  </motion.div>
+                )}
+                
                 <p className="text-muted-foreground text-[13px] mt-4 text-center">
                   We'll show events happening near this location
                 </p>
