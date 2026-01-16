@@ -13,6 +13,7 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
+  signInWithApple: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
@@ -225,6 +226,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithApple = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: `${window.location.origin}`,
+        },
+      });
+      return { error };
+    } catch (error) {
+      return { error: error as AuthError };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -261,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
+    signInWithApple,
     signOut,
     updateProfile,
     refreshProfile,
