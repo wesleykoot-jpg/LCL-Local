@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { TimelineEventCard } from './TimelineEventCard';
 import type { EventWithAttendees } from '../hooks/hooks';
 
-// Format time like "7:00 PM"
+// Format time like "7:00 PM" - force 12-hour format
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 // Calculate duration between two times
