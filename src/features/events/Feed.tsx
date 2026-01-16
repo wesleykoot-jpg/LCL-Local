@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FloatingNav, LoadingSkeleton, ErrorBoundary, DevPanel } from '@/shared/components';
 import { OnboardingWizard } from '@/features/profile';
 import { FeaturedEventHero } from './components/FeaturedEventHero';
+import { FriendsPulseRail } from './components/FriendsPulseRail';
 import { HorizontalEventCarousel } from './components/HorizontalEventCarousel';
 import { EventStackCard } from './components/EventStackCard';
 import { TimeFilterPills, type TimeFilter } from './components/TimeFilterPills';
@@ -323,6 +324,12 @@ const Feed = () => {
                   />
                 </motion.div>
               )}
+
+              {/* Friends Pulse Rail - Instagram Stories style */}
+              <FriendsPulseRail
+                currentUserProfileId={profile?.id}
+                onEventClick={handleEventClick}
+              />
 
               {/* Trending Carousel */}
               {activeFilter === 'all' && trendingEvents.length > 0 && (

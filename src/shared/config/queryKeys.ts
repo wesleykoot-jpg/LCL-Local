@@ -22,4 +22,5 @@ export const queryKeys = {
     commitments: (userId: string) => ['profile', userId, 'commitments'] as const,
     myEvents: (userId: string) => ['my-events', userId] as const,
   },
+  friendsPulse: (userId: string) => ['friends-pulse', userId] as const,
 } as const;
