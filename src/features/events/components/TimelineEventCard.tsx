@@ -2,7 +2,7 @@ import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { MapPin, Users, Loader2, Check } from 'lucide-react';
-import { CATEGORY_MAP } from '@/shared/lib/categories';
+import { getCategoryConfig } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { useJoinEvent } from '../hooks/hooks';
 import { useAuth } from '@/features/auth';
@@ -35,7 +35,8 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   showJoinButton = false,
   variant = 'default',
 }: TimelineEventCardProps) {
-  const categoryLabel = CATEGORY_MAP[event.category] || event.category;
+  const categoryConfig = getCategoryConfig(event.category);
+  const categoryLabel = categoryConfig.label;
   const attendeeCount = event.attendee_count || 0;
   const { profile } = useAuth();
   const { handleJoinEvent, isJoining } = useJoinEvent(profile?.id);
@@ -113,8 +114,8 @@ export const TimelineEventCard = memo(function TimelineEventCard({
               <Users size={14} />
               <span className="font-medium">{attendeeCount} going</span>
             </div>
-            {/* Category Badge - Always at bottom right */}
-            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+            {/* Category Badge - Always at bottom right with color */}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide ${categoryConfig.bgClass} ${categoryConfig.textClass}`}>
               {categoryLabel}
             </span>
           </div>
@@ -185,8 +186,8 @@ export const TimelineEventCard = memo(function TimelineEventCard({
 
       {/* Category Badge - Top Right Corner for minimal variant */}
       {variant === 'minimal' && (
-        <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-primary/10 text-primary">
-          <span className="text-[11px] font-semibold uppercase tracking-wide capitalize">
+        <div className={`absolute top-3 right-3 px-2 py-1 rounded-full ${categoryConfig.bgClass}`}>
+          <span className={`text-[11px] font-semibold uppercase tracking-wide ${categoryConfig.textClass}`}>
             {categoryLabel}
           </span>
         </div>
@@ -207,7 +208,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
             <span className="truncate">{event.venue_name}</span>
           </div>
           <span className="text-border">•</span>
-          <span className="flex-shrink-0 capitalize">{categoryLabel}</span>
+          <span className={`flex-shrink-0 ${categoryConfig.textClass}`}>{categoryLabel}</span>
         </div>
       )}
 
