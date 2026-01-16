@@ -9,7 +9,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, ExternalLink } from 'lucide-react';
-import type { ItineraryItem } from '../hooks/useUnifiedItinerary';
+import type { ItineraryItem } from '../../hooks/useUnifiedItinerary';
 import type { GoogleCalendarExternalEvent } from '@/integrations/googleCalendar';
 
 interface ShadowEventCardProps {

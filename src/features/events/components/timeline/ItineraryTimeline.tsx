@@ -6,8 +6,8 @@
  */
 
 import { memo } from 'react';
-import { TimelineEventCard } from './TimelineEventCard';
-import type { ItineraryItem, GroupedTimeline } from '../hooks/useUnifiedItinerary';
+import { TimelineEventCard } from '../TimelineEventCard';
+import type { ItineraryItem, GroupedTimeline } from '../../hooks/useUnifiedItinerary';
 
 interface ItineraryTimelineProps {
   groupedTimeline: GroupedTimeline;
