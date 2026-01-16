@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import type { PersonaType, PersonaPrediction } from '@/lib/personaPredictor';
 
 export type FeedMode = 'family' | 'social' | 'default';
 
@@ -7,6 +8,15 @@ interface FeedContextValue {
   setFeedMode: (mode: FeedMode) => void;
   isParentDetected: boolean;
   setIsParentDetected: (detected: boolean) => void;
+  /** IO26: AI-suggested persona from the prediction engine */
+  suggestedPersona: PersonaType | null;
+  setSuggestedPersona: (persona: PersonaType | null) => void;
+  /** IO26: Timestamp of the last persona prediction */
+  lastPredictionTime: number | null;
+  setLastPredictionTime: (time: number | null) => void;
+  /** IO26: Full prediction object for advanced usage */
+  currentPrediction: PersonaPrediction | null;
+  setCurrentPrediction: (prediction: PersonaPrediction | null) => void;
 }
 
 const FeedContext = createContext<FeedContextValue | undefined>(undefined);
@@ -25,6 +35,11 @@ export function FeedProvider({ children }: { children: ReactNode }) {
     return stored === 'true';
   });
 
+  // IO26: Persona prediction state
+  const [suggestedPersona, setSuggestedPersona] = useState<PersonaType | null>(null);
+  const [lastPredictionTime, setLastPredictionTime] = useState<number | null>(null);
+  const [currentPrediction, setCurrentPrediction] = useState<PersonaPrediction | null>(null);
+
   const setFeedMode = (mode: FeedMode) => {
     setFeedModeState(mode);
     localStorage.setItem(FEED_MODE_STORAGE_KEY, mode);
@@ -42,6 +57,12 @@ export function FeedProvider({ children }: { children: ReactNode }) {
         setFeedMode,
         isParentDetected,
         setIsParentDetected,
+        suggestedPersona,
+        setSuggestedPersona,
+        lastPredictionTime,
+        setLastPredictionTime,
+        currentPrediction,
+        setCurrentPrediction,
       }}
     >
       {children}

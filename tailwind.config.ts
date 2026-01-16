@@ -131,10 +131,44 @@ export default {
             height: "0",
           },
         },
+        // IO26 Liquid Glass keyframes
+        "liquid-pulse": {
+          "0%, 100%": {
+            opacity: "0.8",
+            transform: "scale(1)",
+          },
+          "50%": {
+            opacity: "1",
+            transform: "scale(1.02)",
+          },
+        },
+        "proximity-glow": {
+          "0%": {
+            boxShadow: "0 0 0 0 rgba(var(--primary), 0.4)",
+          },
+          "100%": {
+            boxShadow: "0 0 12px 4px rgba(var(--primary), 0.6)",
+          },
+        },
+        "refraction-glide": {
+          "0%": {
+            backgroundPosition: "0% 50%",
+          },
+          "50%": {
+            backgroundPosition: "100% 50%",
+          },
+          "100%": {
+            backgroundPosition: "0% 50%",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        // IO26 Liquid Glass animations
+        "liquid-pulse": "liquid-pulse 8s ease-in-out infinite",
+        "proximity-glow": "proximity-glow 2s ease-in-out alternate infinite",
+        "refraction-glide": "refraction-glide 6s ease-in-out infinite",
       },
     },
   },

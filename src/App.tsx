@@ -8,6 +8,9 @@ import { LocationProvider } from "@/features/location";
 import { FeedProvider } from "@/contexts/FeedContext";
 import { ErrorBoundary } from "@/shared/components";
 
+// IO26 Liquid Glass styles
+import "@/styles/io26-glass.css";
+
 // Feature-based page imports
 import { FeedPage, MyEventsPage } from "@/features/events";
 import { 
@@ -25,8 +28,47 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+/**
+ * IO26 Refraction SVG Filter
+ * 
+ * Hidden global SVG filter using feTurbulence and feDisplacementMap
+ * to simulate physical light bending at card edges for the Liquid Glass effect.
+ */
+const IO26RefractionFilter = () => (
+  <svg
+    style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
+    aria-hidden="true"
+  >
+    <defs>
+      <filter id="io26-refraction" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.015"
+          numOctaves="3"
+          result="turbulence"
+          seed="42"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="turbulence"
+          scale="4"
+          xChannelSelector="R"
+          yChannelSelector="G"
+          result="displaced"
+        />
+        <feGaussianBlur in="displaced" stdDeviation="0.5" result="blurred" />
+        <feMerge>
+          <feMergeNode in="blurred" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+);
+
 const App = () => (
   <ErrorBoundary>
+    <IO26RefractionFilter />
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
