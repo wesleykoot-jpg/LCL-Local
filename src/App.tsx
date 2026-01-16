@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/features/auth";
 import { LocationProvider } from "@/features/location";
 import { FeedProvider } from "@/contexts/FeedContext";
@@ -14,7 +14,7 @@ import { ErrorBoundary } from "@/shared/components";
 import "@/styles/io26-glass.css";
 
 // Feature-based page imports
-import { FeedPage, MyPlanningPage } from "@/features/events";
+import { FeedPage, DiscoveryPage, MyPlanningPage } from "@/features/events";
 import { 
   ProfilePage, 
   PrivacySettingsPage, 
@@ -99,7 +99,7 @@ const App = () => (
                 <BrowserRouter>
                   <Routes>
                     {/* Main app routes - accessible without login for dev */}
-                    <Route path="/" element={<Navigate to="/feed" replace />} />
+                    <Route path="/" element={<DiscoveryPage />} />
                     <Route path="/feed" element={<FeedPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
@@ -139,7 +139,7 @@ const App = () => (
                 <BrowserRouter>
                   <Routes>
                     {/* Main app routes - accessible without login for dev */}
-                    <Route path="/" element={<Navigate to="/feed" replace />} />
+                    <Route path="/" element={<DiscoveryPage />} />
                     <Route path="/feed" element={<FeedPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />
                     <Route path="/profile" element={<ProfilePage />} />

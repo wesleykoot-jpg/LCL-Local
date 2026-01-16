@@ -46,7 +46,11 @@ export { FeaturedEventHero } from './components/FeaturedEventHero';
 export { HorizontalEventCarousel } from './components/HorizontalEventCarousel';
 export { Facepile } from './components/Facepile';
 export { CategorySubscribeCard } from './components/CategorySubscribeCard';
+export { DiscoveryRail } from './components/DiscoveryRail';
+export { GlassSearchBar } from './components/GlassSearchBar';
+export { DeepDiveView } from './components/DeepDiveView';
 
 // Pages (for route usage)
 export { default as FeedPage } from './Feed';
+export { default as DiscoveryPage } from './Discovery';
 export { default as MyPlanningPage } from './MyPlanning';
