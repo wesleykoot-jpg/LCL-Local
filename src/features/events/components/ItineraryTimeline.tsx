@@ -1,6 +1,6 @@
 import React from 'react';
 import { ItineraryItem } from '../hooks/useUnifiedItinerary';
-import { Calendar, MapPin, Clock, Users, Ticket } from 'lucide-react';
+import { Calendar, MapPin, Users, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import { motion } from 'framer-motion';
@@ -122,14 +122,22 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                       <ItineraryEventCard item={item} />
                     </div>
                   ) : (
-                    // Ghost Card for Calendar Items
-                    <div className="p-4 rounded-2xl bg-muted/50 border border-border backdrop-blur-md">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-foreground font-medium">{item.title}</h4>
-                          <p className="text-muted-foreground text-xs mt-1">Google Calendar</p>
+                    // 👻 GHOST CARD (Google Calendar)
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm flex justify-between items-center group hover:bg-white/10 transition-colors">
+                      <div className="flex gap-4 items-center">
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                          <Calendar className="w-5 h-5" />
                         </div>
-                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <h4 className="text-white font-medium text-base">{item.title}</h4>
+                          <p className="text-white/40 text-xs flex items-center gap-1 mt-0.5">
+                            {item.location && <span>{item.location} • </span>}
+                            Google Calendar
+                          </p>
+                        </div>
+                      </div>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Optional Action for Calendar items */}
                       </div>
                     </div>
                   )}
