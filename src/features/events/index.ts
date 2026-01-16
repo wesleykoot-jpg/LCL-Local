@@ -26,8 +26,6 @@ export { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
 export type {
   ItineraryItem,
   ItineraryItemType,
-  ItineraryItemStatus,
-  GroupedTimeline,
 } from './hooks/useUnifiedItinerary';
 
 export { useImageFallback, getEventImage } from './hooks/useImageFallback';
