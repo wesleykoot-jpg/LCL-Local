@@ -2,6 +2,7 @@ import { memo, useState, useCallback, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Clock, Loader2, MapPin, Heart, ChevronRight, Baby, Sparkles } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
+import { EventActionsMenu } from './EventActionsMenu';
 import type { EventStack } from '../api/feedGrouping';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
@@ -98,16 +99,28 @@ const AnchorEventCard = memo(function AnchorEventCard({
           transition={{ duration: 0.3, ease: 'easeOut' }}
         />
         
-        {/* Heart/Save button - Airbnb style */}
-        <button
-          onClick={handleSave}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
-        >
-          <Heart 
-            size={16} 
-            className={isSaved ? 'text-primary fill-primary' : 'text-foreground'} 
-          />
-        </button>
+        {/* Action buttons - top right */}
+        <div className="absolute top-3 right-3 flex gap-2">
+          {/* Actions Menu (Report/Block) */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm">
+            <EventActionsMenu
+              eventId={event.id}
+              hostUserId={event.created_by || undefined}
+              currentUserProfileId={currentUserProfileId}
+            />
+          </div>
+          
+          {/* Heart/Save button - Airbnb style */}
+          <button
+            onClick={handleSave}
+            className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+          >
+            <Heart 
+              size={16} 
+              className={isSaved ? 'text-primary fill-primary' : 'text-foreground'} 
+            />
+          </button>
+        </div>
         
         {/* Category badge - top left */}
         <div className="absolute top-3 left-3 flex flex-col gap-2">

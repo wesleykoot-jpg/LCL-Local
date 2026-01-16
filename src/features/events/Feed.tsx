@@ -425,6 +425,7 @@ const Feed = () => {
               onClose={handleCloseEventDetail}
               onJoin={() => handleJoinEvent()}
               isJoining={isJoining(selectedEventId || '')}
+              currentUserProfileId={profile?.id}
             />
           </Suspense>
         </ErrorBoundary>

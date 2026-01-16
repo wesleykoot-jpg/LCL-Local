@@ -73,6 +73,17 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
   const query = useQuery({
     queryKey,
     queryFn: async (): Promise<EventWithAttendees[]> => {
+      // Fetch blocked user IDs once per query
+      let blockedUserIds: string[] = [];
+      if (currentUserProfileId) {
+        const { data: blockedData } = await supabase
+          .from('user_blocks')
+          .select('blocked_id')
+          .eq('blocker_id', currentUserProfileId);
+        
+        blockedUserIds = (blockedData || []).map(b => b.blocked_id);
+      }
+
       // Use personalized feed RPC if enabled and user location is available
       if (usePersonalizedFeed && userLocation && currentUserProfileId) {
         const { data, error } = await supabase.rpc('get_personalized_feed', {
@@ -105,42 +116,61 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
         // Group attendees by event
         const attendeesByEvent = new Map<string, EventAttendee[]>();
-        (attendeesData || []).forEach((att: any) => {
+        (attendeesData || []).forEach((att: { event_id: string; profile: AttendeeProfile | null }) => {
           if (!attendeesByEvent.has(att.event_id)) {
             attendeesByEvent.set(att.event_id, []);
           }
           attendeesByEvent.get(att.event_id)!.push({
-            profile: att.profile as AttendeeProfile | null,
+            profile: att.profile,
           });
         });
 
-        // Combine RPC data with attendees
-        return rpcEvents.map(rpcEvent => ({
-          id: rpcEvent.event_id,
-          title: rpcEvent.title,
-          description: rpcEvent.description,
-          category: rpcEvent.category as any,
-          event_type: rpcEvent.event_type as any,
-          parent_event_id: rpcEvent.parent_event_id,
-          venue_name: rpcEvent.venue_name,
-          location: rpcEvent.location,
-          event_date: rpcEvent.event_date,
-          event_time: rpcEvent.event_time,
-          status: rpcEvent.status as any,
-          image_url: rpcEvent.image_url,
-          match_percentage: rpcEvent.match_percentage,
-          attendee_count: rpcEvent.attendee_count,
-          attendees: attendeesByEvent.get(rpcEvent.event_id) || [],
-          created_by: null,
-          created_at: new Date().toISOString(),
-          source_id: null,
-          event_fingerprint: null,
-          max_attendees: null,
-          structured_date: null,
-          structured_location: null,
-          organizer: null,
-          parent_event: null,
-        } as EventWithAttendees));
+        // Fetch event details including created_by to filter blocked users
+        const { data: fullEventsData } = await supabase
+          .from('events')
+          .select('id, created_by')
+          .in('id', eventIds);
+
+        const eventCreatorMap = new Map<string, string | null>();
+        (fullEventsData || []).forEach(e => {
+          eventCreatorMap.set(e.id, e.created_by);
+        });
+
+        // Combine RPC data with attendees and filter blocked users
+        const combinedEvents = rpcEvents
+          .filter(rpcEvent => {
+            const creatorId = eventCreatorMap.get(rpcEvent.event_id);
+            // Filter out events created by blocked users
+            return !creatorId || !blockedUserIds.includes(creatorId);
+          })
+          .map(rpcEvent => ({
+            id: rpcEvent.event_id,
+            title: rpcEvent.title,
+            description: rpcEvent.description,
+            category: rpcEvent.category as Event['category'],
+            event_type: rpcEvent.event_type as Event['event_type'],
+            parent_event_id: rpcEvent.parent_event_id,
+            venue_name: rpcEvent.venue_name,
+            location: rpcEvent.location,
+            event_date: rpcEvent.event_date,
+            event_time: rpcEvent.event_time,
+            status: rpcEvent.status as Event['status'],
+            image_url: rpcEvent.image_url,
+            match_percentage: rpcEvent.match_percentage,
+            attendee_count: rpcEvent.attendee_count,
+            attendees: attendeesByEvent.get(rpcEvent.event_id) || [],
+            created_by: eventCreatorMap.get(rpcEvent.event_id) || null,
+            created_at: new Date().toISOString(),
+            source_id: null,
+            event_fingerprint: null,
+            max_attendees: null,
+            structured_date: null,
+            structured_location: null,
+            organizer: null,
+            parent_event: null,
+          } as EventWithAttendees));
+
+        return combinedEvents;
       }
 
       // Fallback to standard query (existing behavior)
@@ -172,21 +202,24 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
       if (error) throw error;
 
-      let eventsWithData = (data || []).map(event => {
-        const count = Array.isArray(event.attendee_count)
-          ? event.attendee_count[0]?.count || 0
-          : 0;
-        
-        const attendees = Array.isArray(event.attendees)
-          ? event.attendees as EventAttendee[]
-          : [];
+      let eventsWithData = (data || [])
+        // Filter out events from blocked users
+        .filter(event => !event.created_by || !blockedUserIds.includes(event.created_by))
+        .map(event => {
+          const count = Array.isArray(event.attendee_count)
+            ? event.attendee_count[0]?.count || 0
+            : 0;
+          
+          const attendees = Array.isArray(event.attendees)
+            ? event.attendees as EventAttendee[]
+            : [];
 
-        return {
-          ...event,
-          attendee_count: count,
-          attendees,
-        };
-      });
+          return {
+            ...event,
+            attendee_count: count,
+            attendees,
+          };
+        });
 
       // Fetch current user's attendance if provided
       if (currentUserProfileId && eventsWithData.length > 0) {
