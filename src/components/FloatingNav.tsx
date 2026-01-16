@@ -1,9 +1,9 @@
-import { Home, Calendar, User } from 'lucide-react';
+import { Home, Map, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/lib/haptics';
 import { motion } from 'framer-motion';
 
-type NavView = 'feed' | 'my-events' | 'profile';
+type NavView = 'feed' | 'planning' | 'profile';
 
 interface FloatingNavProps {
   activeView?: NavView;
@@ -12,7 +12,7 @@ interface FloatingNavProps {
 
 const NAV_ITEMS: { id: NavView; icon: typeof Home; label: string; path: string }[] = [
   { id: 'feed', icon: Home, label: 'Home', path: '/feed' },
-  { id: 'my-events', icon: Calendar, label: 'My Events', path: '/my-events' },
+  { id: 'planning', icon: Map, label: 'Planning', path: '/planning' },
   { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
 ];
 
@@ -23,7 +23,7 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   // Derive active view from route if not provided
   const currentPath = location.pathname;
   const derivedActiveView = activeView || 
-    (currentPath.includes('my-events') ? 'my-events' : 
+    (currentPath.includes('planning') ? 'planning' : 
      currentPath.includes('profile') ? 'profile' : 'feed');
 
   const handleNav = async (view: NavView, path: string) => {

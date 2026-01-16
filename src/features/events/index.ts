@@ -49,4 +49,4 @@ export { CategorySubscribeCard } from './components/CategorySubscribeCard';
 
 // Pages (for route usage)
 export { default as FeedPage } from './Feed';
-export { default as MyEventsPage } from './MyEvents';
+export { default as MyPlanningPage } from './MyPlanning';
