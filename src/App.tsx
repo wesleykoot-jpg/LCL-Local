@@ -14,7 +14,7 @@ import { ErrorBoundary } from "@/shared/components";
 import "@/styles/io26-glass.css";
 
 // Feature-based page imports
-import { FeedPage, DiscoveryPage, MyPlanningPage } from "@/features/events";
+import { FeedPage, DiscoveryPage, MyPlanningPage, NowPage } from "@/features/events";
 import { 
   ProfilePage, 
   PrivacySettingsPage, 
@@ -101,6 +101,7 @@ const App = () => (
                     {/* Main app routes - accessible without login for dev */}
                     <Route path="/" element={<DiscoveryPage />} />
                     <Route path="/feed" element={<FeedPage />} />
+                    <Route path="/now" element={<NowPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     
@@ -141,6 +142,7 @@ const App = () => (
                     {/* Main app routes - accessible without login for dev */}
                     <Route path="/" element={<DiscoveryPage />} />
                     <Route path="/feed" element={<FeedPage />} />
+                    <Route path="/now" element={<NowPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     

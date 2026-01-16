@@ -1,11 +1,11 @@
-import { Home, Map, User, Users, Baby, Settings } from 'lucide-react';
+import { Home, Map, User, Users, Baby, Settings, Zap } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedMode } from '@/contexts/FeedContext';
 import { useState } from 'react';
 
-type NavView = 'feed' | 'planning' | 'profile' | 'scraper';
+type NavView = 'feed' | 'planning' | 'profile' | 'scraper' | 'now';
 
 interface FloatingNavProps {
   activeView?: NavView;
@@ -28,9 +28,12 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   // Derive active view from route if not provided
   const currentPath = location.pathname;
   const derivedActiveView = activeView || 
-    (currentPath.includes('scraper-admin') || currentPath.startsWith('/admin') ? 'scraper' :
+    (currentPath === '/now' ? 'now' :
+     currentPath.includes('scraper-admin') || currentPath.startsWith('/admin') ? 'scraper' :
      currentPath.includes('planning') ? 'planning' : 
      currentPath.includes('profile') ? 'profile' : 'feed');
+  
+  const isNowActive = derivedActiveView === 'now';
 
   const handleNav = async (view: NavView, path: string) => {
     await hapticImpact('light');
@@ -39,6 +42,11 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
     } else {
       navigate(path);
     }
+  };
+  
+  const handleNowClick = async () => {
+    await hapticImpact('medium');
+    navigate('/now');
   };
 
   const handleToggleMode = async () => {
@@ -158,40 +166,124 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
         )}
 
         <div className="flex items-center justify-around h-[52px] max-w-lg mx-auto px-2">
-          {NAV_ITEMS.map((item) => {
-            const isActive = derivedActiveView === item.id;
-            const Icon = item.icon;
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNav(item.id, item.path)}
-                className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
-              >
-                <div className="relative">
-                  <Icon 
-                    size={24} 
-                    strokeWidth={isActive ? 2.5 : 1.5}
-                    className={`transition-colors ${
-                      isActive 
-                        ? 'text-primary' 
-                        : 'text-muted-foreground'
-                    }`}
-                    fill={isActive ? 'currentColor' : 'none'}
-                  />
-                </div>
-                <span 
-                  className={`text-[10px] font-medium transition-colors ${
-                    isActive 
-                      ? 'text-primary' 
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
+          {/* Home button */}
+          <button
+            onClick={() => handleNav('feed', '/')}
+            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
+          >
+            <div className="relative">
+              <Home 
+                size={24} 
+                strokeWidth={derivedActiveView === 'feed' ? 2.5 : 1.5}
+                className={`transition-colors ${
+                  derivedActiveView === 'feed' 
+                    ? 'text-primary' 
+                    : 'text-muted-foreground'
+                }`}
+                fill={derivedActiveView === 'feed' ? 'currentColor' : 'none'}
+              />
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-colors ${
+                derivedActiveView === 'feed' 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Home
+            </span>
+          </button>
+
+          {/* Now button - Center with glow effect */}
+          <button
+            onClick={handleNowClick}
+            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-all"
+          >
+            <div 
+              className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                isNowActive 
+                  ? 'bg-gradient-to-br from-orange-400 to-purple-600' 
+                  : 'bg-gradient-to-br from-orange-400/80 to-purple-500/80'
+              }`}
+              style={{
+                boxShadow: isNowActive 
+                  ? '0 0 20px rgba(255, 107, 44, 0.6), 0 0 40px rgba(107, 70, 193, 0.4)'
+                  : '0 2px 8px rgba(0, 0, 0, 0.15)',
+              }}
+            >
+              <Zap 
+                size={20} 
+                strokeWidth={2.5}
+                className="text-white"
+                fill="currentColor"
+              />
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-colors ${
+                isNowActive 
+                  ? 'text-orange-500' 
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Now
+            </span>
+          </button>
+
+          {/* Planning button */}
+          <button
+            onClick={() => handleNav('planning', '/planning')}
+            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
+          >
+            <div className="relative">
+              <Map 
+                size={24} 
+                strokeWidth={derivedActiveView === 'planning' ? 2.5 : 1.5}
+                className={`transition-colors ${
+                  derivedActiveView === 'planning' 
+                    ? 'text-primary' 
+                    : 'text-muted-foreground'
+                }`}
+                fill={derivedActiveView === 'planning' ? 'currentColor' : 'none'}
+              />
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-colors ${
+                derivedActiveView === 'planning' 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Planning
+            </span>
+          </button>
+
+          {/* Profile button */}
+          <button
+            onClick={() => handleNav('profile', '/profile')}
+            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
+          >
+            <div className="relative">
+              <User 
+                size={24} 
+                strokeWidth={derivedActiveView === 'profile' ? 2.5 : 1.5}
+                className={`transition-colors ${
+                  derivedActiveView === 'profile' 
+                    ? 'text-primary' 
+                    : 'text-muted-foreground'
+                }`}
+                fill={derivedActiveView === 'profile' ? 'currentColor' : 'none'}
+              />
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-colors ${
+                derivedActiveView === 'profile' 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Profile
+            </span>
+          </button>
 
           {/* Mode toggle button - only on feed page */}
           {showModeButton && (

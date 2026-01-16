@@ -1,5 +1,6 @@
 // Re-export the new TanStack Query-based hooks
 export { useEventsQuery } from './useEventsQuery';
+export { useLiveEventsQuery } from './useLiveEventsQuery';
 
 // Re-export unified itinerary hook
 export { 
