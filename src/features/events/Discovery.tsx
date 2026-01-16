@@ -13,7 +13,7 @@ import { DiscoveryRail } from './components/DiscoveryRail';
 import { GlassSearchBar } from './components/GlassSearchBar';
 import { DeepDiveView } from './components/DeepDiveView';
 import { hapticImpact } from '@/shared/lib/haptics';
-import { MapPin, Plus, Navigation, ChevronDown } from 'lucide-react';
+import { MapPin, Plus, Navigation, ChevronDown, Flame, Calendar, Zap, Music } from 'lucide-react';
 
 const CreateEventModal = lazy(() => import('./components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 const EventDetailModal = lazy(() => import('./components/EventDetailModal'));
@@ -293,7 +293,7 @@ const Discovery = () => {
 
                     {/* Popular in [City] Rail */}
                     {popularEvents.length > 0 && (
-                      <DiscoveryRail title={`🔥 Popular in ${locationText}`}>
+                      <DiscoveryRail title={<span className="flex items-center gap-2"><Flame size={20} className="text-orange-500" /> Popular in {locationText}</span>}>
                         <HorizontalEventCarousel
                           title=""
                           events={popularEvents}
@@ -307,7 +307,7 @@ const Discovery = () => {
 
                     {/* Plan Your Weekend Rail */}
                     {weekendEvents.length > 0 && (
-                      <DiscoveryRail title="📅 Plan Your Weekend">
+                      <DiscoveryRail title={<span className="flex items-center gap-2"><Calendar size={20} className="text-blue-500" /> Plan Your Weekend</span>}>
                         <HorizontalEventCarousel
                           title=""
                           events={weekendEvents}
@@ -321,7 +321,7 @@ const Discovery = () => {
 
                     {/* Tonight Rail */}
                     {tonightEvents.length > 0 && (
-                      <DiscoveryRail title="⚡ Tonight">
+                      <DiscoveryRail title={<span className="flex items-center gap-2"><Zap size={20} className="text-yellow-500" /> Tonight</span>}>
                         <HorizontalEventCarousel
                           title=""
                           events={tonightEvents}
@@ -335,7 +335,7 @@ const Discovery = () => {
 
                     {/* Live Music Rail */}
                     {musicEvents.length > 0 && (
-                      <DiscoveryRail title="🎵 Live Music">
+                      <DiscoveryRail title={<span className="flex items-center gap-2"><Music size={20} className="text-purple-500" /> Live Music</span>}>
                         <HorizontalEventCarousel
                           title=""
                           events={musicEvents}

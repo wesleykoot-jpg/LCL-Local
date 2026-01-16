@@ -56,9 +56,6 @@ export const GlassSearchBar = memo(function GlassSearchBar({
   return (
     <motion.div 
       className="flex items-center gap-3"
-      animate={{
-        scale: isSearching ? 1 : 1,
-      }}
     >
       <motion.div
         className={`

@@ -2,7 +2,7 @@ import { memo, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 
 interface DiscoveryRailProps {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   onSeeAll?: () => void;
 }

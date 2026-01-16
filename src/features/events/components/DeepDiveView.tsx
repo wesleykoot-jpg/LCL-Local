@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Map, Clock, Users, MapPin, Heart, Loader2 } from 'lucide-react';
+import { Map, Clock, Users, MapPin, Heart, Loader2, Check } from 'lucide-react';
 import { LoadingSkeleton } from '@/shared/components';
 import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
 import { hapticImpact } from '@/shared/lib/haptics';
@@ -198,7 +198,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
           {isJoining ? (
             <Loader2 size={14} className="animate-spin mx-auto" />
           ) : hasJoined ? (
-            '✓ Joined'
+            <span className="flex items-center justify-center gap-1"><Check size={12} /> Joined</span>
           ) : (
             'Join'
           )}
