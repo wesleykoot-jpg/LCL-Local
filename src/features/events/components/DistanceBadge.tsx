@@ -20,6 +20,20 @@ interface DistanceBadgeProps {
   className?: string;
 }
 
+// Cached Intl.NumberFormat instances for performance
+const meterFormatter = new Intl.NumberFormat('en', { 
+  style: 'unit', 
+  unit: 'meter',
+  maximumFractionDigits: 0 
+});
+
+const kmFormatter = new Intl.NumberFormat('en', { 
+  style: 'unit', 
+  unit: 'kilometer',
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1 
+});
+
 /**
  * Format distance using Intl.NumberFormat for consistent display
  * @param distanceKm Distance in kilometers
@@ -32,19 +46,10 @@ function formatDistanceIntl(distanceKm: number): string {
   if (distanceKm < 1) {
     // Use meters for short distances
     const meters = Math.round(distanceKm * 1000);
-    return new Intl.NumberFormat('en', { 
-      style: 'unit', 
-      unit: 'meter',
-      maximumFractionDigits: 0 
-    }).format(meters);
+    return meterFormatter.format(meters);
   }
   // Use km for longer distances
-  return new Intl.NumberFormat('en', { 
-    style: 'unit', 
-    unit: 'kilometer',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1 
-  }).format(distanceKm);
+  return kmFormatter.format(distanceKm);
 }
 
 /**

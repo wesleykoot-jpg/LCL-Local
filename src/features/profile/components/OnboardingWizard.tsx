@@ -134,13 +134,16 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
   };
 
   const handleFinish = () => {
+    const trimmedZone = zone.trim();
+    
     // Update global location context with the zone and coordinates
-    if (coordinates) {
-      setManualZone(zone.trim(), coordinates);
+    // Only set if we have both valid zone and coordinates
+    if (coordinates && trimmedZone) {
+      setManualZone(trimmedZone, coordinates);
     }
     
     // Call onComplete with coordinates if available
-    onComplete(Array.from(selectedCategories), zone.trim(), coordinates || undefined);
+    onComplete(Array.from(selectedCategories), trimmedZone, coordinates || undefined);
   };
 
   const canProceed = step === 1 
