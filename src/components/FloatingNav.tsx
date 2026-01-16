@@ -11,7 +11,7 @@ interface FloatingNavProps {
 }
 
 const NAV_ITEMS: { id: NavView; icon: typeof Home; label: string; path: string }[] = [
-  { id: 'feed', icon: Home, label: 'Home', path: '/feed' },
+  { id: 'feed', icon: Home, label: 'Home', path: '/discovery' },
   { id: 'planning', icon: Map, label: 'Planning', path: '/planning' },
   { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
 ];
