@@ -505,6 +505,7 @@ export type Database = {
           created_at: string
           default_coordinates: Json | null
           description: string | null
+          disabled_reason: string | null
           enabled: boolean
           id: string
           language: string | null
@@ -528,6 +529,7 @@ export type Database = {
           created_at?: string
           default_coordinates?: Json | null
           description?: string | null
+          disabled_reason?: string | null
           enabled?: boolean
           id?: string
           language?: string | null
@@ -551,6 +553,7 @@ export type Database = {
           created_at?: string
           default_coordinates?: Json | null
           description?: string | null
+          disabled_reason?: string | null
           enabled?: boolean
           id?: string
           language?: string | null
@@ -563,6 +566,72 @@ export type Database = {
           requires_render?: boolean | null
           total_events_scraped?: number | null
           updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      scraper_sources_archive: {
+        Row: {
+          archive_reason: string
+          archived_at: string
+          can_restore: boolean | null
+          config: Json
+          consecutive_failures: number | null
+          country: string | null
+          default_coordinates: Json | null
+          id: string
+          language: string | null
+          last_error: string | null
+          last_scraped_at: string | null
+          last_success: boolean | null
+          location_name: string | null
+          name: string
+          original_created_at: string | null
+          original_source_id: string
+          restore_notes: string | null
+          total_events_scraped: number | null
+          url: string
+        }
+        Insert: {
+          archive_reason: string
+          archived_at?: string
+          can_restore?: boolean | null
+          config?: Json
+          consecutive_failures?: number | null
+          country?: string | null
+          default_coordinates?: Json | null
+          id?: string
+          language?: string | null
+          last_error?: string | null
+          last_scraped_at?: string | null
+          last_success?: boolean | null
+          location_name?: string | null
+          name: string
+          original_created_at?: string | null
+          original_source_id: string
+          restore_notes?: string | null
+          total_events_scraped?: number | null
+          url: string
+        }
+        Update: {
+          archive_reason?: string
+          archived_at?: string
+          can_restore?: boolean | null
+          config?: Json
+          consecutive_failures?: number | null
+          country?: string | null
+          default_coordinates?: Json | null
+          id?: string
+          language?: string | null
+          last_error?: string | null
+          last_scraped_at?: string | null
+          last_success?: boolean | null
+          location_name?: string | null
+          name?: string
+          original_created_at?: string | null
+          original_source_id?: string
+          restore_notes?: string | null
+          total_events_scraped?: number | null
           url?: string
         }
         Relationships: []
