@@ -264,8 +264,8 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
       {Object.entries(groupedItems).map(([dateHeader, items]) => {
         const isToday = dateHeader === today;
         
-        // Apply Smart Stack grouping to items
-        const smartGroups = useMemo(() => groupByParentChild(items), [items]);
+        // Apply Smart Stack grouping to items - moved outside map callback
+        const smartGroups = groupByParentChild(items);
         
         return (
           <div key={dateHeader} className="mb-10 relative">
