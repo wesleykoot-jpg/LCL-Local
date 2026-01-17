@@ -19,8 +19,10 @@ const MOCK_PROFILE = {
   full_name: 'Demo User',
   avatar_url: null,
   current_persona: 'social',
-  bio: 'Living life one event at a time ✨',
 };
+
+// Default bio since profile table doesn't have bio field
+const DEFAULT_BIO = 'Living life one event at a time ✨';
 
 // Mock stats - fallback only when no backend data
 const MOCK_STATS = {
@@ -133,7 +135,7 @@ export function IdentityCard() {
       ? Math.round(profile.reliability_score) 
       : MOCK_STATS.score,
   };
-  const bio = displayProfile.bio || MOCK_PROFILE.bio;
+  const bio = DEFAULT_BIO; // Bio not stored in profile table yet
 
   return (
     <div className="w-full max-w-md mx-auto px-6 py-8">
