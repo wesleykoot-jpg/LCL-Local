@@ -170,37 +170,30 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           </button>
         </div>
 
-        {/* Image - Cinema Style (2:1 aspect ratio) with integrated title overlay */}
-        {event.image_url ? (
-          <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-[28px] bg-gradient-to-br from-primary/10 to-primary/5">
+        {/* Image - Reduced height (3:1 aspect ratio) with subtle gradient only */}
+        {event.image_url && (
+          <div className="relative w-full aspect-[3/1] overflow-hidden rounded-t-[20px]">
             <img
               src={event.image_url}
               alt={event.title}
               className="w-full h-full object-cover"
               loading="lazy"
             />
-            {/* Gradient overlay for title readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
-            {/* Title overlaid on poster - integrated visual unit */}
-            <h4 className="absolute left-4 bottom-4 z-20 text-lg font-bold text-white leading-tight line-clamp-2 pr-4">
-              {event.title}
-            </h4>
-          </div>
-        ) : (
-          // Fallback: show gradient background with title when no image
-          <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-[28px] bg-gradient-to-br from-primary/10 to-primary/5">
-            <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
-            <h4 className="absolute left-4 bottom-4 z-20 text-lg font-bold text-foreground leading-tight line-clamp-2 pr-4">
-              {event.title}
-            </h4>
+            {/* Subtle gradient overlay for visual depth only */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
           </div>
         )}
 
-        {/* Content Section - No duplicate title, adjusted padding */}
-        <div className="p-4 pt-0">
-          {/* Venue - moved to top of body */}
+        {/* Content Section - Title in body, lighter padding */}
+        <div className="p-4 pt-3">
+          {/* Title at top of body section */}
+          <div className="flex items-start justify-between mb-2">
+            <h3 className="text-lg font-bold text-foreground leading-tight flex-1 pr-2">{event.title}</h3>
+          </div>
+
+          {/* Venue */}
           {event.venue_name && (
-            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-2 mt-3">
+            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-2">
               <MapPin size={13} className="flex-shrink-0 text-primary/60" />
               <span className="truncate">{event.venue_name}</span>
             </div>

@@ -18,11 +18,17 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Defensive UI filter: exclude 'Jazz & Wine Tasting' events
+  // This prevents them from appearing in the timeline even if present in data
+  const filteredEvents = useMemo(() => {
+    return events.filter(e => !/jazz\s*&\s*wine\s*tasting/i.test(e.title || ''));
+  }, [events]);
+
   // Group events by day
   const groupedEvents = useMemo(() => {
     const groups: Record<string, EventWithAttendees[]> = {};
     
-    events.forEach(event => {
+    filteredEvents.forEach(event => {
       const eventDate = new Date(event.event_date);
       const dateKey = eventDate.toLocaleDateString('en-US', { 
         weekday: 'long', 
@@ -37,7 +43,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
     });
 
     return groups;
-  }, [events]);
+  }, [filteredEvents]);
 
   // Check if a date string represents today
   const isToday = (dateKey: string) => {
@@ -56,7 +62,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
     return eventDate < today;
   };
 
-  if (events.length === 0) {
+  if (filteredEvents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <Calendar className="w-12 h-12 text-muted-foreground mb-4" />

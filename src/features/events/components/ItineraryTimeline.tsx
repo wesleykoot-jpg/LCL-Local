@@ -200,9 +200,29 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
     weekday: 'long', month: 'short', day: 'numeric' 
   });
 
+  // Defensive UI filter: exclude 'Jazz & Wine Tasting' events
+  // Filter out items where the title matches the pattern
+  const filteredGroupedItems = useMemo(() => {
+    const filtered: Record<string, ItineraryItem[]> = {};
+    
+    Object.entries(groupedItems).forEach(([dateHeader, items]) => {
+      const filteredItems = items.filter(item => {
+        // Skip items that match 'Jazz & Wine Tasting' pattern
+        return !/jazz\s*&\s*wine\s*tasting/i.test(item.title || '');
+      });
+      
+      // Only include date groups that have remaining items
+      if (filteredItems.length > 0) {
+        filtered[dateHeader] = filteredItems;
+      }
+    });
+    
+    return filtered;
+  }, [groupedItems]);
+
   return (
     <div className="w-full pb-32 px-4">
-      {Object.entries(groupedItems).map(([dateHeader, items]) => {
+      {Object.entries(filteredGroupedItems).map(([dateHeader, items]) => {
         const isToday = dateHeader === today;
         
         // Apply Smart Stack grouping to items - moved outside map callback
