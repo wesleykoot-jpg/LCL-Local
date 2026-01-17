@@ -607,7 +607,285 @@ export class DefaultStrategy implements ScraperStrategy {
 }
 
 export function resolveStrategy(name: string | undefined, source: ScraperSource): ScraperStrategy {
-  // For now, always use DefaultStrategy
-  // Future: add platform-specific strategies
-  return new DefaultStrategy(source);
+  // Match strategy by name
+  switch (name?.toLowerCase()) {
+    case 'soccer':
+    case 'soccerstrategy':
+      return new SoccerStrategy(source);
+    case 'curated':
+    case 'curatedlist':
+    case 'curatedliststrategy':
+      return new CuratedListStrategy(source);
+    default:
+      return new DefaultStrategy(source);
+  }
+}
+
+// ============================================================================
+// SOCCER STRATEGY
+// ============================================================================
+/**
+ * SoccerStrategy - Specialized scraper for sports fixtures
+ * 
+ * Handles football/soccer fixtures from official league feeds and club websites.
+ * Sets time_mode='fixed' and extracts match times.
+ * 
+ * Features:
+ * - External ID deduplication (source + match ID)
+ * - Stadium mapping via venue registry
+ * - Proper time extraction from fixture data
+ */
+export class SoccerStrategy implements ScraperStrategy {
+  protected source: ScraperSource;
+
+  constructor(source: ScraperSource) {
+    this.source = source;
+  }
+
+  async discoverListingUrls(_fetcher: PageFetcher): Promise<string[]> {
+    const hints = [
+      '/fixtures',
+      '/wedstrijden',
+      '/programma',
+      '/speelschema',
+      '/schema',
+      '/matches',
+      ...(this.source.config.discoveryAnchors || []),
+      ...(this.source.config.alternatePaths || []),
+    ];
+    return generatePathFallbacks(this.source.url, hints);
+  }
+
+  async fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string }> {
+    try {
+      const { html, finalUrl, statusCode } = await fetcher.fetchPage(url);
+      return { status: statusCode, html, finalUrl };
+    } catch (error) {
+      console.warn(`SoccerStrategy: Fetch failed for ${url}:`, error);
+      return { status: 500, html: "", finalUrl: url };
+    }
+  }
+
+  async parseListing(
+    html: string,
+    listingUrl: string,
+    _options?: { enableDebug?: boolean; fetcher?: PageFetcher }
+  ): Promise<RawEventCard[]> {
+    const $ = cheerio.load(html);
+    const results: RawEventCard[] = [];
+
+    // Common selectors for football fixtures
+    const fixtureSelectors = [
+      ".fixture",
+      ".match",
+      ".wedstrijd",
+      "[class*='fixture']",
+      "[class*='match']",
+      "tr.fixture",
+      "li.match",
+      ".game-row",
+      ".schedule-item",
+      "[itemtype*='SportsEvent']",
+      ...(this.source.config.selectors || []),
+    ];
+
+    for (const selector of fixtureSelectors) {
+      const elements = $(selector);
+      if (elements.length === 0) continue;
+
+      elements.each((_, el) => {
+        const $el = $(el);
+        const rawHtml = $.html(el);
+
+        // Extract teams - look for home/away pattern
+        const homeTeam = $el.find(".home, .home-team, [class*='home']").text().trim();
+        const awayTeam = $el.find(".away, .away-team, [class*='away']").text().trim();
+        
+        // Build title from teams or fallback to generic extraction
+        let title = "";
+        if (homeTeam && awayTeam) {
+          title = `${homeTeam} vs ${awayTeam}`;
+        } else {
+          title = $el.find("h1, h2, h3, h4, .title, [class*='title']").first().text().trim() ||
+                  $el.find("a").first().text().trim();
+        }
+
+        if (!title || title.length < 3) return;
+
+        // Extract date and time
+        const dateText = $el.find("time, .date, [class*='date'], [datetime]").first().text().trim() ||
+          $el.attr("datetime") || "";
+        const timeText = $el.find(".time, [class*='time'], .kickoff").first().text().trim();
+        const fullDate = timeText ? `${dateText} ${timeText}`.trim() : dateText;
+
+        // Extract venue/stadium
+        const venue = $el.find(".venue, .stadium, [class*='venue'], [class*='stadium'], .location").first().text().trim() ||
+          this.source.name;
+
+        // Extract competition/league name
+        const competition = $el.find(".competition, .league, [class*='competition']").first().text().trim();
+        const description = competition ? `${competition}` : "";
+
+        // Extract detail URL
+        const detailUrl = $el.find("a").first().attr("href") || $el.attr("href") || "";
+        const fullDetailUrl = detailUrl.startsWith("http")
+          ? detailUrl
+          : detailUrl.startsWith("/")
+            ? `${new URL(listingUrl).origin}${detailUrl}`
+            : "";
+
+        // Extract match ID for deduplication
+        const matchId = $el.attr("data-match-id") || 
+                       $el.attr("data-fixture-id") ||
+                       $el.attr("id") ||
+                       null;
+
+        results.push({
+          title,
+          date: fullDate,
+          location: venue,
+          description,
+          detailUrl: fullDetailUrl,
+          imageUrl: null,
+          rawHtml,
+          categoryHint: "sports",
+          // Store match ID in description for external ID extraction during processing
+          ...(matchId && { detailPageTime: `match_id:${matchId}` }),
+        });
+      });
+
+      if (results.length > 0) break;
+    }
+
+    return results;
+  }
+}
+
+// ============================================================================
+// CURATED LIST STRATEGY
+// ============================================================================
+/**
+ * CuratedListStrategy - Scraper for curated venue/dining lists
+ * 
+ * Handles "Top 10" style lists from magazines and travel sites.
+ * Extracts venue names and URLs, sets time_mode='window' for enrichment worker.
+ * 
+ * Features:
+ * - Minimal extraction (title, URL)
+ * - Delegates enrichment to background worker
+ * - Suitable for restaurant/cafe/venue lists
+ */
+export class CuratedListStrategy implements ScraperStrategy {
+  protected source: ScraperSource;
+
+  constructor(source: ScraperSource) {
+    this.source = source;
+  }
+
+  async discoverListingUrls(_fetcher: PageFetcher): Promise<string[]> {
+    const hints = [
+      '/beste',
+      '/top-10',
+      '/top10',
+      '/tips',
+      '/adressen',
+      '/hotspots',
+      '/restaurants',
+      '/eten',
+      '/lunch',
+      '/diner',
+      ...(this.source.config.discoveryAnchors || []),
+      ...(this.source.config.alternatePaths || []),
+    ];
+    return generatePathFallbacks(this.source.url, hints);
+  }
+
+  async fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string }> {
+    try {
+      const { html, finalUrl, statusCode } = await fetcher.fetchPage(url);
+      return { status: statusCode, html, finalUrl };
+    } catch (error) {
+      console.warn(`CuratedListStrategy: Fetch failed for ${url}:`, error);
+      return { status: 500, html: "", finalUrl: url };
+    }
+  }
+
+  async parseListing(
+    html: string,
+    listingUrl: string,
+    _options?: { enableDebug?: boolean; fetcher?: PageFetcher }
+  ): Promise<RawEventCard[]> {
+    const $ = cheerio.load(html);
+    const results: RawEventCard[] = [];
+
+    // Common selectors for list items
+    const listSelectors = [
+      ".venue",
+      ".restaurant",
+      ".item",
+      ".list-item",
+      "article",
+      ".card",
+      "[class*='place']",
+      "[class*='restaurant']",
+      "[class*='venue']",
+      "li:has(h2)",
+      "li:has(h3)",
+      ".hotspot",
+      ...(this.source.config.selectors || []),
+    ];
+
+    for (const selector of listSelectors) {
+      const elements = $(selector);
+      if (elements.length === 0) continue;
+
+      elements.each((_, el) => {
+        const $el = $(el);
+        const rawHtml = $.html(el);
+
+        // Extract venue name
+        const title = $el.find("h1, h2, h3, h4, .title, .name, [class*='title'], [class*='name']").first().text().trim() ||
+          $el.find("a").first().text().trim();
+
+        if (!title || title.length < 3) return;
+
+        // For curated lists, we only need minimal data
+        // Enrichment worker will fill in the rest
+        
+        // Extract address if available
+        const address = $el.find(".address, [class*='address'], .location, [class*='location']").first().text().trim();
+        
+        // Extract category hint
+        const categoryHint = $el.find(".category, [class*='category'], .type").first().text().trim() || "food";
+
+        // Extract detail URL (often links to the venue's own website)
+        const detailUrl = $el.find("a").first().attr("href") || $el.attr("href") || "";
+        const fullDetailUrl = detailUrl.startsWith("http")
+          ? detailUrl
+          : detailUrl.startsWith("/")
+            ? `${new URL(listingUrl).origin}${detailUrl}`
+            : "";
+
+        // Extract image
+        const imageUrl = $el.find("img").first().attr("src") ||
+          $el.find("[style*='background']").first().attr("style")?.match(/url\(['"]?([^'"]+)['"]?\)/)?.[1] ||
+          null;
+
+        results.push({
+          title,
+          date: "", // No date for venues - will be set to time_mode='window'
+          location: address || title, // Use venue name as location if no address
+          description: "", // Minimal extraction, enrichment worker will fill
+          detailUrl: fullDetailUrl,
+          imageUrl,
+          rawHtml,
+          categoryHint: categoryHint.toLowerCase().includes('restaurant') ? 'food' : categoryHint,
+        });
+      });
+
+      if (results.length > 0) break;
+    }
+
+    return results;
+  }
 }

@@ -565,24 +565,33 @@ export function lookupVenue(nameQuery: string, city?: string): VenueRegistryEntr
     }
   }
   
-  // Third pass: partial match (contains)
-  for (const venue of VENUE_REGISTRY) {
-    const normalizedName = normalizeVenueName(venue.name);
-    if (normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName)) {
-      if (normalizedCity && normalizeVenueName(venue.city) !== normalizedCity) {
-        continue;
-      }
-      return venue;
-    }
-    
-    // Check aliases for partial match
-    for (const alias of venue.aliases) {
-      const normalizedAlias = normalizeVenueName(alias);
-      if (normalizedAlias.includes(normalizedQuery) || normalizedQuery.includes(normalizedAlias)) {
-        if (normalizedCity && normalizeVenueName(venue.city) !== normalizedCity) {
-          continue;
+  // Third pass: partial match (contains) - only if both strings are sufficiently long
+  // to avoid false positives with short substring matches
+  const MIN_PARTIAL_MATCH_LENGTH = 5;
+  if (normalizedQuery.length >= MIN_PARTIAL_MATCH_LENGTH) {
+    for (const venue of VENUE_REGISTRY) {
+      const normalizedName = normalizeVenueName(venue.name);
+      // Only match if the name is a significant substring
+      if (normalizedName.length >= MIN_PARTIAL_MATCH_LENGTH) {
+        if (normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName)) {
+          if (normalizedCity && normalizeVenueName(venue.city) !== normalizedCity) {
+            continue;
+          }
+          return venue;
         }
-        return venue;
+      }
+      
+      // Check aliases for partial match - only for long aliases
+      for (const alias of venue.aliases) {
+        const normalizedAlias = normalizeVenueName(alias);
+        if (normalizedAlias.length >= MIN_PARTIAL_MATCH_LENGTH) {
+          if (normalizedAlias.includes(normalizedQuery) || normalizedQuery.includes(normalizedAlias)) {
+            if (normalizedCity && normalizeVenueName(venue.city) !== normalizedCity) {
+              continue;
+            }
+            return venue;
+          }
+        }
       }
     }
   }
