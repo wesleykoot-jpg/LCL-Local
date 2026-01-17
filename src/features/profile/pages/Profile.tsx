@@ -68,12 +68,20 @@ const Profile = () => {
           </div>
 
           {/* Sticky Tabs - Increased height for better touch targets */}
-          <div className="sticky top-0 z-50 backdrop-blur-md bg-black/60 border-b border-white/10">
+          <nav 
+            className="sticky top-0 z-50 backdrop-blur-md bg-black/60 border-b border-white/10"
+            role="tablist"
+            aria-label="Profile sections"
+          >
             <div className="max-w-lg mx-auto px-5">
               <div className="flex items-center justify-around h-14">
                 <button
+                  role="tab"
+                  aria-selected={activeTab === 'passport'}
+                  aria-controls="passport-panel"
+                  id="passport-tab"
                   onClick={() => handleTabChange('passport')}
-                  className={`flex-1 text-center py-3 font-bold transition-all ${
+                  className={`flex-1 text-center py-3 font-bold transition-all min-h-[44px] ${
                     activeTab === 'passport'
                       ? 'text-white border-b-2 border-white'
                       : 'text-white/50 hover:text-white/75'
@@ -82,8 +90,12 @@ const Profile = () => {
                   Passport
                 </button>
                 <button
+                  role="tab"
+                  aria-selected={activeTab === 'wishlist'}
+                  aria-controls="wishlist-panel"
+                  id="wishlist-tab"
                   onClick={() => handleTabChange('wishlist')}
-                  className={`flex-1 text-center py-3 font-bold transition-all ${
+                  className={`flex-1 text-center py-3 font-bold transition-all min-h-[44px] ${
                     activeTab === 'wishlist'
                       ? 'text-white border-b-2 border-white'
                       : 'text-white/50 hover:text-white/75'
@@ -92,8 +104,12 @@ const Profile = () => {
                   Wishlist
                 </button>
                 <button
+                  role="tab"
+                  aria-selected={activeTab === 'settings'}
+                  aria-controls="settings-panel"
+                  id="settings-tab"
                   onClick={() => handleTabChange('settings')}
-                  className={`flex-1 text-center py-3 font-bold transition-all ${
+                  className={`flex-1 text-center py-3 font-bold transition-all min-h-[44px] ${
                     activeTab === 'settings'
                       ? 'text-white border-b-2 border-white'
                       : 'text-white/50 hover:text-white/75'
@@ -103,15 +119,18 @@ const Profile = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </nav>
 
           {/* Scrollable Body */}
-          <div className="pb-32">
+          <main className="pb-32">
             <AnimatePresence mode="wait">
               {/* Passport Tab */}
               {activeTab === 'passport' && (
-                <motion.div
+                <motion.section
                   key="passport"
+                  role="tabpanel"
+                  id="passport-panel"
+                  aria-labelledby="passport-tab"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
@@ -125,13 +144,16 @@ const Profile = () => {
                     </p>
                     <PassportGrid />
                   </div>
-                </motion.div>
+                </motion.section>
               )}
 
               {/* Wishlist Tab */}
               {activeTab === 'wishlist' && (
-                <motion.div
+                <motion.section
                   key="wishlist"
+                  role="tabpanel"
+                  id="wishlist-panel"
+                  aria-labelledby="wishlist-tab"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
@@ -147,13 +169,16 @@ const Profile = () => {
                       <p className="text-white/40 text-sm mt-2">Coming soon</p>
                     </div>
                   </div>
-                </motion.div>
+                </motion.section>
               )}
 
               {/* Settings Tab */}
               {activeTab === 'settings' && (
-                <motion.div
+                <motion.section
                   key="settings"
+                  role="tabpanel"
+                  id="settings-panel"
+                  aria-labelledby="settings-tab"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
@@ -172,10 +197,10 @@ const Profile = () => {
                       <p className="text-xs text-white/40">{APP_NAME} · Version {APP_VERSION}</p>
                     </div>
                   </div>
-                </motion.div>
+                </motion.section>
               )}
             </AnimatePresence>
-          </div>
+          </main>
         </div>
       </AuroraBackground>
 
