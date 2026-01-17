@@ -93,12 +93,16 @@ To enable per-source fetcher selection:
    }
    ```
 
-**Optional External Renderer:**
-- Set `RENDER_SERVICE_URL` environment variable to use an external rendering service
-- Set `requires_render: true` flag on a source in the database
-- Probe results persist to `last_probe_urls` for debugging
+**Optional External Renderer (Planned Feature):**
 
-**Note:** This feature is currently planned but not fully implemented. The `RENDER_SERVICE_URL` environment variable is referenced in documentation but not yet integrated into the code.
+This feature is planned but not yet fully implemented:
+- Environment variable `RENDER_SERVICE_URL` can be set to specify an external rendering service
+- Database flag `requires_render: true` can be set on a source
+- Probe results would persist to `last_probe_urls` for debugging
+
+**Current Status:** The architecture exists (PageFetcher pattern, `requires_render` flag in code), but the integration with `RENDER_SERVICE_URL` is not yet complete. Do not attempt to use this feature in production until it's fully implemented.
+
+**For JavaScript-heavy sites:** Currently use the `StaticPageFetcher` which may not execute JavaScript. Future implementations will support headless browsers (Puppeteer, Playwright) or external services (ScrapingBee).
 
 ### Migration Notes
 - The deprecated `createSpoofedFetch()` function is maintained for backward compatibility
