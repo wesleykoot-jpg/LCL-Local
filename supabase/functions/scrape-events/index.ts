@@ -891,6 +891,9 @@ export async function handleRequest(req: Request): Promise<Response> {
             status: "published",
             source_id: source.id,
             event_fingerprint: fingerprint,
+            // Time mode: default to 'fixed' for now, will be enhanced later
+            time_mode: 'fixed',
+            opening_hours: null,
             // New structured fields
             structured_date: normalized.structured_date || null,
             structured_location: normalized.structured_location
