@@ -123,7 +123,7 @@ Edge Function: scrape-events
 User Request
        │
        ▼
-useEvents() hook
+useEvents() hook (src/features/events/hooks/hooks.ts)
        │
        ▼
 Supabase query (all events)
@@ -136,6 +136,10 @@ feedAlgorithm.ts
        ├──▶ Social Proof Score (15%)
        ├──▶ Compatibility Score (10%)
        └──▶ Distance Score (20%)
+              │
+              ▼
+       Urgency Boost (1.0-1.2x)
+       Trending Boost (1.0-1.2x)
               │
               ▼
        Diversity Enforcement

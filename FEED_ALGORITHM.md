@@ -1,8 +1,10 @@
 # Feed Algorithm Documentation
 
+> **Source Code**: [`src/lib/feedAlgorithm.ts`](src/lib/feedAlgorithm.ts)
+
 ## Overview
 
-The LCL Local app uses a sophisticated ranking algorithm to personalize the event feed for each user. The algorithm ensures that users see the most relevant events at the top of their feed while maintaining diversity and variety.
+The LCL Local app uses a sophisticated ranking algorithm to personalize the event feed for each user. The algorithm considers multiple factors with configurable weights, applies urgency and trending boosts, and ensures feed diversity to prevent category clustering.
 
 ## Visual Overview
 
@@ -24,23 +26,30 @@ INPUT: Raw Events + User Preferences
 │                                                                  │
 │  For each event, calculate:                                     │
 │    ┌─────────────────────────────────────────────────────┐    │
-│    │ Category Score (40%)                                │    │
+│    │ Category Score (35%)                                │    │
 │    │   ├─ Matches preferences? → 1.0                     │    │
 │    │   └─ Not in preferences? → 0.3                      │    │
 │    ├─────────────────────────────────────────────────────┤    │
-│    │ Time Score (25%)                                    │    │
+│    │ Time Score (20%)                                    │    │
 │    │   ├─ <24 hours away → 1.0                           │    │
 │    │   └─ Further away → exponential decay               │    │
 │    ├─────────────────────────────────────────────────────┤    │
-│    │ Social Score (20%)                                  │    │
+│    │ Social Score (15%)                                  │    │
 │    │   └─ log₁₀(attendees) / log₁₀(1000)                │    │
 │    ├─────────────────────────────────────────────────────┤    │
-│    │ Match Score (15%)                                   │    │
+│    │ Match Score (10%)                                   │    │
 │    │   └─ match_percentage / 100                         │    │
+│    ├─────────────────────────────────────────────────────┤    │
+│    │ Distance Score (20%)                                │    │
+│    │   └─ 1 / (1 + distance_km / radius)                 │    │
 │    └─────────────────────────────────────────────────────┘    │
 │                                                                  │
-│  Total Score = (Category×0.40 + Time×0.25 + Social×0.20        │
-│                 + Match×0.15)                                   │
+│  Base Score = (Category×0.35 + Time×0.20 + Social×0.15         │
+│                + Match×0.10 + Distance×0.20)                    │
+│                                                                  │
+│  Urgency Boost = 1.0-1.2x (events within 6-72 hours)           │
+│  Trending Boost = 1.0-1.2x (events with 10+ attendees)         │
+│  Total Score = Base Score × min(Urgency × Trending, 1.5)       │
 └─────────────────────────────────────────────────────────────────┘
    │
    ▼
@@ -81,9 +90,20 @@ OUTPUT: Ranked Feed (personalized & diverse)
 
 ### 1. Multi-Factor Scoring System
 
-The algorithm evaluates each event based on four key factors:
+The algorithm evaluates each event based on five key factors with the following weights:
 
-#### Category Preference Match (40% weight)
+```typescript
+// Source: src/lib/feedAlgorithm.ts
+const WEIGHTS = {
+  CATEGORY: 0.35,  // 35% - User preference match
+  TIME: 0.20,      // 20% - Time relevance
+  SOCIAL: 0.15,    // 15% - Social proof
+  MATCH: 0.10,     // 10% - Pre-computed match
+  DISTANCE: 0.20,  // 20% - Proximity to user
+} as const;
+```
+
+#### Category Preference Match (35% weight)
 - **Purpose**: Prioritize events in categories the user selected during onboarding
 - **How it works**:
   - Events matching user preferences: **1.0 score**
@@ -91,16 +111,16 @@ The algorithm evaluates each event based on four key factors:
   - No preferences set: **0.5 score** (all categories equal)
 - **Rationale**: User preferences are the strongest signal for relevance, but we don't want to create filter bubbles
 
-#### Time Relevance (25% weight)
+#### Time Relevance (20% weight)
 - **Purpose**: Prioritize events happening soon while still showing future events
 - **How it works**:
   - Events within 24 hours: **1.0 score**
   - Future events: Exponential decay over time
   - Past events: **0.0 score**
-  - Decay rate: ~50% reduction every 7 days
+  - Decay rate: ~50% reduction every 7 days (configurable via `TIME_DECAY_DAYS`)
 - **Rationale**: Users are more likely to attend events happening soon, but we want to give them planning time
 
-#### Social Proof (20% weight)
+#### Social Proof (15% weight)
 - **Purpose**: Surface popular events with high attendance
 - **How it works**:
   - Logarithmic scaling: log₁₀(attendees + 1) / log₁₀(1000)
@@ -110,14 +130,67 @@ The algorithm evaluates each event based on four key factors:
   - 1000+ attendees: **1.0 score**
 - **Rationale**: Logarithmic scaling prevents huge events from dominating while still rewarding popularity
 
-#### Match Percentage (15% weight)
+#### Match Percentage (10% weight)
 - **Purpose**: Use pre-computed algorithmic compatibility scores
 - **How it works**:
   - Direct normalization: match_percentage / 100
   - Default: **0.5 score** if not available
 - **Rationale**: Database-computed matches can incorporate factors like location, past behavior, etc.
 
-### 2. Diversity Mechanism
+#### Distance/Proximity (20% weight)
+- **Purpose**: Prioritize events closer to the user's current location
+- **How it works**:
+  - Uses Haversine formula to calculate distance between user and event
+  - Inverse distance scoring: `1 / (1 + distance_km / (radius * 0.5))`
+  - At 0 km: **1.0 score**
+  - At radius (default 25km): **~0.5 score**
+  - Beyond radius: decreases towards **0.1 minimum**
+- **Rationale**: Users are more likely to attend nearby events, but we don't want to eliminate distant events completely
+
+### 2. Boost Multipliers
+
+After calculating the base score, the algorithm applies two types of boosts to surface time-sensitive and popular events:
+
+#### Urgency Boost (1.0-1.2x multiplier)
+Boosts events happening soon to surface "tonight" and "this weekend" opportunities:
+
+```typescript
+// Source: src/lib/feedAlgorithm.ts
+function calculateUrgencyBoost(eventDate: string): number {
+  const hoursUntilEvent = (eventTime - now) / (1000 * 60 * 60);
+  
+  if (hoursUntilEvent <= 6)  return 1.2;   // Tonight (within 6 hours)
+  if (hoursUntilEvent <= 24) return 1.15;  // Today (within 24 hours)
+  if (hoursUntilEvent <= 72) return 1.1;   // This weekend (within 72 hours)
+  return 1.0;                               // No boost for future events
+}
+```
+
+#### Trending Boost (1.0-1.2x multiplier)
+Boosts events with strong social proof to highlight popular happenings:
+
+```typescript
+// Source: src/lib/feedAlgorithm.ts
+function calculateTrendingBoost(attendeeCount: number): number {
+  if (attendeeCount >= 100) return 1.2;   // Very popular
+  if (attendeeCount >= 50)  return 1.15;  // Popular
+  if (attendeeCount >= 20)  return 1.1;   // Moderately popular
+  if (attendeeCount >= 10)  return 1.05;  // Some traction
+  return 1.0;                              // No boost
+}
+```
+
+#### Combined Boost (capped at 1.5x)
+The final score combines both boosts with a maximum cap:
+
+```typescript
+const boostMultiplier = Math.min(urgencyBoost * trendingBoost, 1.5);
+const totalScore = baseScore * boostMultiplier;
+```
+
+This prevents events from being over-boosted (e.g., a very urgent AND very popular event gets 1.5x max, not 1.44x).
+
+### 3. Diversity Mechanism
 
 After scoring, the algorithm applies a diversity filter to prevent category clustering:
 
@@ -130,20 +203,25 @@ After scoring, the algorithm applies a diversity filter to prevent category clus
 
 - **Example**: If "Social" events appear in positions 1 and 2, a third "Social" event will be pushed down even if it has a high score, allowing "Gaming" or "Music" events to appear first.
 
-### 3. Configuration
+### 4. Configuration
+
+All algorithm parameters are configurable via constants in [`src/lib/feedAlgorithm.ts`](src/lib/feedAlgorithm.ts):
 
 ```typescript
 const WEIGHTS = {
-  CATEGORY: 0.40,  // User preference match
-  TIME: 0.25,      // Time relevance
-  SOCIAL: 0.20,    // Social proof
-  MATCH: 0.15,     // Pre-computed match
+  CATEGORY: 0.35,  // User preference match
+  TIME: 0.20,      // Time relevance
+  SOCIAL: 0.15,    // Social proof
+  MATCH: 0.10,     // Pre-computed match
+  DISTANCE: 0.20,  // Proximity to user
 } as const;
 
 const CONFIG = {
-  TIME_DECAY_DAYS: 7,      // Half-life for time decay
-  SOCIAL_LOG_BASE: 10,     // Base for logarithmic scaling
-  DIVERSITY_MIN_GAP: 2,    // Minimum positions between same category
+  TIME_DECAY_DAYS: 7,          // Half-life for time decay (days)
+  SOCIAL_LOG_BASE: 10,         // Base for logarithmic attendee scaling
+  DIVERSITY_MIN_GAP: 2,        // Minimum positions between same category
+  DEFAULT_RADIUS_KM: 25,       // Default search radius for distance scoring
+  DISTANCE_MIN_SCORE: 0.1,     // Minimum distance score for far events
 } as const;
 ```
 
@@ -154,18 +232,68 @@ const CONFIG = {
 ```typescript
 import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 
-// Get user preferences
-const { preferences } = useOnboarding();
+// Get user preferences from context or onboarding
+const preferences: UserPreferences = {
+  selectedCategories: ['social', 'music', 'gaming'],
+  zone: 'Amsterdam',
+  userLocation: { lat: 52.3676, lng: 4.9041 },
+  radiusKm: 25,
+};
 
-// Fetch events
+// Fetch events from database
 const { events } = useEvents();
 
-// Apply ranking
+// Apply ranking algorithm
 const rankedEvents = rankEvents(events, preferences, {
   ensureDiversity: true,
-  debug: true, // Enable debug logging
+  debug: true, // Enable debug logging in development
 });
 ```
+
+**See full implementation**: [`src/lib/feedAlgorithm.ts` (lines 362-402)](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L362-L402)
+
+### Scoring Example
+
+Here's how the algorithm scores a sample event:
+
+```typescript
+// Sample event
+const event = {
+  id: '123',
+  category: 'music',
+  event_date: '2026-01-18T20:00:00Z', // Tomorrow night
+  attendee_count: 45,
+  match_percentage: 88,
+  coordinates: { lat: 52.3702, lng: 4.8952 }, // ~1km from user
+};
+
+// Sample user preferences
+const preferences = {
+  selectedCategories: ['music', 'social'],
+  userLocation: { lat: 52.3676, lng: 4.9041 },
+  radiusKm: 25,
+};
+
+// Algorithm calculates:
+// - Category: 1.0 (matches 'music')
+// - Time: 1.0 (within 24 hours)
+// - Social: 0.68 (45 attendees)
+// - Match: 0.88 (88% match)
+// - Distance: 0.98 (1km away)
+//
+// Base Score = 0.35×1.0 + 0.20×1.0 + 0.15×0.68 + 0.10×0.88 + 0.20×0.98
+//            = 0.35 + 0.20 + 0.102 + 0.088 + 0.196 = 0.936
+//
+// Urgency Boost: 1.15 (within 24 hours)
+// Trending Boost: 1.15 (45 attendees)
+// Combined Boost: min(1.15 × 1.15, 1.5) = 1.3225
+//
+// Final Score = 0.936 × 1.3225 = 1.238
+```
+
+**Algorithm weights**: [`src/lib/feedAlgorithm.ts` (lines 76-82)](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L76-L82)
+
+**Config constants**: [`src/lib/feedAlgorithm.ts` (lines 85-96)](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L85-L96)
 
 ### Debug Mode
 
@@ -184,12 +312,13 @@ This will output a table showing:
 
 ## Algorithm Benefits
 
-1. **Personalization**: Events matching user interests appear first
-2. **Timeliness**: Upcoming events are prioritized
+1. **Personalization**: Events matching user interests appear first (35% weight)
+2. **Timeliness**: Upcoming events are prioritized with urgency boosts
 3. **Discovery**: Non-preferred categories still appear (with penalty)
-4. **Social Validation**: Popular events are highlighted
-5. **Diversity**: Feed doesn't become monotonous
-6. **Flexibility**: Weights can be tuned based on user feedback
+4. **Social Validation**: Popular events are highlighted with trending boosts
+5. **Proximity**: Nearby events rank higher (20% weight)
+6. **Diversity**: Feed doesn't become monotonous
+7. **Flexibility**: Weights and boosts can be tuned based on user feedback
 
 ## Future Enhancements
 
@@ -254,7 +383,7 @@ This shows scoring examples and explains how different user types see different 
 **Scenario 1: The Socialite**
 - Set preferences: Social, Entertainment, Music
 - Expected: Bars, concerts, parties appear first
-- Why: 40% weight on category match makes these score highest
+- Why: 35% weight on category match makes these score highest
 
 **Scenario 2: The Athlete** 
 - Set preferences: Active, Outdoors
@@ -273,7 +402,7 @@ This shows scoring examples and explains how different user types see different 
 
 ## Related Files
 
-- `/src/lib/feedAlgorithm.ts` - Core algorithm implementation
-- `/src/components/EventFeed.tsx` - Feed component using the algorithm
-- `/src/pages/Feed.tsx` - Main feed page
-- `/src/hooks/useOnboarding.ts` - User preferences management
+- [`src/lib/feedAlgorithm.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts) - Core algorithm implementation
+- [`src/features/events/Feed.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/features/events/Feed.tsx) - Feed component using the algorithm
+- [`src/features/events/hooks/hooks.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/features/events/hooks/hooks.ts) - useEvents hook for fetching events
+- [`src/lib/distance.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/distance.ts) - Distance calculation utilities (Haversine formula)

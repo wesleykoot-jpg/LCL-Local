@@ -15,7 +15,7 @@ All tables have RLS enabled. Events use PostGIS geography(POINT, 4326).
 Key files:
 - src/lib/feedAlgorithm.ts: Smart ranking (category 35%, time 20%, social 15%, match 10%, distance 20%)
 - src/lib/eventService.ts: CRUD operations for events
-- src/lib/hooks.ts: Data fetching hooks (useEvents, useProfile, etc.)
+- src/features/events/hooks/hooks.ts: Data fetching hooks (useEvents, useProfile, etc.)
 - supabase/functions/scrape-events/: AI-powered event scraper with OpenAI
 
 See AI_CONTEXT.md for comprehensive AI context.
@@ -81,9 +81,11 @@ src/
 ├── lib/                 # Core utilities
 │   ├── feedAlgorithm.ts # Smart ranking algorithm
 │   ├── eventService.ts  # Event CRUD operations
-│   ├── hooks.ts         # Data fetching hooks
 │   ├── haptics.ts       # iOS haptic feedback
 │   └── ...
+├── features/            # Feature modules
+│   └── events/hooks/    # Event-related hooks
+│       └── hooks.ts     # Data fetching hooks (useEvents, etc.)
 ├── pages/               # Route components
 └── integrations/        # Supabase client
 
@@ -96,13 +98,40 @@ supabase/
 
 ## Key Services
 
-### Feed Algorithm (`src/lib/feedAlgorithm.ts`)
-Multi-factor scoring system:
-- **Category Match**: 35% weight - matches user's preferred categories
-- **Time Relevance**: 20% weight - prioritizes upcoming events
-- **Social Proof**: 15% weight - attendee count and velocity
-- **Compatibility**: 10% weight - profile match percentage
-- **Distance**: 20% weight - proximity to user location
+### Feed Algorithm ([`src/lib/feedAlgorithm.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts))
+Multi-factor scoring system with configurable weights and boost multipliers:
+
+#### Scoring Weights
+```typescript
+// Source: https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L76-L82
+const WEIGHTS = {
+  CATEGORY: 0.35,  // 35% - matches user's preferred categories
+  TIME: 0.20,      // 20% - prioritizes upcoming events with exponential decay
+  SOCIAL: 0.15,    // 15% - attendee count with logarithmic scaling
+  MATCH: 0.10,     // 10% - pre-computed match_percentage from database
+  DISTANCE: 0.20,  // 20% - proximity to user location
+} as const;
+```
+
+#### Configuration Constants
+```typescript
+// Source: https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L85-L96
+const CONFIG = {
+  TIME_DECAY_DAYS: 7,          // Time decay half-life (days)
+  SOCIAL_LOG_BASE: 10,         // Logarithmic base for attendee scaling
+  DIVERSITY_MIN_GAP: 2,        // Min positions between same-category events
+  DEFAULT_RADIUS_KM: 25,       // Default search radius
+  DISTANCE_MIN_SCORE: 0.1,     // Minimum distance score
+} as const;
+```
+
+#### Boost Multipliers
+- **Urgency Boost** (1.0-1.2x): Events within 6-72 hours get priority ([code](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L226-L236))
+- **Trending Boost** (1.0-1.2x): Events with 10+ attendees get boosted ([code](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L241-L247))
+- Combined boost capped at 1.5x maximum
+
+#### Diversity Enforcement
+Prevents category clustering by tracking recent categories and applying penalties to repeated categories within `DIVERSITY_MIN_GAP` positions ([code](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L304-L352)).
 
 ### Event Scraper (`supabase/functions/scrape-events/`)
 - Fetches HTML from configured sources
@@ -159,89 +188,50 @@ npx cap open ios
 - **Scraper Sources**: 5 configured (2 working, 3 need URL updates)
 - **Location**: Global support (no hardcoded regions)
 
-## Defensive Scheduled Scraper
+## Event Scraper
 
-A robust, polite web scraper that runs daily to fetch events from configured sources with comprehensive error handling and monitoring.
+The event scraper runs as a Supabase Edge Function (`supabase/functions/scrape-events/`) with the following features:
 
-### Features
+- 🤖 **AI-powered extraction**: Uses OpenAI to parse HTML and extract event data
+- 🗺️ **Geocoding**: Converts venue addresses to coordinates via Nominatim API
+- 📋 **Strategy-driven**: Configurable sources with discovery patterns
+- 🔄 **URL normalization**: Deduplication and tracking parameter removal
+- 💾 **Caching**: Geocode results cached in `geocode_cache` table
+- 🌐 **Dutch CMS support**: Handles Ontdek, Beleef, Visit, and Uit platforms
 
-- 🛡️ **Defensive crawling**: Respects robots.txt, rate limits, and exponential backoff
-- 📊 **Full observability**: Logs every fetch attempt to Supabase for debugging
-- 🔔 **Smart alerts**: Slack notifications with intelligent error analysis and suppression
-- 🔄 **Conditional GETs**: Uses ETag/If-Modified-Since to minimize bandwidth
-- ⏱️ **Rate limiting**: Per-domain concurrency and request throttling with Bottleneck
-- 🧪 **Dry-run mode**: Test without writing data or sending alerts
+### Configuration
 
-### Quick Start
+1. **Add secrets** in Supabase Edge Function settings:
+   - `OPENAI_API_KEY`: OpenAI API key for event extraction
+   - `RENDER_SERVICE_URL` (optional): External renderer for JS-heavy sites
 
-1. **Add GitHub Secrets**:
-   - `SUPABASE_URL`: Your Supabase project URL
-   - `SUPABASE_KEY`: Supabase service role key
-   - `SLACK_WEBHOOK_URL`: Slack incoming webhook for alerts
-   - `SCRAPER_USER_AGENT` (optional): Custom user agent string
-   - For **local dry runs** you can omit these secrets; they are required for real runs that write to Supabase or send alerts.
+2. **Configure sources** in `scraper_sources` database table or via Supabase dashboard
 
-2. **Configure sources** in `src/config/sources.json`:
-   ```json
-   [
-     {
-       "source_id": "example.site",
-       "url": "https://example.com/events",
-       "domain": "example.com",
-       "rate_limit": {
-         "requests_per_minute": 12,
-         "concurrency": 1
-       }
-     }
-   ]
-   ```
-
-3. **Apply migration**:
+3. **Deploy function**:
    ```bash
-   # In Supabase dashboard or using Supabase CLI
-   supabase migration up
+   supabase functions deploy scrape-events
    ```
-
-4. **Test locally**:
-   ```bash
-   # Dry run (no writes, no alerts)
-   npm run scrape:dry-run
-   
-   # Real run (writes to Supabase)
-   npm run scrape:run
-   ```
-
-5. **GitHub Actions**: Runs daily at 03:00 UTC automatically via `.github/workflows/scrape.yml`
 
 ### Documentation
 
-- [**Runbook**](docs/runbook.md): Operational guide for monitoring and troubleshooting
-- **Configuration**: See `src/config/defaults.ts` for tunable parameters
-- **Schema**: Database tables in `supabase/migrations/20260113000000_scraper_defensive_schema.sql`
-
-### Behavioral Rules
-
-- ✅ Honors robots.txt `User-agent` and `Crawl-delay` directives
-- ✅ Uses conditional GETs with ETag/Last-Modified caching
-- ✅ Exponential backoff with full jitter on transient errors (429, 5xx, timeouts)
-- ✅ Respects `Retry-After` headers
-- ✅ Alerts only after threshold (default: 3 consecutive failures)
-- ✅ Suppresses duplicate alerts (default: 30-minute window)
-- ✅ Persists all attempts to `scrape_events` for replay and debugging
+- [**Runbook**](docs/runbook.md): Operational guide for monitoring and troubleshooting (if exists)
+- **Configuration**: See `scraper_sources` table in Supabase for source configuration
+- **Schema**: Database tables in `supabase/migrations/`
 
 ## Scripts
 
 ```bash
-npm run dev      # Development server
-npm run build    # Production build
-npm run preview  # Preview build
-npm run lint     # ESLint
-npm run test     # Run tests
-
-# Scraper commands
-npm run scrape:dry-run  # Test scraper without writes/alerts
-npm run scrape:run      # Run scraper (writes to Supabase)
+npm run dev           # Development server
+npm run build         # Production build
+npm run build:dev     # Development build
+npm run preview       # Preview build
+npm run lint          # ESLint
+npm run test          # Run tests (Vitest)
+npm run storybook     # Start Storybook dev server
+npm run build-storybook  # Build Storybook
 ```
+
+**Note**: Event scraper runs via Supabase Edge Functions (see `supabase/functions/scrape-events/`), not npm scripts.
 
 ---
 
