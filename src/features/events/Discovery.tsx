@@ -127,7 +127,7 @@ function getWeekendEvents(events: EventWithAttendees[], limit = 10): EventWithAt
  * 
  * Rails (in order):
  * 1. "Pulse of [City]" - Hot events nearby with high engagement
- * 2. "My Rituals" - Recurring event stacks (weekly run club, etc.)
+ * 2. "Ritual Rails" - Recurring event stacks (weekly run club, etc.)
  * 3. "The Weekend Radar" - Friday 5PM to Sunday 11PM planning
  * 4. "Tonight" - Spontaneous plans (now to 4AM)
  * 
@@ -174,13 +174,27 @@ const Discovery = () => {
     [allEvents, featuredEvent]
   );
 
-  // Rail 2: "My Rituals" - Recurring event stacks
+  // Rail 2: "Ritual Rails" - Recurring event stacks
   const ritualsEvents = useMemo(() => {
     const stacks = groupEventsIntoStacks(allEvents);
     // Filter for stacks only (type: 'stack' means has forks attached)
     const recurringStacks = stacks.filter(stack => stack.type === 'stack');
     // Return the anchor events from recurring stacks
-    return recurringStacks.map(stack => stack.anchor).slice(0, 10);
+    const realEvents = recurringStacks.map(stack => stack.anchor).slice(0, 10);
+    
+    // Per requirements: Create mock data to ensure the rail is visible if empty
+    // Use events with recurring keywords or categories as placeholders
+    if (realEvents.length === 0 && allEvents.length > 0) {
+      const potentialRituals = allEvents.filter(e => 
+        e.title.toLowerCase().match(/weekly|monthly|club|class|group|meetup/i) ||
+        e.category === 'sports' || e.category === 'wellness'
+      ).slice(0, 3);
+      
+      // Fallback to any events if no matches found
+      return potentialRituals.length > 0 ? potentialRituals : allEvents.slice(0, 3);
+    }
+    
+    return realEvents;
   }, [allEvents]);
 
   // Rail 3: "The Weekend Radar" - Friday 5PM to Sunday 11PM
@@ -263,7 +277,7 @@ const Discovery = () => {
   }, [locationPrefs, permissionState, profile?.location_city]);
 
   return (
-    <div className="min-h-screen bg-surface-muted text-foreground font-sans selection:bg-brand-action selection:text-white">
+    <div className="min-h-screen bg-surface-muted text-foreground font-sans selection:bg-brand-primary selection:text-white">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -276,13 +290,13 @@ const Discovery = () => {
           <div className="px-6 py-3 flex items-center justify-between">
             <button 
               onClick={handleLocationClick}
-              className="flex items-center gap-2 hover:bg-surface-muted rounded-2xl py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-action focus-visible:outline-none"
+              className="flex items-center gap-2 hover:bg-surface-muted rounded-2xl py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary focus-visible:outline-none"
               aria-label="Change location"
             >
               {permissionState === 'granted' && locationPrefs.useGPS ? (
-                <Navigation size={18} className="text-brand-action" />
+                <Navigation size={18} className="text-brand-primary" />
               ) : (
-                <MapPin size={18} className="text-brand-action" />
+                <MapPin size={18} className="text-brand-primary" />
               )}
               <span className="text-[15px] font-semibold text-text-primary">
                 {locationText}
@@ -384,7 +398,7 @@ const Discovery = () => {
                       </motion.div>
                     )}
 
-                    {/* Rail 2: My Rituals - Recurring event stacks */}
+                    {/* Rail 2: Ritual Rails - Recurring event stacks */}
                     {ritualsEvents.length > 0 && (
                       <motion.div 
                         className="mb-6"
@@ -396,7 +410,7 @@ const Discovery = () => {
                           title={
                             <span className="flex items-center gap-2">
                               <RefreshCw size={20} className="text-green-500" /> 
-                              My Rituals
+                              Ritual Rails
                             </span>
                           }
                         >
@@ -498,7 +512,7 @@ const Discovery = () => {
             await hapticImpact('medium');
             setShowCreateModal(true);
           }}
-          className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-3xl bg-brand-action text-white flex items-center justify-center mb-safe shadow-float focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-action focus-visible:outline-none"
+          className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-3xl bg-brand-primary text-white flex items-center justify-center mb-safe shadow-float focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary focus-visible:outline-none"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label="Create new event"

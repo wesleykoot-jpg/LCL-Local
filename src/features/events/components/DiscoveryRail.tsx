@@ -10,8 +10,9 @@ interface DiscoveryRailProps {
 /**
  * DiscoveryRail - Wrapper component for horizontal scrolling sections
  * 
- * LCL Core 2026 Design System v4.0:
+ * LCL Core v5.0 "Social Air" Design System:
  * - Section headers: text-xl font-bold tracking-tight
+ * - Primary color: Social Indigo (#6366F1)
  * - Left/Right padding: px-6 (24px)
  * - Between sections: mb-6 (24px) gap handled by parent
  */
@@ -36,7 +37,7 @@ export const DiscoveryRail = memo(function DiscoveryRail({
           {onSeeAll && (
             <button
               onClick={onSeeAll}
-              className="text-[14px] font-semibold text-text-primary hover:text-brand-action active:opacity-70 min-h-[44px] px-2 flex items-center transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-action focus-visible:outline-none"
+              className="text-[14px] font-semibold text-brand-primary hover:text-brand-secondary active:opacity-70 min-h-[44px] px-2 flex items-center transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary focus-visible:outline-none"
               aria-label="See all items in this section"
             >
               See all
