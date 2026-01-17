@@ -158,22 +158,36 @@ describe('TimelineEventCard', () => {
       expect(screen.getByText('Test Venue')).toBeInTheDocument();
     });
 
-    it('shows title in overlay on poster when image is present', () => {
+    it('shows title in body section only (not as overlay)', () => {
       const eventWithImage = { 
         ...mockEvent, 
         image_url: 'https://example.com/image.jpg' 
       };
       render(<TimelineEventCard event={eventWithImage} variant="trip-card" />);
       
-      // Title should be visible (in overlay)
+      // Title should be visible in body section
+      const titles = screen.getAllByText('Test Event');
+      // Should only appear once (in body, not as duplicate overlay)
+      expect(titles).toHaveLength(1);
+    });
+
+    it('shows title when no image present', () => {
+      render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+      
+      // Title should still be visible in body
       expect(screen.getByText('Test Event')).toBeInTheDocument();
     });
 
-    it('shows title in fallback gradient when no image', () => {
-      render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+    it('renders with aspect-[3/1] class for reduced poster height', () => {
+      const eventWithImage = { 
+        ...mockEvent, 
+        image_url: 'https://example.com/image.jpg' 
+      };
+      const { container } = render(<TimelineEventCard event={eventWithImage} variant="trip-card" />);
       
-      // Title should still be visible (in fallback gradient overlay)
-      expect(screen.getByText('Test Event')).toBeInTheDocument();
+      // Check for aspect-[3/1] class on poster container
+      const aspectContainer = container.querySelector('.aspect-\\[3\\/1\\]');
+      expect(aspectContainer).toBeInTheDocument();
     });
 
     it('shows attendee count and category badge in trip-card variant', () => {
