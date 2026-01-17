@@ -4,7 +4,7 @@ import { X, Calendar, Clock, MapPin, ChevronRight, Loader2 } from 'lucide-react'
 import { useAuth } from '@/features/auth';
 import { createProposal } from '@/lib/proposalService';
 import { createEvent } from '@/lib/eventService';
-import { type OpeningHours } from '@/lib/openingHours';
+import { type OpeningHours, type DayOfWeek, type OpeningPeriod } from '@/lib/openingHours';
 import toast from 'react-hot-toast';
 import { hapticNotification } from '@/shared/lib/haptics';
 
@@ -90,42 +90,34 @@ export const CreateProposalModal = memo(function CreateProposalModal({
         const date = new Date(now);
         date.setDate(date.getDate() + dayOffset);
         
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof OpeningHours;
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as DayOfWeek;
         const hoursForDay = openingHours[dayName];
-        
-        if (hoursForDay && hoursForDay.length > 0) {
-          // Parse first opening time for this day with validation
+
+        if (hoursForDay && hoursForDay !== 'closed' && hoursForDay.length > 0) {
           const firstRange = hoursForDay[0];
-          const rangeParts = firstRange.split('-');
-          if (rangeParts.length < 2) continue; // Skip invalid ranges
-          
-          const openTime = rangeParts[0];
-          const timeParts = openTime.split(':');
-          if (timeParts.length < 2) continue; // Skip invalid time format
-          
+          const timeParts = firstRange.open.split(':');
+          if (timeParts.length < 2) continue;
+
           const openHour = parseInt(timeParts[0], 10);
-          if (isNaN(openHour)) continue; // Skip if not a valid number
-          
-          // Suggest opening time, lunch time, and evening if applicable
+          if (isNaN(openHour)) continue;
+
           const suggestHours = [openHour, 12, 18];
-          
+
           for (const hour of suggestHours) {
             const datetime = new Date(date);
             datetime.setHours(hour, 0, 0, 0);
-            
-            // Skip past times
+
             if (datetime <= now) continue;
-            
-            // Check if this time is within opening hours
+
             const isWithinHours = isTimeWithinHours(hour, hoursForDay);
-            
+
             if (isWithinHours) {
               times.push({
                 label: formatSuggestedTime(datetime),
                 datetime,
                 isAvailable: true,
               });
-              
+
               if (times.length >= 6) break;
             }
           }
@@ -343,36 +335,27 @@ function formatSuggestedTime(date: Date): string {
   return `${dayName} ${dayNum} • ${time}`;
 }
 
-function isTimeWithinHours(hour: number, ranges: string[]): boolean {
+function isTimeWithinHours(hour: number, ranges: OpeningPeriod[]): boolean {
   const timeInMinutes = hour * 60;
-  
+
   for (const range of ranges) {
-    const parts = range.split('-');
-    if (parts.length < 2) continue;
-    
-    const openStr = parts[0];
-    const closeStr = parts[1];
-    if (!openStr || !closeStr) continue;
-    
-    const openParts = openStr.split(':');
-    const closeParts = closeStr.split(':');
-    if (openParts.length < 2 || closeParts.length < 2) continue;
-    
-    const openHour = parseInt(openParts[0], 10);
-    const openMin = parseInt(openParts[1], 10);
-    const closeHour = parseInt(closeParts[0], 10);
-    const closeMin = parseInt(closeParts[1], 10);
-    
-    // Skip if any value is NaN
-    if (isNaN(openHour) || isNaN(openMin) || isNaN(closeHour) || isNaN(closeMin)) continue;
-    
+    const [openHour, openMin] = range.open.split(':').map(Number);
+    const [closeHour, closeMin] = range.close.split(':').map(Number);
+
+    if ([openHour, openMin, closeHour, closeMin].some(Number.isNaN)) continue;
+
     const openMinutes = openHour * 60 + openMin;
     const closeMinutes = closeHour * 60 + closeMin;
-    
+
+    if (range.closes_next_day) {
+      if (timeInMinutes >= openMinutes) return true;
+      continue;
+    }
+
     if (timeInMinutes >= openMinutes && timeInMinutes < closeMinutes) {
       return true;
     }
   }
-  
+
   return false;
 }

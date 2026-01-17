@@ -212,8 +212,8 @@ describe('TimelineEventCard', () => {
         event_date: null,
         event_time: '',
         opening_hours: {
-          monday: ['09:00-17:00'],
-          tuesday: ['09:00-17:00'],
+          monday: [{ open: '09:00', close: '17:00' }],
+          tuesday: [{ open: '09:00', close: '17:00' }],
         },
       };
       render(<TimelineEventCard event={windowEvent} variant="default" />);
