@@ -110,11 +110,12 @@ export class Histogram {
       sum: 0,
       count: 0,
     }
-    const bucketIndex = this.buckets.findIndex((bucket) => value <= bucket)
-    const index = bucketIndex === -1 ? this.buckets.length : bucketIndex
-    for (let i = index; i < state.buckets.length; i += 1) {
-      state.buckets[i] += 1
+    for (let i = 0; i < this.buckets.length; i += 1) {
+      if (value <= this.buckets[i]) {
+        state.buckets[i] += 1
+      }
     }
+    state.buckets[state.buckets.length - 1] += 1
     state.sum += value
     state.count += 1
     this.values.set(key, state)
@@ -549,6 +550,7 @@ export class TelemetryHttpClient {
       await tokenBucket.consume(1)
     }
 
+    let lastError: unknown
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
       const start = Date.now()
       try {
@@ -571,9 +573,10 @@ export class TelemetryHttpClient {
             await sleep(this.backoffDelayMs(attempt, retryAfterSeconds))
             continue
           }
-          throw new Error(
+          lastError = new Error(
             `TelemetryHttpClient: ${response.status} after ${attempt + 1} attempts`,
           )
+          break
         }
 
         return response
@@ -582,12 +585,16 @@ export class TelemetryHttpClient {
         this.metrics.externalRequestDuration.observe(this.durationLabels(context), durationSeconds)
         this.metrics.externalRequestsTotal.inc(this.requestLabels(context, 'error'))
         if (attempt >= this.maxRetries) {
-          throw error
+          lastError = error
+          break
         }
         await sleep(this.backoffDelayMs(attempt))
       }
     }
-
+    if (lastError instanceof Error) {
+      throw lastError
+    }
+    throw new Error('TelemetryHttpClient: retry attempts exhausted')
   }
 
   private shouldRetry(status: number) {
