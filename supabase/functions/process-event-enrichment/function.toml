@@ -1,0 +1,4 @@
+[function]
+name = "process-event-enrichment"
+# Enable this function to be called via scheduled cron jobs
+# cron = "*/30 * * * *"  # Run every 30 minutes (uncomment in production)
