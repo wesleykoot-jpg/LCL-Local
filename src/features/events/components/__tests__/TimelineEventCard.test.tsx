@@ -11,6 +11,21 @@ vi.mock('../../hooks/hooks', () => ({
   }),
 }));
 
+vi.mock('../../hooks/useEventSyncStatus', () => ({
+  useEventSyncStatus: () => ({
+    data: null,
+    isLoading: false,
+  }),
+}));
+
+vi.mock('@/hooks/useGoogleCalendar', () => ({
+  useGoogleCalendar: () => ({
+    isConnected: false,
+    isConfigured: false,
+    syncEventToCalendar: vi.fn(),
+  }),
+}));
+
 vi.mock('@/features/auth', () => ({
   useAuth: () => ({
     profile: { id: 'test-user-id' },
@@ -21,6 +36,14 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
     invalidateQueries: vi.fn(),
   }),
+  useQuery: () => ({
+    data: null,
+    isLoading: false,
+  }),
+}));
+
+vi.mock('@/shared/lib/haptics', () => ({
+  hapticImpact: vi.fn(),
 }));
 
 describe('TimelineEventCard', () => {
@@ -187,6 +210,34 @@ describe('TimelineEventCard', () => {
       render(<TimelineEventCard event={eventWithTicket} variant="trip-card" />);
       
       expect(screen.getByText('TICKET-456')).toBeInTheDocument();
+    });
+
+    it('shows share button in trip-card variant', () => {
+      const { container } = render(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+      
+      // Share button should be present with aria-label
+      const shareButton = screen.getByLabelText('Share event');
+      expect(shareButton).toBeInTheDocument();
+      
+      // Should be positioned absolutely at top-right
+      const shareContainer = container.querySelector('.absolute.right-3.top-3');
+      expect(shareContainer).toBeInTheDocument();
+    });
+  });
+
+  describe('share functionality', () => {
+    it('shows share button in all variants', () => {
+      // Default variant
+      const { rerender } = render(<TimelineEventCard event={mockEvent} variant="default" />);
+      expect(screen.getByLabelText('Share event')).toBeInTheDocument();
+      
+      // Minimal variant
+      rerender(<TimelineEventCard event={mockEvent} variant="minimal" />);
+      expect(screen.getByLabelText('Share event')).toBeInTheDocument();
+      
+      // Trip-card variant
+      rerender(<TimelineEventCard event={mockEvent} variant="trip-card" />);
+      expect(screen.getByLabelText('Share event')).toBeInTheDocument();
     });
   });
 
