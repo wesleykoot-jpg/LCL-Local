@@ -34,6 +34,8 @@ export interface CreateEventParams {
   parent_event_id?: string;
   creator_profile_id: string;
   max_attendees?: number;
+  is_private?: boolean;
+  invited_user_ids?: string[];
 }
 
 const stripHtmlTags = (value?: string) =>
@@ -187,7 +189,7 @@ export async function checkEventAttendance(eventId: string, profileId: string) {
  */
 export async function createEvent(params: CreateEventParams) {
   try {
-    const { creator_profile_id, parent_event_id, ...eventParams } = params;
+    const { creator_profile_id, parent_event_id, is_private, invited_user_ids, ...eventParams } = params;
     const cleanedTitle = stripHtmlTags(eventParams.title).trim();
     const normalizedTitle = toTitleCase(cleanedTitle);
     const normalizedDescription = stripHtmlTags(eventParams.description);
@@ -213,6 +215,7 @@ export async function createEvent(params: CreateEventParams) {
       created_at: new Date().toISOString(),
       status: 'active',
       match_percentage: 85,
+      is_private: is_private || false,
     };
 
     const { data, error } = await supabase
@@ -224,11 +227,60 @@ export async function createEvent(params: CreateEventParams) {
     if (error) throw error;
 
     if (data) {
+      // Add creator as attendee
       await joinEvent({
         eventId: data.id,
         profileId: params.creator_profile_id,
         status: 'going',
       });
+
+      // Create invites for invited users if this is a private event
+      if (is_private && invited_user_ids && invited_user_ids.length > 0) {
+        const invites = invited_user_ids.map((invitedUserId) => ({
+          event_id: data.id,
+          invited_user_id: invitedUserId,
+          invited_by: creator_profile_id,
+          status: 'pending',
+        }));
+
+        const { error: invitesError } = await supabase
+          .from('event_invites')
+          .insert(invites);
+
+        if (invitesError) {
+          console.error('Error creating invites:', invitesError);
+          // Don't fail event creation if invites fail
+        }
+
+        // Best-effort: Create notifications for invited users
+        // Check if notifications table exists and create notification rows
+        try {
+          // Query to check if notifications table exists
+          const { error: tableCheckError } = await supabase
+            .from('notifications')
+            .select('id')
+            .limit(1);
+
+          // If no error, table exists - create notifications
+          if (!tableCheckError) {
+            const notifications = invited_user_ids.map((invitedUserId) => ({
+              user_id: invitedUserId,
+              type: 'event_invite',
+              title: 'Event Invitation',
+              message: `You've been invited to ${normalizedTitle}`,
+              data: {
+                event_id: data.id,
+                invited_by: creator_profile_id,
+              },
+            }));
+
+            await supabase.from('notifications').insert(notifications);
+          }
+        } catch (notificationError) {
+          // Silent fail - notifications are best-effort
+          console.log('Notifications not created (table may not exist):', notificationError);
+        }
+      }
     }
 
     return { data, error: null };

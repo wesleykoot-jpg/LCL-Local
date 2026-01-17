@@ -27,6 +27,8 @@ export const createEventSchema = z.object({
     .max(200, 'Venue name must be less than 200 characters')
     .trim(),
   max_attendees: z.number().int().min(0).max(10000),
+  is_private: z.boolean().optional(),
+  invited_user_ids: z.array(z.string().uuid()).optional(),
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
