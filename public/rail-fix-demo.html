@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Horizontal Rail Fix Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      padding: 40px 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .demo-section {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 40px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .demo-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-broken {
+      background: #fee;
+      color: #c00;
+    }
+    .status-fixed {
+      background: #efe;
+      color: #0a0;
+    }
+    
+    /* BROKEN VERSION - overflow-x-hidden on parent */
+    .rail-broken {
+      overflow-x: hidden; /* THIS CLIPS THE SCROLLING! */
+    }
+    .rail-broken .content-wrapper {
+      padding: 0 24px;
+      margin: 0 -24px;
+    }
+    .rail-broken .content-inner {
+      padding: 0 24px;
+    }
+    .rail-broken .scroll-container {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding: 8px 16px;
+      margin: 0 -16px;
+      scrollbar-width: none;
+    }
+    .rail-broken .scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* FIXED VERSION - overflow-x-visible on parent */
+    .rail-fixed {
+      overflow-x: visible; /* ALLOWS SCROLLING! */
+    }
+    .rail-fixed .content-wrapper {
+      padding: 0 24px;
+      margin: 0 -24px;
+    }
+    .rail-fixed .content-inner {
+      padding: 0 24px;
+    }
+    .rail-fixed .scroll-container {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding: 8px 16px;
+      margin: 0 -16px;
+      scrollbar-width: none;
+    }
+    .rail-fixed .scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Card styles */
+    .card {
+      flex-shrink: 0;
+      width: 260px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      padding: 24px;
+      color: white;
+      font-weight: 600;
+    }
+    
+    .explanation {
+      margin-top: 16px;
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .code {
+      font-family: 'Courier New', monospace;
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎉 Horizontal Rail Fix Demonstration</h1>
+    
+    <div class="demo-section">
+      <div class="demo-title">
+        ❌ BROKEN: overflow-x-hidden
+        <span class="status-badge status-broken">Before</span>
+      </div>
+      <div class="rail-broken">
+        <div class="content-wrapper">
+          <div class="content-inner">
+            <div class="scroll-container">
+              <div class="card">Event 1</div>
+              <div class="card">Event 2</div>
+              <div class="card">Event 3</div>
+              <div class="card">Event 4</div>
+              <div class="card">Event 5</div>
+              <div class="card">Event 6</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="explanation">
+        <strong>Problem:</strong> The parent section has <code>overflow-x: hidden</code>, which clips the horizontal scrolling content. You cannot scroll to see all events.
+      </div>
+      <div class="code">
+&lt;section className="overflow-x-hidden"&gt;  ← BLOCKS SCROLLING
+  &lt;div className="px-6 -mx-6"&gt;
+    &lt;div className="px-6"&gt;
+      &lt;div className="overflow-x-auto"&gt;  ← Can't scroll!
+        {/* Event cards */}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+      </div>
+    </div>
+    
+    <div class="demo-section">
+      <div class="demo-title">
+        ✅ FIXED: overflow-x-visible
+        <span class="status-badge status-fixed">After</span>
+      </div>
+      <div class="rail-fixed">
+        <div class="content-wrapper">
+          <div class="content-inner">
+            <div class="scroll-container">
+              <div class="card">Event 1</div>
+              <div class="card">Event 2</div>
+              <div class="card">Event 3</div>
+              <div class="card">Event 4</div>
+              <div class="card">Event 5</div>
+              <div class="card">Event 6</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="explanation">
+        <strong>Solution:</strong> Changed to <code>overflow-x: visible</code>, which allows the nested horizontal scroll container to work properly. Now you can scroll horizontally to see all events! 👈 Try scrolling the cards above.
+      </div>
+      <div class="code">
+&lt;section className="overflow-x-visible"&gt;  ← ALLOWS SCROLLING
+  &lt;div className="px-6 -mx-6"&gt;
+    &lt;div className="px-6"&gt;
+      &lt;div className="overflow-x-auto"&gt;  ← Scrolls!
+        {/* Event cards */}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+      </div>
+    </div>
+    
+    <div class="demo-section">
+      <h3>Files Changed:</h3>
+      <ul>
+        <li><code>src/features/events/components/DiscoveryRail.tsx</code></li>
+        <li><code>src/components/ui/Rail.tsx</code></li>
+      </ul>
+      <h3>Tests Added:</h3>
+      <ul>
+        <li><code>src/features/events/components/__tests__/DiscoveryRail.test.tsx</code> (3 tests)</li>
+        <li><code>src/components/ui/__tests__/Rail.test.tsx</code> (4 tests)</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
