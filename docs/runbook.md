@@ -9,8 +9,10 @@ The LCL Local defensive scheduled scraper runs daily to fetch event data from co
 - **Supabase Tables**: 
   - `scrape_events`: Individual fetch attempts
   - `scrape_state`: Per-source state and failure counters
-- **GitHub Actions**: `.github/workflows/scrape.yml`
-- **Configuration**: `src/config/sources.json`
+  - `scraper_sources`: Scraping configuration and enabled sources
+- **GitHub Actions**: [`.github/workflows/scrape.yml`](../.github/workflows/scrape.yml)
+- **Scraper Implementation**: [`supabase/functions/scrape-events/`](../supabase/functions/scrape-events/)
+- **Dry-run Script**: [`scripts/run-scraper-dryrun.sh`](../scripts/run-scraper-dryrun.sh)
 
 ## Monitoring
 
@@ -121,7 +123,12 @@ Each alert includes:
 2. Update parser logic to handle new structure
 3. Test with dry-run mode:
    ```bash
-   npm run scrape:dry-run
+   # Set environment variables
+   export SUPABASE_URL="https://<project-ref>.supabase.co"
+   export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+   
+   # Run dry-run for a specific source
+   ./scripts/run-scraper-dryrun.sh <source-id>
    ```
 4. Deploy updated scraper code
 
@@ -163,17 +170,31 @@ WHERE source_id = 'your-source-id';
 
 To temporarily skip a problematic source without removing it:
 
-1. Remove the source from `src/config/sources.json`
-2. Commit and push changes
-3. Next workflow run will skip this source
+```sql
+-- Disable a source in the database
+UPDATE scraper_sources 
+SET enabled = false,
+    notes = 'Temporarily disabled - issue being investigated'
+WHERE id = 'your-source-id';
+
+-- Re-enable when ready
+UPDATE scraper_sources 
+SET enabled = true,
+    notes = NULL
+WHERE id = 'your-source-id';
+```
+
+The next workflow run will skip disabled sources automatically.
 
 ### Triggering a Manual Run
 
 To run the scraper outside the schedule:
 
-1. Go to **GitHub Actions** → `scheduled-scrape`
+1. Go to **GitHub Actions** → [`scheduled-scrape`](https://github.com/wesleykoot-jpg/LCL-Local/actions/workflows/scrape.yml)
 2. Click **Run workflow**
-3. Optionally enable dry-run mode in workflow inputs
+3. Workflow will execute with the environment variables configured in the workflow file
+
+**Note:** The scraper runs via a scheduled GitHub Actions workflow that invokes the scraper CLI. For testing individual sources with dry-run mode, use the `./scripts/run-scraper-dryrun.sh` script instead.
 
 ### Running Locally
 
@@ -181,35 +202,49 @@ For testing and debugging:
 
 ```bash
 # Set environment variables
-export SUPABASE_URL="your-supabase-url"
-export SUPABASE_KEY="your-supabase-key"
-export SLACK_WEBHOOK_URL="your-slack-webhook"
+export SUPABASE_URL="https://<project-ref>.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+export SLACK_WEBHOOK_URL="your-slack-webhook"  # Optional
+export SCRAPER_USER_AGENT="LCL-Bot/1.0"        # Optional
 
-# Dry run (no writes)
-npm run build
-node dist/cli.js --dry-run
+# Dry run using the Edge Function
+./scripts/run-scraper-dryrun.sh <source-id>
 
-# Real run
-node dist/cli.js --run-id=local-test-001
+# Note: The scraper runs as a Supabase Edge Function.
+# See .github/workflows/scrape.yml for the scheduled workflow configuration.
 ```
+
+**Finding Source IDs:**
+```sql
+SELECT id, name, url FROM scraper_sources WHERE enabled = true;
+```
+
+**Edge Function Details:**
+- Function: `supabase/functions/scrape-events/index.ts`
+- Dry-run mode: Pass `{"dryRun": true}` in request body to test without writing to database
+- Local testing: Use `npx supabase functions serve scrape-events`
 
 ## Configuration Tuning
 
 ### Adjusting Rate Limits
 
-Edit `src/config/sources.json` for per-source settings:
+Rate limits are typically configured in the `scraper_sources` table. Check and modify per-source settings:
 
-```json
-{
-  "source_id": "example.site",
-  "url": "https://example.com/events",
-  "domain": "example.com",
-  "rate_limit": {
-    "requests_per_minute": 6,  // Slower rate (10s per request)
-    "concurrency": 1            // Keep at 1 for politeness
-  }
-}
+```sql
+-- View current rate limit settings
+SELECT id, name, url, config FROM scraper_sources WHERE enabled = true;
+
+-- Update rate limit for a specific source
+UPDATE scraper_sources 
+SET config = jsonb_set(
+  config, 
+  '{rate_limit}', 
+  '{"requests_per_minute": 6, "concurrency": 1}'::jsonb
+)
+WHERE id = 'your-source-id';
 ```
+
+**Note:** Configuration may vary by source. Some sources store rate limits in the `config` JSONB column.
 
 ### Changing Alert Threshold
 
@@ -267,6 +302,8 @@ For issues not covered in this runbook:
 
 ## Related Documentation
 
-- [Configuration Guide](../src/config/defaults.ts)
-- [GitHub Actions Workflow](.github/workflows/scrape.yml)
-- [Supabase Schema](../supabase/migrations/20260113000000_scraper_defensive_schema.sql)
+- [Configuration Guide](../supabase/functions/scrape-events/README.md)
+- [GitHub Actions Workflow](../.github/workflows/scrape.yml)
+- [GitHub Workflows README](../.github/workflows/README.md)
+- [Supabase Functions Documentation](../supabase/functions/)
+- [Monitoring Toolkit](../lcl-monitoring/README.md)
