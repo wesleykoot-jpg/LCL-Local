@@ -364,3 +364,43 @@ export const DarkMode: Story = {
     ),
   ],
 };
+
+/**
+ * Share Button - All variants show share button
+ * Floating top-right share button with accessibility support
+ */
+export const ShareButton: Story = {
+  args: {
+    event: discoveryEventWithImage,
+    variant: 'trip-card',
+    isPast: false,
+    showJoinButton: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Share button appears on all card variants (default, minimal, trip-card). Uses navigator.share API with clipboard fallback.',
+      },
+    },
+  },
+};
+
+/**
+ * Google Calendar Sync Badge - Event synced to Google Calendar
+ * Shows "Synced with Google" badge when event is synced
+ */
+export const GoogleCalendarSynced: Story = {
+  args: {
+    event: discoveryEventWithImage,
+    variant: 'default',
+    isPast: false,
+    showJoinButton: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'When an event is synced to Google Calendar, a blue badge appears showing "Synced with Google". Requires Google Calendar connection and sync status hook.',
+      },
+    },
+  },
+};
