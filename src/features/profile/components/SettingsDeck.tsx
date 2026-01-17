@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LogOut, Trash2, Bell, Lock, User, Loader2 } from 'lucide-react';
+import { LogOut, Trash2, Bell, Lock, User, Loader2, ChevronRight } from 'lucide-react';
 import { hapticImpact } from '@/shared/lib/haptics';
+import { Switch } from '@/components/ui/switch';
+import { useMotionPreset } from '@/hooks/useMotionPreset';
 
 /**
- * SettingsDeck - Control Panel Interface
+ * SettingsDeck - iOS Settings Style Control Panel
  * 
- * A spaceship-style control deck with grouped glass panels for settings.
- * Features custom neon toggles, organized sections, and a danger zone.
+ * Part of the v5.0 "Social Air" Design System.
+ * Clean, grouped list items replacing the "Spaceship Dashboard".
+ * Features standardized Switch toggles and ChevronRight icons.
  */
 
 interface SettingsDeckProps {
@@ -16,66 +19,72 @@ interface SettingsDeckProps {
 }
 
 /**
- * Custom Neon Toggle Switch
+ * Settings Toggle Row with standardized Switch
  */
-interface NeonToggleProps {
+interface SettingsToggleProps {
   enabled: boolean;
   onChange: (enabled: boolean) => void;
   label: string;
   description?: string;
 }
 
-function NeonToggle({ enabled, onChange, label, description }: NeonToggleProps) {
+function SettingsToggle({ enabled, onChange, label, description }: SettingsToggleProps) {
   const handleToggle = async () => {
     await hapticImpact('light');
     onChange(!enabled);
   };
 
   return (
-    <button
+    <div
+      className="w-full flex items-center justify-between py-4 px-5 hover:bg-gray-50 transition-colors min-h-touch cursor-pointer"
       onClick={handleToggle}
-      className="w-full flex items-center justify-between py-4 px-5 hover:bg-white/5 transition-all active:bg-gray-100"
-      role="switch"
-      aria-checked={enabled}
+      role="group"
       aria-label={label}
     >
       <div className="flex-1 text-left">
-        <p className="text-sm font-medium text-white">{label}</p>
+        <p className="text-sm font-medium text-text-primary">{label}</p>
         {description && (
-          <p className="text-xs text-white/60 mt-0.5">{description}</p>
+          <p className="text-xs text-text-secondary mt-0.5">{description}</p>
         )}
       </div>
-      <motion.div
-        className={`relative w-12 h-7 rounded-full transition-colors ${
-          enabled ? 'bg-green-500/30' : 'bg-gray-100'
-        }`}
-        style={{
-          border: enabled ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(255, 255, 255, 0.2)',
-        }}
-        animate={{
-          boxShadow: enabled
-            ? '0 0 12px rgba(34, 197, 94, 0.4)'
-            : '0 0 0 rgba(255, 255, 255, 0)',
-        }}
-      >
-        <motion.div
-          className={`absolute top-1 w-5 h-5 rounded-full ${
-            enabled ? 'bg-green-400' : 'bg-white'
-          }`}
-          animate={{
-            left: enabled ? '22px' : '4px',
-          }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          style={{
-            boxShadow: enabled ? '0 2px 8px rgba(34, 197, 94, 0.6)' : '0 2px 4px rgba(0, 0, 0, 0.2)',
-          }}
-        />
-      </motion.div>
+      <Switch 
+        checked={enabled} 
+        onCheckedChange={onChange}
+        onClick={(e) => e.stopPropagation()}
+        aria-label={label}
+      />
+    </div>
+  );
+}
+
+/**
+ * Settings Navigation Row with ChevronRight
+ */
+interface SettingsNavRowProps {
+  label: string;
+  description?: string;
+  onClick?: () => void;
+}
+
+function SettingsNavRow({ label, description, onClick }: SettingsNavRowProps) {
+  return (
+    <button 
+      onClick={onClick}
+      className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors min-h-touch"
+    >
+      <div className="flex-1 text-left">
+        <p className="text-sm font-medium text-text-primary">{label}</p>
+        {description && (
+          <p className="text-xs text-text-secondary mt-0.5">{description}</p>
+        )}
+      </div>
+      <ChevronRight size={20} className="text-text-muted shrink-0" />
     </button>
   );
 }
 
 export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckProps) {
+  const motionPreset = useMotionPreset();
   // State for toggle switches
   const [pushNotifications, setPushNotifications] = useState(true);
   const [eventReminders, setEventReminders] = useState(true);
@@ -84,56 +93,60 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
-      {/* Account Section */}
+      {/* Account Section - Solid White Card */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden  bg-white/5 border border-gray-400"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        className="bg-surface-card rounded-card shadow-card overflow-hidden"
+        {...(motionPreset.prefersReducedMotion ? {} : {
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { delay: 0.1 },
+        })}
         role="region"
         aria-label="Account settings"
       >
-        <div className="px-5 py-3 border-b border-gray-400">
+        <div className="px-5 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <User size={16} className="text-white/60" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wide">Account</h3>
+            <User size={16} className="text-text-secondary" />
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wide">Account</h3>
           </div>
         </div>
-        <div className="divide-y divide-white/10">
-          <button className="w-full px-5 py-4 text-left hover:bg-white/5 transition-all active:bg-gray-100">
-            <p className="text-sm font-medium text-white">Personal Information</p>
-            <p className="text-xs text-white/60 mt-0.5">Update your profile details</p>
-          </button>
-          <button className="w-full px-5 py-4 text-left hover:bg-white/5 transition-all active:bg-gray-100">
-            <p className="text-sm font-medium text-white">Preferences</p>
-            <p className="text-xs text-white/60 mt-0.5">Customize your experience</p>
-          </button>
+        <div className="divide-y divide-gray-100">
+          <SettingsNavRow 
+            label="Personal Information"
+            description="Update your profile details"
+          />
+          <SettingsNavRow 
+            label="Preferences"
+            description="Customize your experience"
+          />
         </div>
       </motion.div>
 
       {/* Notifications Section */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden  bg-white/5 border border-gray-400"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        className="bg-surface-card rounded-card shadow-card overflow-hidden"
+        {...(motionPreset.prefersReducedMotion ? {} : {
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { delay: 0.2 },
+        })}
         role="region"
         aria-label="Notification settings"
       >
-        <div className="px-5 py-3 border-b border-gray-400">
+        <div className="px-5 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <Bell size={16} className="text-white/60" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wide">Notifications</h3>
+            <Bell size={16} className="text-text-secondary" />
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wide">Notifications</h3>
           </div>
         </div>
-        <div className="divide-y divide-white/10">
-          <NeonToggle
+        <div className="divide-y divide-gray-100">
+          <SettingsToggle
             enabled={pushNotifications}
             onChange={setPushNotifications}
             label="Push Notifications"
             description="Receive updates about events"
           />
-          <NeonToggle
+          <SettingsToggle
             enabled={eventReminders}
             onChange={setEventReminders}
             label="Event Reminders"
@@ -144,27 +157,29 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
 
       {/* Privacy Section */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden  bg-white/5 border border-gray-400"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        className="bg-surface-card rounded-card shadow-card overflow-hidden"
+        {...(motionPreset.prefersReducedMotion ? {} : {
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { delay: 0.3 },
+        })}
         role="region"
         aria-label="Privacy settings"
       >
-        <div className="px-5 py-3 border-b border-gray-400">
+        <div className="px-5 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <Lock size={16} className="text-white/60" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wide">Privacy</h3>
+            <Lock size={16} className="text-text-secondary" />
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wide">Privacy</h3>
           </div>
         </div>
-        <div className="divide-y divide-white/10">
-          <NeonToggle
+        <div className="divide-y divide-gray-100">
+          <SettingsToggle
             enabled={locationSharing}
             onChange={setLocationSharing}
             label="Location Sharing"
             description="Share your location with events"
           />
-          <NeonToggle
+          <SettingsToggle
             enabled={profileVisibility}
             onChange={setProfileVisibility}
             label="Public Profile"
@@ -173,44 +188,46 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
         </div>
       </motion.div>
 
-      {/* Danger Zone */}
+      {/* Danger Zone - Red tinted card */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden  bg-red-500/10 border border-red-500/30"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        className="bg-red-50 rounded-card shadow-card overflow-hidden border border-red-100"
+        {...(motionPreset.prefersReducedMotion ? {} : {
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { delay: 0.4 },
+        })}
         role="region"
         aria-label="Danger zone - Account actions"
       >
-        <div className="px-5 py-3 border-b border-red-500/20">
-          <h3 className="text-sm font-bold text-red-400 uppercase tracking-wide">Danger Zone</h3>
+        <div className="px-5 py-3 border-b border-red-100">
+          <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wide">Danger Zone</h3>
         </div>
-        <div className="divide-y divide-red-500/20">
+        <div className="divide-y divide-red-100">
           <button
             onClick={onSignOut}
             disabled={isSigningOut}
-            className="w-full px-5 py-4 flex items-center gap-3 hover:bg-red-500/10 transition-all active:bg-red-500/20 disabled:opacity-50"
+            className="w-full px-5 py-4 flex items-center gap-3 hover:bg-red-100 transition-colors disabled:opacity-50 min-h-touch"
           >
             {isSigningOut ? (
-              <Loader2 size={18} className="text-red-400 animate-spin" />
+              <Loader2 size={18} className="text-red-600 animate-spin" />
             ) : (
-              <LogOut size={18} className="text-red-400" />
+              <LogOut size={18} className="text-red-600" />
             )}
             <div className="flex-1 text-left">
-              <p className="text-sm font-medium text-red-400">
+              <p className="text-sm font-medium text-red-600">
                 {isSigningOut ? 'Signing out...' : 'Log Out'}
               </p>
-              <p className="text-xs text-red-400/60 mt-0.5">Sign out of your account</p>
+              <p className="text-xs text-red-500 mt-0.5">Sign out of your account</p>
             </div>
           </button>
           <button
             disabled={isSigningOut}
-            className="w-full px-5 py-4 flex items-center gap-3 hover:bg-red-500/10 transition-all active:bg-red-500/20 disabled:opacity-50"
+            className="w-full px-5 py-4 flex items-center gap-3 hover:bg-red-100 transition-colors disabled:opacity-50 min-h-touch"
           >
-            <Trash2 size={18} className="text-red-400" />
+            <Trash2 size={18} className="text-red-600" />
             <div className="flex-1 text-left">
-              <p className="text-sm font-medium text-red-400">Delete Account</p>
-              <p className="text-xs text-red-400/60 mt-0.5">Permanently delete your data</p>
+              <p className="text-sm font-medium text-red-600">Delete Account</p>
+              <p className="text-xs text-red-500 mt-0.5">Permanently delete your data</p>
             </div>
           </button>
         </div>

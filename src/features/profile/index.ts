@@ -4,6 +4,13 @@
 // Components
 export { OnboardingWizard } from './components/OnboardingWizard';
 export { ConfirmModal } from './components/ConfirmModal';
+export { MorphingHeader } from './components/MorphingHeader';
+export { LivingPassport } from './components/LivingPassport';
+export { IdentityCard } from './components/IdentityCard';
+export { SettingsDeck } from './components/SettingsDeck';
+
+// Legacy (kept for backwards compatibility)
+export { PassportGrid } from './components/PassportGrid';
 
 // Hooks
 export { useOnboarding } from './hooks/useOnboarding';

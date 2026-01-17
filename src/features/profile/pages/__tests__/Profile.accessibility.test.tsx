@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Profile from '../Profile';
 
@@ -15,6 +15,8 @@ vi.mock('@/features/auth', () => ({
       avatar_url: null,
       current_persona: 'social',
       bio: 'Test bio',
+      reliability_score: 98,
+      events_attended: 12,
     },
     signOut: vi.fn(),
   }),
@@ -40,7 +42,7 @@ vi.mock('@/lib/version', () => ({
   APP_NAME: 'LCL',
 }));
 
-describe('Profile - Accessibility', () => {
+describe('Profile - Accessibility (v5.0 Social Air)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -52,18 +54,17 @@ describe('Profile - Accessibility', () => {
     expect(tablist).toBeDefined();
     
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(3);
+    // v5.0 design has 2 tabs: Passport and Settings (removed Wishlist)
+    expect(tabs).toHaveLength(2);
   });
 
   it('should have proper aria-selected attributes', () => {
     render(<Profile />);
     
     const passportTab = screen.getByRole('tab', { name: /passport/i });
-    const wishlistTab = screen.getByRole('tab', { name: /wishlist/i });
     const settingsTab = screen.getByRole('tab', { name: /settings/i });
     
     expect(passportTab.getAttribute('aria-selected')).toBe('true');
-    expect(wishlistTab.getAttribute('aria-selected')).toBe('false');
     expect(settingsTab.getAttribute('aria-selected')).toBe('false');
   });
 
@@ -72,9 +73,6 @@ describe('Profile - Accessibility', () => {
     
     const passportTab = screen.getByRole('tab', { name: /passport/i });
     expect(passportTab.getAttribute('aria-controls')).toBe('passport-panel');
-    
-    const wishlistTab = screen.getByRole('tab', { name: /wishlist/i });
-    expect(wishlistTab.getAttribute('aria-controls')).toBe('wishlist-panel');
     
     const settingsTab = screen.getByRole('tab', { name: /settings/i });
     expect(settingsTab.getAttribute('aria-controls')).toBe('settings-panel');
@@ -88,37 +86,43 @@ describe('Profile - Accessibility', () => {
     expect(panel.getAttribute('id')).toBe('passport-panel');
   });
 
-  it('should switch tabs on click', () => {
+  it('should switch tabs on click', async () => {
     render(<Profile />);
-    
-    const wishlistTab = screen.getByRole('tab', { name: /wishlist/i });
-    fireEvent.click(wishlistTab);
-    
-    expect(wishlistTab.getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('should support keyboard navigation with Arrow keys', () => {
-    render(<Profile />);
-    
-    const passportTab = screen.getByRole('tab', { name: /passport/i });
-    
-    // Press ArrowRight to move to next tab
-    fireEvent.keyDown(passportTab, { key: 'ArrowRight' });
-    
-    const wishlistTab = screen.getByRole('tab', { name: /wishlist/i });
-    expect(wishlistTab.getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('should support keyboard navigation with ArrowLeft', () => {
-    render(<Profile />);
-    
-    const passportTab = screen.getByRole('tab', { name: /passport/i });
-    
-    // Press ArrowLeft to move to last tab (wrapping)
-    fireEvent.keyDown(passportTab, { key: 'ArrowLeft' });
     
     const settingsTab = screen.getByRole('tab', { name: /settings/i });
-    expect(settingsTab.getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(settingsTab);
+    
+    await waitFor(() => {
+      expect(settingsTab.getAttribute('aria-selected')).toBe('true');
+    });
+  });
+
+  it('should support keyboard navigation with Arrow keys', async () => {
+    render(<Profile />);
+    
+    const passportTab = screen.getByRole('tab', { name: /passport/i });
+    
+    // Press ArrowRight to move to settings tab
+    fireEvent.keyDown(passportTab, { key: 'ArrowRight' });
+    
+    await waitFor(() => {
+      const settingsTab = screen.getByRole('tab', { name: /settings/i });
+      expect(settingsTab.getAttribute('aria-selected')).toBe('true');
+    });
+  });
+
+  it('should support keyboard navigation with ArrowLeft (wrap around)', async () => {
+    render(<Profile />);
+    
+    const passportTab = screen.getByRole('tab', { name: /passport/i });
+    
+    // Press ArrowLeft to move to last tab (wrapping to settings)
+    fireEvent.keyDown(passportTab, { key: 'ArrowLeft' });
+    
+    await waitFor(() => {
+      const settingsTab = screen.getByRole('tab', { name: /settings/i });
+      expect(settingsTab.getAttribute('aria-selected')).toBe('true');
+    });
   });
 
   it('should have minimum 44px touch targets', () => {
@@ -131,15 +135,17 @@ describe('Profile - Accessibility', () => {
     });
   });
 
-  it('should have aria-label on region sections', () => {
+  it('should have aria-label on region sections in settings', async () => {
     render(<Profile />);
     
     // Navigate to settings tab to load SettingsDeck
     const settingsTab = screen.getByRole('tab', { name: /settings/i });
     fireEvent.click(settingsTab);
     
-    // Check for regions in settings (may take a moment to render)
-    const regions = screen.queryAllByRole('region');
-    expect(regions.length).toBeGreaterThan(0);
+    // Wait for settings panel to render with regions
+    await waitFor(() => {
+      const regions = screen.queryAllByRole('region');
+      expect(regions.length).toBeGreaterThan(0);
+    });
   });
 });
