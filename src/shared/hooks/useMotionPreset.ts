@@ -22,10 +22,10 @@ export interface MotionPresetOptions {
 }
 
 export interface MotionPreset {
-  initial: Record<string, any> | false;
-  animate: Record<string, any>;
-  exit?: Record<string, any>;
-  transition?: Record<string, any>;
+  initial: Record<string, number | string | boolean> | false;
+  animate: Record<string, number | string | boolean>;
+  exit?: Record<string, number | string | boolean>;
+  transition?: Record<string, number | string>;
 }
 
 export function useMotionPreset() {
