@@ -1,11 +1,15 @@
 import { useMemo } from 'react';
 import { ItineraryItem } from '../hooks/useUnifiedItinerary';
-import { Calendar, MapPin, ExternalLink, Car, ChevronDown, Building2 } from 'lucide-react';
+import { Calendar, MapPin, ExternalLink, Car, ChevronDown, Building2, AlertTriangle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { TimelineEventCard } from './TimelineEventCard';
 import type { EventWithAttendees } from '../hooks/hooks';
 import type { TimeMode } from '@/lib/openingHours';
+import { doEventsOverlap, type TimeRange } from '../utils/timeHelpers';
+import { exportToCalendar, type CalendarEvent } from '../utils/calendarExport';
+import { hapticImpact } from '@/shared/lib/haptics';
+import toast from 'react-hot-toast';
 
 // Format time like "7:00 PM" - force 12-hour format
 function formatTime(date: Date): string {
@@ -180,10 +184,80 @@ const ParentVenueBadge = ({ venueName, onExpand }: ParentVenueBadgeProps) => (
   </button>
 );
 
+interface ConflictBadgeProps {
+  message: string;
+}
+
+const ConflictBadge = ({ message }: ConflictBadgeProps) => (
+  <div className="flex items-center gap-2 p-2 mb-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+    <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
+    <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
+      {message}
+    </span>
+  </div>
+);
+
+/**
+ * Convert ItineraryItem to CalendarEvent for export
+ */
+function convertToCalendarEvent(item: ItineraryItem): CalendarEvent {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) 
+      ? item.originalData.description || undefined
+      : undefined,
+    location: item.location,
+    startTime: item.startTime,
+    endTime: item.endTime,
+  };
+}
+
 export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<string, ItineraryItem[]> }) => {
   const today = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', month: 'short', day: 'numeric' 
   });
+  
+  // Detect conflicts across all items
+  const conflictMap = useMemo(() => {
+    const allItems = Object.values(groupedItems).flat();
+    const conflicts = new Map<string, string[]>();
+    
+    for (let i = 0; i < allItems.length; i++) {
+      for (let j = i + 1; j < allItems.length; j++) {
+        const item1 = allItems[i];
+        const item2 = allItems[j];
+        
+        if (doEventsOverlap(
+          { startTime: item1.startTime, endTime: item1.endTime },
+          { startTime: item2.startTime, endTime: item2.endTime }
+        )) {
+          if (!conflicts.has(item1.id)) {
+            conflicts.set(item1.id, []);
+          }
+          if (!conflicts.has(item2.id)) {
+            conflicts.set(item2.id, []);
+          }
+          conflicts.get(item1.id)!.push(item2.title);
+          conflicts.get(item2.id)!.push(item1.title);
+        }
+      }
+    }
+    
+    return conflicts;
+  }, [groupedItems]);
+  
+  const handleExportEvent = async (item: ItineraryItem) => {
+    try {
+      await hapticImpact('light');
+      const calendarEvent = convertToCalendarEvent(item);
+      exportToCalendar(calendarEvent);
+      toast.success('Evenement geëxporteerd naar agenda');
+    } catch (error) {
+      console.error('Failed to export event:', error);
+      toast.error('Exporteren mislukt');
+    }
+  };
 
   return (
     <div className="w-full pb-32 px-4">
@@ -289,10 +363,33 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
 
                               {/* Column 3: Event Card - Full Width */}
                               <div className="flex-1 min-w-0 pb-2">
+                                {/* Conflict Badge */}
+                                {conflictMap.has(item.id) && (
+                                  <ConflictBadge 
+                                    message={`Overlaps with ${conflictMap.get(item.id)![0]}`} 
+                                  />
+                                )}
+                                
                                 {/* Parent Venue Badge for child events (Scenario B) */}
                                 {isChildEvent && !group.showParent && parentVenueName && (
                                   <ParentVenueBadge venueName={parentVenueName} />
                                 )}
+                                
+                                {/* Export Button */}
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex-1" />
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleExportEvent(item);
+                                    }}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                    title="Add to Calendar"
+                                  >
+                                    <Download size={12} />
+                                    <span>Export</span>
+                                  </button>
+                                </div>
                                 
                                 {item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) ? (
                                   <motion.div 
