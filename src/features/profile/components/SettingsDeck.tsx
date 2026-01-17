@@ -35,6 +35,9 @@ function NeonToggle({ enabled, onChange, label, description }: NeonToggleProps) 
     <button
       onClick={handleToggle}
       className="w-full flex items-center justify-between py-4 px-5 hover:bg-white/5 transition-all active:bg-white/10"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={label}
     >
       <div className="flex-1 text-left">
         <p className="text-sm font-medium text-white">{label}</p>
@@ -87,6 +90,8 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
+        role="region"
+        aria-label="Account settings"
       >
         <div className="px-5 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -112,6 +117,8 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
+        role="region"
+        aria-label="Notification settings"
       >
         <div className="px-5 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -141,6 +148,8 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
+        role="region"
+        aria-label="Privacy settings"
       >
         <div className="px-5 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -170,6 +179,8 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
+        role="region"
+        aria-label="Danger zone - Account actions"
       >
         <div className="px-5 py-3 border-b border-red-500/20">
           <h3 className="text-sm font-bold text-red-400 uppercase tracking-wide">Danger Zone</h3>

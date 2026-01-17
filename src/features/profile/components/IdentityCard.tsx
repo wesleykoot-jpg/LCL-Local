@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useDeviceTilt } from '@/hooks/useDeviceTilt';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { useAuth } from '@/features/auth';
+import { useMotionPreset } from '@/hooks/useMotionPreset';
+import { PersonaPill } from '@/components/ui/PersonaPill';
 
 /**
  * IdentityCard - The Prism
@@ -12,7 +14,7 @@ import { useAuth } from '@/features/auth';
  * Credit card aspect ratio: 1.58:1
  */
 
-// Mock profile data for development
+// Mock profile data - fallback only when no backend data
 const MOCK_PROFILE = {
   full_name: 'Demo User',
   avatar_url: null,
@@ -20,15 +22,34 @@ const MOCK_PROFILE = {
   bio: 'Living life one event at a time ✨',
 };
 
-// Mock social stats - TODO: Wire to real backend data
+// Mock stats - fallback only when no backend data
 const MOCK_STATS = {
   events: 12,
   friends: 84,
   score: 98,
 };
 
-// Default persona pills - TODO: Derive from user profile data
+// Default persona pills - fallback only when no profile data
 const DEFAULT_PERSONA_PILLS = ['Foodie', 'Nightlife', 'Art'];
+
+/**
+ * Derive persona pills from user's current_persona or other profile data
+ * In future, this could be fetched from a personas table or computed from activity
+ */
+function derivePersonaPills(currentPersona: string | null): string[] {
+  if (!currentPersona) return DEFAULT_PERSONA_PILLS;
+  
+  // Map persona to related interests
+  const personaMap: Record<string, string[]> = {
+    social: ['Foodie', 'Nightlife', 'Art'],
+    explorer: ['Outdoor', 'Adventure', 'Travel'],
+    culture: ['Art', 'Music', 'Theater'],
+    wellness: ['Yoga', 'Meditation', 'Fitness'],
+    nightlife: ['Clubs', 'Bars', 'Music'],
+  };
+  
+  return personaMap[currentPersona.toLowerCase()] || DEFAULT_PERSONA_PILLS;
+}
 
 /**
  * VibeEQ - Animated Waveform Component
@@ -59,7 +80,7 @@ function VibeEQ() {
 
 export function IdentityCard() {
   const { profile } = useAuth();
-  const prefersReducedMotion = useReducedMotion();
+  const motionPreset = useMotionPreset();
   const [isPressed, setIsPressed] = useState(false);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,7 +90,7 @@ export function IdentityCard() {
     sensitivity: 1,
     maxTilt: 15,
     smoothing: 0.15,
-    enabled: !prefersReducedMotion,
+    enabled: !motionPreset.prefersReducedMotion,
   });
 
   // Use profile data or fallback to mock
@@ -79,8 +100,8 @@ export function IdentityCard() {
     ? displayProfile.full_name.charAt(0).toUpperCase()
     : 'U';
 
-  // Use persona pills from configuration - TODO: Derive from user profile
-  const personaPills = DEFAULT_PERSONA_PILLS;
+  // Derive persona pills from profile data
+  const personaPills = derivePersonaPills(displayProfile.current_persona);
 
   // Handle long press on avatar
   const handlePressStart = () => {
@@ -105,7 +126,13 @@ export function IdentityCard() {
   const sheenY = -tilt.tiltY * 2;
 
   // Use stats from profile or mock data
-  const stats = MOCK_STATS; // TODO: Wire to real profile stats
+  const stats = {
+    events: profile?.events_attended ?? MOCK_STATS.events,
+    friends: 84, // TODO: Add friends_count to profile schema when available
+    score: profile?.reliability_score 
+      ? Math.round(profile.reliability_score) 
+      : MOCK_STATS.score,
+  };
   const bio = displayProfile.bio || MOCK_PROFILE.bio;
 
   return (
@@ -114,7 +141,7 @@ export function IdentityCard() {
       <motion.div
         className="tilt-transform"
         style={{
-          perspective: prefersReducedMotion ? 'none' : '1000px',
+          perspective: motionPreset.prefersReducedMotion ? 'none' : '1000px',
         }}
       >
         {/* The Prism Card */}
@@ -122,11 +149,11 @@ export function IdentityCard() {
           className="tilt-content relative w-full rounded-2xl overflow-hidden shadow-2xl"
           style={{
             aspectRatio: '1.58 / 1',
-            transform: prefersReducedMotion
+            transform: motionPreset.prefersReducedMotion
               ? 'none'
               : `rotateY(${tilt.tiltX * 0.5}deg) rotateX(${-tilt.tiltY * 0.5}deg)`,
           }}
-          initial={prefersReducedMotion ? false : { scale: 0.9, opacity: 0 }}
+          {...motionPreset.initial({ scale: 0.9, opacity: 0 })}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', damping: 20, stiffness: 150 }}
         >
@@ -134,7 +161,7 @@ export function IdentityCard() {
           <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border border-white/20" />
 
           {/* Holographic Sheen Overlay */}
-          {!prefersReducedMotion && (
+          {!motionPreset.prefersReducedMotion && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
@@ -150,7 +177,7 @@ export function IdentityCard() {
           )}
 
           {/* Holographic Foil Animation - Sweeps every 5 seconds */}
-          {!prefersReducedMotion && (
+          {!motionPreset.prefersReducedMotion && (
             <motion.div
               className="absolute inset-0 pointer-events-none"
               style={{
@@ -180,6 +207,7 @@ export function IdentityCard() {
                 className="relative"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                aria-label={`${displayProfile.full_name}'s avatar - long press to interact`}
               >
                 <div
                   className={`w-16 h-16 rounded-full bg-gradient-to-br from-white/40 to-white/20 border-2 border-white flex items-center justify-center text-white text-2xl font-bold overflow-hidden transition-all ${
@@ -214,7 +242,7 @@ export function IdentityCard() {
                     {displayProfile.full_name}
                   </h2>
                   {/* Vibe EQ - Animated Waveform */}
-                  {!prefersReducedMotion && <VibeEQ />}
+                  {!motionPreset.prefersReducedMotion && <VibeEQ />}
                 </div>
                 <p className="text-white/60 text-sm">
                   @{displayProfile.full_name?.toLowerCase().replace(/\s+/g, '') || 'username'}
@@ -226,13 +254,15 @@ export function IdentityCard() {
             {bio && (
               <motion.div 
                 className="mb-3"
-                initial={prefersReducedMotion ? false : { opacity: 0 }}
+                {...motionPreset.initial({ opacity: 0 })}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
                 <button
                   onClick={() => setIsBioExpanded(!isBioExpanded)}
                   className="text-white/80 text-sm text-left w-full"
+                  aria-expanded={isBioExpanded}
+                  aria-label={isBioExpanded ? 'Collapse bio' : 'Expand bio'}
                 >
                   <motion.p
                     animate={{ height: isBioExpanded ? 'auto' : '1.25rem' }}
@@ -247,22 +277,22 @@ export function IdentityCard() {
             {/* Persona Pills */}
             <div className="flex gap-2 flex-wrap mb-3">
               {personaPills.map((pill, index) => (
-                <motion.div
+                <PersonaPill
                   key={pill}
-                  className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 text-white text-xs font-medium"
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 + index * 0.1 }}
-                >
-                  {pill}
-                </motion.div>
+                  label={pill}
+                  index={index}
+                  variant="glass"
+                  size="md"
+                />
               ))}
             </div>
 
             {/* Social Stats Bar */}
             <motion.div 
               className="flex items-center justify-around pt-3 border-t border-white/20"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              role="region"
+              aria-label="Profile statistics"
+              {...motionPreset.initial({ opacity: 0, y: 10 })}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
