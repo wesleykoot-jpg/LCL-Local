@@ -32,12 +32,12 @@ geocode_cache     - Nominatim API result caching for coordinates
 ## Key Files
 | File | Purpose |
 |------|---------|
-| `src/lib/feedAlgorithm.ts` | Smart ranking: category(35%), time(20%), social(15%), match(10%), distance(20%) |
-| `src/lib/eventService.ts` | CRUD operations for events |
-| `src/lib/hooks.ts` | Data fetching hooks: useEvents, useProfile, useEventAttendees |
-| `supabase/functions/scrape-events/` | AI-powered event scraper with OpenAI |
-| `src/contexts/AuthContext.tsx` | Authentication state management |
-| `src/contexts/LocationContext.tsx` | User geolocation tracking |
+| [`src/lib/feedAlgorithm.ts`](src/lib/feedAlgorithm.ts) | Smart ranking: category(35%), time(20%), social(15%), match(10%), distance(20%) + urgency/trending boosts |
+| [`src/lib/eventService.ts`](src/lib/eventService.ts) | CRUD operations for events |
+| [`src/features/events/hooks/hooks.ts`](src/features/events/hooks/hooks.ts) | Data fetching hooks: useEvents, useProfile, useEventAttendees, useJoinEvent |
+| [`supabase/functions/scrape-events/`](supabase/functions/scrape-events/) | AI-powered event scraper with OpenAI |
+| [`src/contexts/AuthContext.tsx`](src/contexts/AuthContext.tsx) | Authentication state management |
+| [`src/contexts/LocationContext.tsx`](src/contexts/LocationContext.tsx) | User geolocation tracking |
 
 ## Important Patterns
 - **Coordinates**: `events.location` is PostGIS `geography(POINT, 4326)` - longitude first!
@@ -66,9 +66,9 @@ Database: profiles, events, event_attendees, persona_stats, persona_badges, scra
 All tables have RLS enabled.
 
 Key files:
-- src/lib/feedAlgorithm.ts: Smart ranking (category 35%, time 20%, social 15%, match 10%, distance 20%)
+- src/lib/feedAlgorithm.ts: Smart ranking (category 35%, time 20%, social 15%, match 10%, distance 20%) + urgency/trending boosts
 - src/lib/eventService.ts: CRUD operations for events
-- src/lib/hooks.ts: Data fetching hooks (useEvents, useProfile, etc.)
+- src/features/events/hooks/hooks.ts: Data fetching hooks (useEvents, useProfile, etc.)
 - supabase/functions/scrape-events/: AI-powered event scraper
 
 Stack: React 18, TypeScript, Vite, Tailwind, Capacitor (iOS), Supabase, Framer Motion
