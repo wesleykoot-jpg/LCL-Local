@@ -127,15 +127,14 @@ export class Histogram {
   toPrometheus() {
     const lines = [`# HELP ${this.name} ${this.help}`, `# TYPE ${this.name} histogram`]
     for (const [key, state] of this.values.entries()) {
-      const baseLabels = key ? key.slice(0, -1) : ''
-      const base = baseLabels ? `${baseLabels},` : '{'
-      const close = baseLabels ? '}' : '}'
       for (let i = 0; i < this.buckets.length; i += 1) {
-        lines.push(
-          `${this.name}_bucket${base}le="${this.buckets[i]}"${close} ${state.buckets[i]}`,
-        )
+        const bucketLabels = key
+          ? key.replace(/}$/, `,le="${this.buckets[i]}"}`)
+          : `{le="${this.buckets[i]}"}`
+        lines.push(`${this.name}_bucket${bucketLabels} ${state.buckets[i]}`)
       }
-      lines.push(`${this.name}_bucket${base}le="+Inf"${close} ${state.buckets[state.buckets.length - 1]}`)
+      const infLabels = key ? key.replace(/}$/, `,le="+Inf"}`) : `{le="+Inf"}`
+      lines.push(`${this.name}_bucket${infLabels} ${state.buckets[state.buckets.length - 1]}`)
       lines.push(`${this.name}_sum${key} ${state.sum}`)
       lines.push(`${this.name}_count${key} ${state.count}`)
     }
@@ -559,10 +558,15 @@ export class TelemetryHttpClient {
           )
         }
 
-        if (this.shouldRetry(response.status) && attempt < this.maxRetries) {
-          const retryAfterSeconds = parseRateLimitHeaders(response.headers).retryAfterSeconds
-          await sleep(this.backoffDelayMs(attempt, retryAfterSeconds))
-          continue
+        if (this.shouldRetry(response.status)) {
+          if (attempt < this.maxRetries) {
+            const retryAfterSeconds = parseRateLimitHeaders(response.headers).retryAfterSeconds
+            await sleep(this.backoffDelayMs(attempt, retryAfterSeconds))
+            continue
+          }
+          throw new Error(
+            `TelemetryHttpClient: ${response.status} after ${attempt + 1} attempts`,
+          )
         }
 
         return response
