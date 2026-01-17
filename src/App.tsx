@@ -10,9 +10,6 @@ import { LocationProvider } from "@/features/location";
 import { FeedProvider } from "@/contexts/FeedContext";
 import { ErrorBoundary } from "@/shared/components";
 
-// IO26 Liquid Glass styles
-import "@/styles/io26-glass.css";
-
 // Feature-based page imports
 import { FeedPage, DiscoveryPage, MyPlanningPage, NowPage } from "@/features/events";
 import { 

@@ -63,7 +63,7 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
       animate={{ opacity: 1, y: 0 }}
       className="fixed bottom-24 left-4 z-50"
     >
-      <div className="bg-amber-500/95 backdrop-blur-sm rounded-xl shadow-lg border border-amber-400/50 overflow-hidden">
+      <div className="bg-amber-500/95  rounded-xl shadow-lg border border-amber-400/50 overflow-hidden">
         {/* Header - always visible */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -90,7 +90,7 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
                 {/* Admin Dashboard Button */}
                 <button
                   onClick={() => navigate('/scraper-admin')}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-white text-xs font-medium transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors"
                 >
                   <Settings size={12} />
                   Admin Dashboard
@@ -100,7 +100,7 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
                 <button
                   onClick={handleScrape}
                   disabled={isScraping}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-white text-xs font-medium transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors disabled:opacity-50"
                 >
                   <RefreshCw size={12} className={isScraping ? 'animate-spin' : ''} />
                   {isScraping ? 'Scraping...' : 'Quick Scrape'}

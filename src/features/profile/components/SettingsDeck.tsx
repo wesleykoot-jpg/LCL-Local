@@ -34,7 +34,7 @@ function NeonToggle({ enabled, onChange, label, description }: NeonToggleProps) 
   return (
     <button
       onClick={handleToggle}
-      className="w-full flex items-center justify-between py-4 px-5 hover:bg-white/5 transition-all active:bg-white/10"
+      className="w-full flex items-center justify-between py-4 px-5 hover:bg-white/5 transition-all active:bg-gray-100"
       role="switch"
       aria-checked={enabled}
       aria-label={label}
@@ -47,7 +47,7 @@ function NeonToggle({ enabled, onChange, label, description }: NeonToggleProps) 
       </div>
       <motion.div
         className={`relative w-12 h-7 rounded-full transition-colors ${
-          enabled ? 'bg-green-500/30' : 'bg-white/10'
+          enabled ? 'bg-green-500/30' : 'bg-gray-100'
         }`}
         style={{
           border: enabled ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(255, 255, 255, 0.2)',
@@ -60,7 +60,7 @@ function NeonToggle({ enabled, onChange, label, description }: NeonToggleProps) 
       >
         <motion.div
           className={`absolute top-1 w-5 h-5 rounded-full ${
-            enabled ? 'bg-green-400' : 'bg-white/60'
+            enabled ? 'bg-green-400' : 'bg-white'
           }`}
           animate={{
             left: enabled ? '22px' : '4px',
@@ -86,25 +86,25 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
     <div className="max-w-lg mx-auto space-y-4">
       {/* Account Section */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden backdrop-blur-xl bg-white/5 border border-white/10"
+        className="glass-panel rounded-2xl overflow-hidden  bg-white/5 border border-gray-400"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         role="region"
         aria-label="Account settings"
       >
-        <div className="px-5 py-3 border-b border-white/10">
+        <div className="px-5 py-3 border-b border-gray-400">
           <div className="flex items-center gap-2">
             <User size={16} className="text-white/60" />
             <h3 className="text-sm font-bold text-white uppercase tracking-wide">Account</h3>
           </div>
         </div>
         <div className="divide-y divide-white/10">
-          <button className="w-full px-5 py-4 text-left hover:bg-white/5 transition-all active:bg-white/10">
+          <button className="w-full px-5 py-4 text-left hover:bg-white/5 transition-all active:bg-gray-100">
             <p className="text-sm font-medium text-white">Personal Information</p>
             <p className="text-xs text-white/60 mt-0.5">Update your profile details</p>
           </button>
-          <button className="w-full px-5 py-4 text-left hover:bg-white/5 transition-all active:bg-white/10">
+          <button className="w-full px-5 py-4 text-left hover:bg-white/5 transition-all active:bg-gray-100">
             <p className="text-sm font-medium text-white">Preferences</p>
             <p className="text-xs text-white/60 mt-0.5">Customize your experience</p>
           </button>
@@ -113,14 +113,14 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
 
       {/* Notifications Section */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden backdrop-blur-xl bg-white/5 border border-white/10"
+        className="glass-panel rounded-2xl overflow-hidden  bg-white/5 border border-gray-400"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         role="region"
         aria-label="Notification settings"
       >
-        <div className="px-5 py-3 border-b border-white/10">
+        <div className="px-5 py-3 border-b border-gray-400">
           <div className="flex items-center gap-2">
             <Bell size={16} className="text-white/60" />
             <h3 className="text-sm font-bold text-white uppercase tracking-wide">Notifications</h3>
@@ -144,14 +144,14 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
 
       {/* Privacy Section */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden backdrop-blur-xl bg-white/5 border border-white/10"
+        className="glass-panel rounded-2xl overflow-hidden  bg-white/5 border border-gray-400"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         role="region"
         aria-label="Privacy settings"
       >
-        <div className="px-5 py-3 border-b border-white/10">
+        <div className="px-5 py-3 border-b border-gray-400">
           <div className="flex items-center gap-2">
             <Lock size={16} className="text-white/60" />
             <h3 className="text-sm font-bold text-white uppercase tracking-wide">Privacy</h3>
@@ -175,7 +175,7 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
 
       {/* Danger Zone */}
       <motion.div
-        className="glass-panel rounded-2xl overflow-hidden backdrop-blur-xl bg-red-500/10 border border-red-500/30"
+        className="glass-panel rounded-2xl overflow-hidden  bg-red-500/10 border border-red-500/30"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}

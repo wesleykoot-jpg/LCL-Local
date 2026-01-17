@@ -85,7 +85,7 @@ export function ConfirmModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60  px-4"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) {

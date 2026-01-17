@@ -148,7 +148,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
         {/* Heart button */}
         <button
           onClick={handleSave}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
         >
           <Heart 
             size={16} 
@@ -157,7 +157,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
         </button>
 
         {/* Date badge */}
-        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-sm text-[11px] font-semibold text-foreground shadow-sm">
+        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/95  text-[11px] font-semibold text-foreground shadow-sm">
           {formatDate(event.event_date)}
         </div>
       </div>
@@ -273,7 +273,7 @@ export const DeepDiveView = memo(function DeepDiveView({
   return (
     <div className="min-h-screen pb-24">
       {/* Sticky Header with Glass Background - fixes "ugly scroll" */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-white/10 pb-4 pt-safe">
+      <div className="sticky top-0 z-50 bg-background/95  border-b border-gray-400 pb-4 pt-safe">
         <div className="px-6 pt-4">
           {/* Filter Row: Pills + Filter Button */}
           <div className="flex items-center gap-3">

@@ -160,7 +160,7 @@ export function IdentityCard() {
           transition={{ type: 'spring', damping: 20, stiffness: 150 }}
         >
           {/* Glass Background */}
-          <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border border-white/20" />
+          <div className="absolute inset-0 bg-gray-100 border border-gray-300" />
 
           {/* Holographic Sheen Overlay */}
           {!motionPreset.prefersReducedMotion && (
@@ -291,7 +291,7 @@ export function IdentityCard() {
 
             {/* Social Stats Bar */}
             <motion.div 
-              className="flex items-center justify-around pt-3 border-t border-white/20"
+              className="flex items-center justify-around pt-3 border-t border-gray-300"
               role="region"
               aria-label="Profile statistics"
               {...motionPreset.initial({ opacity: 0, y: 10 })}
@@ -302,12 +302,12 @@ export function IdentityCard() {
                 <p className="text-white font-bold text-lg">{stats.events}</p>
                 <p className="text-white/60 text-xs">Events</p>
               </div>
-              <div className="w-px h-8 bg-white/20" />
+              <div className="w-px h-8 bg-gray-50" />
               <div className="text-center">
                 <p className="text-white font-bold text-lg">{stats.friends}</p>
                 <p className="text-white/60 text-xs">Friends</p>
               </div>
-              <div className="w-px h-8 bg-white/20" />
+              <div className="w-px h-8 bg-gray-50" />
               <div className="text-center">
                 <p className="text-green-400 font-bold text-lg">{stats.score}%</p>
                 <p className="text-white/60 text-xs">Score</p>

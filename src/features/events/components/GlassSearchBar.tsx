@@ -63,7 +63,7 @@ export const GlassSearchBar = memo(function GlassSearchBar({
           transition-all duration-200
           ${isSearching 
             ? 'bg-card border border-border shadow-sm' 
-            : 'bg-muted/60 backdrop-blur-xl shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
+            : 'bg-muted/60  shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
           }
         `}
         layout

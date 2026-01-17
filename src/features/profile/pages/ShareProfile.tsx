@@ -104,7 +104,7 @@ export function ShareProfile() {
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
     >
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border pt-safe">
+      <header className="sticky top-0 z-40 bg-background/95  border-b border-border pt-safe">
         <div className="max-w-lg mx-auto px-5 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -352,7 +352,7 @@ function QrModal({ open, onClose, profileUrl, onCopy, onShare }: QrModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-5"
+      className="fixed inset-0 z-50 bg-black/70  flex items-center justify-center px-5"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {

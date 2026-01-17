@@ -183,7 +183,7 @@ export const EventDetailModal = memo(function EventDetailModal({
       >
         {/* Backdrop */}
         <motion.div
-          className="absolute inset-0 bg-black/70 backdrop-blur-md"
+          className="absolute inset-0 bg-black/70 "
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -209,7 +209,7 @@ export const EventDetailModal = memo(function EventDetailModal({
           {/* Close button and actions menu - 48pt touch targets */}
           <div className="absolute top-4 right-4 z-20 flex gap-2">
             {/* Actions Menu (Report/Block) */}
-            <div className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-black/40 backdrop-blur-xl flex items-center justify-center border-[0.5px] border-white/10">
+            <div className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-gray-900  flex items-center justify-center border-[0.5px] border-gray-400">
               <EventActionsMenu
                 eventId={event.id}
                 hostUserId={event.created_by || undefined}
@@ -220,7 +220,7 @@ export const EventDetailModal = memo(function EventDetailModal({
             {/* Close button */}
             <button
               onClick={handleClose}
-              className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-[0.95] border-[0.5px] border-white/10"
+              className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-gray-900  flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-[0.95] border-[0.5px] border-gray-400"
             >
               <X size={22} strokeWidth={2.5} />
             </button>
@@ -243,7 +243,7 @@ export const EventDetailModal = memo(function EventDetailModal({
               <div className="absolute top-4 left-4 flex items-center gap-2">
                 <CategoryBadge category={categoryLabel} variant="glass" />
                 {trustLabel && (
-                  <div className="px-3 py-1.5 rounded-[1rem] bg-primary/90 backdrop-blur-xl text-[13px] font-semibold text-primary-foreground flex items-center gap-1.5">
+                  <div className="px-3 py-1.5 rounded-[1rem] bg-primary/90  text-[13px] font-semibold text-primary-foreground flex items-center gap-1.5">
                     <ShieldCheck size={13} />
                     {trustLabel}
                   </div>
@@ -251,7 +251,7 @@ export const EventDetailModal = memo(function EventDetailModal({
               </div>
 
               {/* Date pill */}
-              <div className="absolute top-4 right-16 px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
+              <div className="absolute top-4 right-16 px-3 py-1.5 rounded-[1rem] bg-background/90  text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
                 {formatDateShort(event.event_date)}
               </div>
 
@@ -307,7 +307,7 @@ export const EventDetailModal = memo(function EventDetailModal({
                     {/* Open in Maps button - Squircle */}
                     <div className="absolute bottom-3 right-3">
                       <div
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95 backdrop-blur-xl text-[14px] font-semibold border-[0.5px] border-border/30"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95  text-[14px] font-semibold border-[0.5px] border-border/30"
                         style={{
                           boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.12)'
                         }}
@@ -365,7 +365,7 @@ export const EventDetailModal = memo(function EventDetailModal({
 
           {/* Fixed Bottom Action Bar - Thumb zone optimized */}
           <div 
-            className="sticky bottom-0 left-0 right-0 p-4 pb-safe bg-background/95 backdrop-blur-xl border-t border-[0.5px] border-border/30"
+            className="sticky bottom-0 left-0 right-0 p-4 pb-safe bg-background/95  border-t border-[0.5px] border-border/30"
             style={{
               boxShadow: '0 -4px 20px -4px rgba(0, 0, 0, 0.08)'
             }}

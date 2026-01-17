@@ -37,28 +37,28 @@ export function PassportGrid() {
   if (!isLoading && pastEvents.length === 0) {
     return (
       <motion.div
-        className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center"
+        className=" bg-white/5 border border-gray-400 rounded-2xl p-12 text-center"
         {...motionPreset.slideUp}
       >
         {/* Ghost Stamp Book Illustration */}
         <div className="relative w-32 h-32 mx-auto mb-6">
           {/* Stack of stamp book pages */}
           <motion.div
-            className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
+            className="absolute inset-0 rounded-lg border-2 border-gray-300 bg-white/5"
             style={{ transform: 'rotate(-3deg)' }}
             {...motionPreset.initial({ scale: 0.8, opacity: 0 })}
             animate={{ scale: 1, opacity: 0.3 }}
             transition={{ delay: 0.1 }}
           />
           <motion.div
-            className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
+            className="absolute inset-0 rounded-lg border-2 border-gray-300 bg-white/5"
             style={{ transform: 'rotate(2deg)' }}
             {...motionPreset.initial({ scale: 0.8, opacity: 0 })}
             animate={{ scale: 1, opacity: 0.4 }}
             transition={{ delay: 0.2 }}
           />
           <motion.div
-            className="absolute inset-0 rounded-lg border-2 border-white/30 bg-white/10 flex items-center justify-center"
+            className="absolute inset-0 rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center"
             {...motionPreset.initial({ scale: 0.8, opacity: 0 })}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -75,7 +75,7 @@ export function PassportGrid() {
         {/* Discover Events Button */}
         <motion.button
           onClick={() => navigate('/')}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/30 text-white font-medium transition-all"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full  bg-gray-100 hover:bg-gray-50 border border-gray-200 text-white font-medium transition-all"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -139,7 +139,7 @@ function PassportStamp({ event, index, motionPreset }: PassportStampProps) {
         <div className="relative">
           {/* Circular Stamp Border */}
           <div
-            className="w-20 h-20 rounded-full border-4 border-white/80 bg-white/10 backdrop-blur-sm flex items-center justify-center rotate-12"
+            className="w-20 h-20 rounded-full border-4 border-white/80 bg-gray-100  flex items-center justify-center rotate-12"
             style={{
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             }}

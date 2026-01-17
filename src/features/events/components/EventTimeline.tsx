@@ -80,7 +80,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
         return (
           <div key={dateHeader} className="mb-8 relative">
             {/* Sticky Date Header */}
-            <div className="sticky top-[60px] z-20 py-3 mb-6 backdrop-blur-xl bg-background/80 border-b border-border -mx-4 px-8">
+            <div className="sticky top-[60px] z-20 py-3 mb-6  bg-background/80 border-b border-border -mx-4 px-8">
               <h3 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-primary" />
                 {dateHeader}

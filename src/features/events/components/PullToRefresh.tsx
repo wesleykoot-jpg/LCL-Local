@@ -128,7 +128,7 @@ export function PullToRefresh({
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
             <div className={`
-              px-4 py-2 rounded-full backdrop-blur-xl border
+              px-4 py-2 rounded-full  border
               ${canRefresh || isRefreshing 
                 ? 'bg-primary/10 border-primary/30' 
                 : 'bg-muted/80 border-border'
