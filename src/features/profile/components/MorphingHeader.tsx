@@ -74,7 +74,8 @@ export function MorphingHeader({ containerRef }: MorphingHeaderProps) {
 
   const stats = {
     events: profile?.events_attended ?? MOCK_STATS.events,
-    friends: 84, // TODO: Add friends_count to profile schema
+    // TODO(schema): Add friends_count to profiles table when social graph feature is implemented
+    friends: MOCK_STATS.friends,
     score: profile?.reliability_score 
       ? Math.round(profile.reliability_score) 
       : MOCK_STATS.score,

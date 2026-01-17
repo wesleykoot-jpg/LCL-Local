@@ -34,12 +34,23 @@ function SettingsToggle({ enabled, onChange, label, description }: SettingsToggl
     onChange(!enabled);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Let the Switch component handle its own keyboard events
+    // Only handle Enter/Space on the container if focus is on the row
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+      e.preventDefault();
+      handleToggle();
+    }
+  };
+
   return (
     <div
-      className="w-full flex items-center justify-between py-4 px-5 hover:bg-gray-50 transition-colors min-h-touch cursor-pointer"
+      className="w-full flex items-center justify-between py-4 px-5 hover:bg-gray-50 transition-colors min-h-touch cursor-pointer focus:outline-none focus:bg-gray-50"
       onClick={handleToggle}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
       role="group"
-      aria-label={label}
+      aria-label={`${label}${description ? `, ${description}` : ''}`}
     >
       <div className="flex-1 text-left">
         <p className="text-sm font-medium text-text-primary">{label}</p>
@@ -52,6 +63,7 @@ function SettingsToggle({ enabled, onChange, label, description }: SettingsToggl
         onCheckedChange={onChange}
         onClick={(e) => e.stopPropagation()}
         aria-label={label}
+        tabIndex={-1}
       />
     </div>
   );

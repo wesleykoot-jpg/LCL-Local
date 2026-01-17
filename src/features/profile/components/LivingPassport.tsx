@@ -78,7 +78,8 @@ export function LivingPassport() {
                   title={event.title}
                   location={event.location}
                   time={event.originalData?.event_time}
-                  friends={[]} // TODO: Fetch friends from attendees
+                  // TODO(api): Fetch co-attendees (friends who also attended) from event_attendees join
+                  friends={[]}
                   onClick={() => navigate(`/events/${event.id}`)}
                   index={index}
                 />
