@@ -383,7 +383,7 @@ This shows scoring examples and explains how different user types see different 
 **Scenario 1: The Socialite**
 - Set preferences: Social, Entertainment, Music
 - Expected: Bars, concerts, parties appear first
-- Why: 40% weight on category match makes these score highest
+- Why: 35% weight on category match makes these score highest
 
 **Scenario 2: The Athlete** 
 - Set preferences: Active, Outdoors

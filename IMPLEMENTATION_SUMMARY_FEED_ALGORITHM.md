@@ -50,23 +50,34 @@ A comprehensive, production-ready feed ranking algorithm for the LCL Local socia
 
 ### Scoring Factors (Total: 100%)
 
-1. **Category Preference Match (40%)**
+1. **Category Preference Match (35%)**
    - Highest weight - user interests are primary
    - Match: 1.0, No match: 0.3, No preferences: 0.5
 
-2. **Time Relevance (25%)**
+2. **Time Relevance (20%)**
    - Events happening soon get priority
    - <24hrs: 1.0, Further: exponential decay
    - Half-life: 7 days
 
-3. **Social Proof (20%)**
+3. **Social Proof (15%)**
    - Popular events are boosted
    - Logarithmic scaling prevents mega-events from dominating
    - 0 attendees: 0.2, 10: ~0.5, 100: ~0.8, 1000+: 1.0
 
-4. **Match Score (15%)**
+4. **Match Score (10%)**
    - Pre-computed compatibility from database
    - Direct normalization: percentage / 100
+
+5. **Distance/Proximity (20%)**
+   - Events closer to user get priority
+   - Inverse distance scoring with configurable radius
+   - Default radius: 25km
+
+### Boost Multipliers
+
+- **Urgency Boost (1.0-1.2x)**: Events within 6-72 hours get priority
+- **Trending Boost (1.0-1.2x)**: Events with 10+ attendees get boosted
+- Combined boost capped at 1.5x maximum
 
 ### Diversity Mechanism
 
