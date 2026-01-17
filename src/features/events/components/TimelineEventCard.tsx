@@ -1,7 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { MapPin, Users, Loader2, Check, Share2 } from 'lucide-react';
+import { MapPin, Users, Loader2, Check, Share2, Calendar } from 'lucide-react';
 import { getCategoryConfig } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { useJoinEvent } from '../hooks/hooks';
@@ -9,6 +9,8 @@ import { useAuth } from '@/features/auth';
 import { SmartTimeLabel } from '@/components/SmartTimeLabel';
 import type { TimeMode, OpeningHours } from '@/lib/openingHours';
 import { hapticImpact } from '@/shared/lib/haptics';
+import { useEventSyncStatus } from '../hooks/useEventSyncStatus';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 interface TimelineEventCardProps {
   event: EventWithAttendees & { ticket_number?: string };
@@ -45,6 +47,11 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   const { handleJoinEvent, isJoining } = useJoinEvent(profile?.id);
   const queryClient = useQueryClient();
   
+  // Google Calendar sync status
+  const { data: syncStatus } = useEventSyncStatus(event.id);
+  const { isConnected: isGoogleConnected, syncEventToCalendar } = useGoogleCalendar();
+  const [isSyncing, setIsSyncing] = useState(false);
+  
   // Optimistic UI state - starts as false, becomes true immediately on click
   const [optimisticJoined, setOptimisticJoined] = useState(false);
   
@@ -55,6 +62,45 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   );
   
   const isCurrentEventJoining = isJoining(event.id);
+  
+  // Handle Google Calendar sync
+  const handleSyncToGoogle = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isGoogleConnected) {
+      console.log('Google Calendar not connected');
+      return;
+    }
+    
+    if (syncStatus?.isSynced) {
+      console.log('Event already synced');
+      return;
+    }
+    
+    setIsSyncing(true);
+    await hapticImpact('light');
+    
+    try {
+      const success = await syncEventToCalendar({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        venue_name: event.venue_name,
+        event_date: event.event_date,
+        event_time: event.event_time,
+      });
+      
+      if (success) {
+        // Invalidate sync status to refresh badge
+        queryClient.invalidateQueries({ queryKey: ['event-sync-status', profile?.id, event.id] });
+        console.log('Event synced to Google Calendar');
+      }
+    } catch (error) {
+      console.error('Failed to sync event:', error);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [event, isGoogleConnected, syncStatus, syncEventToCalendar, queryClient, profile?.id]);
   
   // Handle sharing event
   const handleShare = useCallback(async (e: React.MouseEvent) => {
@@ -158,6 +204,28 @@ export const TimelineEventCard = memo(function TimelineEventCard({
               <MapPin size={13} className="flex-shrink-0 text-primary/60" />
               <span className="truncate">{event.venue_name}</span>
             </div>
+          )}
+
+          {/* Google Calendar Sync Badge */}
+          {syncStatus?.isSynced && (
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold">
+                <Calendar size={10} />
+                <span>Synced with Google</span>
+              </div>
+            </div>
+          )}
+
+          {/* Sync to Google Button - Only show if connected and not synced */}
+          {!isPast && isGoogleConnected && !syncStatus?.isSynced && (
+            <button
+              onClick={handleSyncToGoogle}
+              disabled={isSyncing}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              <Calendar size={12} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync to Google'}</span>
+            </button>
           )}
 
           {/* Action Bar - Attendee Count + Category */}
@@ -286,6 +354,28 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           <span className="text-border">•</span>
           <span className={`flex-shrink-0 ${categoryConfig.textClass}`}>{categoryLabel}</span>
         </div>
+      )}
+
+      {/* Google Calendar Sync Badge */}
+      {syncStatus?.isSynced && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold">
+            <Calendar size={10} />
+            <span>Synced with Google</span>
+          </div>
+        </div>
+      )}
+
+      {/* Sync to Google Button - Only show if connected and not synced */}
+      {!isPast && isGoogleConnected && !syncStatus?.isSynced && variant === 'default' && (
+        <button
+          onClick={handleSyncToGoogle}
+          disabled={isSyncing}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 mt-2 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+        >
+          <Calendar size={12} />
+          <span>{isSyncing ? 'Syncing...' : 'Sync to Google'}</span>
+        </button>
       )}
 
       {/* Attendee Count for minimal variant (moved below title) */}
