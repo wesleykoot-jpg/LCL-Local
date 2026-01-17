@@ -318,6 +318,24 @@ export interface LogsResult {
   error?: string;
 }
 
+export interface TestResult {
+  test: string;
+  status: "PASS" | "FAIL";
+  message?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface IntegrityTestReport {
+  success: boolean;
+  timestamp: string;
+  results: TestResult[];
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+  };
+}
+
 /**
  * Fetch recent Supabase logs (errors, jobs, discovery)
  */
@@ -347,4 +365,36 @@ export async function fetchLogs(minutes: number = 60): Promise<LogsResult> {
     summary: data?.summary,
     logs: data?.logs || [],
   };
+}
+
+/**
+ * Run scraper integrity tests
+ * Tests: Soccer categorization, failover, rate limiting, 404 handling, time parsing, idempotency
+ */
+export async function runScraperTests(): Promise<IntegrityTestReport> {
+  const { data, error } = await supabase.functions.invoke('scrape-events', {
+    body: {
+      action: 'run-integrity-test',
+    },
+  });
+
+  if (error) {
+    // Return a failed report
+    return {
+      success: false,
+      timestamp: new Date().toISOString(),
+      results: [{
+        test: 'Connection',
+        status: 'FAIL',
+        message: error.message,
+      }],
+      summary: {
+        total: 1,
+        passed: 0,
+        failed: 1,
+      },
+    };
+  }
+
+  return data as IntegrityTestReport;
 }

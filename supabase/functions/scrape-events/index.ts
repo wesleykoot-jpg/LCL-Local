@@ -730,7 +730,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let options: ScrapeOptions = {};
+    let options: ScrapeOptions & { action?: string } = {};
     if (req.method === "POST") {
       try {
         const body = await req.text();
@@ -738,6 +738,15 @@ export async function handleRequest(req: Request): Promise<Response> {
       } catch {
         options = {};
       }
+    }
+
+    // Handle integrity test action
+    if (options.action === "run-integrity-test") {
+      const { runScraperIntegrityTest } = await import("./testLogic.ts");
+      const report = await runScraperIntegrityTest();
+      return new Response(JSON.stringify(report), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { sourceId, dryRun = false, enableDeepScraping = true, limit, enableDebug = false } = options;
