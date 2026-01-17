@@ -38,6 +38,7 @@ geocode_cache     - Nominatim API result caching for coordinates
 | [`supabase/functions/scrape-events/`](https://github.com/wesleykoot-jpg/LCL-Local/tree/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/supabase/functions/scrape-events) | AI-powered event scraper with OpenAI |
 | [`src/contexts/AuthContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/AuthContext.tsx) | Authentication state management |
 | [`src/contexts/LocationContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/LocationContext.tsx) | User geolocation tracking |
+| [`DOCS/DESIGN_SYSTEM_CORE.md`](./DOCS/DESIGN_SYSTEM_CORE.md) | **Design System v4.0** - Solid surfaces, colors, shadows, spacing, component patterns |
 
 ## Important Patterns
 - **Coordinates**: `events.location` is PostGIS `geography(POINT, 4326)` - longitude first!

@@ -180,6 +180,7 @@ npx cap open ios
 | [FEED_ALGORITHM.md](./FEED_ALGORITHM.md) | Feed ranking algorithm details |
 | [BACKEND_SETUP.md](./BACKEND_SETUP.md) | Database configuration |
 | [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | iOS App Store deployment |
+| [**DOCS/DESIGN_SYSTEM_CORE.md**](./DOCS/DESIGN_SYSTEM_CORE.md) | **Design System v4.0** - Color tokens, shadows, spacing, components |
 
 ## Current Status
 
