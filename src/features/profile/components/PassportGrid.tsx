@@ -1,8 +1,9 @@
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Stamp, Sparkles } from 'lucide-react';
 import { useUnifiedItinerary, ItineraryItem } from '@/features/events/hooks/useUnifiedItinerary';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMotionPreset } from '@/shared/hooks/useMotionPreset';
 
 /**
  * Format date as "MON YY" (e.g., "OCT 26")
@@ -23,7 +24,7 @@ function formatStampDate(date: Date): string {
 
 export function PassportGrid() {
   const { timelineItems, isLoading } = useUnifiedItinerary();
-  const prefersReducedMotion = useReducedMotion();
+  const { slideUp, scaleIn } = useMotionPreset();
   const navigate = useNavigate();
 
   // Filter for past events only
@@ -38,8 +39,7 @@ export function PassportGrid() {
       <div className="px-5">
         <motion.div
           className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center"
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          {...slideUp()}
         >
           {/* Ghost Stamp Book Illustration */}
           <div className="relative w-32 h-32 mx-auto mb-6">
@@ -47,22 +47,18 @@ export function PassportGrid() {
             <motion.div
               className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
               style={{ transform: 'rotate(-3deg)' }}
-              initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.3 }}
-              transition={{ delay: 0.1 }}
+              {...scaleIn({ delay: 0.1 })}
+              animate={{ ...scaleIn({ delay: 0.1 }).animate, opacity: 0.3 }}
             />
             <motion.div
               className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
               style={{ transform: 'rotate(2deg)' }}
-              initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.4 }}
-              transition={{ delay: 0.2 }}
+              {...scaleIn({ delay: 0.2 })}
+              animate={{ ...scaleIn({ delay: 0.2 }).animate, opacity: 0.4 }}
             />
             <motion.div
               className="absolute inset-0 rounded-lg border-2 border-white/30 bg-white/10 flex items-center justify-center"
-              initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.3 }}
+              {...scaleIn({ delay: 0.3 })}
             >
               <Stamp size={48} className="text-white/40" strokeWidth={1.5} />
             </motion.div>
@@ -79,6 +75,7 @@ export function PassportGrid() {
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/30 text-white font-medium transition-all"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            aria-label="Discover events near you"
           >
             <Sparkles size={18} />
             <span>Discover Events</span>
@@ -91,13 +88,12 @@ export function PassportGrid() {
   return (
     <div className="px-5">
       {/* 3-Column Grid */}
-      <div className="grid grid-cols-3 gap-1">
+      <div className="grid grid-cols-3 gap-1" role="list" aria-label="Past events">
         {pastEvents.map((event, index) => (
           <PassportStamp
             key={event.id}
             event={event}
             index={index}
-            prefersReducedMotion={prefersReducedMotion}
           />
         ))}
       </div>
@@ -111,11 +107,11 @@ export function PassportGrid() {
 interface PassportStampProps {
   event: ItineraryItem;
   index: number;
-  prefersReducedMotion: boolean;
 }
 
-function PassportStamp({ event, index, prefersReducedMotion }: PassportStampProps) {
+function PassportStamp({ event, index }: PassportStampProps) {
   const stampDate = formatStampDate(event.startTime);
+  const { scaleIn } = useMotionPreset();
 
   // Get image URL - fallback to a placeholder if not available
   const imageUrl = event.image || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=400&q=80';
@@ -123,16 +119,16 @@ function PassportStamp({ event, index, prefersReducedMotion }: PassportStampProp
   return (
     <motion.div
       className="relative aspect-square overflow-hidden rounded-lg"
-      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.05, type: 'spring', damping: 15 }}
-      whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+      {...scaleIn({ delay: index * 0.05 })}
+      whileHover={{ scale: 1.05 }}
+      role="listitem"
     >
-      {/* Grayscale Event Image */}
+      {/* Grayscale Event Image with lazy loading */}
       <img
         src={imageUrl}
         alt={event.title}
         className="w-full h-full object-cover grayscale"
+        loading="lazy"
       />
 
       {/* Stamp Overlay */}
