@@ -768,8 +768,7 @@ export async function runScraperIntegrityTest(): Promise<ScraperIntegrityReport>
     const originalSetTimeout = globalThis.setTimeout;
     let dynamicCalls = 0;
 
-    globalThis.setTimeout = ((handler: TimerHandler) =>
-      originalSetTimeout(handler, 10)) as typeof setTimeout;
+    globalThis.setTimeout = (handler: TimerHandler) => originalSetTimeout(handler, 10);
 
     globalThis.fetch = (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
@@ -782,10 +781,12 @@ export async function runScraperIntegrityTest(): Promise<ScraperIntegrityReport>
 
     try {
       const fetcher = new FailoverPageFetcher(source);
+      const maxFailoverAttempts = 3;
+      const expectedSuccessAttempt = maxFailoverAttempts - 1;
       let result: { html: string; finalUrl: string; statusCode: number } | null = null;
       let successAttempt = -1;
 
-      for (let attempt = 0; attempt < 3; attempt += 1) {
+      for (let attempt = 0; attempt < maxFailoverAttempts; attempt += 1) {
         try {
           result = await fetcher.fetchPage(source.url);
           successAttempt = attempt;
@@ -798,8 +799,10 @@ export async function runScraperIntegrityTest(): Promise<ScraperIntegrityReport>
       if (!result) {
         throw new Error("Failover did not recover after 3 failures");
       }
-      if (successAttempt !== 2) {
-        throw new Error(`Failover should succeed on attempt 3, but succeeded on ${successAttempt + 1}`);
+      if (successAttempt !== expectedSuccessAttempt) {
+        throw new Error(
+          `Failover should succeed on attempt ${expectedSuccessAttempt + 1}, but succeeded on ${successAttempt + 1}`,
+        );
       }
       if (dynamicCalls === 0) {
         throw new Error("Dynamic fetcher was not used after failures");
