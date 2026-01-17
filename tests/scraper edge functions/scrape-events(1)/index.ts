@@ -553,7 +553,8 @@ export async function scrapeEventCards(
       
       // Handle rate limiting responses
       if (isRateLimited(resp.status) && supabaseUrl && supabaseKey) {
-        await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status);
+        // TODO: Parse rate-limit headers in tests
+        await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status, undefined, undefined, undefined);
         console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
       }
       
@@ -731,7 +732,8 @@ export async function handleRequest(req: Request): Promise<Response> {
           
           // Handle rate limiting responses
           if (isRateLimited(resp.status)) {
-            await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status);
+            // TODO: Parse rate-limit headers in tests
+            await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status, undefined, undefined, undefined);
             console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
             
             // Log the failure

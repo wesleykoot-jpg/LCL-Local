@@ -80,12 +80,16 @@ export async function getHistoricalEventCount(
 
 /**
  * Increases the rate limit for a source after a 403/429 response
+ * Also captures rate-limit header values for observability
  */
 export async function increaseRateLimit(
   supabaseUrl: string,
   supabaseKey: string,
   sourceId: string,
-  statusCode: number
+  statusCode: number,
+  retryAfterSeconds?: number,
+  remaining?: number,
+  resetTs?: string
 ): Promise<void> {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -94,6 +98,9 @@ export async function increaseRateLimit(
       .rpc('increase_source_rate_limit', {
         p_source_id: sourceId,
         p_status_code: statusCode,
+        p_retry_after_seconds: retryAfterSeconds ?? null,
+        p_remaining: remaining ?? null,
+        p_reset_ts: resetTs ?? null,
       });
 
     if (error) {
