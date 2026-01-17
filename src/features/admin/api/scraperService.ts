@@ -14,6 +14,9 @@ export interface ScraperSource {
   consecutive_failures: number | null;
   last_error: string | null;
   auto_disabled: boolean | null;
+  last_rate_limit_remaining: number | null;
+  last_rate_limit_reset_ts: string | null;
+  last_rate_limit_retry_after_seconds: number | null;
 }
 
 export interface SourceResult {

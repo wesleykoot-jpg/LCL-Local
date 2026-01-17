@@ -4,6 +4,27 @@
 
 This test suite validates the scraper's resilience, failover mechanisms, rate limiting handling, and data accuracy (especially Soccer categorization).
 
+## Rate-Limit Observability (Added 2026-01-17)
+
+The scraper now surfaces per-source API rate-limit state in the Admin UI using DB-stored values. When a source is rate-limited (403/429 response), the scraper:
+
+1. **Parses rate-limit headers** from the HTTP response:
+   - `Retry-After` (seconds or HTTP date)
+   - `X-RateLimit-Remaining` or `RateLimit-Remaining`
+   - `X-RateLimit-Reset` or `RateLimit-Reset` (Unix timestamp or ISO date)
+
+2. **Stores the values** in the database via the `increase_source_rate_limit` RPC:
+   - `last_rate_limit_remaining` (integer)
+   - `last_rate_limit_reset_ts` (timestamptz)
+   - `last_rate_limit_retry_after_seconds` (integer)
+
+3. **Displays the state** in the Admin UI with amber warning styling, showing:
+   - Remaining API calls
+   - Reset timestamp (formatted as relative time, e.g., "2h ago")
+   - Retry-after duration in seconds
+
+This enables operators to quickly diagnose rate-limiting issues and understand when sources will become available again.
+
 ## Architecture
 
 The test logic is **shared** between CLI tests and Admin UI:
