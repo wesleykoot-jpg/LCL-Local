@@ -197,7 +197,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
-          event_date: string | null
+          event_date: string
           event_fingerprint: string | null
           event_time: string
           event_type: string
@@ -206,11 +206,9 @@ export type Database = {
           location: unknown
           match_percentage: number | null
           max_attendees: number | null
-          opening_hours: Json | null
           parent_event_id: string | null
           source_id: string | null
           status: string | null
-          time_mode: Database["public"]["Enums"]["time_mode"] | null
           title: string
           updated_at: string | null
           venue_name: string
@@ -220,7 +218,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
-          event_date?: string | null
+          event_date: string
           event_fingerprint?: string | null
           event_time: string
           event_type: string
@@ -229,11 +227,9 @@ export type Database = {
           location: unknown
           match_percentage?: number | null
           max_attendees?: number | null
-          opening_hours?: Json | null
           parent_event_id?: string | null
           source_id?: string | null
           status?: string | null
-          time_mode?: Database["public"]["Enums"]["time_mode"] | null
           title: string
           updated_at?: string | null
           venue_name: string
@@ -243,7 +239,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
-          event_date?: string | null
+          event_date?: string
           event_fingerprint?: string | null
           event_time?: string
           event_type?: string
@@ -252,11 +248,9 @@ export type Database = {
           location?: unknown
           match_percentage?: number | null
           max_attendees?: number | null
-          opening_hours?: Json | null
           parent_event_id?: string | null
           source_id?: string | null
           status?: string | null
-          time_mode?: Database["public"]["Enums"]["time_mode"] | null
           title?: string
           updated_at?: string | null
           venue_name?: string
@@ -641,51 +635,6 @@ export type Database = {
           url?: string
         }
         Relationships: []
-      }
-      proposals: {
-        Row: {
-          id: string
-          event_id: string
-          creator_id: string
-          status: string
-          proposed_times: Json
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          event_id: string
-          creator_id: string
-          status?: string
-          proposed_times: Json
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          event_id?: string
-          creator_id?: string
-          status?: string
-          proposed_times?: Json
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "proposals_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proposals_creator_id_fkey"
-            columns: ["creator_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       spatial_ref_sys: {
         Row: {
@@ -1669,7 +1618,7 @@ export type Database = {
       }
     }
     Enums: {
-      time_mode: "fixed" | "window" | "anytime"
+      [_ in never]: never
     }
     CompositeTypes: {
       geometry_dump: {

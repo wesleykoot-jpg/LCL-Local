@@ -1,11 +1,11 @@
-import { Compass, Map, User, Sparkles, Plus } from 'lucide-react';
+import { Compass, Map, User, Sparkles, Plus, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { CreateEventModal } from '@/features/events/components/CreateEventModal';
 
-type NavView = 'feed' | 'planning' | 'profile' | 'now';
+type NavView = 'feed' | 'planning' | 'profile' | 'now' | 'admin';
 
 interface FloatingNavProps {
   activeView?: NavView;
@@ -21,10 +21,12 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   const currentPath = location.pathname;
   const derivedActiveView = activeView || 
     (currentPath === '/now' ? 'now' :
+     currentPath.includes('admin') || currentPath.includes('scraper') ? 'admin' :
      currentPath.includes('planning') ? 'planning' : 
      currentPath.includes('profile') ? 'profile' : 'feed');
   
   const isNowActive = derivedActiveView === 'now';
+  const isAdminActive = derivedActiveView === 'admin';
 
   const handleNav = async (view: NavView, path: string) => {
     await hapticImpact('light');
@@ -174,6 +176,33 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
               }`}
             >
               Profile
+            </span>
+          </button>
+
+          {/* Admin button */}
+          <button
+            onClick={() => handleNav('admin', '/admin')}
+            className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors"
+          >
+            <div className="relative">
+              <Settings 
+                size={24} 
+                strokeWidth={isAdminActive ? 2.5 : 1.5}
+                className={`transition-colors ${
+                  isAdminActive 
+                    ? 'text-primary' 
+                    : 'text-muted-foreground'
+                }`}
+              />
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-colors ${
+                isAdminActive 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
+              }`}
+            >
+              Admin
             </span>
           </button>
         </div>
