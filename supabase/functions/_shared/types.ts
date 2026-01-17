@@ -124,6 +124,12 @@ export interface ScraperSource {
     requires_render?: boolean;
     dynamic_rate_limit_ms?: number;
     rate_limit_expires_at?: string;
+    // ScrapingBee specific config
+    scrapingbee_api_key?: string;
+    // Puppeteer/Playwright specific config
+    headless?: boolean;
+    wait_for_selector?: string;
+    wait_for_timeout?: number;
   };
 }
 

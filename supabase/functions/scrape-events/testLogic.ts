@@ -9,10 +9,10 @@
  * - Idempotency (duplicate detection)
  */
 
-import type { PageFetcher } from "./strategies.ts";
+import type { PageFetcher } from "../_shared/strategies.ts";
 import { mapToInternalCategory, parseDate } from "./index.ts";
 import type { RawEventCard, ScraperSource } from "./shared.ts";
-import { FailoverPageFetcher } from "./strategies.ts";
+import { FailoverPageFetcher } from "../_shared/strategies.ts";
 
 export interface TestResult {
   test: string;
