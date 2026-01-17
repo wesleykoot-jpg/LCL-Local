@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Calendar, MapPin, Clock } from 'lucide-react';
+import { X, Upload, Calendar, MapPin, Clock, Lock, Users } from 'lucide-react';
 import { createEvent } from '../lib/eventService';
 import { uploadImage, compressImage } from '../lib/storageService';
 import { hapticNotification } from '../lib/haptics';
@@ -7,15 +7,18 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/useAuth';
 import { useLocation } from '../contexts/LocationContext';
 import { createEventSchema, sanitizeInput } from '../lib/validation';
+import { UserPicker } from './UserPicker';
 
 interface CreateEventModalProps {
   onClose: () => void;
+  isOpen?: boolean;
   defaultCategory?: 'cinema' | 'market' | 'crafts' | 'sports' | 'gaming';
   defaultEventType?: 'anchor' | 'fork' | 'signal';
 }
 
 export function CreateEventModal({
   onClose,
+  isOpen = true,
   defaultCategory = 'cinema',
   defaultEventType = 'anchor',
 }: CreateEventModalProps) {
@@ -24,6 +27,8 @@ export function CreateEventModal({
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [invitedUserIds, setInvitedUserIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -34,6 +39,9 @@ export function CreateEventModal({
     venue_name: '',
     max_attendees: 0,
   });
+
+  // Don't render if not open
+  if (!isOpen) return null;
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -102,6 +110,8 @@ export function CreateEventModal({
         // Use user's current location (from GPS or manual zone)
         location: `POINT(${userLocation.lng} ${userLocation.lat})`,
         creator_profile_id: profile.id,
+        is_private: isPrivate,
+        invited_user_ids: isPrivate ? invitedUserIds : undefined,
       });
 
       if (error) throw error;
@@ -304,6 +314,64 @@ export function CreateEventModal({
               }
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none"
             />
+          </div>
+
+          {/* Private Event Toggle */}
+          <div className="border-t border-gray-200 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Lock size={20} className="text-zinc-700" />
+                <div>
+                  <label className="block text-sm font-bold text-zinc-900">
+                    Private Event
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    Only invited users can see and join
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPrivate(!isPrivate);
+                  if (!isPrivate) {
+                    setInvitedUserIds([]);
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  isPrivate ? 'bg-zinc-900' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    isPrivate ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Invite Friends Section */}
+            {isPrivate && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users size={18} className="text-zinc-700" />
+                  <label className="block text-sm font-bold text-zinc-900">
+                    Invite Friends
+                  </label>
+                </div>
+                <UserPicker
+                  selectedIds={invitedUserIds}
+                  onChange={setInvitedUserIds}
+                  placeholder="Search for friends to invite..."
+                  multiple={true}
+                />
+                {invitedUserIds.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    Note: Private events require at least one invited user
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* LCL 2.0: Touch targets meet 52px for comfortable primary action */}
