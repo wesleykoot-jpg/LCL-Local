@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { ChevronLeft, Share2, Copy, QrCode, Mail, MessageSquare, Facebook, Twitter, CheckCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/features/auth';
 import { createPortal } from 'react-dom';
+import { useMotionPreset } from '@/hooks/useMotionPreset';
 
 const QRCodeCanvas = lazy(() => import('qrcode.react').then((mod) => ({ default: mod.QRCodeCanvas })));
 
@@ -13,9 +14,9 @@ export function ShareProfile() {
   const { profile } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
-  const prefersReducedMotion = useReducedMotion();
+  const motionPreset = useMotionPreset();
   const motionProps = (delay = 0) =>
-    prefersReducedMotion
+    motionPreset.prefersReducedMotion
       ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
       : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { delay } };
   

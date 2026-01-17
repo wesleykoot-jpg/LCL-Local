@@ -130,4 +130,16 @@ describe('Profile - Accessibility', () => {
       expect(tab.className).toContain('min-h-[44px]');
     });
   });
+
+  it('should have aria-label on region sections', () => {
+    render(<Profile />);
+    
+    // Navigate to settings tab to load SettingsDeck
+    const settingsTab = screen.getByRole('tab', { name: /settings/i });
+    fireEvent.click(settingsTab);
+    
+    // Check for regions in settings (may take a moment to render)
+    const regions = screen.queryAllByRole('region');
+    expect(regions.length).toBeGreaterThan(0);
+  });
 });

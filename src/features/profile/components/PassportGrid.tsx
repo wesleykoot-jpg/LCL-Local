@@ -1,8 +1,9 @@
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Stamp, Sparkles } from 'lucide-react';
 import { useUnifiedItinerary, ItineraryItem } from '@/features/events/hooks/useUnifiedItinerary';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMotionPreset } from '@/hooks/useMotionPreset';
 
 /**
  * Format date as "MON YY" (e.g., "OCT 26")
@@ -23,7 +24,7 @@ function formatStampDate(date: Date): string {
 
 export function PassportGrid() {
   const { timelineItems, isLoading } = useUnifiedItinerary();
-  const prefersReducedMotion = useReducedMotion();
+  const motionPreset = useMotionPreset();
   const navigate = useNavigate();
 
   // Filter for past events only
@@ -37,8 +38,7 @@ export function PassportGrid() {
     return (
       <motion.div
         className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        {...motionPreset.slideUp}
       >
         {/* Ghost Stamp Book Illustration */}
         <div className="relative w-32 h-32 mx-auto mb-6">
@@ -46,20 +46,20 @@ export function PassportGrid() {
           <motion.div
             className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
             style={{ transform: 'rotate(-3deg)' }}
-            initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
+            {...motionPreset.initial({ scale: 0.8, opacity: 0 })}
             animate={{ scale: 1, opacity: 0.3 }}
             transition={{ delay: 0.1 }}
           />
           <motion.div
             className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
             style={{ transform: 'rotate(2deg)' }}
-            initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
+            {...motionPreset.initial({ scale: 0.8, opacity: 0 })}
             animate={{ scale: 1, opacity: 0.4 }}
             transition={{ delay: 0.2 }}
           />
           <motion.div
             className="absolute inset-0 rounded-lg border-2 border-white/30 bg-white/10 flex items-center justify-center"
-            initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
+            {...motionPreset.initial({ scale: 0.8, opacity: 0 })}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
@@ -95,7 +95,7 @@ export function PassportGrid() {
             key={event.id}
             event={event}
             index={index}
-            prefersReducedMotion={prefersReducedMotion}
+            motionPreset={motionPreset}
           />
         ))}
       </div>
@@ -109,10 +109,10 @@ export function PassportGrid() {
 interface PassportStampProps {
   event: ItineraryItem;
   index: number;
-  prefersReducedMotion: boolean;
+  motionPreset: ReturnType<typeof useMotionPreset>;
 }
 
-function PassportStamp({ event, index, prefersReducedMotion }: PassportStampProps) {
+function PassportStamp({ event, index, motionPreset }: PassportStampProps) {
   const stampDate = formatStampDate(event.startTime);
 
   // Get image URL - fallback to a placeholder if not available
@@ -121,16 +121,17 @@ function PassportStamp({ event, index, prefersReducedMotion }: PassportStampProp
   return (
     <motion.div
       className="relative aspect-square overflow-hidden rounded-lg"
-      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8 }}
+      {...motionPreset.initial({ opacity: 0, scale: 0.8 })}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.05, type: 'spring', damping: 15 }}
-      whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+      whileHover={motionPreset.prefersReducedMotion ? {} : { scale: 1.05 }}
     >
       {/* Grayscale Event Image */}
       <img
         src={imageUrl}
         alt={event.title}
         className="w-full h-full object-cover grayscale"
+        loading="lazy"
       />
 
       {/* Stamp Overlay */}
