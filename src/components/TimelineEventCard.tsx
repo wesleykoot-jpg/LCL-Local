@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { MapPin, Users, Ticket } from 'lucide-react';
 import { CATEGORY_MAP, getCategoryConfig } from '@/lib/categories';
 import type { EventWithAttendees } from '@/features/events/hooks/hooks';
+import { SmartTimeLabel } from './SmartTimeLabel';
+import type { OpeningHours } from '@/lib/openingHours';
 
 interface TimelineEventCardProps {
   event: EventWithAttendees & { 
@@ -10,21 +12,6 @@ interface TimelineEventCardProps {
     image_url?: string | null;
   };
   isPast?: boolean;
-}
-
-// Format time like "7:00 PM"
-function formatTime(timeStr: string): string {
-  if (!timeStr) return '';
-  
-  // Handle HH:MM format
-  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-  }
-  
-  return timeStr;
 }
 
 // Category to ambient color mapping (HSL values for CSS custom property)
@@ -54,6 +41,10 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   const categoryLabel = categoryConfig.label;
   const attendeeCount = event.attendee_count || 0;
   const ambientColor = useMemo(() => getAmbientColor(event.category), [event.category]);
+
+  // Get time mode with fallback to 'fixed' for existing events
+  const timeMode = event.time_mode || 'fixed';
+  const openingHours = event.opening_hours as OpeningHours | null;
 
   return (
     <div className="tilt-transform">
@@ -97,11 +88,12 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         <div className="p-4 pt-0">
           {/* Row 1: Time + Attendee Count */}
           <div className="relative z-10 flex items-center justify-between mb-1">
-            <span className={`text-[15px] font-semibold ${
-              isPast ? 'text-muted-foreground' : 'text-foreground'
-            }`}>
-              {formatTime(event.event_time)}
-            </span>
+            <SmartTimeLabel
+              timeMode={timeMode}
+              eventTime={event.event_time}
+              eventDate={event.event_date}
+              openingHours={openingHours}
+            />
             <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
               <Users size={14} />
               <span className="font-medium">{attendeeCount} going</span>
