@@ -35,3 +35,6 @@ E2E_AUDIT_REPORT.md
 *.njsproj
 *.sln
 *.sw?
+
+*storybook.log
+storybook-static
