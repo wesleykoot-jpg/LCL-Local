@@ -67,14 +67,24 @@ export default {
           elevated: "hsl(var(--surface-elevated))",
           overlay: "hsl(var(--surface-overlay))",
         },
+        // LCL Core 2026 Design System v4.0
+        brand: {
+          action: "#FF385C", // LCL Radiant Coral
+          "action-hover": "#E31C5F",
+        },
+        text: {
+          primary: "#09090B", // High Contrast Zinc
+          secondary: "#52525B",
+          muted: "#71717A",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
         "2xl": "1rem",
-        "3xl": "1.5rem",
-        "4xl": "1.75rem",
+        "3xl": "24px", // LCL Standard Card Radius (8pt grid)
+        "4xl": "32px", // Large UI Elements
       },
       // 2026 Apple-Inspired Shadow System
       boxShadow: {
@@ -82,14 +92,14 @@ export default {
         "card-hover": "0 8px 24px rgba(0, 0, 0, 0.08)",
         "card-elevated": "0 4px 20px rgba(0, 0, 0, 0.06)",
         "float": "0 8px 32px rgba(0, 0, 0, 0.12)",
-        "nav": "0 4px 24px rgba(0, 0, 0, 0.25)",
+        "nav": "0 8px 32px rgba(0, 0, 0, 0.25)", // Updated for solid surfaces
         "glass": "0 4px 24px rgba(0, 0, 0, 0.06)",
         "up-sheet": "0 -8px 32px rgba(0, 0, 0, 0.12)",
-        // Apple 2026 shadow utilities
-        "apple-sm": "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)",
-        "apple-md": "0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)",
-        "apple-lg": "0 4px 16px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.08)",
-        "apple-xl": "0 8px 24px rgba(0,0,0,0.08), 0 24px 64px rgba(0,0,0,0.12)",
+        // Apple 2026 Precise Shadow System (LCL Core v4.0)
+        "apple-sm": "0 2px 8px rgba(0, 0, 0, 0.04)",
+        "apple-md": "0 4px 20px rgba(0, 0, 0, 0.08)",
+        "apple-lg": "0 12px 40px rgba(0, 0, 0, 0.12)",
+        "apple-xl": "0 20px 64px rgba(0, 0, 0, 0.16)",
       },
       // 2026 Backdrop Blur System
       backdropBlur: {
@@ -102,6 +112,8 @@ export default {
         "11": "2.75rem",
         "13": "3.25rem", 
         "15": "3.75rem",
+        "18": "4.5rem", // Added for 8pt grid
+        "touch": "48px", // Dedicated Touch Target Unit (LCL Core v4.0)
       },
       // Touch Target Min Sizes (Apple HIG compliant)
       minHeight: {
