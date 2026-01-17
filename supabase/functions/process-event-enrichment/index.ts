@@ -78,13 +78,46 @@ serve(async (req: Request): Promise<Response> => {
     // Stats-only mode: return venue registry and enrichment stats
     if (stats_only) {
       const venueStats = getVenueStats();
-      const { data: enrichmentStats } = await supabase.rpc("get_enrichment_stats").single();
+      
+      // Query enrichment stats directly (no RPC needed)
+      const todayStartForStats = new Date();
+      todayStartForStats.setHours(0, 0, 0, 0);
+      
+      const { count: needsEnrichment } = await supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .in("time_mode", ["window", "anytime"])
+        .or("contact_phone.is.null,opening_hours.is.null")
+        .is("enrichment_attempted_at", null);
+      
+      const { count: todaySuccesses } = await supabase
+        .from("enrichment_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "success")
+        .gte("created_at", todayStartForStats.toISOString());
+      
+      const { count: todayFailures } = await supabase
+        .from("enrichment_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "failed")
+        .gte("created_at", todayStartForStats.toISOString());
+      
+      const { count: registryMatches } = await supabase
+        .from("enrichment_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "registry_match")
+        .gte("created_at", todayStartForStats.toISOString());
       
       return new Response(
         JSON.stringify({
           success: true,
           venue_registry: venueStats,
-          enrichment_stats: enrichmentStats,
+          enrichment_stats: {
+            needs_enrichment: needsEnrichment || 0,
+            today_successes: todaySuccesses || 0,
+            today_failures: todayFailures || 0,
+            today_registry_matches: registryMatches || 0,
+          },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -414,13 +447,15 @@ async function applyRegistryData(
     enrichedFields.push("price_range");
   }
 
-  // Update location if not set (using PostGIS format)
-  // Note: We need to use raw SQL for geography type
-  const hasLocation = event.location && event.location !== "POINT(0 0)";
-  if (!hasLocation) {
-    updates.location = `POINT(${venue.location.lng} ${venue.location.lat})`;
-    enrichedFields.push("location");
-  }
+  // NOTE: Location updates require raw SQL for PostGIS geography type.
+  // Supabase JS client doesn't natively support geography.
+  // Location enrichment from registry is skipped - it should be handled 
+  // by a dedicated RPC function if needed.
+  // const hasLocation = event.location && event.location !== "POINT(0 0)";
+  // if (!hasLocation) {
+  //   // Would need: ST_SetSRID(ST_MakePoint(lng, lat), 4326)
+  //   enrichedFields.push("location");
+  // }
 
   updates.enrichment_attempted_at = new Date().toISOString();
 
@@ -441,50 +476,20 @@ async function applyRegistryData(
       enrichedFields,
     });
   } else {
-    // Special handling for location (geography type)
-    if (updates.location) {
-      const locationWkt = updates.location;
-      delete updates.location;
-      
-      // Use RPC or raw query for geography update
-      const { error: updateError } = await supabase
-        .from("events")
-        .update({
-          ...updates,
-        })
-        .eq("id", event.id);
-      
-      if (updateError) {
-        console.error("Error updating event from registry:", updateError);
-        return {
-          status: "failed",
-          enrichedFields: [],
-          apiCallsUsed: 0,
-          error: updateError.message,
-          source: "registry",
-        };
-      }
-      
-      // Update location separately with raw SQL
-      // Note: This requires a custom RPC function for geography updates
-      // For now, we skip location updates from registry
-      console.log(`Note: Location update skipped (requires raw SQL): ${locationWkt}`);
-    } else {
-      const { error: updateError } = await supabase
-        .from("events")
-        .update(updates)
-        .eq("id", event.id);
+    const { error: updateError } = await supabase
+      .from("events")
+      .update(updates)
+      .eq("id", event.id);
 
-      if (updateError) {
-        console.error("Error updating event from registry:", updateError);
-        return {
-          status: "failed",
-          enrichedFields: [],
-          apiCallsUsed: 0,
-          error: updateError.message,
-          source: "registry",
-        };
-      }
+    if (updateError) {
+      console.error("Error updating event from registry:", updateError);
+      return {
+        status: "failed",
+        enrichedFields: [],
+        apiCallsUsed: 0,
+        error: updateError.message,
+        source: "registry",
+      };
     }
   }
 
@@ -592,8 +597,19 @@ async function applyGoogleData(
   if (!event.contact_phone) {
     const phone = placeData.international_phone_number || placeData.formatted_phone_number;
     if (phone) {
-      // Clean to E.164 format
-      const cleaned = phone.replace(/[^\d+]/g, "");
+      // Clean to E.164 format:
+      // 1. Remove all characters except digits and the leading plus
+      // 2. Ensure plus sign is only at the start
+      let cleaned = phone.trim();
+      
+      // If it starts with +, preserve it and clean the rest
+      if (cleaned.startsWith('+')) {
+        cleaned = '+' + cleaned.slice(1).replace(/\D/g, '');
+      } else {
+        // No plus sign - just keep digits (won't be valid E.164 without country code)
+        cleaned = cleaned.replace(/\D/g, '');
+      }
+      
       if (isValidE164(cleaned)) {
         updates.contact_phone = cleaned;
         enrichedFields.push("contact_phone");

@@ -25,10 +25,27 @@ const DAY_NAMES: readonly (keyof Omit<OpeningHours, 'always_open'>)[] = [
  * Convert Google time format "HHMM" to our "HH:MM" format
  */
 function formatGoogleTime(time: string): string {
+  // Validate length
   if (time.length !== 4) {
-    console.warn(`Invalid Google time format: ${time}`);
+    console.warn(`Invalid Google time format (wrong length): ${time}`);
     return '00:00';
   }
+  
+  // Validate that all characters are digits
+  if (!/^\d{4}$/.test(time)) {
+    console.warn(`Invalid Google time format (non-numeric): ${time}`);
+    return '00:00';
+  }
+  
+  const hours = parseInt(time.slice(0, 2), 10);
+  const minutes = parseInt(time.slice(2, 4), 10);
+  
+  // Validate ranges
+  if (hours > 23 || minutes > 59) {
+    console.warn(`Invalid Google time values: ${time} (hours=${hours}, minutes=${minutes})`);
+    return '00:00';
+  }
+  
   return `${time.slice(0, 2)}:${time.slice(2, 4)}`;
 }
 
