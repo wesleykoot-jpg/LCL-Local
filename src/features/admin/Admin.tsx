@@ -930,7 +930,6 @@ export default function Admin() {
             Click "Run Scraper Integrity Test" to validate scraper logic, resilience, and data accuracy.
           </p>
         )}
-        )}
       </section>
 
       {/* Source Stats */}
