@@ -60,6 +60,17 @@ export interface DryRunResult {
   error?: string;
 }
 
+export interface ScraperIntegrityResult {
+  test: string;
+  status: 'PASS' | 'FAIL';
+  details?: string;
+}
+
+export interface ScraperIntegrityReport {
+  success: boolean;
+  results: ScraperIntegrityResult[];
+}
+
 export interface CoordinatorResult {
   success: boolean;
   jobsCreated?: number;
@@ -148,6 +159,21 @@ export async function triggerScraper(sourceIds?: string[]): Promise<ScrapeResult
   }
   
   return data as ScrapeResult;
+}
+
+/**
+ * Run scraper integrity tests (mocked, no DB writes)
+ */
+export async function runScraperTests(): Promise<ScraperIntegrityReport> {
+  const { data, error } = await supabase.functions.invoke('scrape-events', {
+    body: { action: 'run-integrity-test' },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as ScraperIntegrityReport;
 }
 
 /**

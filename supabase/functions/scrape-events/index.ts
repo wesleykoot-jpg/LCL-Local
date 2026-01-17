@@ -9,6 +9,7 @@ import {
   type PageFetcher,
   StaticPageFetcher,
   DynamicPageFetcher,
+  FailoverPageFetcher,
   createFetcherForSource,
 } from "./strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
@@ -714,12 +715,207 @@ export interface ScrapeOptions {
   enableDebug?: boolean;
 }
 
+export interface ScraperIntegrityCheckResult {
+  test: string;
+  status: "PASS" | "FAIL";
+  details?: string;
+}
+
+export interface ScraperIntegrityReport {
+  success: boolean;
+  results: ScraperIntegrityCheckResult[];
+}
+
+async function runIntegrityCheck(
+  test: string,
+  run: () => Promise<void> | void,
+  results: ScraperIntegrityCheckResult[],
+): Promise<void> {
+  try {
+    await run();
+    results.push({ test, status: "PASS" });
+  } catch (error) {
+    results.push({
+      test,
+      status: "FAIL",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+export async function runScraperIntegrityTest(): Promise<ScraperIntegrityReport> {
+  const results: ScraperIntegrityCheckResult[] = [];
+
+  await runIntegrityCheck("Soccer Categorization", () => {
+    const category = mapToInternalCategory("Local soccer meetup with football drills");
+    if (category !== "active") {
+      throw new Error(`Expected "active" category, received "${category}"`);
+    }
+  }, results);
+
+  await runIntegrityCheck("Failover Strategy", async () => {
+    const source: ScraperSource = {
+      id: "integrity-failover",
+      name: "Integrity Failover",
+      url: "https://example.com/failover",
+      enabled: true,
+      config: {
+        scrapingbee_api_key: "test-key",
+      },
+    };
+
+    const originalFetch = globalThis.fetch;
+    const originalSetTimeout = globalThis.setTimeout;
+    let dynamicCalls = 0;
+
+    globalThis.setTimeout = ((handler: TimerHandler) =>
+      originalSetTimeout(handler, 0)) as typeof setTimeout;
+
+    globalThis.fetch = (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("scrapingbee.com/api")) {
+        dynamicCalls += 1;
+        return Promise.resolve(new Response("<html>dynamic</html>", { status: 200 }));
+      }
+      return Promise.reject(new Error("Static fetch failed"));
+    };
+
+    try {
+      const fetcher = new FailoverPageFetcher(source);
+      let result: { html: string; finalUrl: string; statusCode: number } | null = null;
+      let successAttempt = -1;
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          result = await fetcher.fetchPage(source.url);
+          successAttempt = attempt;
+          break;
+        } catch {
+          result = null;
+        }
+      }
+
+      if (!result) {
+        throw new Error("Failover did not recover after 3 failures");
+      }
+      if (successAttempt < 2) {
+        throw new Error(`Failover succeeded too early (attempt ${successAttempt + 1})`);
+      }
+      if (dynamicCalls === 0) {
+        throw new Error("Dynamic fetcher was not used after failures");
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+      globalThis.setTimeout = originalSetTimeout;
+    }
+  }, results);
+
+  await runIntegrityCheck("Rate Limiting & 404 Resilience", async () => {
+    const responses = [
+      { statusCode: 429, html: "", finalUrl: "https://example.com/rl" },
+      { statusCode: 404, html: "", finalUrl: "https://example.com/not-found" },
+      {
+        statusCode: 200,
+        finalUrl: "https://example.com/events",
+        html: `
+          <article class="event-card">
+            <h2>Soccer Cup</h2>
+            <div class="date">12 juli 2026</div>
+          </article>
+        `,
+      },
+    ];
+    const statuses: number[] = [];
+
+    const fetcher: PageFetcher = {
+      async fetchPage(url: string) {
+        const response = responses.shift() ?? { statusCode: 500, html: "", finalUrl: url };
+        statuses.push(response.statusCode);
+        return { html: response.html, finalUrl: response.finalUrl || url, statusCode: response.statusCode };
+      },
+    };
+
+    const source: ScraperSource = {
+      id: "integrity-rate-limit",
+      name: "Integrity Rate Limit",
+      url: "https://example.com/events",
+      enabled: true,
+      config: { rate_limit_ms: 5 },
+    };
+
+    const events = await scrapeEventCards(source, false, { fetcher });
+    if (events.length === 0) {
+      throw new Error("Expected events after rate limit and 404 handling");
+    }
+    if (statuses[0] !== 429 || statuses[1] !== 404) {
+      throw new Error(`Unexpected status sequence: ${statuses.join(",")}`);
+    }
+  }, results);
+
+  await runIntegrityCheck("Idempotency", async () => {
+    const fingerprintA = await createEventFingerprint("Soccer Cup", "2026-07-12", "source-1");
+    const fingerprintB = await createEventFingerprint("Soccer Cup", "2026-07-12", "source-1");
+    if (fingerprintA !== fingerprintB) {
+      throw new Error("Fingerprints for identical events do not match");
+    }
+
+    const supabaseStub = {
+      from() {
+        return this;
+      },
+      select() {
+        return this;
+      },
+      eq() {
+        return this;
+      },
+      limit() {
+        return Promise.resolve({ data: [{ id: 1 }], error: null });
+      },
+    };
+
+    const exists = await eventExists(
+      supabaseStub,
+      "Soccer Cup",
+      "2026-07-12",
+      "19:00",
+      undefined,
+      "source-1",
+    );
+    if (!exists) {
+      throw new Error("Expected duplicate fingerprint to be detected");
+    }
+  }, results);
+
+  return {
+    success: results.every((result) => result.status === "PASS"),
+    results,
+  };
+}
+
 export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    let options: ScrapeOptions & { action?: string } = {};
+    if (req.method === "POST") {
+      try {
+        const body = await req.text();
+        options = body ? JSON.parse(body) : {};
+      } catch {
+        options = {};
+      }
+    }
+
+    if (options.action === "run-integrity-test") {
+      const report = await runScraperIntegrityTest();
+      return new Response(JSON.stringify(report), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -729,16 +925,6 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    let options: ScrapeOptions = {};
-    if (req.method === "POST") {
-      try {
-        const body = await req.text();
-        options = body ? JSON.parse(body) : {};
-      } catch {
-        options = {};
-      }
-    }
 
     const { sourceId, dryRun = false, enableDeepScraping = true, limit, enableDebug = false } = options;
 

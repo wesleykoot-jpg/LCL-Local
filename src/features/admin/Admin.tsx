@@ -42,11 +42,13 @@ import {
   triggerSourceDiscovery,
   getDiscoveredSources,
   fetchLogs,
+  runScraperTests,
   type ScraperSource,
   type ScrapeResult,
   type DryRunResult,
   type DiscoveredSource,
-  type LogEntry
+  type LogEntry,
+  type ScraperIntegrityReport
 } from './api/scraperService';
 import { 
   Dialog, 
@@ -152,6 +154,9 @@ export default function Admin() {
   const [testResults, setTestResults] = useState<Record<string, DryRunResult>>({});
   const [showResults, setShowResults] = useState(false);
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  const [integrityTesting, setIntegrityTesting] = useState(false);
+  const [integrityReport, setIntegrityReport] = useState<ScraperIntegrityReport | null>(null);
+  const [showIntegrityReport, setShowIntegrityReport] = useState(false);
   
   // Scheduler state
   const [schedulerLoading, setSchedulerLoading] = useState(false);
@@ -356,6 +361,25 @@ export default function Admin() {
     }
   }
 
+  async function handleRunIntegrityTests() {
+    setIntegrityTesting(true);
+    try {
+      const report = await runScraperTests();
+      setIntegrityReport(report);
+      setShowIntegrityReport(true);
+      if (report.success) {
+        toast.success('Scraper integrity tests passed');
+      } else {
+        toast.error('Scraper integrity tests failed');
+      }
+    } catch (error) {
+      toast.error('Failed to run scraper integrity tests');
+      console.error(error);
+    } finally {
+      setIntegrityTesting(false);
+    }
+  }
+
   async function handleTestSource(sourceId: string) {
     setTestingSourceId(sourceId);
     try {
@@ -508,10 +532,16 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">Manage event sources</p>
             </div>
           </div>
-          <Button onClick={handleRunAll} disabled={scraping} variant="outline" className="gap-2">
-            <RefreshCw size={16} className={scraping ? 'animate-spin' : ''} />
-            {scraping ? 'Running...' : 'Run Legacy'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleRunAll} disabled={scraping} variant="outline" className="gap-2">
+              <RefreshCw size={16} className={scraping ? 'animate-spin' : ''} />
+              {scraping ? 'Running...' : 'Run Legacy'}
+            </Button>
+            <Button onClick={handleRunIntegrityTests} disabled={integrityTesting} className="gap-2">
+              <ListChecks size={16} className={integrityTesting ? 'animate-spin' : ''} />
+              {integrityTesting ? 'Running diagnostic tests...' : 'Run Scraper Integrity Test'}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -884,6 +914,49 @@ export default function Admin() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfigDialogSource(null)} disabled={configSaving}>Cancel</Button>
             <Button onClick={handleSaveConfig} disabled={configSaving}>{configSaving ? 'Saving...' : 'Save'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Integrity Test Results */}
+      <Dialog open={showIntegrityReport} onOpenChange={setShowIntegrityReport}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Scraper Integrity Test Results</DialogTitle>
+          </DialogHeader>
+          {integrityReport ? (
+            <div className="space-y-3">
+              <div className={`text-sm font-medium ${integrityReport.success ? 'text-green-600' : 'text-red-500'}`}>
+                {integrityReport.success ? 'All checks passed.' : 'Some checks failed.'}
+              </div>
+              <div className="space-y-2">
+                {integrityReport.results.map((result) => (
+                  <div key={result.test} className="rounded-md border border-border p-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm">
+                        {result.status === 'PASS' ? (
+                          <CheckCircle2 size={14} className="text-green-600" />
+                        ) : (
+                          <XCircle size={14} className="text-red-500" />
+                        )}
+                        <span>{result.test}</span>
+                      </div>
+                      <Badge variant={result.status === 'PASS' ? 'outline' : 'destructive'} className="text-[10px]">
+                        {result.status}
+                      </Badge>
+                    </div>
+                    {result.details && (
+                      <p className="text-xs text-muted-foreground mt-1">{result.details}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No results yet.</p>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowIntegrityReport(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
