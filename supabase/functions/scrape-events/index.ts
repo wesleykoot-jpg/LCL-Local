@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { parseToISODate } from "./dateUtils.ts";
+import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
 import { 
   createSpoofedFetch, 
@@ -10,7 +10,7 @@ import {
   StaticPageFetcher,
   DynamicPageFetcher,
   createFetcherForSource,
-} from "./strategies.ts";
+} from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { jitteredDelay, isRateLimited } from "../_shared/rateLimiting.ts";
 import { 
@@ -977,10 +977,10 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 }
 
-export { parseToISODate } from "./dateUtils.ts";
+export { parseToISODate } from "../_shared/dateUtils.ts";
 export type { ScraperSource, FetcherType } from "./shared.ts";
-export type { PageFetcher, RetryConfig } from "./strategies.ts";
-export { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "./strategies.ts";
+export type { PageFetcher, RetryConfig } from "../_shared/strategies.ts";
+export { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "../_shared/strategies.ts";
 
 // ============================================================================
 // AGGREGATOR PATTERN - STRATEGY ORCHESTRATION
