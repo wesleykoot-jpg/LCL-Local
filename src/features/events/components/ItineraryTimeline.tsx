@@ -231,12 +231,12 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
         return (
           <div key={dateHeader} className="mb-10 relative">
             {/* Sticky Date Header - Discovery Style */}
-            <div className="sticky top-[60px] z-20 py-3 mb-6 backdrop-blur-xl bg-background/90 border-b border-border -mx-4 px-6">
+            <div className="sticky top-[60px] z-20 py-4 mb-6 backdrop-blur-xl bg-background/90 border-b border-border -mx-4 px-6">
               <h3 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-primary" />
                 {dateHeader}
                 {isToday && (
-                  <span className="ml-2 text-[11px] px-2.5 py-1 bg-primary text-primary-foreground rounded-full font-semibold">
+                  <span className="ml-2 text-[11px] px-2.5 py-1 bg-primary text-primary-foreground rounded-full font-semibold shadow-sm">
                     Today
                   </span>
                 )}
@@ -254,7 +254,7 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                     {group.type === 'parent_child' && group.showParent && group.parent && (
                       <div className="relative">
                         {/* Activity Thread Line - Connects parent to children */}
-                        <div className="absolute left-[76px] top-0 bottom-0 w-[3px] bg-gradient-to-b from-primary/60 via-primary/30 to-primary/60 rounded-full" />
+                        <div className="absolute left-[76px] top-0 bottom-0 w-[3px] bg-gradient-to-b from-primary/70 via-primary/50 to-primary/70 rounded-full" />
                       </div>
                     )}
                     
@@ -303,7 +303,7 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                               <div className="w-[20px] flex-shrink-0 flex flex-col items-center relative">
                                 {/* Waypoint Dot - Enhanced for parent-child */}
                                 <div className={cn(
-                                  "w-3 h-3 rounded-full border-2 border-background z-10 mt-4 flex-shrink-0",
+                                  "w-3 h-3 rounded-full border-2 border-background ring-1 ring-border z-10 mt-4 flex-shrink-0",
                                   item.type === 'LCL_EVENT' 
                                     ? isChildEvent
                                       ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" // Child event (fork)
@@ -314,10 +314,10 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                 {/* Connecting Line */}
                                 {!isLastItem && (
                                   <div className={cn(
-                                    "w-[2px] flex-1 mt-2 min-h-[40px]",
+                                    "w-[3px] flex-1 mt-2 min-h-[40px] rounded-full",
                                     group.type === 'parent_child' && group.showParent
-                                      ? "bg-primary/30" // Emphasized line for parent-child
-                                      : "bg-border"
+                                      ? "bg-primary/50" // Emphasized line for parent-child
+                                      : "bg-muted-foreground/20"
                                   )} />
                                 )}
                               </div>
@@ -362,23 +362,23 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                   /* Google Calendar Ghost Card */
                                   <motion.div 
                                     className={cn(
-                                      "relative rounded-2xl border-2 border-dashed border-sky-300/60 p-4 transition-all hover:border-sky-400/80 hover:shadow-md overflow-hidden",
+                                      "relative rounded-2xl border-2 border-dashed border-sky-500/40 p-4 transition-all hover:border-sky-500/60 hover:shadow-md overflow-hidden",
                                       item.conflictType === 'overlap' && "border-l-4 border-l-destructive"
                                     )}
                                     whileTap={{ scale: 0.98 }}
                                     style={{
-                                      backgroundColor: 'hsl(204, 100%, 97%)',
+                                      backgroundColor: 'hsl(204, 100%, 94%)',
                                       backgroundImage: `repeating-linear-gradient(
                                         135deg,
                                         transparent,
-                                        transparent 8px,
-                                        hsl(204, 100%, 92%) 8px,
-                                        hsl(204, 100%, 92%) 9px
+                                        transparent 10px,
+                                        hsl(204, 100%, 90%) 10px,
+                                        hsl(204, 100%, 90%) 11px
                                       )`
                                     }}
                                   >
                                     {/* Google Calendar Badge */}
-                                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-white/80 flex items-center gap-1.5 shadow-sm">
+                                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-white flex items-center gap-1.5 shadow-sm border border-sky-200">
                                       <Calendar size={12} className="text-[#4285F4]" />
                                       <span className="text-[10px] font-semibold text-[#4285F4] uppercase tracking-wide">
                                         Calendar
@@ -391,15 +391,15 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                     </h4>
 
                                     {/* Location + Time */}
-                                    <div className="flex items-center gap-3 text-[13px] text-sky-700/80">
+                                    <div className="flex items-center gap-3 text-[13px] text-sky-900">
                                       {item.location && (
                                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                          <MapPin size={13} className="flex-shrink-0 text-sky-500" />
+                                          <MapPin size={13} className="flex-shrink-0 text-sky-600" />
                                           <span className="truncate">{item.location}</span>
                                         </div>
                                       )}
                                       {item.endTime && (
-                                        <span className="flex-shrink-0 text-sky-600/60">
+                                        <span className="flex-shrink-0 text-sky-800">
                                           ends {formatTime(item.endTime)}
                                         </span>
                                       )}
