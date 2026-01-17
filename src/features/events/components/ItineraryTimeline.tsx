@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import { TimelineEventCard } from './TimelineEventCard';
 import type { EventWithAttendees } from '../hooks/hooks';
 import type { TimeMode } from '@/lib/openingHours';
-import { doEventsOverlap, type TimeRange } from '../utils/timeHelpers';
 import { exportToCalendar, type CalendarEvent } from '../utils/calendarExport';
 import { hapticImpact } from '@/shared/lib/haptics';
 import toast from 'react-hot-toast';
@@ -218,35 +217,6 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
     weekday: 'long', month: 'short', day: 'numeric' 
   });
   
-  // Detect conflicts across all items
-  const conflictMap = useMemo(() => {
-    const allItems = Object.values(groupedItems).flat();
-    const conflicts = new Map<string, string[]>();
-    
-    for (let i = 0; i < allItems.length; i++) {
-      for (let j = i + 1; j < allItems.length; j++) {
-        const item1 = allItems[i];
-        const item2 = allItems[j];
-        
-        if (doEventsOverlap(
-          { startTime: item1.startTime, endTime: item1.endTime },
-          { startTime: item2.startTime, endTime: item2.endTime }
-        )) {
-          if (!conflicts.has(item1.id)) {
-            conflicts.set(item1.id, []);
-          }
-          if (!conflicts.has(item2.id)) {
-            conflicts.set(item2.id, []);
-          }
-          conflicts.get(item1.id)!.push(item2.title);
-          conflicts.get(item2.id)!.push(item1.title);
-        }
-      }
-    }
-    
-    return conflicts;
-  }, [groupedItems]);
-  
   const handleExportEvent = async (item: ItineraryItem) => {
     try {
       await hapticImpact('light');
@@ -363,11 +333,12 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
 
                               {/* Column 3: Event Card - Full Width */}
                               <div className="flex-1 min-w-0 pb-2">
-                                {/* Conflict Badge */}
-                                {conflictMap.has(item.id) && (
-                                  <ConflictBadge 
-                                    message={`Overlaps with ${conflictMap.get(item.id)![0]}`} 
-                                  />
+                                {/* Double Booked Badge */}
+                                {item.conflictType === 'overlap' && (
+                                  <div className="flex items-center gap-1.5 mb-2 text-xs text-destructive">
+                                    <span>⚠️</span>
+                                    <span className="font-medium">Double Booked</span>
+                                  </div>
                                 )}
                                 
                                 {/* Parent Venue Badge for child events (Scenario B) */}
@@ -393,7 +364,10 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                 
                                 {item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) ? (
                                   <motion.div 
-                                    className="transform transition-all"
+                                    className={cn(
+                                      "transform transition-all",
+                                      item.conflictType === 'overlap' && "border-l-4 border-l-destructive"
+                                    )}
                                     whileTap={{ scale: 0.98 }}
                                   >
                                     <TimelineEventCard
@@ -403,13 +377,19 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                     />
                                   </motion.div>
                                 ) : item.type === 'LCL_EVENT' ? (
-                                  <div className="text-muted-foreground text-sm p-4 rounded-xl bg-muted/50">
+                                  <div className={cn(
+                                    "text-muted-foreground text-sm p-4 rounded-xl bg-muted/50",
+                                    item.conflictType === 'overlap' && "border-l-4 border-l-destructive"
+                                  )}>
                                     Event data unavailable
                                   </div>
                                 ) : (
                                   /* Google Calendar Ghost Card */
                                   <motion.div 
-                                    className="relative rounded-2xl border-2 border-dashed border-sky-300/60 p-4 transition-all hover:border-sky-400/80 hover:shadow-md overflow-hidden"
+                                    className={cn(
+                                      "relative rounded-2xl border-2 border-dashed border-sky-300/60 p-4 transition-all hover:border-sky-400/80 hover:shadow-md overflow-hidden",
+                                      item.conflictType === 'overlap' && "border-l-4 border-l-destructive"
+                                    )}
                                     whileTap={{ scale: 0.98 }}
                                     style={{
                                       backgroundColor: 'hsl(204, 100%, 97%)',
