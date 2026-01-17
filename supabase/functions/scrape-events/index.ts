@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "./dateUtils.ts";
 import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
@@ -972,6 +972,197 @@ export { parseToISODate } from "./dateUtils.ts";
 export type { ScraperSource, FetcherType } from "./shared.ts";
 export type { PageFetcher, RetryConfig } from "./strategies.ts";
 export { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from "./strategies.ts";
+
+// ============================================================================
+// AGGREGATOR PATTERN - STRATEGY ORCHESTRATION
+// ============================================================================
+
+// Import strategy configurations
+import { 
+  ALL_STRATEGIES, 
+  getEnabledStrategies, 
+  shouldRunNow,
+} from "./config.ts";
+
+// Import strategy implementations
+import { createSportsStrategy } from "./strategies/sports.ts";
+import { createMusicStrategy } from "./strategies/music.ts";
+import { createNightlifeStrategy } from "./strategies/nightlife.ts";
+import { createCultureStrategy } from "./strategies/culture.ts";
+import { createDiningStrategy } from "./strategies/dining.ts";
+import type { BaseScraperStrategy, ScraperRunResult } from "./strategies/base.ts";
+
+/**
+ * Factory map for creating strategy instances
+ */
+const STRATEGY_FACTORIES: Record<string, (supabase: SupabaseClient, config: typeof ALL_STRATEGIES.sports.config) => BaseScraperStrategy> = {
+  sports: (supabase, config) => createSportsStrategy(supabase, config),
+  music: (supabase, config) => createMusicStrategy(supabase, config),
+  nightlife: (supabase, config) => createNightlifeStrategy(supabase, config),
+  culture: (supabase, config) => createCultureStrategy(supabase, config),
+  dining: (supabase, config) => createDiningStrategy(supabase, config),
+};
+
+/**
+ * Run a specific strategy by name
+ */
+async function runStrategy(
+  supabase: SupabaseClient,
+  strategyName: string
+): Promise<ScraperRunResult | null> {
+  const strategyConfig = ALL_STRATEGIES[strategyName as keyof typeof ALL_STRATEGIES];
+  if (!strategyConfig) {
+    console.error(`Unknown strategy: ${strategyName}`);
+    return null;
+  }
+
+  const factory = STRATEGY_FACTORIES[strategyName];
+  if (!factory) {
+    console.error(`No factory for strategy: ${strategyName}`);
+    return null;
+  }
+
+  const strategy = factory(supabase, strategyConfig.config);
+  return await strategy.run();
+}
+
+/**
+ * Run all scheduled scrapers based on their cron schedules
+ */
+async function runScheduledScrapers(supabase: SupabaseClient): Promise<Record<string, ScraperRunResult>> {
+  const results: Record<string, ScraperRunResult> = {};
+  const now = new Date();
+
+  for (const strategyName of getEnabledStrategies()) {
+    const strategyConfig = ALL_STRATEGIES[strategyName as keyof typeof ALL_STRATEGIES];
+    
+    // Check if this strategy should run based on its cron schedule
+    if (shouldRunNow(strategyConfig.config.schedule, now)) {
+      console.log(`[scheduler] Running ${strategyName} (schedule: ${strategyConfig.config.schedule})`);
+      const result = await runStrategy(supabase, strategyName);
+      if (result) {
+        results[strategyName] = result;
+      }
+    } else {
+      console.log(`[scheduler] Skipping ${strategyName} (not scheduled for now)`);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Run all enabled scrapers regardless of schedule
+ */
+async function runAllScrapers(supabase: SupabaseClient): Promise<Record<string, ScraperRunResult>> {
+  const results: Record<string, ScraperRunResult> = {};
+
+  for (const strategyName of getEnabledStrategies()) {
+    console.log(`[orchestrator] Running ${strategyName}...`);
+    const result = await runStrategy(supabase, strategyName);
+    if (result) {
+      results[strategyName] = result;
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Handle strategy-based scraping requests
+ * This is the new entry point for the aggregator pattern
+ */
+export async function handleStrategyRequest(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing Supabase env vars");
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Parse request body
+    let body: { strategy?: string; mode?: "scheduled" | "all" | "single" } = {};
+    if (req.method === "POST") {
+      try {
+        const text = await req.text();
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = {};
+      }
+    }
+
+    const { strategy, mode = "scheduled" } = body;
+
+    let results: Record<string, ScraperRunResult>;
+
+    if (mode === "single" && strategy) {
+      // Run a specific strategy (manual trigger)
+      console.log(`[handler] Manual trigger for strategy: ${strategy}`);
+      const result = await runStrategy(supabase, strategy);
+      results = result ? { [strategy]: result } : {};
+    } else if (mode === "all") {
+      // Run all enabled strategies
+      console.log("[handler] Running all enabled strategies");
+      results = await runAllScrapers(supabase);
+    } else {
+      // Run scheduled strategies
+      console.log("[handler] Running scheduled strategies");
+      results = await runScheduledScrapers(supabase);
+    }
+
+    // Calculate totals
+    const totals = {
+      strategies: Object.keys(results).length,
+      success: 0,
+      failed: 0,
+      skipped: 0,
+    };
+
+    for (const result of Object.values(results)) {
+      totals.success += result.success;
+      totals.failed += result.failed;
+      totals.skipped += result.skipped;
+    }
+
+    // Send Slack notification
+    const message = `🎯 Strategy Scraper Complete\n` +
+      `Strategies: ${totals.strategies}\n` +
+      `Success: ${totals.success} | Failed: ${totals.failed} | Skipped: ${totals.skipped}`;
+    await sendSlackNotification(message, false);
+
+    return new Response(
+      JSON.stringify({ success: true, results, totals }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Strategy scraper error:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    await sendSlackNotification(`❌ Strategy Scraper Error\n${errorMessage}`, true);
+    
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Export strategy types and factories for testing
+export { 
+  ALL_STRATEGIES, 
+  getEnabledStrategies,
+  STRATEGY_FACTORIES,
+  runStrategy,
+  runScheduledScrapers,
+  runAllScrapers,
+};
 
 if (import.meta.main) {
   serve(handleRequest);
