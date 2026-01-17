@@ -995,6 +995,22 @@ export default function Admin() {
                     )}
                   </div>
                   {source.last_error && <p className="text-xs text-red-500 mt-1 truncate">{source.last_error}</p>}
+                  {(source.last_rate_limit_remaining !== null || source.last_rate_limit_reset_ts || source.last_rate_limit_retry_after_seconds) && (
+                    <div className="flex items-center gap-3 mt-2 text-xs text-amber-600 bg-amber-500/5 px-2 py-1 rounded border border-amber-500/20">
+                      <AlertTriangle size={12} className="flex-shrink-0" />
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {source.last_rate_limit_remaining !== null && (
+                          <span>Remaining: <strong>{source.last_rate_limit_remaining}</strong></span>
+                        )}
+                        {source.last_rate_limit_reset_ts && (
+                          <span>Reset: <strong>{formatRelativeTime(source.last_rate_limit_reset_ts)}</strong></span>
+                        )}
+                        {source.last_rate_limit_retry_after_seconds && (
+                          <span>Retry-after: <strong>{source.last_rate_limit_retry_after_seconds}s</strong></span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {testResult && (
                     <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
                       <p className={testResult.success ? 'text-green-600' : 'text-red-500'}>

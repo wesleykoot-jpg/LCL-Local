@@ -19,6 +19,7 @@ import {
   increaseRateLimit, 
   getEffectiveRateLimit 
 } from "../_shared/scraperObservability.ts";
+import { parseRateLimitHeaders } from "../_shared/rateLimitParsing.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 
 interface Coordinates {
@@ -559,7 +560,18 @@ export async function scrapeEventCards(
       
       // Handle rate limiting responses
       if (isRateLimited(resp.status) && supabaseUrl && supabaseKey) {
-        await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status);
+        // Parse rate-limit headers from the response
+        const rateLimitInfo = parseRateLimitHeaders(resp.headers);
+        
+        await increaseRateLimit(
+          supabaseUrl, 
+          supabaseKey, 
+          source.id, 
+          resp.status,
+          rateLimitInfo.retryAfterSeconds,
+          rateLimitInfo.remaining,
+          rateLimitInfo.resetTs
+        );
         console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
       }
       
@@ -794,7 +806,18 @@ export async function handleRequest(req: Request): Promise<Response> {
           
           // Handle rate limiting responses
           if (isRateLimited(resp.status)) {
-            await increaseRateLimit(supabaseUrl, supabaseKey, source.id, resp.status);
+            // Parse rate-limit headers from the response
+            const rateLimitInfo = parseRateLimitHeaders(resp.headers);
+            
+            await increaseRateLimit(
+              supabaseUrl, 
+              supabaseKey, 
+              source.id, 
+              resp.status,
+              rateLimitInfo.retryAfterSeconds,
+              rateLimitInfo.remaining,
+              rateLimitInfo.resetTs
+            );
             console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
             
             // Log the failure

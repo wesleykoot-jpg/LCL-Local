@@ -70,12 +70,13 @@ export interface PageFetcher {
   /**
    * Fetches a page and returns its HTML content along with metadata.
    * @param url - The URL to fetch
-   * @returns Object containing html, finalUrl (after redirects), and statusCode
+   * @returns Object containing html, finalUrl (after redirects), statusCode, and headers
    */
   fetchPage(url: string): Promise<{
     html: string;
     finalUrl: string;
     statusCode: number;
+    headers?: Headers;
   }>;
 }
 
@@ -116,7 +117,7 @@ export class StaticPageFetcher implements PageFetcher {
       const finalUrl = res.url || url;
       const statusCode = res.status;
 
-      return { html, finalUrl, statusCode };
+      return { html, finalUrl, statusCode, headers: res.headers };
     }, this.retryConfig);
   }
 }
@@ -191,6 +192,7 @@ export class DynamicPageFetcher implements PageFetcher {
         html,
         finalUrl: url,
         statusCode: response.status,
+        headers: response.headers,
       };
     } catch (error) {
       console.error('ScrapingBee fetch failed:', error);
@@ -242,6 +244,7 @@ export class DynamicPageFetcher implements PageFetcher {
           html,
           finalUrl,
           statusCode: 200,
+          headers: undefined, // Headless browsers don't expose response headers directly
         };
       } finally {
         await browser.close();
@@ -294,6 +297,7 @@ export class DynamicPageFetcher implements PageFetcher {
           html,
           finalUrl,
           statusCode: 200,
+          headers: undefined, // Headless browsers don't expose response headers directly
         };
       } finally {
         await browser.close();
@@ -304,7 +308,7 @@ export class DynamicPageFetcher implements PageFetcher {
     }
   }
 
-  private async fallbackToStaticFetch(url: string): Promise<{ html: string; finalUrl: string; statusCode: number }> {
+  private async fallbackToStaticFetch(url: string): Promise<{ html: string; finalUrl: string; statusCode: number; headers?: Headers }> {
     console.log('Using static fetch fallback');
     const fetcher = new StaticPageFetcher(fetch, undefined, undefined, this.retryConfig);
     return await fetcher.fetchPage(url);
@@ -480,7 +484,7 @@ export function generatePathFallbacks(baseUrl: string, hints: string[] = []): st
 
 export interface ScraperStrategy {
   discoverListingUrls(fetcher: PageFetcher): Promise<string[]>;
-  fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string }>;
+  fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string; headers?: Headers }>;
   parseListing(html: string, listingUrl: string, options?: { enableDebug?: boolean; fetcher?: PageFetcher }): Promise<RawEventCard[]>;
 }
 
@@ -512,13 +516,13 @@ export class DefaultStrategy implements ScraperStrategy {
     return generatePathFallbacks(this.source.url, hints);
   }
 
-  async fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string }> {
+  async fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string; headers?: Headers }> {
     try {
-      const { html, finalUrl, statusCode } = await fetcher.fetchPage(url);
-      return { status: statusCode, html, finalUrl };
+      const { html, finalUrl, statusCode, headers } = await fetcher.fetchPage(url);
+      return { status: statusCode, html, finalUrl, headers };
     } catch (error) {
       console.warn(`Fetch failed for ${url}:`, error);
-      return { status: 500, html: "", finalUrl: url };
+      return { status: 500, html: "", finalUrl: url, headers: undefined };
     }
   }
 
