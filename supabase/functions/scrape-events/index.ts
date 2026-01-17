@@ -768,7 +768,8 @@ export async function runScraperIntegrityTest(): Promise<ScraperIntegrityReport>
     const originalSetTimeout = globalThis.setTimeout;
     let dynamicCalls = 0;
 
-    globalThis.setTimeout = (handler: TimerHandler) => originalSetTimeout(handler, 10);
+    globalThis.setTimeout = (handler: TimerHandler, timeout?: number) =>
+      originalSetTimeout(handler, timeout ?? 10);
 
     globalThis.fetch = (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
@@ -797,7 +798,7 @@ export async function runScraperIntegrityTest(): Promise<ScraperIntegrityReport>
       }
 
       if (!result) {
-        throw new Error("Failover did not recover after 3 failures");
+        throw new Error(`Failover did not recover after ${maxFailoverAttempts} failures`);
       }
       if (successAttempt !== expectedSuccessAttempt) {
         throw new Error(
