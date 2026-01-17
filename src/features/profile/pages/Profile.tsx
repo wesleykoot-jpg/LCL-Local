@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
@@ -38,7 +38,7 @@ const Profile = () => {
     setActiveTab(tab);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, tab: TabType) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, tab: TabType) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleTabChange(tab);
