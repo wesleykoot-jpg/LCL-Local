@@ -1,0 +1,64 @@
+groups:
+  - name: lcl-external-alerts
+    rules:
+      - alert: OpenAIHigh429Rate
+        expr: |
+          sum(rate(external_429_total{service="openai",environment="prod"}[5m]))
+            / sum(rate(external_requests_total{service="openai",environment="prod"}[5m]))
+            > 0.01
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "OpenAI 429 rate above 1%"
+          description: "OpenAI is rate limiting requests above the 1% threshold."
+
+      - alert: ExternalHigh5xxRate
+        expr: |
+          sum(rate(external_5xx_total{environment="prod"}[5m]))
+            / sum(rate(external_requests_total{environment="prod"}[5m]))
+            > 0.05
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "External 5xx error rate above 5%"
+          description: "External providers are returning elevated 5xx responses."
+
+      - alert: DbConnectionSaturation
+        expr: db_connections_current{environment="prod"} / db_connections_limit{environment="prod"} > 0.8
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "Database connections above 80%"
+          description: "Database connections are nearing saturation."
+
+      - alert: QueueBacklogCritical
+        expr: queue_depth{queue_name="extraction",environment="prod"} > 500
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "Extraction queue backlog above 500"
+          description: "Scraper extraction queue is heavily backed up."
+
+      - alert: TokenUsageNearQuota
+        expr: |
+          token_usage_total{service="openai",org="default",environment="prod"}
+            > 0.8 * tokens_monthly_quota{service="openai",org="default",environment="prod"}
+        for: 15m
+        labels:
+          severity: warn
+        annotations:
+          summary: "OpenAI token usage above 80% monthly quota"
+          description: "OpenAI token usage is nearing the configured monthly quota."
+
+      - alert: RateLimitRemainingLow
+        expr: min_over_time(external_rate_limit_remaining{environment="prod"}[10m]) < 50
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "External rate limit remaining below 50"
+          description: "One or more services are running low on rate limit quota."
