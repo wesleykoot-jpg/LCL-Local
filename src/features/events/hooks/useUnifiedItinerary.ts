@@ -21,6 +21,7 @@ export interface ItineraryItem {
   attendeeCount?: number;
   ticketNumber?: string;
   originalData: any;
+  conflictType?: 'overlap' | null;
 }
 
 // 🎭 STATIC MOCK DATA GENERATOR
@@ -75,6 +76,40 @@ const getMockItems = (): ItineraryItem[] => {
     }
   ];
 };
+
+/**
+ * Detect time overlaps between itinerary items
+ * Marks items with conflictType='overlap' if they have strictly overlapping times
+ * Adjacent events (end === start) are NOT considered overlaps
+ * Items without endTime are treated as zero-length events at startTime
+ */
+function detectTimeOverlaps(items: ItineraryItem[]): ItineraryItem[] {
+  // Clone items and reset conflictType
+  const cloned = items.map(i => ({ ...i, conflictType: null as 'overlap' | null }));
+  
+  // Sort by startTime for comparison
+  const sorted = cloned.slice().sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  
+  // Check each pair for overlaps
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const cur = sorted[i];
+    
+    // Get end times (if missing, use startTime for zero-length)
+    const prevEnd = (prev.endTime ?? prev.startTime).getTime();
+    const curStart = cur.startTime.getTime();
+    
+    // Strict overlap check (curStart < prevEnd, not <=)
+    if (curStart < prevEnd) {
+      prev.conflictType = 'overlap';
+      cur.conflictType = 'overlap';
+    }
+  }
+  
+  // Map back to original order using item IDs
+  const byId = new Map(sorted.map(it => [it.id, it]));
+  return items.map(orig => byId.get(orig.id) ?? { ...orig, conflictType: null });
+}
 
 // Dev fallback sample data for when not authenticated
 const DEV_SAMPLE_EVENTS = [
@@ -187,8 +222,11 @@ export const useUnifiedItinerary = () => {
       });
     }
 
-    // 3. Sort by Time
-    return items.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+    // 3. Detect time overlaps
+    const itemsWithConflicts = detectTimeOverlaps(items);
+
+    // 4. Sort by Time
+    return itemsWithConflicts.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }, [myEvents, calendarEvents]);
 
   // 4. Group by Day
