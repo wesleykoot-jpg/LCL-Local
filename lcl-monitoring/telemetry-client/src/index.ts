@@ -458,6 +458,7 @@ export interface TokenBucketConfig {
 export class TokenBucket {
   private tokens: number
   private lastRefill: number
+  private pending = Promise.resolve()
 
   constructor(private readonly config: TokenBucketConfig) {
     this.tokens = config.capacity
@@ -465,6 +466,12 @@ export class TokenBucket {
   }
 
   async consume(tokens = 1) {
+    const next = this.pending.then(() => this.consumeInternal(tokens))
+    this.pending = next.catch(() => undefined)
+    return next
+  }
+
+  private async consumeInternal(tokens: number) {
     let acquired = false
     while (!acquired) {
       this.refill()
@@ -581,7 +588,6 @@ export class TelemetryHttpClient {
       }
     }
 
-    throw new Error('TelemetryHttpClient: retry attempts exhausted')
   }
 
   private shouldRetry(status: number) {
