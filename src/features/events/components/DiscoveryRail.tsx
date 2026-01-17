@@ -22,7 +22,7 @@ export const DiscoveryRail = memo(function DiscoveryRail({
 }: DiscoveryRailProps) {
   return (
     <motion.section
-      className="overflow-x-hidden"
+      className="overflow-x-visible"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}

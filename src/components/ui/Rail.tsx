@@ -47,7 +47,7 @@ export const Rail = memo(function Rail({
 
   return (
     <motion.section
-      className={cn('overflow-x-hidden', className)}
+      className={cn('overflow-x-visible', className)}
       {...motionPreset.slideUp}
     >
       {/* Section Header */}
