@@ -156,7 +156,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   if (variant === 'trip-card') {
     return (
       <motion.div
-        className="relative rounded-2xl overflow-hidden bg-card border-2 border-border hover:border-primary/30 transition-all hover:shadow-lg"
+        className="relative rounded-2xl overflow-hidden bg-card border-2 border-border hover:border-primary/30 transition-all hover:shadow-lg shadow-sm"
         whileTap={{ scale: 0.98 }}
       >
         {/* Share Button - Floating top-right */}
