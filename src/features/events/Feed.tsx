@@ -8,6 +8,7 @@ import { FriendsPulseRail } from './components/FriendsPulseRail';
 import { HorizontalEventCarousel } from './components/HorizontalEventCarousel';
 import { EventStackCard } from './components/EventStackCard';
 import { TimeFilterPills, type TimeFilter } from './components/TimeFilterPills';
+import { PullToRefresh } from './components/PullToRefresh';
 import { useOnboarding } from '@/features/profile';
 import { useAuth } from '@/features/auth';
 import { useLocation } from '@/features/location';
@@ -233,13 +234,14 @@ const Feed = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.2 }}
-        className="pb-32"
-      >
+    <PullToRefresh onRefresh={refetch}>
+      <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="pb-32"
+        >
         {/* Header - Airbnb-style clean */}
         <header className="sticky top-0 z-40 bg-card border-b border-border pt-safe">
           {/* Location row */}
@@ -449,7 +451,8 @@ const Feed = () => {
           </Suspense>
         </ErrorBoundary>
       )}
-    </div>
+      </div>
+    </PullToRefresh>
   );
 };
 
