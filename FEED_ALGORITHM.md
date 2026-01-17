@@ -232,18 +232,68 @@ const CONFIG = {
 ```typescript
 import { rankEvents, type UserPreferences } from '@/lib/feedAlgorithm';
 
-// Get user preferences
-const { preferences } = useOnboarding();
+// Get user preferences from context or onboarding
+const preferences: UserPreferences = {
+  selectedCategories: ['social', 'music', 'gaming'],
+  zone: 'Amsterdam',
+  userLocation: { lat: 52.3676, lng: 4.9041 },
+  radiusKm: 25,
+};
 
-// Fetch events
+// Fetch events from database
 const { events } = useEvents();
 
-// Apply ranking
+// Apply ranking algorithm
 const rankedEvents = rankEvents(events, preferences, {
   ensureDiversity: true,
-  debug: true, // Enable debug logging
+  debug: true, // Enable debug logging in development
 });
 ```
+
+**See full implementation**: [`src/lib/feedAlgorithm.ts` (lines 362-402)](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L362-L402)
+
+### Scoring Example
+
+Here's how the algorithm scores a sample event:
+
+```typescript
+// Sample event
+const event = {
+  id: '123',
+  category: 'music',
+  event_date: '2026-01-18T20:00:00Z', // Tomorrow night
+  attendee_count: 45,
+  match_percentage: 88,
+  coordinates: { lat: 52.3702, lng: 4.8952 }, // ~1km from user
+};
+
+// Sample user preferences
+const preferences = {
+  selectedCategories: ['music', 'social'],
+  userLocation: { lat: 52.3676, lng: 4.9041 },
+  radiusKm: 25,
+};
+
+// Algorithm calculates:
+// - Category: 1.0 (matches 'music')
+// - Time: 1.0 (within 24 hours)
+// - Social: 0.68 (45 attendees)
+// - Match: 0.88 (88% match)
+// - Distance: 0.98 (1km away)
+//
+// Base Score = 0.35×1.0 + 0.20×1.0 + 0.15×0.68 + 0.10×0.88 + 0.20×0.98
+//            = 0.35 + 0.20 + 0.102 + 0.088 + 0.196 = 0.936
+//
+// Urgency Boost: 1.15 (within 24 hours)
+// Trending Boost: 1.15 (45 attendees)
+// Combined Boost: min(1.15 × 1.15, 1.5) = 1.3225
+//
+// Final Score = 0.936 × 1.3225 = 1.238
+```
+
+**Algorithm weights**: [`src/lib/feedAlgorithm.ts` (lines 76-82)](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L76-L82)
+
+**Config constants**: [`src/lib/feedAlgorithm.ts` (lines 85-96)](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L85-L96)
 
 ### Debug Mode
 
@@ -352,7 +402,7 @@ This shows scoring examples and explains how different user types see different 
 
 ## Related Files
 
-- [`src/lib/feedAlgorithm.ts`](src/lib/feedAlgorithm.ts) - Core algorithm implementation
-- [`src/features/events/Feed.tsx`](src/features/events/Feed.tsx) - Feed component using the algorithm
-- [`src/features/events/hooks/hooks.ts`](src/features/events/hooks/hooks.ts) - useEvents hook for fetching events
-- [`src/lib/distance.ts`](src/lib/distance.ts) - Distance calculation utilities (Haversine formula)
+- [`src/lib/feedAlgorithm.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts) - Core algorithm implementation
+- [`src/features/events/Feed.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/features/events/Feed.tsx) - Feed component using the algorithm
+- [`src/features/events/hooks/hooks.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/features/events/hooks/hooks.ts) - useEvents hook for fetching events
+- [`src/lib/distance.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/distance.ts) - Distance calculation utilities (Haversine formula)

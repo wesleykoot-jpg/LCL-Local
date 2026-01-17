@@ -32,12 +32,12 @@ geocode_cache     - Nominatim API result caching for coordinates
 ## Key Files
 | File | Purpose |
 |------|---------|
-| [`src/lib/feedAlgorithm.ts`](src/lib/feedAlgorithm.ts) | Smart ranking: category(35%), time(20%), social(15%), match(10%), distance(20%) + urgency/trending boosts |
-| [`src/lib/eventService.ts`](src/lib/eventService.ts) | CRUD operations for events |
-| [`src/features/events/hooks/hooks.ts`](src/features/events/hooks/hooks.ts) | Data fetching hooks: useEvents, useProfile, useEventAttendees, useJoinEvent |
-| [`supabase/functions/scrape-events/`](supabase/functions/scrape-events/) | AI-powered event scraper with OpenAI |
-| [`src/contexts/AuthContext.tsx`](src/contexts/AuthContext.tsx) | Authentication state management |
-| [`src/contexts/LocationContext.tsx`](src/contexts/LocationContext.tsx) | User geolocation tracking |
+| [`src/lib/feedAlgorithm.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts) | Smart ranking: category(35%), time(20%), social(15%), match(10%), distance(20%) + urgency/trending boosts |
+| [`src/lib/eventService.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/eventService.ts) | CRUD operations for events |
+| [`src/features/events/hooks/hooks.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/features/events/hooks/hooks.ts) | Data fetching hooks: useEvents, useProfile, useEventAttendees, useJoinEvent |
+| [`supabase/functions/scrape-events/`](https://github.com/wesleykoot-jpg/LCL-Local/tree/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/supabase/functions/scrape-events) | AI-powered event scraper with OpenAI |
+| [`src/contexts/AuthContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/AuthContext.tsx) | Authentication state management |
+| [`src/contexts/LocationContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/LocationContext.tsx) | User geolocation tracking |
 
 ## Important Patterns
 - **Coordinates**: `events.location` is PostGIS `geography(POINT, 4326)` - longitude first!

@@ -98,11 +98,12 @@ supabase/
 
 ## Key Services
 
-### Feed Algorithm ([`src/lib/feedAlgorithm.ts`](src/lib/feedAlgorithm.ts))
+### Feed Algorithm ([`src/lib/feedAlgorithm.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts))
 Multi-factor scoring system with configurable weights and boost multipliers:
 
 #### Scoring Weights
 ```typescript
+// Source: https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L76-L82
 const WEIGHTS = {
   CATEGORY: 0.35,  // 35% - matches user's preferred categories
   TIME: 0.20,      // 20% - prioritizes upcoming events with exponential decay
@@ -114,6 +115,7 @@ const WEIGHTS = {
 
 #### Configuration Constants
 ```typescript
+// Source: https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L85-L96
 const CONFIG = {
   TIME_DECAY_DAYS: 7,          // Time decay half-life (days)
   SOCIAL_LOG_BASE: 10,         // Logarithmic base for attendee scaling
@@ -124,12 +126,12 @@ const CONFIG = {
 ```
 
 #### Boost Multipliers
-- **Urgency Boost** (1.0-1.2x): Events within 6-72 hours get priority
-- **Trending Boost** (1.0-1.2x): Events with 10+ attendees get boosted
+- **Urgency Boost** (1.0-1.2x): Events within 6-72 hours get priority ([code](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L226-L236))
+- **Trending Boost** (1.0-1.2x): Events with 10+ attendees get boosted ([code](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L241-L247))
 - Combined boost capped at 1.5x maximum
 
 #### Diversity Enforcement
-Prevents category clustering by tracking recent categories and applying penalties to repeated categories within `DIVERSITY_MIN_GAP` positions.
+Prevents category clustering by tracking recent categories and applying penalties to repeated categories within `DIVERSITY_MIN_GAP` positions ([code](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L304-L352)).
 
 ### Event Scraper (`supabase/functions/scrape-events/`)
 - Fetches HTML from configured sources
