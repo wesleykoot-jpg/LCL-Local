@@ -189,4 +189,65 @@ describe('TimelineEventCard', () => {
       expect(screen.getByText('TICKET-456')).toBeInTheDocument();
     });
   });
+
+  describe('time_mode display', () => {
+    it('shows SmartTimeLabel for fixed events with date and time', () => {
+      const fixedEvent = { 
+        ...mockEvent, 
+        time_mode: 'fixed' as const,
+        event_date: '2026-01-20T19:00:00Z',
+        event_time: '19:00',
+      };
+      render(<TimelineEventCard event={fixedEvent} variant="default" />);
+      
+      // Should show date and time for fixed events
+      expect(screen.getByText(/7:00 PM/)).toBeInTheDocument();
+      expect(screen.getByText(/Jan/)).toBeInTheDocument();
+    });
+
+    it('handles window mode events (venues with opening hours)', () => {
+      const windowEvent = { 
+        ...mockEvent, 
+        time_mode: 'window' as const,
+        event_date: null,
+        event_time: '',
+        opening_hours: {
+          monday: ['09:00-17:00'],
+          tuesday: ['09:00-17:00'],
+        },
+      };
+      render(<TimelineEventCard event={windowEvent} variant="default" />);
+      
+      // Should render without crashing for window mode
+      expect(screen.getByText('Test Event')).toBeInTheDocument();
+    });
+
+    it('handles anytime mode events (always open venues)', () => {
+      const anytimeEvent = { 
+        ...mockEvent, 
+        time_mode: 'anytime' as const,
+        event_date: null,
+        event_time: '',
+        opening_hours: null,
+      };
+      render(<TimelineEventCard event={anytimeEvent} variant="default" />);
+      
+      // Should show "Always Open" indicator for anytime events
+      expect(screen.getByText('Test Event')).toBeInTheDocument();
+      // SmartTimeLabel should render anytime indicator
+      expect(screen.getByText(/Always Open/)).toBeInTheDocument();
+    });
+
+    it('defaults to fixed mode when time_mode is not specified', () => {
+      // Existing events without time_mode should default to 'fixed'
+      const legacyEvent = { 
+        ...mockEvent, 
+        time_mode: undefined as unknown,
+      };
+      render(<TimelineEventCard event={legacyEvent as EventWithAttendees} variant="default" />);
+      
+      // Should still show the event time for legacy events
+      expect(screen.getByText(/7:00 PM/)).toBeInTheDocument();
+    });
+  });
 });
