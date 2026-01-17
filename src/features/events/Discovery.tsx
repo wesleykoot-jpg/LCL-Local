@@ -182,10 +182,16 @@ const Discovery = () => {
     // Return the anchor events from recurring stacks
     const realEvents = recurringStacks.map(stack => stack.anchor).slice(0, 10);
     
-    // If no rituals events exist, return mock data to ensure the rail is visible
+    // Per requirements: Create mock data to ensure the rail is visible if empty
+    // Use events with recurring keywords or categories as placeholders
     if (realEvents.length === 0 && allEvents.length > 0) {
-      // Use some existing events as "ritual" placeholders
-      return allEvents.slice(0, 3);
+      const potentialRituals = allEvents.filter(e => 
+        e.title.toLowerCase().match(/weekly|monthly|club|class|group|meetup/i) ||
+        e.category === 'sports' || e.category === 'wellness'
+      ).slice(0, 3);
+      
+      // Fallback to any events if no matches found
+      return potentialRituals.length > 0 ? potentialRituals : allEvents.slice(0, 3);
     }
     
     return realEvents;

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { motion } from 'framer-motion';
 
-type NavView = 'feed' | 'planning' | 'profile' | 'now' | 'admin';
+type NavView = 'feed' | 'planning' | 'profile' | 'now';
 
 interface FloatingNavProps {
   activeView?: NavView;
