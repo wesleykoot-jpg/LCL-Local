@@ -29,10 +29,21 @@ function calculateDuration(start: Date, end?: Date): string | null {
   return null;
 }
 
-// Estimate travel time between events (placeholder - could integrate with Maps API)
+/**
+ * Estimate travel time between events
+ * 
+ * NOTE: This is a placeholder heuristic. In production, this should:
+ * - Use Google Maps/Mapbox Distance Matrix API for accurate estimates
+ * - Consider transport mode (walking, driving, transit)
+ * - Cache results to reduce API calls
+ * 
+ * Current implementation: Returns 20 minutes for any different locations
+ */
 function estimateTravelTime(fromItem: ItineraryItem, toItem: ItineraryItem): number | null {
   if (!fromItem.location || !toItem.location) return null;
-  // Simple heuristic: 20 minutes between different locations
+  
+  // Placeholder: 20 minutes between different locations
+  // TODO: Integrate with Maps API for accurate travel time estimation
   if (fromItem.location !== toItem.location) {
     return 20;
   }

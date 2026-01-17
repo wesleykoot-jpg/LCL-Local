@@ -94,10 +94,17 @@ export const CreateProposalModal = memo(function CreateProposalModal({
         const hoursForDay = openingHours[dayName];
         
         if (hoursForDay && hoursForDay.length > 0) {
-          // Parse first opening time for this day
+          // Parse first opening time for this day with validation
           const firstRange = hoursForDay[0];
-          const [openTime] = firstRange.split('-');
-          const [openHour] = openTime.split(':').map(Number);
+          const rangeParts = firstRange.split('-');
+          if (rangeParts.length < 2) continue; // Skip invalid ranges
+          
+          const openTime = rangeParts[0];
+          const timeParts = openTime.split(':');
+          if (timeParts.length < 2) continue; // Skip invalid time format
+          
+          const openHour = parseInt(timeParts[0], 10);
+          if (isNaN(openHour)) continue; // Skip if not a valid number
           
           // Suggest opening time, lunch time, and evening if applicable
           const suggestHours = [openHour, 12, 18];
@@ -340,11 +347,24 @@ function isTimeWithinHours(hour: number, ranges: string[]): boolean {
   const timeInMinutes = hour * 60;
   
   for (const range of ranges) {
-    const [openStr, closeStr] = range.split('-');
+    const parts = range.split('-');
+    if (parts.length < 2) continue;
+    
+    const openStr = parts[0];
+    const closeStr = parts[1];
     if (!openStr || !closeStr) continue;
     
-    const [openHour, openMin] = openStr.split(':').map(Number);
-    const [closeHour, closeMin] = closeStr.split(':').map(Number);
+    const openParts = openStr.split(':');
+    const closeParts = closeStr.split(':');
+    if (openParts.length < 2 || closeParts.length < 2) continue;
+    
+    const openHour = parseInt(openParts[0], 10);
+    const openMin = parseInt(openParts[1], 10);
+    const closeHour = parseInt(closeParts[0], 10);
+    const closeMin = parseInt(closeParts[1], 10);
+    
+    // Skip if any value is NaN
+    if (isNaN(openHour) || isNaN(openMin) || isNaN(closeHour) || isNaN(closeMin)) continue;
     
     const openMinutes = openHour * 60 + openMin;
     const closeMinutes = closeHour * 60 + closeMin;

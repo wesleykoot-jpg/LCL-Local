@@ -44,8 +44,6 @@ export async function createProposal(params: CreateProposalParams) {
       creator_id: creatorId,
       status: 'draft',
       proposed_times: proposedTimes,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -131,9 +129,7 @@ export async function updateProposal(params: UpdateProposalParams) {
   try {
     const { proposalId, status, proposedTimes } = params;
 
-    const updates: Partial<ProposalRow> = {
-      updated_at: new Date().toISOString(),
-    };
+    const updates: Partial<ProposalRow> = {};
 
     if (status) {
       updates.status = status;
@@ -170,12 +166,11 @@ export async function updateProposal(params: UpdateProposalParams) {
  */
 export async function confirmProposal(proposalId: string, selectedTime: string) {
   try {
-    // First, update the proposal status
+    // First, update the proposal status (updated_at is handled by database trigger)
     const { data: proposal, error: updateError } = await supabase
       .from('proposals')
       .update({ 
         status: 'confirmed',
-        updated_at: new Date().toISOString(),
       })
       .eq('id', proposalId)
       .select(`
