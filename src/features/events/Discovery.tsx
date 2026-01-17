@@ -19,6 +19,19 @@ import { MapPin, Plus, Navigation, ChevronDown, Flame, Calendar, Zap, RefreshCw 
 const CreateEventModal = lazy(() => import('./components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 const EventDetailModal = lazy(() => import('./components/EventDetailModal'));
 
+// Shared motion animation config for rails
+const railMotionConfig = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.3 },
+};
+
+// Helper to get rail animation with delay
+const getRailTransition = (delay: number) => ({
+  ...railMotionConfig.transition,
+  delay,
+});
+
 // Helper to parse event datetime
 function parseEventDateTime(dateStr: string, timeStr: string): Date {
   const datePart = dateStr.split('T')[0].split(' ')[0];
@@ -323,9 +336,7 @@ const Discovery = () => {
                     {featuredEvent && (
                       <motion.div 
                         className="mb-6 px-4"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
+                        {...railMotionConfig}
                       >
                         <FeaturedEventHero
                           event={featuredEvent}
@@ -349,9 +360,9 @@ const Discovery = () => {
                     {pulseEvents.length > 0 && (
                       <motion.div 
                         className="mb-6"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 }}
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.1)}
                       >
                         <DiscoveryRail 
                           title={
@@ -377,9 +388,9 @@ const Discovery = () => {
                     {ritualsEvents.length > 0 && (
                       <motion.div 
                         className="mb-6"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.15 }}
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.15)}
                       >
                         <DiscoveryRail 
                           title={
@@ -405,9 +416,9 @@ const Discovery = () => {
                     {weekendEvents.length > 0 && (
                       <motion.div 
                         className="mb-6"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.2)}
                       >
                         <DiscoveryRail 
                           title={
@@ -433,9 +444,9 @@ const Discovery = () => {
                     {tonightEvents.length > 0 && (
                       <motion.div 
                         className="mb-6"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.25 }}
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.25)}
                       >
                         <DiscoveryRail 
                           title={
