@@ -9,15 +9,17 @@ import { FloatingNav } from '@/shared/components/FloatingNav';
 
 /**
  * My Planning Page - TripAdvisor-style smart itinerary view
+ * Updated to LCL Core 2026 Design System (v4.0)
  * 
  * Displays a unified timeline of:
  * - LCL events the user has joined
  * - Google Calendar events (if connected)
  * 
  * Features:
- * - Glassmorphism sticky header
+ * - Solid surface sticky header with Apple 2026 shadows
  * - Vertical rail timeline with date grouping
  * - Empty state with journey prompt
+ * - LCL Radiant Coral action buttons
  */
 const MyPlanning = () => {
   const { groupedTimeline, timelineItems, isLoading, isEmpty, refresh } = useUnifiedItinerary();
@@ -25,10 +27,10 @@ const MyPlanning = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        {/* Sticky Glassmorphism Header */}
-        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50 px-6 py-4">
-          <h1 className="text-2xl font-bold text-foreground">My Planning</h1>
+      <div className="min-h-screen bg-surface-muted">
+        {/* Sticky Solid Header - LCL Core 2026 */}
+        <header className="sticky top-0 z-30 bg-surface-primary border-b border-border shadow-apple-sm px-6 py-4">
+          <h1 className="text-2xl font-bold text-text-primary">My Planning</h1>
         </header>
         <div className="pt-4 px-4">
           <LoadingSkeleton />
@@ -39,16 +41,16 @@ const MyPlanning = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Sticky Glassmorphism Header */}
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50">
+    <div className="min-h-screen bg-surface-muted pb-24">
+      {/* Sticky Solid Header - LCL Core 2026 */}
+      <header className="sticky top-0 z-30 bg-surface-primary border-b border-border shadow-apple-sm">
         <div className="px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Map className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+              <Map className="w-6 h-6 text-brand-action" />
               My Planning
             </h1>
-            <p className="text-muted-foreground text-sm mt-0.5">
+            <p className="text-text-secondary text-sm mt-0.5">
               {isEmpty 
                 ? 'Your upcoming journey awaits' 
                 : `${timelineItems.length} event${timelineItems.length === 1 ? '' : 's'} planned`
@@ -59,7 +61,7 @@ const MyPlanning = () => {
             variant="ghost" 
             size="icon" 
             onClick={refresh} 
-            className="text-muted-foreground hover:text-foreground"
+            className="text-text-secondary hover:text-text-primary min-h-touch min-w-touch"
             aria-label="Refresh planning"
           >
             <RefreshCw className="w-5 h-5" />
@@ -69,25 +71,24 @@ const MyPlanning = () => {
 
       {/* Content Area */}
       {isEmpty ? (
-        /* Empty State - Start your Journey */
+        /* Empty State - Start your Journey - LCL Core 2026 */
         <div className="flex flex-col items-center justify-center h-[60vh] px-8 text-center space-y-6">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
-            <Calendar className="w-12 h-12 text-primary" />
+          <div className="w-24 h-24 rounded-full bg-brand-action/10 flex items-center justify-center shadow-apple-sm">
+            <Calendar className="w-12 h-12 text-brand-action" />
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-foreground">Start Your Journey</h3>
-            <p className="text-muted-foreground mt-2 text-sm max-w-xs">
+            <h3 className="text-xl font-semibold text-text-primary">Start Your Journey</h3>
+            <p className="text-text-secondary mt-2 text-sm max-w-xs">
               Explore events near you and join one to build your personal itinerary.
             </p>
           </div>
-          <Button 
+          <button 
             onClick={() => navigate('/feed')} 
-            className="rounded-full px-6"
-            size="lg"
+            className="h-touch bg-brand-action text-white font-bold rounded-2xl shadow-apple-sm active:opacity-90 transition-all px-6 flex items-center gap-2"
           >
-            <Compass className="w-4 h-4 mr-2" />
+            <Compass className="w-4 h-4" />
             Explore Events
-          </Button>
+          </button>
         </div>
       ) : (
         /* TripAdvisor Timeline */

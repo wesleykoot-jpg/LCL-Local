@@ -230,13 +230,13 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
         
         return (
           <div key={dateHeader} className="mb-10 relative">
-            {/* Sticky Date Header - Discovery Style */}
-            <div className="sticky top-[60px] z-20 py-4 mb-6 backdrop-blur-xl bg-background/90 border-b border-border -mx-4 px-6">
-              <h3 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-primary" />
+            {/* Sticky Date Header - Solid Surface (LCL Core 2026) */}
+            <div className="sticky top-[60px] z-20 py-4 mb-6 bg-surface-primary shadow-apple-sm border-b border-border -mx-4 px-6">
+              <h3 className="text-base font-bold text-text-primary tracking-tight flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-brand-action" />
                 {dateHeader}
                 {isToday && (
-                  <span className="ml-2 text-[11px] px-2.5 py-1 bg-primary text-primary-foreground rounded-full font-semibold shadow-sm">
+                  <span className="ml-2 text-[11px] px-2.5 py-1 bg-brand-action text-white rounded-full font-semibold shadow-apple-sm">
                     Today
                   </span>
                 )}
@@ -253,8 +253,8 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                     {/* Parent-Child Group with Activity Thread */}
                     {group.type === 'parent_child' && group.showParent && group.parent && (
                       <div className="relative">
-                        {/* Activity Thread Line - Connects parent to children */}
-                        <div className="absolute left-[76px] top-0 bottom-0 w-[3px] bg-gradient-to-b from-primary/70 via-primary/50 to-primary/70 rounded-full" />
+                        {/* Activity Thread Line - Connects parent to children - LCL Core 2026 */}
+                        <div className="absolute left-[76px] top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-action/70 via-brand-action/50 to-brand-action/70 rounded-full" />
                       </div>
                     )}
                     
@@ -289,11 +289,11 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                             <div className="flex gap-4">
                               {/* Column 1: Time - Compact */}
                               <div className="w-[56px] flex-shrink-0 text-right pt-3">
-                                <div className="text-sm font-semibold text-foreground leading-tight">
+                                <div className="text-sm font-semibold text-text-primary leading-tight">
                                   {startTime}
                                 </div>
                                 {duration && (
-                                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                                  <div className="text-[11px] text-text-secondary mt-0.5">
                                     {duration}
                                   </div>
                                 )}
@@ -307,7 +307,7 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                   item.type === 'LCL_EVENT' 
                                     ? isChildEvent
                                       ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" // Child event (fork)
-                                      : "bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)]" // Parent or standalone
+                                      : "bg-brand-action shadow-[0_0_8px_rgba(255,56,92,0.5)]" // Parent or standalone - LCL Radiant Coral
                                     : "bg-muted-foreground/40" // Google Calendar
                                 )} />
                                 
@@ -316,7 +316,7 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                   <div className={cn(
                                     "w-[3px] flex-1 mt-2 min-h-[40px] rounded-full",
                                     group.type === 'parent_child' && group.showParent
-                                      ? "bg-primary/50" // Emphasized line for parent-child
+                                      ? "bg-brand-action/50" // Emphasized line for parent-child - LCL Core 2026
                                       : "bg-muted-foreground/20"
                                   )} />
                                 )}

@@ -66,6 +66,9 @@ export default {
           base: "hsl(var(--surface-base))",
           elevated: "hsl(var(--surface-elevated))",
           overlay: "hsl(var(--surface-overlay))",
+          // Aliases for LCL Core 2026 Design System docs compatibility
+          primary: "hsl(var(--surface-elevated))", // Pure White - Main Surface
+          muted: "hsl(var(--surface-base))", // Cool Gray - Background
         },
         // LCL Core 2026 Design System v4.0
         brand: {
