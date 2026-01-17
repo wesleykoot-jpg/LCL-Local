@@ -23,7 +23,7 @@ export function useMotionPreset() {
      * Safe initial state for framer-motion
      * Returns false if reduced motion is preferred, otherwise the provided value
      */
-    initial: (value: any) => (prefersReducedMotion ? false : value),
+    initial: (value: Record<string, unknown> | false) => (prefersReducedMotion ? false : value),
 
     /**
      * Common fade-in animation preset

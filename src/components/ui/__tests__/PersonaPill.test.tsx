@@ -5,7 +5,7 @@ import { PersonaPill } from '../PersonaPill';
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode }) => <div {...props}>{children}</div>,
   },
 }));
 
@@ -13,7 +13,7 @@ vi.mock('framer-motion', () => ({
 vi.mock('@/hooks/useMotionPreset', () => ({
   useMotionPreset: () => ({
     prefersReducedMotion: false,
-    initial: (value: any) => value,
+    initial: (value: Record<string, unknown> | false) => value,
     staggerChildren: () => ({}),
   }),
 }));

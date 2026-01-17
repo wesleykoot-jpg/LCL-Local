@@ -90,6 +90,7 @@ describe('useMotionPreset', () => {
   it('should use default delay in staggerChildren', () => {
     const { result } = renderHook(() => useMotionPreset());
     const staggered = result.current.staggerChildren(3);
-    expect(staggered.transition).toHaveProperty('delay', 0.3); // 3 * 0.1 (default)
+    // Use toBeCloseTo to handle floating point precision
+    expect(staggered.transition?.delay).toBeCloseTo(0.3, 5); // 3 * 0.1 (default)
   });
 });
