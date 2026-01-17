@@ -61,7 +61,6 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
                   ? 'text-brand-primary' 
                   : 'text-gray-400'
               }`}
-              fill={derivedActiveView === 'planning' ? 'currentColor' : 'none'}
             />
           </div>
           <span 
@@ -90,7 +89,6 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
                   ? 'text-brand-primary' 
                   : 'text-gray-400'
               }`}
-              fill={derivedActiveView === 'feed' ? 'currentColor' : 'none'}
             />
           </div>
           <span 
@@ -119,7 +117,6 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
                   ? 'text-brand-primary' 
                   : 'text-gray-400'
               }`}
-              fill={isNowActive ? 'currentColor' : 'none'}
             />
           </div>
           <span 
@@ -148,7 +145,6 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
                   ? 'text-brand-primary' 
                   : 'text-gray-400'
               }`}
-              fill={derivedActiveView === 'profile' ? 'currentColor' : 'none'}
             />
           </div>
           <span 

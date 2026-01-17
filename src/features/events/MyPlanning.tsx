@@ -9,7 +9,7 @@ import { FloatingNav } from '@/shared/components/FloatingNav';
 
 /**
  * My Planning Page - TripAdvisor-style smart itinerary view
- * Updated to LCL Core 2026 Design System (v4.0)
+ * Updated to LCL Design System v5.0 "Social Air"
  * 
  * Displays a unified timeline of:
  * - LCL events the user has joined
@@ -19,7 +19,7 @@ import { FloatingNav } from '@/shared/components/FloatingNav';
  * - Solid surface sticky header with Apple 2026 shadows
  * - Vertical rail timeline with date grouping
  * - Empty state with journey prompt
- * - LCL Radiant Coral action buttons
+ * - Social Indigo (#6366F1) action buttons
  */
 const MyPlanning = () => {
   const { groupedTimeline, timelineItems, isLoading, isEmpty, refresh } = useUnifiedItinerary();
@@ -47,7 +47,7 @@ const MyPlanning = () => {
         <div className="px-6 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-              <Map className="w-6 h-6 text-brand-action" />
+              <Map className="w-6 h-6 text-brand-primary" />
               My Planning
             </h1>
             <p className="text-text-secondary text-sm mt-0.5">
@@ -73,8 +73,8 @@ const MyPlanning = () => {
       {isEmpty ? (
         /* Empty State - Start your Journey - LCL Core 2026 */
         <div className="flex flex-col items-center justify-center h-[60vh] px-8 text-center space-y-6">
-          <div className="w-24 h-24 rounded-full bg-brand-action/10 flex items-center justify-center shadow-apple-sm">
-            <Calendar className="w-12 h-12 text-brand-action" />
+          <div className="w-24 h-24 rounded-full bg-brand-primary/10 flex items-center justify-center shadow-apple-sm">
+            <Calendar className="w-12 h-12 text-brand-primary" />
           </div>
           <div>
             <h3 className="text-xl font-semibold text-text-primary">Start Your Journey</h3>
@@ -84,7 +84,7 @@ const MyPlanning = () => {
           </div>
           <button 
             onClick={() => navigate('/feed')} 
-            className="h-touch bg-brand-action text-white font-bold rounded-2xl shadow-apple-sm active:opacity-90 transition-all px-6 flex items-center gap-2"
+            className="h-touch bg-brand-primary text-white font-bold rounded-2xl shadow-apple-sm active:opacity-90 transition-all px-6 flex items-center gap-2"
           >
             <Compass className="w-4 h-4" />
             Explore Events
