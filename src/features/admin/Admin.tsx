@@ -42,11 +42,14 @@ import {
   triggerSourceDiscovery,
   getDiscoveredSources,
   fetchLogs,
+  runScraperTests,
   type ScraperSource,
   type ScrapeResult,
   type DryRunResult,
   type DiscoveredSource,
-  type LogEntry
+  type LogEntry,
+  type IntegrityTestReport,
+  type TestResult
 } from './api/scraperService';
 import { 
   Dialog, 
@@ -184,6 +187,11 @@ export default function Admin() {
   const [logsSummary, setLogsSummary] = useState<LogsSummary | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [logsMinutes, setLogsMinutes] = useState<number>(60);
+
+  // Integrity test state
+  const [testRunning, setTestRunning] = useState(false);
+  const [testReport, setTestReport] = useState<IntegrityTestReport | null>(null);
+  const [showTestResults, setShowTestResults] = useState(false);
 
   // Load functions
   const loadSources = useCallback(async () => {
@@ -450,6 +458,26 @@ export default function Admin() {
       toast.error('Failed to fetch logs');
     } finally {
       setLogsLoading(false);
+    }
+  }
+
+  async function handleRunIntegrityTests() {
+    setTestRunning(true);
+    try {
+      const report = await runScraperTests();
+      setTestReport(report);
+      setShowTestResults(true);
+      
+      if (report.success) {
+        toast.success(`All ${report.summary.passed} tests passed!`);
+      } else {
+        toast.error(`${report.summary.failed} of ${report.summary.total} tests failed`);
+      }
+    } catch (error) {
+      toast.error('Failed to run integrity tests');
+      console.error(error);
+    } finally {
+      setTestRunning(false);
     }
   }
 
@@ -775,6 +803,132 @@ export default function Admin() {
 
         {logs.length === 0 && !logsLoading && (
           <p className="text-sm text-muted-foreground text-center py-2">Click "Fetch Logs" to load recent edge function logs.</p>
+        )}
+      </section>
+
+      {/* Integrity Tests Section */}
+      <section className="px-4 py-4 border-b border-border bg-gradient-to-r from-purple-500/5 to-pink-500/5">
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <Activity size={18} /> Scraper Integrity Tests
+            </h2>
+            <p className="text-sm text-muted-foreground">Run diagnostic tests to verify scraper logic and resilience</p>
+          </div>
+          {testReport && (
+            <div className="flex gap-2 flex-wrap">
+              <Badge variant={testReport.success ? "default" : "destructive"} className="gap-1">
+                {testReport.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                {testReport.summary.passed}/{testReport.summary.total} Passed
+              </Badge>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center mb-3">
+          <Button onClick={handleRunIntegrityTests} disabled={testRunning} className="gap-2">
+            {testRunning ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Running diagnostic tests...
+              </>
+            ) : (
+              <>
+                <Activity size={16} /> Run Scraper Integrity Test
+              </>
+            )}
+          </Button>
+          {testReport && (
+            <Button variant="ghost" size="sm" onClick={() => setShowTestResults(!showTestResults)} className="gap-1">
+              {showTestResults ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showTestResults ? 'Hide' : 'Show'} Results
+            </Button>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {showTestResults && testReport && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+              <div className="bg-background border border-border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium flex items-center gap-2">
+                    Test Results
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(testReport.timestamp).toLocaleString()}
+                    </span>
+                  </h3>
+                  <Badge variant={testReport.success ? "default" : "destructive"}>
+                    {testReport.success ? 'All Passed' : 'Some Failed'}
+                  </Badge>
+                </div>
+
+                <div className="space-y-2">
+                  {testReport.results.map((result, idx) => (
+                    <div 
+                      key={idx}
+                      className={`flex items-start justify-between py-2 px-3 rounded-lg border ${
+                        result.status === 'PASS' 
+                          ? 'bg-green-500/5 border-green-500/30' 
+                          : 'bg-red-500/5 border-red-500/30'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {result.status === 'PASS' ? (
+                            <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />
+                          ) : (
+                            <XCircle size={16} className="text-red-600 flex-shrink-0" />
+                          )}
+                          <span className="font-medium">{result.test}</span>
+                        </div>
+                        {result.message && (
+                          <p className="text-sm text-muted-foreground ml-6">{result.message}</p>
+                        )}
+                        {result.details && Object.keys(result.details).length > 0 && (
+                          <details className="ml-6 mt-1 text-xs">
+                            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                              View details
+                            </summary>
+                            <pre className="mt-1 p-2 bg-muted/50 rounded overflow-x-auto">
+                              {JSON.stringify(result.details, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                      <Badge 
+                        variant={result.status === 'PASS' ? 'default' : 'destructive'}
+                        className="flex-shrink-0"
+                      >
+                        {result.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-3 border-t border-border">
+                  <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                    <div>
+                      <p className="text-2xl font-bold">{testReport.summary.total}</p>
+                      <p className="text-muted-foreground">Total</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-green-600">{testReport.summary.passed}</p>
+                      <p className="text-muted-foreground">Passed</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-red-600">{testReport.summary.failed}</p>
+                      <p className="text-muted-foreground">Failed</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {!testReport && !testRunning && (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Click "Run Scraper Integrity Test" to validate scraper logic, resilience, and data accuracy.
+          </p>
         )}
       </section>
 

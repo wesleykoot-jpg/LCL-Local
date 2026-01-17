@@ -34,8 +34,8 @@ export const CATEGORIES: CategoryDefinition[] = [
     labelNL: "Sport & Actief",
     labelEN: "Active",
     searchTermsNL: ["sport", "fitness", "hardlopen", "wielrennen", "zwemmen", "wandelen", "yoga"],
-    keywordsNL: ["sport", "fitness", "hardlopen", "wielrennen", "fietsen", "zwemmen", "wandelen", "yoga", "bootcamp", "marathon", "trimloop", "atletiek", "gym", "crossfit"],
-    keywordsEN: ["sport", "fitness", "running", "cycling", "swimming", "walking", "yoga", "gym", "workout", "marathon"],
+    keywordsNL: ["sport", "fitness", "hardlopen", "wielrennen", "fietsen", "zwemmen", "wandelen", "yoga", "bootcamp", "marathon", "trimloop", "atletiek", "gym", "crossfit", "voetbal", "voetbalwedstrijd", "ajax", "feyenoord", "psv", "tennis", "hockey", "basketbal", "volleybal"],
+    keywordsEN: ["sport", "fitness", "running", "cycling", "swimming", "walking", "yoga", "gym", "workout", "marathon", "soccer", "football", "tennis", "hockey", "basketball", "volleyball"],
   },
   {
     id: "gaming",
