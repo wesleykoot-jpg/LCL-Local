@@ -93,6 +93,13 @@ To enable per-source fetcher selection:
    }
    ```
 
+**Optional External Renderer:**
+- Set `RENDER_SERVICE_URL` environment variable to use an external rendering service
+- Set `requires_render: true` flag on a source in the database
+- Probe results persist to `last_probe_urls` for debugging
+
+**Note:** This feature is currently planned but not fully implemented. The `RENDER_SERVICE_URL` environment variable is referenced in documentation but not yet integrated into the code.
+
 ### Migration Notes
 - The deprecated `createSpoofedFetch()` function is maintained for backward compatibility
 - All internal code now uses `PageFetcher` interface

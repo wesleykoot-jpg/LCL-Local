@@ -61,11 +61,13 @@ Runs Deno linter and tests on push and pull requests to the main branch.
 
 Runs the event scraper on a daily schedule or manually via workflow dispatch.
 
+**⚠️ Current Status:** This workflow references `npx tsx src/cli.ts` which does not exist in the repository. The scraper has been migrated to Supabase Edge Functions. This workflow should be updated to invoke the [`run-scraper`](../../supabase/functions/run-scraper/) Edge Function instead.
+
 **Triggers:**
 - Scheduled: Daily at 03:00 UTC (cron: `0 3 * * *`)
 - Manual: workflow_dispatch
 
-**Steps:**
+**Current Steps (needs update):**
 1. Checkout repository
 2. Setup Node.js v18
 3. Install dependencies with `npm ci`
@@ -82,7 +84,26 @@ Runs the event scraper on a daily schedule or manually via workflow dispatch.
 - `MAX_CONSECUTIVE_FAILURES` - Number of consecutive failures before alerting (default: 3)
 - `ALERT_SUPPRESSION_MS` - Milliseconds to suppress duplicate alerts (default: 1800000 = 30 min)
 
-**Note:** This workflow references `src/cli.ts` which should be the scraper CLI entry point. See [`supabase/functions/scrape-events/`](../../supabase/functions/scrape-events/) for the scraper implementation.
+**Recommended Update:**
+Replace the "Run scraper" step with a call to the Edge Function:
+
+```yaml
+- name: Run scraper
+  env:
+    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  run: |
+    curl -X POST "${SUPABASE_URL}/functions/v1/run-scraper" \
+      -H "Authorization: Bearer ${SUPABASE_KEY}" \
+      -H "Content-Type: application/json" \
+      -d '{"runId":"github-actions-${{ github.run_id }}"}'
+```
+
+**Alternative Architectures:**
+- [`supabase/functions/run-scraper/`](../../supabase/functions/run-scraper/) - Direct scraper execution (recommended for scheduled runs)
+- [`supabase/functions/scrape-coordinator/`](../../supabase/functions/scrape-coordinator/) - Enqueues scrape jobs for all sources with scheduling logic
+- [`supabase/functions/scrape-worker/`](../../supabase/functions/scrape-worker/) - Worker function for processing queued scrape jobs
+- [`supabase/functions/scrape-events/`](../../supabase/functions/scrape-events/) - Low-level scraping implementation for individual sources
 
 ---
 
@@ -145,14 +166,26 @@ Exports logs from Supabase Edge Functions and commits them to the repository.
 ### 6. NPM Publish to GitHub Packages
 **File:** [`npm-publish-github-packages.yml`](./npm-publish-github-packages.yml)
 
-Publishes npm packages to GitHub Packages registry.
+Publishes npm packages to GitHub Packages registry when a release is created.
 
-**Note:** This workflow file exists but is not actively configured with triggers. Review the file for implementation details if you need to publish packages.
+**Triggers:**
+- `release` event with type `created`
 
-**Typical Configuration:**
-- Trigger: Release creation or manual dispatch
-- Authenticates with GitHub token
-- Publishes to `@<owner>/<package>` on GitHub Packages
+**Steps:**
+1. **Build Job**: Run tests with `npm ci` and `npm test`
+2. **Publish Job** (after build succeeds):
+   - Setup Node.js with GitHub Packages registry
+   - Install dependencies with `npm ci`
+   - Publish package with `npm publish`
+
+**Secrets:**
+- `GITHUB_TOKEN` - Automatically provided by GitHub Actions (no manual setup needed)
+
+**Permissions:**
+- `contents: read` - Read repository contents
+- `packages: write` - Write to GitHub Packages
+
+**Note:** This workflow is triggered by creating a GitHub Release. The package will be published to `@<owner>/<package>` on GitHub Packages.
 
 ---
 
