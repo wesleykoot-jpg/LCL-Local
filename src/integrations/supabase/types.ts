@@ -146,6 +146,53 @@ export type Database = {
         }
         Relationships: []
       }
+      enrichment_failures: {
+        Row: {
+          id: string
+          event_id: string
+          error_message: string
+          error_code: string | null
+          payload: Json | null
+          attempts: number | null
+          last_attempt_at: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          error_message: string
+          error_code?: string | null
+          payload?: Json | null
+          attempts?: number | null
+          last_attempt_at?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          error_message?: string
+          error_code?: string | null
+          payload?: Json | null
+          attempts?: number | null
+          last_attempt_at?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_failures_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_attendees: {
         Row: {
           checked_in: boolean | null
@@ -194,72 +241,96 @@ export type Database = {
       events: {
         Row: {
           category: string
+          contact_phone: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
+          enrichment_source: string | null
           event_date: string | null
           event_fingerprint: string | null
           event_time: string
           event_type: string
+          google_place_id: string | null
           id: string
           image_url: string | null
           location: unknown
+          long_description: string | null
           match_percentage: number | null
           max_attendees: number | null
           opening_hours: Json | null
           parent_event_id: string | null
+          price_range: string | null
+          social_links: Json | null
           source_id: string | null
           status: string | null
+          ticket_url: string | null
           time_mode: Database["public"]["Enums"]["time_mode"] | null
           title: string
           updated_at: string | null
           venue_name: string
+          website_url: string | null
         }
         Insert: {
           category: string
+          contact_phone?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          enrichment_source?: string | null
           event_date?: string | null
           event_fingerprint?: string | null
           event_time: string
           event_type: string
+          google_place_id?: string | null
           id?: string
           image_url?: string | null
           location: unknown
+          long_description?: string | null
           match_percentage?: number | null
           max_attendees?: number | null
           opening_hours?: Json | null
           parent_event_id?: string | null
+          price_range?: string | null
+          social_links?: Json | null
           source_id?: string | null
           status?: string | null
+          ticket_url?: string | null
           time_mode?: Database["public"]["Enums"]["time_mode"] | null
           title: string
           updated_at?: string | null
           venue_name: string
+          website_url?: string | null
         }
         Update: {
           category?: string
+          contact_phone?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          enrichment_source?: string | null
           event_date?: string | null
           event_fingerprint?: string | null
           event_time?: string
           event_type?: string
+          google_place_id?: string | null
           id?: string
           image_url?: string | null
           location?: unknown
+          long_description?: string | null
           match_percentage?: number | null
           max_attendees?: number | null
           opening_hours?: Json | null
           parent_event_id?: string | null
+          price_range?: string | null
+          social_links?: Json | null
           source_id?: string | null
           status?: string | null
+          ticket_url?: string | null
           time_mode?: Database["public"]["Enums"]["time_mode"] | null
           title?: string
           updated_at?: string | null
           venue_name?: string
+          website_url?: string | null
         }
         Relationships: [
           {
@@ -649,6 +720,7 @@ export type Database = {
           creator_id: string
           status: string
           proposed_times: Json
+          voting_deadline: string | null
           created_at: string
           updated_at: string
         }
@@ -658,6 +730,7 @@ export type Database = {
           creator_id: string
           status?: string
           proposed_times: Json
+          voting_deadline?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -667,6 +740,7 @@ export type Database = {
           creator_id?: string
           status?: string
           proposed_times?: Json
+          voting_deadline?: string | null
           created_at?: string
           updated_at?: string
         }

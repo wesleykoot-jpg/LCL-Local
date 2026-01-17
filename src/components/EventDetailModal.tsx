@@ -11,7 +11,10 @@ import {
   Navigation,
   Loader2,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Phone,
+  Globe,
+  Ticket
 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import { EventActionsMenu } from '@/features/events/components/EventActionsMenu';
@@ -183,6 +186,34 @@ export const EventDetailModal = memo(function EventDetailModal({
     onJoin?.();
   }, [onJoin, hasJoined]);
 
+  // Action Bar handlers for venue/event utility actions
+  const handleCall = useCallback(async () => {
+    const phone = (event as EventWithAttendees & { contact_phone?: string }).contact_phone;
+    if (!phone) return;
+    await hapticImpact('light');
+    window.location.href = `tel:${phone}`;
+  }, [event]);
+
+  const handleWebsite = useCallback(async () => {
+    const website = (event as EventWithAttendees & { website_url?: string }).website_url;
+    if (!website) return;
+    await hapticImpact('light');
+    window.open(website, '_blank', 'noopener,noreferrer');
+  }, [event]);
+
+  const handleTickets = useCallback(async () => {
+    const ticketUrl = (event as EventWithAttendees & { ticket_url?: string }).ticket_url;
+    if (!ticketUrl) return;
+    await hapticImpact('light');
+    window.open(ticketUrl, '_blank', 'noopener,noreferrer');
+  }, [event]);
+
+  // Check which action buttons should be displayed
+  const hasContactPhone = !!(event as EventWithAttendees & { contact_phone?: string }).contact_phone;
+  const hasWebsiteUrl = !!(event as EventWithAttendees & { website_url?: string }).website_url;
+  const hasTicketUrl = !!(event as EventWithAttendees & { ticket_url?: string }).ticket_url;
+  const hasActionBar = hasContactPhone || hasWebsiteUrl || hasTicketUrl;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -262,7 +293,7 @@ export const EventDetailModal = memo(function EventDetailModal({
 
               {/* Date pill */}
               <div className="absolute top-4 right-16 px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
-                {formatDateShort(event.event_date)}
+                {event.event_date ? formatDateShort(event.event_date) : ''}
               </div>
 
               {/* Title overlay - Bottom of hero */}
@@ -277,10 +308,12 @@ export const EventDetailModal = memo(function EventDetailModal({
             <div className="p-5 pt-3 space-y-5">
               {/* Quick info pills */}
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
-                  <Calendar size={15} className="text-primary" />
-                  {formatDate(event.event_date)}
-                </div>
+                {event.event_date && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
+                    <Calendar size={15} className="text-primary" />
+                    {formatDate(event.event_date)}
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
                   <Clock size={15} className="text-primary" />
                   {formatTime(event.event_time)}
@@ -335,6 +368,50 @@ export const EventDetailModal = memo(function EventDetailModal({
                   <p className="text-muted-foreground text-[16px] leading-relaxed">
                     {event.description}
                   </p>
+                </div>
+              )}
+
+              {/* Action Bar - Utility actions (Call / Website / Tickets) */}
+              {hasActionBar && (
+                <div className="space-y-2">
+                  <h3 className="text-[15px] font-semibold text-foreground">Snelle acties</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {hasContactPhone && (
+                      <button
+                        onClick={handleCall}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-muted/60 text-foreground text-[14px] font-medium hover:bg-muted transition-all active:scale-[0.97] border-[0.5px] border-border/30"
+                        aria-label="Bellen"
+                        data-testid="action-call"
+                      >
+                        <Phone size={16} className="text-primary" />
+                        <span>Bellen</span>
+                      </button>
+                    )}
+                    
+                    {hasWebsiteUrl && (
+                      <button
+                        onClick={handleWebsite}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-muted/60 text-foreground text-[14px] font-medium hover:bg-muted transition-all active:scale-[0.97] border-[0.5px] border-border/30"
+                        aria-label="Website bezoeken"
+                        data-testid="action-website"
+                      >
+                        <Globe size={16} className="text-primary" />
+                        <span>Website</span>
+                      </button>
+                    )}
+                    
+                    {hasTicketUrl && (
+                      <button
+                        onClick={handleTickets}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-primary/10 text-primary text-[14px] font-semibold hover:bg-primary/20 transition-all active:scale-[0.97] border-[0.5px] border-primary/20"
+                        aria-label="Tickets kopen"
+                        data-testid="action-tickets"
+                      >
+                        <Ticket size={16} />
+                        <span>Tickets</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
