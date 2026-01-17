@@ -1,12 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Navigation } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
 import { FloatingNav } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import { useLocation } from '@/features/location';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { LiveEventCard } from './components/LiveEventCard';
+import { EventMap } from './components/EventMap';
 import { useLiveEventsQuery, getDaypartGreeting } from './hooks/useLiveEventsQuery';
 import type { EventWithAttendees } from './hooks/hooks';
 
@@ -26,7 +26,6 @@ import type { EventWithAttendees } from './hooks/hooks';
  * - Distance-sorted events (proximity is key for "Now")
  */
 const Now = () => {
-  const navigate = useNavigate();
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs } = useLocation();
   
@@ -65,65 +64,20 @@ const Now = () => {
         transition={{ duration: 0.3 }}
         className="relative h-screen flex flex-col"
       >
-        {/* Map Section - Top 60% */}
+        {/* Map Section - Top 60% with real OpenStreetMap */}
         <div className="relative h-[60vh] bg-muted overflow-hidden">
-          {/* Map Placeholder - In production, integrate with Mapbox/Google Maps */}
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-100 to-blue-50 flex items-center justify-center">
-            {/* Placeholder map styling */}
-            <div className="absolute inset-0 opacity-30">
-              {/* Grid pattern to simulate map */}
-              <div 
-                className="w-full h-full"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)
-                  `,
-                  backgroundSize: '40px 40px',
-                }}
-              />
-            </div>
-            
-            {/* User Location Dot with pulse animation */}
-            <div className="relative z-10">
-              <div className="absolute inset-0 -m-4 rounded-full bg-primary/20 animate-ping" />
-              <div className="w-6 h-6 rounded-full bg-primary border-4 border-white shadow-lg flex items-center justify-center">
-                <Navigation size={10} className="text-white fill-white" />
-              </div>
-            </div>
-
-            {/* Event Pins (placeholder positions) */}
-            {events.slice(0, 5).map((event, index) => {
-              // Distribute pins in a circle around center for demo
-              const angle = (index / 5) * 2 * Math.PI;
-              const radius = 80 + Math.random() * 40;
-              const x = Math.cos(angle) * radius;
-              const y = Math.sin(angle) * radius;
-              
-              return (
-                <motion.button
-                  key={event.id}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="absolute z-20"
-                  style={{
-                    left: `calc(50% + ${x}px)`,
-                    top: `calc(50% + ${y}px)`,
-                  }}
-                  onClick={() => handleEventClick(event)}
-                >
-                  <div className="w-8 h-8 rounded-full bg-card border-2 border-primary shadow-md flex items-center justify-center">
-                    <MapPin size={14} className="text-primary" />
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
+          {/* Live Interactive Map */}
+          <EventMap
+            userLocation={userLocation}
+            events={events}
+            onEventClick={handleEventClick}
+            height="100%"
+            initialZoom={14}
+          />
 
           {/* Location indicator overlay */}
-          <div className="absolute top-safe left-4 right-4 pt-4 z-30">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-card/95  rounded-full shadow-lg border border-border/50">
+          <div className="absolute top-safe left-4 right-4 pt-4 z-[1000]">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-card/95 backdrop-blur-sm rounded-full shadow-lg border border-border/50">
               <MapPin size={16} className="text-primary" />
               <span className="text-[14px] font-medium text-foreground">
                 {locationPrefs.manualZone || 'Current Location'}
