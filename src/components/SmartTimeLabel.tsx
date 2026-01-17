@@ -57,7 +57,9 @@ export const SmartTimeLabel = memo(function SmartTimeLabel({
         <div className={`flex items-center gap-1.5 ${className}`}>
           <Clock size={14} className="flex-shrink-0 text-green-500" />
           <span className="font-semibold text-[15px]">
-            <span className="text-green-500">🟢 Open Now</span>
+            <span className="text-green-500">
+              <span aria-label="Open">🟢</span> Open Now
+            </span>
             {closingTime && (
               <span className="text-muted-foreground"> • Closes {closingTime}</span>
             )}
@@ -69,7 +71,9 @@ export const SmartTimeLabel = memo(function SmartTimeLabel({
         <div className={`flex items-center gap-1.5 ${className}`}>
           <Clock size={14} className="flex-shrink-0 text-red-500" />
           <span className="font-semibold text-[15px]">
-            <span className="text-red-500">🔴 Closed</span>
+            <span className="text-red-500">
+              <span aria-label="Closed">🔴</span> Closed
+            </span>
             {nextOpening && (
               <span className="text-muted-foreground">
                 {' '}• Opens {nextOpening.day} {nextOpening.time}
@@ -87,7 +91,7 @@ export const SmartTimeLabel = memo(function SmartTimeLabel({
       <div className={`flex items-center gap-1.5 ${className}`}>
         <Sun size={14} className="flex-shrink-0 text-amber-500" />
         <span className="font-semibold text-[15px] text-amber-600 dark:text-amber-500">
-          ☀️ Always Open
+          <span aria-label="Always Open">☀️</span> Always Open
         </span>
       </div>
     );

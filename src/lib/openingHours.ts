@@ -43,13 +43,27 @@ export function isOpenNow(openingHours: OpeningHours | null, checkTime: Date = n
     const [openStr, closeStr] = range.split('-');
     if (!openStr || !closeStr) continue;
 
+    // Validate time format (HH:MM)
+    const timePattern = /^\d{1,2}:\d{2}$/;
+    if (!timePattern.test(openStr) || !timePattern.test(closeStr)) {
+      console.warn(`Invalid time format in range: ${range}`);
+      continue;
+    }
+
     const [openHour, openMin] = openStr.split(':').map(Number);
     const [closeHour, closeMin] = closeStr.split(':').map(Number);
+    
+    // Validate time values
+    if (openHour > 23 || openMin > 59 || closeHour > 23 || closeMin > 59) {
+      console.warn(`Invalid time values in range: ${range}`);
+      continue;
+    }
     
     const openTime = openHour * 60 + openMin;
     const closeTime = closeHour * 60 + closeMin;
 
-    if (currentTime >= openTime && currentTime <= closeTime) {
+    // Closing time is exclusive (venue closes AT the closing time, not after)
+    if (currentTime >= openTime && currentTime < closeTime) {
       return true;
     }
   }
@@ -153,13 +167,21 @@ export function getClosingTimeToday(
     const [openStr, closeStr] = range.split('-');
     if (!openStr || !closeStr) continue;
 
+    // Validate time format
+    const timePattern = /^\d{1,2}:\d{2}$/;
+    if (!timePattern.test(openStr) || !timePattern.test(closeStr)) continue;
+
     const [openHour, openMin] = openStr.split(':').map(Number);
     const [closeHour, closeMin] = closeStr.split(':').map(Number);
+    
+    // Validate time values
+    if (openHour > 23 || openMin > 59 || closeHour > 23 || closeMin > 59) continue;
     
     const openTime = openHour * 60 + openMin;
     const closeTime = closeHour * 60 + closeMin;
 
-    if (currentTime >= openTime && currentTime <= closeTime) {
+    // Closing time is exclusive
+    if (currentTime >= openTime && currentTime < closeTime) {
       return closeStr;
     }
   }

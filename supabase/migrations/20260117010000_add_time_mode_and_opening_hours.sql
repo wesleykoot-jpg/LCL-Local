@@ -129,8 +129,8 @@ BEGIN
     v_open_time := SPLIT_PART(v_hour_range, '-', 1)::TIME;
     v_close_time := SPLIT_PART(v_hour_range, '-', 2)::TIME;
     
-    -- Check if current time falls within this range
-    IF v_current_time >= v_open_time AND v_current_time <= v_close_time THEN
+    -- Check if current time falls within this range (closing time is exclusive)
+    IF v_current_time >= v_open_time AND v_current_time < v_close_time THEN
       RETURN TRUE;
     END IF;
   END LOOP;
