@@ -389,9 +389,11 @@ export class DiningStrategy extends BaseScraperStrategy {
         }
 
         // Check for place_id duplicate (dining-specific)
-        const rawEvent = event as unknown as RestaurantData;
-        if (rawEvent.placeId) {
-          const existingId = await this.checkPlaceIdDuplicate(rawEvent.placeId);
+        // Note: The placeId is set during parsing but stored in a separate field
+        // We need to check if the event was parsed with a placeId attached
+        const eventWithPlaceId = event as ScrapedEvent & { placeId?: string };
+        if (eventWithPlaceId.placeId) {
+          const existingId = await this.checkPlaceIdDuplicate(eventWithPlaceId.placeId);
           if (existingId) {
             console.log(`[dining] Skipping duplicate by place_id: ${event.name}`);
             stats.skipped++;

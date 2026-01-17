@@ -278,9 +278,12 @@ export class EventDeduplicator {
 
   /**
    * Generate fingerprint for event
+   * Uses SHA-256 hash with a salt from environment for added security
    */
   async generateFingerprint(event: ScrapedEvent, sourceId: string): Promise<string> {
-    const input = `${event.name}|${event.start_time?.split("T")[0] || ""}|${sourceId}`;
+    // Add salt from environment (or use default for development)
+    const salt = Deno.env.get("FINGERPRINT_SALT") || "lcl-event-fingerprint-v1";
+    const input = `${salt}|${event.name}|${event.start_time?.split("T")[0] || ""}|${sourceId}`;
     const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
   }
