@@ -57,7 +57,7 @@ export function HeroCard({
     >
       {/* Glass Background */}
       {glass && (
-        <div className="absolute inset-0 bg-white/10 backdrop-blur-2xl border border-white/20" />
+        <div className="absolute inset-0 bg-gray-100 border border-gray-300" />
       )}
 
       {/* Holographic Foil Animation - Sweeps every 5 seconds */}

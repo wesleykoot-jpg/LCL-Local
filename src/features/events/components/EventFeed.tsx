@@ -324,7 +324,7 @@ export const EventFeed = memo(function EventFeed({
   return (
     <div className="flex flex-col gap-4">
       {/* Sticky Time Filter Pills */}
-      <div className="sticky top-[60px] z-30 bg-background/80 backdrop-blur-xl -mx-4 px-4 py-3">
+      <div className="sticky top-[60px] z-30 bg-background/80  -mx-4 px-4 py-3">
         <TimeFilterPills
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}

@@ -428,7 +428,7 @@ const Feed = () => {
       {/* Event Detail Modal */}
       {selectedEvent && (
         <ErrorBoundary>
-          <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
+          <Suspense fallback={<div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
             <EventDetailModal
               event={selectedEvent}
               onClose={handleCloseEventDetail}
@@ -443,7 +443,7 @@ const Feed = () => {
       {/* Create Event Modal */}
       {showCreateModal && (
         <ErrorBoundary>
-          <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
+          <Suspense fallback={<div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
             <CreateEventModal
               onClose={() => setShowCreateModal(false)}
               defaultEventType="anchor"

@@ -54,7 +54,7 @@ const CarouselEventCard = memo(function CarouselEventCard({
         {/* Heart button - Airbnb style */}
         <button
           onClick={handleSave}
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
         >
           <Heart 
             size={14} 
@@ -63,7 +63,7 @@ const CarouselEventCard = memo(function CarouselEventCard({
         </button>
 
         {/* Date badge */}
-        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-sm text-[12px] font-semibold text-foreground shadow-sm">
+        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/95  text-[12px] font-semibold text-foreground shadow-sm">
           {formatEventDate(event.event_date)}
         </div>
       </div>

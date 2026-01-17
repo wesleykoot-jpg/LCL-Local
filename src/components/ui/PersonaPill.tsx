@@ -51,8 +51,8 @@ export function PersonaPill({
   };
 
   const variantClasses = {
-    default: 'bg-white/10 border border-white/20 text-white',
-    glass: 'bg-white/20 backdrop-blur-sm border border-white/30 text-white',
+    default: 'bg-gray-100 border border-gray-300 text-white',
+    glass: 'bg-gray-50  border border-gray-200 text-white',
     solid: 'bg-primary text-primary-foreground border-0',
   };
 

@@ -27,9 +27,9 @@ describe('PersonaPill', () => {
   it('should apply default glass variant styles', () => {
     const { container } = render(<PersonaPill label="Nightlife" />);
     const pill = container.firstChild as HTMLElement;
-    expect(pill.className).toContain('bg-white/20');
-    expect(pill.className).toContain('backdrop-blur-sm');
-    expect(pill.className).toContain('border-white/30');
+    expect(pill.className).toContain('bg-gray-50');
+    expect(pill.className).toContain('');
+    expect(pill.className).toContain('border-gray-200');
   });
 
   it('should apply solid variant styles', () => {
@@ -42,8 +42,8 @@ describe('PersonaPill', () => {
   it('should apply default variant styles', () => {
     const { container } = render(<PersonaPill label="Music" variant="default" />);
     const pill = container.firstChild as HTMLElement;
-    expect(pill.className).toContain('bg-white/10');
-    expect(pill.className).toContain('border-white/20');
+    expect(pill.className).toContain('bg-gray-100');
+    expect(pill.className).toContain('border-gray-300');
   });
 
   it('should apply small size styles', () => {

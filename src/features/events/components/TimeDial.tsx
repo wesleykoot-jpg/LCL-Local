@@ -133,7 +133,7 @@ export const TimeDial = memo(function TimeDial({
       >
         {/* Glass overlay */}
         <div 
-          className="absolute inset-0 bg-white/10 backdrop-blur-xl"
+          className="absolute inset-0 bg-gray-100 "
           style={{
             background: 'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%)',
           }}
@@ -152,7 +152,7 @@ export const TimeDial = memo(function TimeDial({
               >
                 <div 
                   className={`w-1 h-3 rounded-full ${
-                    mark === value ? 'bg-white scale-125' : 'bg-white/60'
+                    mark === value ? 'bg-white scale-125' : 'bg-white'
                   } transition-all duration-150`}
                 />
                 <span className={`text-[10px] font-medium mt-1 ${

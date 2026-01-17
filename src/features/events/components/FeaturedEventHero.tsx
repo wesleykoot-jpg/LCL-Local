@@ -106,7 +106,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
         {/* Heart/Save button - Airbnb style top right */}
         <button
           onClick={handleSave}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:scale-110 transition-transform shadow-sm"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90  flex items-center justify-center text-foreground hover:scale-110 transition-transform shadow-sm"
         >
           <Heart size={16} />
         </button>
@@ -117,7 +117,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
         </div>
 
         {/* Date badge */}
-        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-sm text-[13px] font-semibold text-foreground shadow-sm">
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95  text-[13px] font-semibold text-foreground shadow-sm">
           {formatDatePill(event.event_date)}
         </div>
       </div>

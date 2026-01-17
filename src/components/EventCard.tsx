@@ -11,15 +11,15 @@ interface EventCardProps {
 }
 
 /**
- * EventCard - LCL Core 2026 Design System v4.0
+ * EventCard - LCL Core v5.0 Social Air Design System
  * 
  * A solid-surface event card featuring:
- * - Professional social aesthetic with Airbnb-inspired layout
- * - 24px (3xl) border radius adhering to 8pt grid
+ * - Clean, high-legibility design with solid white background
+ * - 20px border radius for soft, friendly corners
  * - High-impact 4:3 aspect ratio imagery
  * - Social proof via facepile overlay
- * - LCL Radiant Coral action button
- * - Apple 2026 shadow system for depth hierarchy
+ * - Social Indigo (#6366F1) action button
+ * - Air shadow system for depth hierarchy
  * 
  * @see DOCS/DESIGN_SYSTEM_CORE.md for full specification
  */
@@ -35,7 +35,7 @@ export const EventCard = ({
     <motion.div 
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="bg-surface-primary rounded-3xl overflow-hidden shadow-apple-md border border-gray-100 mb-6"
+      className="bg-white rounded-[20px] overflow-hidden shadow-card border border-gray-100 mb-6"
     >
       {/* High-Impact Image Header */}
       <div className="relative aspect-[4/3] w-full bg-gray-200">
@@ -66,14 +66,14 @@ export const EventCard = ({
       {/* Solid Metadata Area */}
       <div className="p-4 space-y-3">
         <div className="flex justify-between items-start">
-          <h3 className="text-xl font-bold text-text-primary leading-tight tracking-tight">
+          <h3 className="text-xl font-bold text-[#222222] leading-tight tracking-tight">
             {title}
           </h3>
         </div>
 
-        <div className="flex items-center gap-4 text-sm font-medium text-text-secondary">
+        <div className="flex items-center gap-4 text-sm font-medium text-[#717171]">
           <div className="flex items-center gap-1">
-            <Clock size={14} className="text-brand-action" />
+            <Clock size={14} className="text-brand-primary" />
             <span>{time}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -83,7 +83,7 @@ export const EventCard = ({
         </div>
 
         {/* Primary Action Target */}
-        <button className="w-full h-touch bg-brand-action text-white font-bold rounded-2xl shadow-apple-sm active:opacity-90 transition-all">
+        <button className="w-full h-[48px] bg-brand-primary text-white font-bold rounded-[12px] shadow-card active:opacity-90 transition-all">
           Join Event
         </button>
       </div>

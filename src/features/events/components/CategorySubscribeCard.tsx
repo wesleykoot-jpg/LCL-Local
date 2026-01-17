@@ -26,7 +26,7 @@ export const CategorySubscribeCard = memo(function CategorySubscribeCard({
       transition={{ duration: 0.3, delay: 0.1 }}
       className="mx-4 my-4"
     >
-      <div className="relative overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl p-5">
+      <div className="relative overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-400 bg-white dark:bg-zinc-900  p-5">
         {/* Subtle gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
         

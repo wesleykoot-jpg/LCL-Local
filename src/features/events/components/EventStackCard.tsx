@@ -102,7 +102,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
         {/* Action buttons - top right */}
         <div className="absolute top-3 right-3 flex gap-2">
           {/* Actions Menu (Report/Block) */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm">
+          <div className="bg-white/90  rounded-full shadow-sm">
             <EventActionsMenu
               eventId={event.id}
               hostUserId={event.created_by || undefined}
@@ -113,7 +113,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
           {/* Heart/Save button - Airbnb style */}
           <button
             onClick={handleSave}
-            className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+            className="w-8 h-8 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
           >
             <Heart 
               size={16} 
@@ -128,7 +128,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
           
           {/* Context badge - only shown when feed mode is active */}
           {contextBadge && (
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-sm text-[11px] font-semibold shadow-sm ${
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg  text-[11px] font-semibold shadow-sm ${
               contextBadge.color === 'teal' 
                 ? 'bg-teal-500/90 text-white' 
                 : 'bg-blue-500/90 text-white'
@@ -140,7 +140,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
         </div>
 
         {/* Date badge */}
-        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-sm text-[13px] font-semibold text-foreground shadow-sm">
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95  text-[13px] font-semibold text-foreground shadow-sm">
           {formatEventDate(event.event_date)}
         </div>
       </div>

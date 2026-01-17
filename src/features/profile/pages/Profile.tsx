@@ -84,7 +84,7 @@ const Profile = () => {
           </div>
 
           {/* Sticky Tabs - Accessible with ARIA and keyboard navigation */}
-          <div className="sticky top-0 z-50 backdrop-blur-md bg-black/60 border-b border-white/10">
+          <div className="sticky top-0 z-50  bg-black/60 border-b border-gray-400">
             <div className="max-w-lg mx-auto px-6">
               <div 
                 className="flex items-center justify-around h-14"
@@ -179,7 +179,7 @@ const Profile = () => {
                   className="py-6"
                 >
                   <DiscoveryRail title="Wishlist">
-                    <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
+                    <div className=" bg-white/5 border border-gray-400 rounded-2xl p-12 text-center">
                       <p className="text-white/60">
                         Save events you're interested in attending
                       </p>

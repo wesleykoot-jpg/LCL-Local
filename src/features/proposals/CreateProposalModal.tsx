@@ -203,7 +203,7 @@ export const CreateProposalModal = memo(function CreateProposalModal({
       >
         {/* Backdrop */}
         <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60 "
           onClick={onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
