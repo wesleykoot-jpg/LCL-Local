@@ -35,61 +35,59 @@ export function PassportGrid() {
   // Empty state
   if (!isLoading && pastEvents.length === 0) {
     return (
-      <div className="px-5">
-        <motion.div
-          className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center"
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {/* Ghost Stamp Book Illustration */}
-          <div className="relative w-32 h-32 mx-auto mb-6">
-            {/* Stack of stamp book pages */}
-            <motion.div
-              className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
-              style={{ transform: 'rotate(-3deg)' }}
-              initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.3 }}
-              transition={{ delay: 0.1 }}
-            />
-            <motion.div
-              className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
-              style={{ transform: 'rotate(2deg)' }}
-              initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.4 }}
-              transition={{ delay: 0.2 }}
-            />
-            <motion.div
-              className="absolute inset-0 rounded-lg border-2 border-white/30 bg-white/10 flex items-center justify-center"
-              initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Stamp size={48} className="text-white/40" strokeWidth={1.5} />
-            </motion.div>
-          </div>
-
-          <h3 className="text-xl font-bold text-white mb-2">No History Yet</h3>
-          <p className="text-sm text-white/60 mb-6 max-w-xs mx-auto">
-            Your passport is empty! Start exploring and attending events to collect your stamps.
-          </p>
-
-          {/* Discover Events Button */}
-          <motion.button
-            onClick={() => navigate('/')}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/30 text-white font-medium transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+      <motion.div
+        className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {/* Ghost Stamp Book Illustration */}
+        <div className="relative w-32 h-32 mx-auto mb-6">
+          {/* Stack of stamp book pages */}
+          <motion.div
+            className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
+            style={{ transform: 'rotate(-3deg)' }}
+            initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.3 }}
+            transition={{ delay: 0.1 }}
+          />
+          <motion.div
+            className="absolute inset-0 rounded-lg border-2 border-white/20 bg-white/5"
+            style={{ transform: 'rotate(2deg)' }}
+            initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.4 }}
+            transition={{ delay: 0.2 }}
+          />
+          <motion.div
+            className="absolute inset-0 rounded-lg border-2 border-white/30 bg-white/10 flex items-center justify-center"
+            initial={prefersReducedMotion ? false : { scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3 }}
           >
-            <Sparkles size={18} />
-            <span>Discover Events</span>
-          </motion.button>
-        </motion.div>
-      </div>
+            <Stamp size={48} className="text-white/40" strokeWidth={1.5} />
+          </motion.div>
+        </div>
+
+        <h3 className="text-xl font-bold text-white mb-2">No History Yet</h3>
+        <p className="text-sm text-white/60 mb-6 max-w-xs mx-auto">
+          Your passport is empty! Start exploring and attending events to collect your stamps.
+        </p>
+
+        {/* Discover Events Button */}
+        <motion.button
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/30 text-white font-medium transition-all"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Sparkles size={18} />
+          <span>Discover Events</span>
+        </motion.button>
+      </motion.div>
     );
   }
 
   return (
-    <div className="px-5">
+    <div>
       {/* 3-Column Grid */}
       <div className="grid grid-cols-3 gap-1">
         {pastEvents.map((event, index) => (
