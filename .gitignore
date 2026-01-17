@@ -16,6 +16,10 @@ dist-ssr
 vite.config.d.ts
 results/
 
+# Test output files
+E2E_AUDIT_REPORT.json
+E2E_AUDIT_REPORT.md
+
 # Environment files (use .env.example as template)
 .env
 .env.local
