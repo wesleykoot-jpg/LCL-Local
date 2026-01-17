@@ -202,7 +202,7 @@ const Discovery = () => {
   }, [locationPrefs, permissionState, profile?.location_city]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
+    <div className="min-h-screen bg-surface-muted text-foreground font-sans selection:bg-brand-action selection:text-white">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -210,22 +210,23 @@ const Discovery = () => {
         className="pb-32"
       >
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-card border-b border-border pt-safe">
+        <header className="sticky top-0 z-40 bg-surface-primary shadow-apple-sm border-b border-border pt-safe">
           {/* Location row */}
           <div className="px-6 py-3 flex items-center justify-between">
             <button 
               onClick={handleLocationClick}
-              className="flex items-center gap-2 hover:bg-muted rounded-xl py-2 px-3 -ml-3 min-h-[44px] transition-all active:scale-[0.98]"
+              className="flex items-center gap-2 hover:bg-surface-muted rounded-2xl py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-action focus-visible:outline-none"
+              aria-label="Change location"
             >
               {permissionState === 'granted' && locationPrefs.useGPS ? (
-                <Navigation size={18} className="text-primary" />
+                <Navigation size={18} className="text-brand-action" />
               ) : (
-                <MapPin size={18} className="text-primary" />
+                <MapPin size={18} className="text-brand-action" />
               )}
-              <span className="text-[15px] font-semibold text-foreground">
+              <span className="text-[15px] font-semibold text-text-primary">
                 {locationText}
               </span>
-              <ChevronDown size={16} className="text-muted-foreground" />
+              <ChevronDown size={16} className="text-text-secondary" />
             </button>
           </div>
           
@@ -251,7 +252,7 @@ const Discovery = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-12 py-6"
+                className="py-6"
               >
                 {loading ? (
                   <div className="px-6">
@@ -269,10 +270,10 @@ const Discovery = () => {
                     </p>
                   </motion.div>
                 ) : (
-                  <>
+                  <div className="space-y-6">
                     {/* Featured Hero */}
                     {featuredEvent && (
-                      <div className="px-6">
+                      <div className="mb-6">
                         <FeaturedEventHero
                           event={featuredEvent}
                           onEventClick={handleEventClick}
@@ -284,7 +285,7 @@ const Discovery = () => {
                     )}
 
                     {/* Friends Pulse Rail */}
-                    <div className="px-6">
+                    <div className="mb-6">
                       <FriendsPulseRail
                         currentUserProfileId={profile?.id}
                         onEventClick={handleEventClick}
@@ -293,60 +294,68 @@ const Discovery = () => {
 
                     {/* Popular in [City] Rail */}
                     {popularEvents.length > 0 && (
-                      <DiscoveryRail title={<span className="flex items-center gap-2"><Flame size={20} className="text-orange-500" /> Popular in {locationText}</span>}>
-                        <HorizontalEventCarousel
-                          title=""
-                          events={popularEvents}
-                          onEventClick={handleEventClick}
-                          onJoinEvent={handleJoinEvent}
-                          joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                          currentUserProfileId={profile?.id}
-                        />
-                      </DiscoveryRail>
+                      <div className="mb-6">
+                        <DiscoveryRail title={<span className="flex items-center gap-2"><Flame size={20} className="text-orange-500" /> Popular in {locationText}</span>}>
+                          <HorizontalEventCarousel
+                            title=""
+                            events={popularEvents}
+                            onEventClick={handleEventClick}
+                            onJoinEvent={handleJoinEvent}
+                            joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                            currentUserProfileId={profile?.id}
+                          />
+                        </DiscoveryRail>
+                      </div>
                     )}
 
                     {/* Plan Your Weekend Rail */}
                     {weekendEvents.length > 0 && (
-                      <DiscoveryRail title={<span className="flex items-center gap-2"><Calendar size={20} className="text-blue-500" /> Plan Your Weekend</span>}>
-                        <HorizontalEventCarousel
-                          title=""
-                          events={weekendEvents}
-                          onEventClick={handleEventClick}
-                          onJoinEvent={handleJoinEvent}
-                          joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                          currentUserProfileId={profile?.id}
-                        />
-                      </DiscoveryRail>
+                      <div className="mb-6">
+                        <DiscoveryRail title={<span className="flex items-center gap-2"><Calendar size={20} className="text-blue-500" /> Plan Your Weekend</span>}>
+                          <HorizontalEventCarousel
+                            title=""
+                            events={weekendEvents}
+                            onEventClick={handleEventClick}
+                            onJoinEvent={handleJoinEvent}
+                            joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                            currentUserProfileId={profile?.id}
+                          />
+                        </DiscoveryRail>
+                      </div>
                     )}
 
                     {/* Tonight Rail */}
                     {tonightEvents.length > 0 && (
-                      <DiscoveryRail title={<span className="flex items-center gap-2"><Zap size={20} className="text-yellow-500" /> Tonight</span>}>
-                        <HorizontalEventCarousel
-                          title=""
-                          events={tonightEvents}
-                          onEventClick={handleEventClick}
-                          onJoinEvent={handleJoinEvent}
-                          joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                          currentUserProfileId={profile?.id}
-                        />
-                      </DiscoveryRail>
+                      <div className="mb-6">
+                        <DiscoveryRail title={<span className="flex items-center gap-2"><Zap size={20} className="text-yellow-500" /> Tonight</span>}>
+                          <HorizontalEventCarousel
+                            title=""
+                            events={tonightEvents}
+                            onEventClick={handleEventClick}
+                            onJoinEvent={handleJoinEvent}
+                            joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                            currentUserProfileId={profile?.id}
+                          />
+                        </DiscoveryRail>
+                      </div>
                     )}
 
                     {/* Live Music Rail */}
                     {musicEvents.length > 0 && (
-                      <DiscoveryRail title={<span className="flex items-center gap-2"><Music size={20} className="text-purple-500" /> Live Music</span>}>
-                        <HorizontalEventCarousel
-                          title=""
-                          events={musicEvents}
-                          onEventClick={handleEventClick}
-                          onJoinEvent={handleJoinEvent}
-                          joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                          currentUserProfileId={profile?.id}
-                        />
-                      </DiscoveryRail>
+                      <div className="mb-6">
+                        <DiscoveryRail title={<span className="flex items-center gap-2"><Music size={20} className="text-purple-500" /> Live Music</span>}>
+                          <HorizontalEventCarousel
+                            title=""
+                            events={musicEvents}
+                            onEventClick={handleEventClick}
+                            onJoinEvent={handleJoinEvent}
+                            joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                            currentUserProfileId={profile?.id}
+                          />
+                        </DiscoveryRail>
+                      </div>
                     )}
-                  </>
+                  </div>
                 )}
               </motion.div>
             ) : (
@@ -370,21 +379,21 @@ const Discovery = () => {
         </main>
       </motion.div>
 
-      {/* Floating Action Button */}
-      <motion.button
-        onClick={async () => {
-          await hapticImpact('medium');
-          setShowCreateModal(true);
-        }}
-        className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-[1.5rem] bg-primary text-primary-foreground flex items-center justify-center mb-safe border-[0.5px] border-primary/20"
-        style={{
-          boxShadow: '0 8px 24px -4px rgba(var(--primary) / 0.3), 0 16px 40px -8px rgba(0, 0, 0, 0.15)'
-        }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <Plus size={28} strokeWidth={2.5} />
-      </motion.button>
+      {/* Floating Action Button - Only show in dev mode */}
+      {import.meta.env.DEV && (
+        <motion.button
+          onClick={async () => {
+            await hapticImpact('medium');
+            setShowCreateModal(true);
+          }}
+          className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-3xl bg-brand-action text-white flex items-center justify-center mb-safe shadow-float focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-action focus-visible:outline-none"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label="Create new event"
+        >
+          <Plus size={28} strokeWidth={2.5} />
+        </motion.button>
+      )}
 
       <FloatingNav activeView="feed" onNavigate={handleNavigate} />
 

@@ -114,8 +114,12 @@ const App = () => (
                     <Route path="/profile/calendar" element={<GoogleCalendarSettingsPage />} />
                     
                     {/* Admin routes (dev mode only) */}
-                    <Route path="/admin" element={<AdminPage />} />
-                    <Route path="/scraper-admin" element={<AdminPage />} />
+                    {import.meta.env.DEV && (
+                      <>
+                        <Route path="/admin" element={<AdminPage />} />
+                        <Route path="/scraper-admin" element={<AdminPage />} />
+                      </>
+                    )}
                     
                     {/* Auth routes */}
                     <Route path="/login" element={<LoginPage />} />
@@ -155,8 +159,12 @@ const App = () => (
                     <Route path="/profile/calendar" element={<GoogleCalendarSettingsPage />} />
                     
                     {/* Admin routes (dev mode only) */}
-                    <Route path="/admin" element={<AdminPage />} />
-                    <Route path="/scraper-admin" element={<AdminPage />} />
+                    {import.meta.env.DEV && (
+                      <>
+                        <Route path="/admin" element={<AdminPage />} />
+                        <Route path="/scraper-admin" element={<AdminPage />} />
+                      </>
+                    )}
                     
                     {/* Auth routes */}
                     <Route path="/login" element={<LoginPage />} />

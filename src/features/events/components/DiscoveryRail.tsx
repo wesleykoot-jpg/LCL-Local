@@ -10,10 +10,10 @@ interface DiscoveryRailProps {
 /**
  * DiscoveryRail - Wrapper component for horizontal scrolling sections
  * 
- * Airbnb-style rail with:
- * - Section headers: text-2xl font-bold tracking-tight
+ * LCL Core 2026 Design System v4.0:
+ * - Section headers: text-xl font-bold tracking-tight
  * - Left/Right padding: px-6 (24px)
- * - Between sections: mb-12 (48px) gap handled by parent
+ * - Between sections: mb-6 (24px) gap handled by parent
  */
 export const DiscoveryRail = memo(function DiscoveryRail({
   title,
@@ -29,14 +29,15 @@ export const DiscoveryRail = memo(function DiscoveryRail({
     >
       {/* Section Header */}
       {title && (
-        <div className="flex items-center justify-between px-6 mb-4">
-          <h2 className="text-xl font-bold tracking-tight text-foreground">
+        <div className="flex items-center justify-between px-6 mb-6">
+          <h2 className="text-xl font-bold tracking-tight text-text-primary">
             {title}
           </h2>
           {onSeeAll && (
             <button
               onClick={onSeeAll}
-              className="text-[14px] font-medium text-foreground hover:underline active:opacity-70 min-h-[44px] px-2 flex items-center"
+              className="text-[14px] font-semibold text-text-primary hover:text-brand-action active:opacity-70 min-h-[44px] px-2 flex items-center transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-action focus-visible:outline-none"
+              aria-label="See all items in this section"
             >
               See all
             </button>
