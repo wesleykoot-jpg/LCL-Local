@@ -4,14 +4,18 @@ import { useDeviceTilt } from '@/hooks/useDeviceTilt';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { useAuth } from '@/features/auth';
 import { useMotionPreset } from '@/hooks/useMotionPreset';
-import { PersonaPill } from '@/components/ui/PersonaPill';
+import { ReliabilityBadge } from '@/components/ui/ReliabilityBadge';
+import { StatBlock } from '@/components/ui/StatBlock';
 
 /**
- * IdentityCard - The Prism
+ * IdentityCard - v5.0 Social Air Design
  * 
- * A 3D-tilting glass card that serves as the user's holographic identity.
- * Features device tilt physics, holographic sheen, and haptic interactions.
+ * A clean, solid white card that serves as the user's identity.
+ * Features subtle 3D tilt on touch (if performance allows), 
+ * "Air Shadows", and high-contrast legibility.
+ * 
  * Credit card aspect ratio: 1.58:1
+ * Uses the "Physical Cardstock over Virtual Glass" philosophy.
  */
 
 // Mock profile data - fallback only when no backend data
@@ -21,9 +25,6 @@ const MOCK_PROFILE = {
   current_persona: 'social',
 };
 
-// Default bio since profile table doesn't have bio field
-const DEFAULT_BIO = 'Living life one event at a time ✨';
-
 // Mock stats - fallback only when no backend data
 const MOCK_STATS = {
   events: 12,
@@ -31,67 +32,17 @@ const MOCK_STATS = {
   score: 98,
 };
 
-// Default persona pills - fallback only when no profile data
-const DEFAULT_PERSONA_PILLS = ['Foodie', 'Nightlife', 'Art'];
-
-/**
- * Derive persona pills from user's current_persona or other profile data
- * In future, this could be fetched from a personas table or computed from activity
- */
-function derivePersonaPills(currentPersona: string | null): string[] {
-  if (!currentPersona) return DEFAULT_PERSONA_PILLS;
-  
-  // Map persona to related interests
-  const personaMap: Record<string, string[]> = {
-    social: ['Foodie', 'Nightlife', 'Art'],
-    explorer: ['Outdoor', 'Adventure', 'Travel'],
-    culture: ['Art', 'Music', 'Theater'],
-    wellness: ['Yoga', 'Meditation', 'Fitness'],
-    nightlife: ['Clubs', 'Bars', 'Music'],
-  };
-  
-  return personaMap[currentPersona.toLowerCase()] || DEFAULT_PERSONA_PILLS;
-}
-
-/**
- * VibeEQ - Animated Waveform Component
- * 
- * Small animated bars that signify "Live Status" next to the user's name.
- */
-function VibeEQ() {
-  return (
-    <div className="flex items-center gap-0.5 h-4">
-      <motion.div
-        className="w-0.5 bg-white/80 rounded-full"
-        animate={{ height: ['40%', '100%', '60%', '80%', '40%'] }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="w-0.5 bg-white/80 rounded-full"
-        animate={{ height: ['80%', '40%', '100%', '50%', '80%'] }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut', delay: 0.1 }}
-      />
-      <motion.div
-        className="w-0.5 bg-white/80 rounded-full"
-        animate={{ height: ['60%', '90%', '50%', '100%', '60%'] }}
-        transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
-      />
-    </div>
-  );
-}
-
 export function IdentityCard() {
   const { profile } = useAuth();
   const motionPreset = useMotionPreset();
   const [isPressed, setIsPressed] = useState(false);
-  const [isBioExpanded, setIsBioExpanded] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Enable device tilt for 3D effect
+  // Enable subtle device tilt for 3D effect (optional enhancement)
   const tilt = useDeviceTilt({
-    sensitivity: 1,
-    maxTilt: 15,
-    smoothing: 0.15,
+    sensitivity: 0.5,
+    maxTilt: 8,
+    smoothing: 0.2,
     enabled: !motionPreset.prefersReducedMotion,
   });
 
@@ -102,17 +53,13 @@ export function IdentityCard() {
     ? displayProfile.full_name.charAt(0).toUpperCase()
     : 'U';
 
-  // Derive persona pills from profile data
-  const personaPills = derivePersonaPills(displayProfile.current_persona);
-
   // Handle long press on avatar
   const handlePressStart = () => {
     setIsPressed(true);
     pressTimerRef.current = setTimeout(async () => {
-      await hapticImpact('heavy'); // "thud" haptic
-      // Trigger ripple animation effect handled by CSS
+      await hapticImpact('heavy');
       setIsPressed(false);
-    }, 500); // 500ms for long press
+    }, 500);
   };
 
   const handlePressEnd = () => {
@@ -123,10 +70,6 @@ export function IdentityCard() {
     setIsPressed(false);
   };
 
-  // Calculate holographic sheen position (opposite to tilt)
-  const sheenX = -tilt.tiltX * 2;
-  const sheenY = -tilt.tiltY * 2;
-
   // Use stats from profile or mock data
   const stats = {
     events: profile?.events_attended ?? MOCK_STATS.events,
@@ -135,10 +78,9 @@ export function IdentityCard() {
       ? Math.round(profile.reliability_score) 
       : MOCK_STATS.score,
   };
-  const bio = DEFAULT_BIO; // Bio not stored in profile table yet
 
   return (
-    <div className="w-full max-w-md mx-auto px-6 py-8">
+    <div className="w-full max-w-md mx-auto">
       {/* Tilt Transform Container */}
       <motion.div
         className="tilt-transform"
@@ -146,74 +88,38 @@ export function IdentityCard() {
           perspective: motionPreset.prefersReducedMotion ? 'none' : '1000px',
         }}
       >
-        {/* The Prism Card */}
+        {/* v5.0 Social Air Card - Solid White with Air Shadow */}
         <motion.div
-          className="tilt-content relative w-full rounded-2xl overflow-hidden shadow-2xl"
+          className="relative w-full bg-surface-card rounded-card shadow-floating overflow-hidden"
           style={{
             aspectRatio: '1.58 / 1',
             transform: motionPreset.prefersReducedMotion
               ? 'none'
-              : `rotateY(${tilt.tiltX * 0.5}deg) rotateX(${-tilt.tiltY * 0.5}deg)`,
+              : `rotateY(${tilt.tiltX * 0.3}deg) rotateX(${-tilt.tiltY * 0.3}deg)`,
           }}
-          {...motionPreset.initial({ scale: 0.9, opacity: 0 })}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 150 }}
+          {...(motionPreset.prefersReducedMotion ? {} : {
+            initial: { scale: 0.95, opacity: 0 },
+            animate: { scale: 1, opacity: 1 },
+            transition: { type: 'spring', damping: 20, stiffness: 150 },
+          })}
         >
-          {/* Glass Background */}
-          <div className="absolute inset-0 bg-gray-100 border border-gray-300" />
-
-          {/* Holographic Sheen Overlay */}
-          {!motionPreset.prefersReducedMotion && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: `linear-gradient(${135 + sheenX + sheenY}deg, 
-                  rgba(255, 255, 255, 0) 0%, 
-                  rgba(255, 255, 255, 0.3) 45%, 
-                  rgba(255, 255, 255, 0.3) 55%, 
-                  rgba(255, 255, 255, 0) 100%)`,
-                opacity: tilt.glintOpacity,
-                transition: 'opacity 0.15s ease-out',
-              }}
-            />
-          )}
-
-          {/* Holographic Foil Animation - Sweeps every 5 seconds */}
-          {!motionPreset.prefersReducedMotion && (
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)',
-              }}
-              animate={{
-                x: ['-100%', '200%'],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                repeatDelay: 3,
-                ease: 'easeInOut',
-              }}
-            />
-          )}
-
           {/* Card Content */}
           <div className="relative z-10 p-6 h-full flex flex-col">
             {/* Top Row: Avatar and Name */}
-            <div className="flex items-start justify-between mb-auto">
+            <div className="flex items-start gap-4 mb-auto">
               {/* Avatar with Long Press Interaction */}
               <motion.button
                 onPointerDown={handlePressStart}
                 onPointerUp={handlePressEnd}
                 onPointerLeave={handlePressEnd}
-                className="relative"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                className="relative shrink-0"
+                whileHover={motionPreset.prefersReducedMotion ? {} : { scale: 1.05 }}
+                whileTap={motionPreset.prefersReducedMotion ? {} : { scale: 0.95 }}
                 aria-label={`${displayProfile.full_name}'s avatar - long press to interact`}
               >
                 <div
-                  className={`w-16 h-16 rounded-full bg-gradient-to-br from-white/40 to-white/20 border-2 border-white flex items-center justify-center text-white text-2xl font-bold overflow-hidden transition-all ${
-                    isPressed ? 'ring-4 ring-white/50' : ''
+                  className={`w-16 h-16 rounded-full bg-gray-200 border-2 border-white shadow-card flex items-center justify-center text-text-secondary text-2xl font-bold overflow-hidden transition-all ${
+                    isPressed ? 'ring-4 ring-brand-primary/30' : ''
                   }`}
                 >
                   {displayProfile.avatar_url ? (
@@ -227,9 +133,9 @@ export function IdentityCard() {
                   )}
                 </div>
                 {/* Ripple effect on long press */}
-                {isPressed && (
+                {isPressed && !motionPreset.prefersReducedMotion && (
                   <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-white"
+                    className="absolute inset-0 rounded-full border-2 border-brand-primary"
                     initial={{ scale: 1, opacity: 1 }}
                     animate={{ scale: 2, opacity: 0 }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -237,81 +143,29 @@ export function IdentityCard() {
                 )}
               </motion.button>
 
-              {/* Name and Handle with Vibe EQ */}
-              <div className="text-right flex-1 ml-4">
-                <div className="flex items-center justify-end gap-2 mb-1">
-                  <h2 className="text-xl font-bold text-white leading-tight">
-                    {displayProfile.full_name}
-                  </h2>
-                  {/* Vibe EQ - Animated Waveform */}
-                  {!motionPreset.prefersReducedMotion && <VibeEQ />}
-                </div>
-                <p className="text-white/60 text-sm">
-                  @{displayProfile.full_name?.toLowerCase().replace(/\s+/g, '') || 'username'}
-                </p>
+              {/* Name and Reliability Badge */}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-bold text-text-primary leading-tight truncate mb-2">
+                  {displayProfile.full_name}
+                </h2>
+                <ReliabilityBadge score={stats.score} />
               </div>
             </div>
 
-            {/* Bio Section - Collapsible */}
-            {bio && (
-              <motion.div 
-                className="mb-3"
-                {...motionPreset.initial({ opacity: 0 })}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <button
-                  onClick={() => setIsBioExpanded(!isBioExpanded)}
-                  className="text-white/80 text-sm text-left w-full"
-                  aria-expanded={isBioExpanded}
-                  aria-label={isBioExpanded ? 'Collapse bio' : 'Expand bio'}
-                >
-                  <motion.p
-                    animate={{ height: isBioExpanded ? 'auto' : '1.25rem' }}
-                    className="overflow-hidden"
-                  >
-                    {bio}
-                  </motion.p>
-                </button>
-              </motion.div>
-            )}
-
-            {/* Persona Pills */}
-            <div className="flex gap-2 flex-wrap mb-3">
-              {personaPills.map((pill, index) => (
-                <PersonaPill
-                  key={pill}
-                  label={pill}
-                  index={index}
-                  variant="glass"
-                  size="md"
-                />
-              ))}
-            </div>
-
-            {/* Social Stats Bar */}
+            {/* Social Stats Bar - v5.0 Clean Style */}
             <motion.div 
-              className="flex items-center justify-around pt-3 border-t border-gray-300"
+              className="flex items-center justify-around pt-4 mt-4 border-t border-gray-100"
               role="region"
               aria-label="Profile statistics"
-              {...motionPreset.initial({ opacity: 0, y: 10 })}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              {...(motionPreset.prefersReducedMotion ? {} : {
+                initial: { opacity: 0, y: 10 },
+                animate: { opacity: 1, y: 0 },
+                transition: { delay: 0.2 },
+              })}
             >
-              <div className="text-center">
-                <p className="text-white font-bold text-lg">{stats.events}</p>
-                <p className="text-white/60 text-xs">Events</p>
-              </div>
-              <div className="w-px h-8 bg-gray-50" />
-              <div className="text-center">
-                <p className="text-white font-bold text-lg">{stats.friends}</p>
-                <p className="text-white/60 text-xs">Friends</p>
-              </div>
-              <div className="w-px h-8 bg-gray-50" />
-              <div className="text-center">
-                <p className="text-green-400 font-bold text-lg">{stats.score}%</p>
-                <p className="text-white/60 text-xs">Score</p>
-              </div>
+              <StatBlock value={stats.events} label="Events" />
+              <div className="w-px h-8 bg-gray-200" aria-hidden="true" />
+              <StatBlock value={stats.friends} label="Friends" />
             </motion.div>
           </div>
         </motion.div>
