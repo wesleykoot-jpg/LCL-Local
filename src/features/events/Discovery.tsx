@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, lazy, Suspense, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FloatingNav, LoadingSkeleton, ErrorBoundary } from '@/shared/components';
@@ -12,80 +12,128 @@ import { FriendsPulseRail } from './components/FriendsPulseRail';
 import { DiscoveryRail } from './components/DiscoveryRail';
 import { GlassSearchBar } from './components/GlassSearchBar';
 import { DeepDiveView } from './components/DeepDiveView';
+import { groupEventsIntoStacks } from './api/feedGrouping';
 import { hapticImpact } from '@/shared/lib/haptics';
-import { MapPin, Plus, Navigation, ChevronDown, Flame, Calendar, Zap, Music } from 'lucide-react';
+import { MapPin, Plus, Navigation, ChevronDown, Flame, Calendar, Zap, RefreshCw } from 'lucide-react';
 
 const CreateEventModal = lazy(() => import('./components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 const EventDetailModal = lazy(() => import('./components/EventDetailModal'));
 
-// Helper to parse date as local
-function parseLocalDate(dateString: string): Date {
-  const datePart = dateString.split('T')[0].split(' ')[0];
+// Shared motion animation config for rails
+const railMotionConfig = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.3 },
+};
+
+// Helper to get rail animation with delay
+const getRailTransition = (delay: number) => ({
+  ...railMotionConfig.transition,
+  delay,
+});
+
+// Helper to parse event datetime
+function parseEventDateTime(dateStr: string, timeStr: string): Date {
+  const datePart = dateStr.split('T')[0].split(' ')[0];
   const [year, month, day] = datePart.split('-').map(Number);
-  return new Date(year, month - 1, day);
+  const timePart = timeStr.split(':');
+  const hours = parseInt(timePart[0] || '0', 10);
+  const minutes = parseInt(timePart[1] || '0', 10);
+  return new Date(year, month - 1, day, hours, minutes);
 }
 
-// Get events by date filter
-function filterByDate(events: EventWithAttendees[], filter: 'today' | 'weekend' | 'all'): EventWithAttendees[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  switch (filter) {
-    case 'today':
-      return events.filter(e => {
-        const eventDay = parseLocalDate(e.event_date);
-        return eventDay.getTime() === today.getTime();
-      });
-    case 'weekend': {
-      const dayOfWeek = today.getDay();
-      const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
-      const friday = new Date(today);
-      friday.setDate(today.getDate() + daysUntilFriday);
-      friday.setHours(0, 0, 0, 0);
-      const sunday = new Date(friday);
-      sunday.setDate(friday.getDate() + 2);
-      sunday.setHours(23, 59, 59, 999);
-      return events.filter(e => {
-        const eventDay = parseLocalDate(e.event_date);
-        return eventDay >= friday && eventDay <= sunday;
-      });
-    }
-    case 'all':
-    default:
-      return events;
-  }
-}
-
-// Get popular events (most attendees)
-function getPopularEvents(events: EventWithAttendees[], limit = 10): EventWithAttendees[] {
+/**
+ * Get "Pulse" events - hot events nearby with high engagement
+ * Logic: Events with highest attendee_count, sorted by popularity
+ */
+function getPulseEvents(events: EventWithAttendees[], limit = 10): EventWithAttendees[] {
   return [...events]
     .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0))
     .slice(0, limit);
 }
 
-// Get today's events
+/**
+ * Get "Tonight" events - events happening between now and 4 AM next day
+ * Logic: Filter by time window for spontaneous plans
+ */
 function getTonightEvents(events: EventWithAttendees[], limit = 10): EventWithAttendees[] {
-  return filterByDate(events, 'today').slice(0, limit);
-}
-
-// Get weekend events
-function getWeekendEvents(events: EventWithAttendees[], limit = 10): EventWithAttendees[] {
-  return filterByDate(events, 'weekend').slice(0, limit);
-}
-
-// Get events by category
-function getEventsByCategory(events: EventWithAttendees[], category: string, limit = 10): EventWithAttendees[] {
+  const now = new Date();
+  const endOfTonight = new Date(now);
+  endOfTonight.setDate(endOfTonight.getDate() + 1);
+  endOfTonight.setHours(4, 0, 0, 0); // 4 AM next day
+  
   return events
-    .filter(e => e.category === category)
+    .filter(e => {
+      const eventDateTime = parseEventDateTime(e.event_date, e.event_time);
+      return eventDateTime >= now && eventDateTime <= endOfTonight;
+    })
+    .sort((a, b) => {
+      // Sort chronologically
+      const dateA = parseEventDateTime(a.event_date, a.event_time);
+      const dateB = parseEventDateTime(b.event_date, b.event_time);
+      return dateA.getTime() - dateB.getTime();
+    })
     .slice(0, limit);
 }
 
 /**
- * Discovery Page - Airbnb-inspired event discovery with dual-mode logic
+ * Get "Weekend Radar" events - Friday 5 PM through Sunday 11 PM
+ * Logic: Filter for weekend planning, sorted chronologically
+ */
+function getWeekendEvents(events: EventWithAttendees[], limit = 10): EventWithAttendees[] {
+  const now = new Date();
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  
+  const dayOfWeek = today.getDay();
+  
+  // Calculate Friday 5 PM
+  let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+  // If today is Friday, Saturday, or Sunday, use this weekend
+  if (dayOfWeek >= 5 || dayOfWeek === 0) {
+    if (dayOfWeek === 0) {
+      // Sunday - show current weekend (Friday was 2 days ago)
+      daysUntilFriday = -2;
+    } else {
+      // Friday or Saturday - use this Friday
+      daysUntilFriday = 5 - dayOfWeek;
+    }
+  }
+  
+  const friday = new Date(today);
+  friday.setDate(today.getDate() + daysUntilFriday);
+  friday.setHours(17, 0, 0, 0); // 5 PM Friday
+  
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+  sunday.setHours(23, 0, 0, 0); // 11 PM Sunday
+  
+  return events
+    .filter(e => {
+      const eventDateTime = parseEventDateTime(e.event_date, e.event_time);
+      return eventDateTime >= friday && eventDateTime <= sunday;
+    })
+    .sort((a, b) => {
+      // Sort chronologically
+      const dateA = parseEventDateTime(a.event_date, a.event_time);
+      const dateB = parseEventDateTime(b.event_date, b.event_time);
+      return dateA.getTime() - dateB.getTime();
+    })
+    .slice(0, limit);
+}
+
+/**
+ * Discovery Page - Time & Location based intent model
+ * 
+ * Rails (in order):
+ * 1. "Pulse of [City]" - Hot events nearby with high engagement
+ * 2. "My Rituals" - Recurring event stacks (weekly run club, etc.)
+ * 3. "The Weekend Radar" - Friday 5PM to Sunday 11PM planning
+ * 4. "Tonight" - Spontaneous plans (now to 4AM)
  * 
  * Modes:
- * - Browsing: Horizontal rails with featured hero, popular, weekend, tonight, nearby, music sections
- * - Searching: Vertical masonry list with sticky filter bar
+ * - Browsing: Horizontal rails with featured hero and time-based sections
+ * - Searching: Vertical masonry list with sticky filter bar (Deep Dive)
  */
 const Discovery = () => {
   const navigate = useNavigate();
@@ -97,6 +145,9 @@ const Discovery = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  
+  // Ref for scroll container to trigger haptics on rail snaps
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch events
   const { events: allEvents, loading, refetch } = useEventsQuery({ 
@@ -108,29 +159,39 @@ const Discovery = () => {
   
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
 
-  // Featured event (top event with image or high attendees)
+  // Featured event (top event with image or high attendees - for Pulse hero)
   const featuredEvent = useMemo(() => {
     return allEvents.find(e => e.image_url || (e.attendee_count && e.attendee_count > 2));
   }, [allEvents]);
 
-  // Rail data
-  const popularEvents = useMemo(() => 
-    getPopularEvents(allEvents.filter(e => e.id !== featuredEvent?.id)), 
+  // ============================================================
+  // RAIL DATA - Derived from single useEventsQuery result
+  // ============================================================
+
+  // Rail 1: "Pulse of [City]" - Hot events with high attendee counts
+  const pulseEvents = useMemo(() => 
+    getPulseEvents(allEvents.filter(e => e.id !== featuredEvent?.id)), 
     [allEvents, featuredEvent]
   );
 
+  // Rail 2: "My Rituals" - Recurring event stacks
+  const ritualsEvents = useMemo(() => {
+    const stacks = groupEventsIntoStacks(allEvents);
+    // Filter for stacks only (type: 'stack' means has forks attached)
+    const recurringStacks = stacks.filter(stack => stack.type === 'stack');
+    // Return the anchor events from recurring stacks
+    return recurringStacks.map(stack => stack.anchor).slice(0, 10);
+  }, [allEvents]);
+
+  // Rail 3: "The Weekend Radar" - Friday 5PM to Sunday 11PM
   const weekendEvents = useMemo(() => 
     getWeekendEvents(allEvents.filter(e => e.id !== featuredEvent?.id)), 
     [allEvents, featuredEvent]
   );
 
+  // Rail 4: "Tonight" - Events from now to 4AM next day
   const tonightEvents = useMemo(() => 
     getTonightEvents(allEvents.filter(e => e.id !== featuredEvent?.id)), 
-    [allEvents, featuredEvent]
-  );
-
-  const musicEvents = useMemo(() => 
-    getEventsByCategory(allEvents.filter(e => e.id !== featuredEvent?.id), 'music'), 
     [allEvents, featuredEvent]
   );
 
@@ -270,10 +331,13 @@ const Discovery = () => {
                     </p>
                   </motion.div>
                 ) : (
-                  <div className="space-y-6">
-                    {/* Featured Hero */}
+                  <div className="space-y-6" ref={scrollContainerRef}>
+                    {/* Featured Hero - Contextual top event */}
                     {featuredEvent && (
-                      <div className="mb-6">
+                      <motion.div 
+                        className="mb-6 px-4"
+                        {...railMotionConfig}
+                      >
                         <FeaturedEventHero
                           event={featuredEvent}
                           onEventClick={handleEventClick}
@@ -281,7 +345,7 @@ const Discovery = () => {
                           isJoining={isJoining(featuredEvent.id)}
                           hasJoined={hasJoinedFeatured}
                         />
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* Friends Pulse Rail */}
@@ -292,26 +356,78 @@ const Discovery = () => {
                       />
                     </div>
 
-                    {/* Popular in [City] Rail */}
-                    {popularEvents.length > 0 && (
-                      <div className="mb-6">
-                        <DiscoveryRail title={<span className="flex items-center gap-2"><Flame size={20} className="text-orange-500" /> Popular in {locationText}</span>}>
+                    {/* Rail 1: Pulse of [City] - Hot events nearby */}
+                    {pulseEvents.length > 0 && (
+                      <motion.div 
+                        className="mb-6"
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.1)}
+                      >
+                        <DiscoveryRail 
+                          title={
+                            <span className="flex items-center gap-2">
+                              <Flame size={20} className="text-orange-500" /> 
+                              Pulse of {locationPrefs.manualZone || profile?.location_city || 'Your City'}
+                            </span>
+                          }
+                        >
                           <HorizontalEventCarousel
                             title=""
-                            events={popularEvents}
+                            events={pulseEvents}
                             onEventClick={handleEventClick}
                             onJoinEvent={handleJoinEvent}
                             joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
                             currentUserProfileId={profile?.id}
                           />
                         </DiscoveryRail>
-                      </div>
+                      </motion.div>
                     )}
 
-                    {/* Plan Your Weekend Rail */}
+                    {/* Rail 2: My Rituals - Recurring event stacks */}
+                    {ritualsEvents.length > 0 && (
+                      <motion.div 
+                        className="mb-6"
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.15)}
+                      >
+                        <DiscoveryRail 
+                          title={
+                            <span className="flex items-center gap-2">
+                              <RefreshCw size={20} className="text-green-500" /> 
+                              My Rituals
+                            </span>
+                          }
+                        >
+                          <HorizontalEventCarousel
+                            title=""
+                            events={ritualsEvents}
+                            onEventClick={handleEventClick}
+                            onJoinEvent={handleJoinEvent}
+                            joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                            currentUserProfileId={profile?.id}
+                          />
+                        </DiscoveryRail>
+                      </motion.div>
+                    )}
+
+                    {/* Rail 3: The Weekend Radar - Planning for upcoming weekend */}
                     {weekendEvents.length > 0 && (
-                      <div className="mb-6">
-                        <DiscoveryRail title={<span className="flex items-center gap-2"><Calendar size={20} className="text-blue-500" /> Plan Your Weekend</span>}>
+                      <motion.div 
+                        className="mb-6"
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.2)}
+                      >
+                        <DiscoveryRail 
+                          title={
+                            <span className="flex items-center gap-2">
+                              <Calendar size={20} className="text-blue-500" /> 
+                              The Weekend Radar
+                            </span>
+                          }
+                        >
                           <HorizontalEventCarousel
                             title=""
                             events={weekendEvents}
@@ -321,13 +437,25 @@ const Discovery = () => {
                             currentUserProfileId={profile?.id}
                           />
                         </DiscoveryRail>
-                      </div>
+                      </motion.div>
                     )}
 
-                    {/* Tonight Rail */}
+                    {/* Rail 4: Tonight - Spontaneous last-minute plans */}
                     {tonightEvents.length > 0 && (
-                      <div className="mb-6">
-                        <DiscoveryRail title={<span className="flex items-center gap-2"><Zap size={20} className="text-yellow-500" /> Tonight</span>}>
+                      <motion.div 
+                        className="mb-6"
+                        initial={railMotionConfig.initial}
+                        animate={railMotionConfig.animate}
+                        transition={getRailTransition(0.25)}
+                      >
+                        <DiscoveryRail 
+                          title={
+                            <span className="flex items-center gap-2">
+                              <Zap size={20} className="text-yellow-500" /> 
+                              Tonight
+                            </span>
+                          }
+                        >
                           <HorizontalEventCarousel
                             title=""
                             events={tonightEvents}
@@ -337,23 +465,7 @@ const Discovery = () => {
                             currentUserProfileId={profile?.id}
                           />
                         </DiscoveryRail>
-                      </div>
-                    )}
-
-                    {/* Live Music Rail */}
-                    {musicEvents.length > 0 && (
-                      <div className="mb-6">
-                        <DiscoveryRail title={<span className="flex items-center gap-2"><Music size={20} className="text-purple-500" /> Live Music</span>}>
-                          <HorizontalEventCarousel
-                            title=""
-                            events={musicEvents}
-                            onEventClick={handleEventClick}
-                            onJoinEvent={handleJoinEvent}
-                            joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                            currentUserProfileId={profile?.id}
-                          />
-                        </DiscoveryRail>
-                      </div>
+                      </motion.div>
                     )}
                   </div>
                 )}
