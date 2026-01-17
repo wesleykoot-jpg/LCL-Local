@@ -1,13 +1,14 @@
 import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { MapPin, Users, Loader2, Check } from 'lucide-react';
+import { MapPin, Users, Loader2, Check, Share2 } from 'lucide-react';
 import { getCategoryConfig } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { useJoinEvent } from '../hooks/hooks';
 import { useAuth } from '@/features/auth';
 import { SmartTimeLabel } from '@/components/SmartTimeLabel';
 import type { TimeMode, OpeningHours } from '@/lib/openingHours';
+import { hapticImpact } from '@/shared/lib/haptics';
 
 interface TimelineEventCardProps {
   event: EventWithAttendees & { ticket_number?: string };
@@ -55,6 +56,34 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   
   const isCurrentEventJoining = isJoining(event.id);
   
+  // Handle sharing event
+  const handleShare = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await hapticImpact('light');
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: `Check out this event: ${event.title}${event.venue_name ? ` at ${event.venue_name}` : ''}`,
+          url: window.location.href,
+        });
+      } catch (err) {
+        // User cancelled or share failed - not an error
+        console.log('Share cancelled or failed:', err);
+      }
+    } else {
+      // Fallback for browsers without Web Share API
+      // Copy link to clipboard
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        console.log('Link copied to clipboard');
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+      }
+    }
+  }, [event.title, event.venue_name]);
+  
   // Optimistic join handler with immediate UI feedback
   const handleOptimisticJoin = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -84,6 +113,17 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         className="relative rounded-2xl overflow-hidden bg-card border-2 border-border hover:border-primary/30 transition-all hover:shadow-lg"
         whileTap={{ scale: 0.98 }}
       >
+        {/* Share Button - Floating top-right */}
+        <div className="absolute right-3 top-3 z-30">
+          <button
+            onClick={handleShare}
+            aria-label="Share event"
+            className="p-2 rounded-full bg-white/90 hover:bg-white transition-colors shadow-sm border border-border/20 active:scale-95"
+          >
+            <Share2 className="w-4 h-4 text-foreground" />
+          </button>
+        </div>
+
         {/* Image - Cinema Style (2:1 aspect ratio) with integrated title overlay */}
         {event.image_url ? (
           <div className="relative w-full aspect-[2/1] overflow-hidden rounded-t-[28px] bg-gradient-to-br from-primary/10 to-primary/5">
@@ -192,6 +232,17 @@ export const TimelineEventCard = memo(function TimelineEventCard({
       }`}
       whileTap={{ scale: 0.98 }}
     >
+      {/* Share Button - Floating top-right for all variants */}
+      <div className="absolute right-3 top-3 z-20">
+        <button
+          onClick={handleShare}
+          aria-label="Share event"
+          className="p-2 rounded-full bg-muted/60 hover:bg-muted transition-colors active:scale-95"
+        >
+          <Share2 className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+        </button>
+      </div>
+
       {/* Row 1: Time Intelligence + Attendee Count (hidden in minimal variant) */}
       {variant === 'default' && (
         <div className="flex items-center justify-between mb-1">

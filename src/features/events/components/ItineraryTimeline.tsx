@@ -1,14 +1,11 @@
 import { useMemo } from 'react';
 import { ItineraryItem } from '../hooks/useUnifiedItinerary';
-import { Calendar, MapPin, ExternalLink, Car, ChevronDown, Building2, AlertTriangle, Download } from 'lucide-react';
+import { Calendar, MapPin, ExternalLink, Car, ChevronDown, Building2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { TimelineEventCard } from './TimelineEventCard';
 import type { EventWithAttendees } from '../hooks/hooks';
 import type { TimeMode } from '@/lib/openingHours';
-import { exportToCalendar, type CalendarEvent } from '../utils/calendarExport';
-import { hapticImpact } from '@/shared/lib/haptics';
-import toast from 'react-hot-toast';
 
 // Format time like "7:00 PM" - force 12-hour format
 function formatTime(date: Date): string {
@@ -196,38 +193,12 @@ const ConflictBadge = ({ message }: ConflictBadgeProps) => (
   </div>
 );
 
-/**
- * Convert ItineraryItem to CalendarEvent for export
- */
-function convertToCalendarEvent(item: ItineraryItem): CalendarEvent {
-  return {
-    id: item.id,
-    title: item.title,
-    description: item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) 
-      ? item.originalData.description || undefined
-      : undefined,
-    location: item.location,
-    startTime: item.startTime,
-    endTime: item.endTime,
-  };
-}
+
 
 export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<string, ItineraryItem[]> }) => {
   const today = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', month: 'short', day: 'numeric' 
   });
-  
-  const handleExportEvent = async (item: ItineraryItem) => {
-    try {
-      await hapticImpact('light');
-      const calendarEvent = convertToCalendarEvent(item);
-      exportToCalendar(calendarEvent);
-      toast.success('Evenement geëxporteerd naar agenda');
-    } catch (error) {
-      console.error('Failed to export event:', error);
-      toast.error('Exporteren mislukt');
-    }
-  };
 
   return (
     <div className="w-full pb-32 px-4">
@@ -345,22 +316,6 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                 {isChildEvent && !group.showParent && parentVenueName && (
                                   <ParentVenueBadge venueName={parentVenueName} />
                                 )}
-                                
-                                {/* Export Button */}
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex-1" />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleExportEvent(item);
-                                    }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                                    title="Add to Calendar"
-                                  >
-                                    <Download size={12} />
-                                    <span>Export</span>
-                                  </button>
-                                </div>
                                 
                                 {item.type === 'LCL_EVENT' && isEventWithAttendees(item.originalData) ? (
                                   <motion.div 
