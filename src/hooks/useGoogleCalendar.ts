@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { useAuth } from '@/contexts/useAuth';
+import { useAuth } from '@/features/auth';
 import {
   isGoogleCalendarConfigured,
   initiateGoogleOAuth,
