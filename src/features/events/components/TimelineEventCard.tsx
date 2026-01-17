@@ -6,6 +6,8 @@ import { getCategoryConfig } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { useJoinEvent } from '../hooks/hooks';
 import { useAuth } from '@/features/auth';
+import { SmartTimeLabel } from '@/components/SmartTimeLabel';
+import type { TimeMode, OpeningHours } from '@/lib/openingHours';
 
 interface TimelineEventCardProps {
   event: EventWithAttendees & { ticket_number?: string };
@@ -177,6 +179,10 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   }
 
   // Default and Minimal Variants
+  // Get time_mode with fallback to 'fixed' for existing events
+  const timeMode = (event.time_mode || 'fixed') as TimeMode;
+  const openingHours = event.opening_hours as OpeningHours | null;
+  
   return (
     <motion.div
       className={`relative rounded-2xl border-2 bg-card p-4 transition-all ${
@@ -186,14 +192,16 @@ export const TimelineEventCard = memo(function TimelineEventCard({
       }`}
       whileTap={{ scale: 0.98 }}
     >
-      {/* Row 1: Time + Attendee Count (hidden in minimal variant) */}
+      {/* Row 1: Time Intelligence + Attendee Count (hidden in minimal variant) */}
       {variant === 'default' && (
         <div className="flex items-center justify-between mb-1">
-          <span className={`text-[15px] font-semibold ${
-            isPast ? 'text-muted-foreground' : 'text-foreground'
-          }`}>
-            {formatTime(event.event_time)}
-          </span>
+          <SmartTimeLabel
+            timeMode={timeMode}
+            eventTime={event.event_time}
+            eventDate={event.event_date}
+            openingHours={openingHours}
+            className={isPast ? 'opacity-60' : ''}
+          />
           <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
             <Users size={14} />
             <span className="font-medium">{attendeeCount} going</span>

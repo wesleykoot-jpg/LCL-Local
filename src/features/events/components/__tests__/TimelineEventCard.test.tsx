@@ -111,8 +111,9 @@ describe('TimelineEventCard', () => {
   it('shows full details in default variant', () => {
     render(<TimelineEventCard event={mockEvent} variant="default" />);
     
-    // Time should be visible
-    expect(screen.getByText('7:00 PM')).toBeInTheDocument();
+    // Time should be visible (now part of SmartTimeLabel with date)
+    // The time is embedded in a larger string like "Tue 20 Jan • 7:00 PM"
+    expect(screen.getByText(/7:00 PM/)).toBeInTheDocument();
     // Location should be visible
     expect(screen.getByText('Test Venue')).toBeInTheDocument();
     // Category should be inline (cinema maps to entertainment, which has label "Entertainment")
