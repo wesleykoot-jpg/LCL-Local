@@ -1,0 +1,151 @@
+{
+  "uid": "lcl-openai",
+  "title": "LCL OpenAI Service Detail",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "timezone": "browser",
+  "tags": ["lcl", "openai"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "PROMETHEUS"
+        }
+      },
+      {
+        "name": "environment",
+        "type": "custom",
+        "query": "prod,staging,local",
+        "current": {
+          "text": "prod",
+          "value": "prod"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Requests per minute",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(external_requests_total{service=\"openai\",environment=~\"$environment\"}[5m])) * 60",
+          "legendFormat": "req/min"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "429s per minute",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(external_429_total{service=\"openai\",environment=~\"$environment\"}[5m])) * 60",
+          "legendFormat": "429/min"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "5xx per minute",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(external_5xx_total{service=\"openai\",environment=~\"$environment\"}[5m])) * 60",
+          "legendFormat": "5xx/min"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Latency p95 / p99",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(external_request_duration_seconds_bucket{service=\"openai\",environment=~\"$environment\"}[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(external_request_duration_seconds_bucket{service=\"openai\",environment=~\"$environment\"}[5m])))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Rate limit remaining",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "external_rate_limit_remaining{service=\"openai\",environment=~\"$environment\"}",
+          "legendFormat": "{{host}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Rate limit reset countdown (s)",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 16 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(external_rate_limit_reset_ts{service=\"openai\",environment=~\"$environment\"}) - time()"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Retry-After (s)",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 16 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(external_rate_limit_retry_after_seconds{service=\"openai\",environment=~\"$environment\"})"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Recent 429s with Retry-After",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "expr": "external_rate_limit_retry_after_seconds{service=\"openai\",environment=~\"$environment\"}"
+        }
+      ]
+    }
+  ]
+}

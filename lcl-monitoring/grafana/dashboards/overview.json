@@ -1,0 +1,192 @@
+{
+  "uid": "lcl-overview",
+  "title": "LCL External Monitoring Overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "timezone": "browser",
+  "tags": ["lcl", "monitoring"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "PROMETHEUS"
+        }
+      },
+      {
+        "name": "environment",
+        "type": "custom",
+        "query": "prod,staging,local",
+        "current": {
+          "text": "prod",
+          "value": "prod"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Global 429 / 5xx rate",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(external_429_total{environment=~\"$environment\"}[5m])) / sum(rate(external_requests_total{environment=~\"$environment\"}[5m]))",
+          "legendFormat": "429 rate"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(external_5xx_total{environment=~\"$environment\"}[5m])) / sum(rate(external_requests_total{environment=~\"$environment\"}[5m]))",
+          "legendFormat": "5xx rate"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Top 5 failing services",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "expr": "topk(5, sum by (service) (rate(external_5xx_total{environment=~\"$environment\"}[10m]) + rate(external_429_total{environment=~\"$environment\"}[10m])))"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "alertlist",
+      "title": "Active alerts",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 8 },
+      "options": {
+        "stateFilter": ["firing"],
+        "showInstances": true
+      }
+    },
+    {
+      "id": 4,
+      "type": "bargauge",
+      "title": "Token usage %",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "token_usage_total{environment=~\"$environment\"} / tokens_monthly_quota{environment=~\"$environment\"} * 100",
+          "legendFormat": "{{service}}/{{org}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Service list (last 5m)",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "expr": "sum by (service) (rate(external_requests_total{environment=~\"$environment\"}[5m]) * 60)",
+          "legendFormat": "req_per_min"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "expr": "sum by (service) (rate(external_429_total{environment=~\"$environment\"}[5m])) / sum by (service) (rate(external_requests_total{environment=~\"$environment\"}[5m])) * 100",
+          "legendFormat": "429_percent"
+        },
+        {
+          "refId": "C",
+          "format": "table",
+          "instant": true,
+          "expr": "sum by (service) (rate(external_5xx_total{environment=~\"$environment\"}[5m])) / sum by (service) (rate(external_requests_total{environment=~\"$environment\"}[5m])) * 100",
+          "legendFormat": "5xx_percent"
+        },
+        {
+          "refId": "D",
+          "format": "table",
+          "instant": true,
+          "expr": "histogram_quantile(0.95, sum by (le, service) (rate(external_request_duration_seconds_bucket{environment=~\"$environment\"}[5m])))",
+          "legendFormat": "p95_latency"
+        },
+        {
+          "refId": "E",
+          "format": "table",
+          "instant": true,
+          "expr": "max by (service) (external_rate_limit_remaining{environment=~\"$environment\"})",
+          "legendFormat": "rate_limit_remaining"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "service",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "req_per_min",
+              "Value #B": "429_percent",
+              "Value #C": "5xx_percent",
+              "Value #D": "p95_latency",
+              "Value #E": "rate_limit_remaining"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Queue depth",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "queue_depth{environment=~\"$environment\"}",
+          "legendFormat": "{{queue_name}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Worker count",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "worker_count{environment=~\"$environment\"}",
+          "legendFormat": "{{queue_name}}"
+        }
+      ]
+    }
+  ]
+}
