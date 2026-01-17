@@ -20,30 +20,38 @@
 
 @layer base {
   :root {
-    /* Airbnb-Inspired Design System */
-    --background: 0 0% 98%;
-    --foreground: 0 0% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 350 100% 60%;
+    /* v5.0 Social Air Theme */
+    --background: 0 0% 97%;      /* #F7F7F7 */
+    --foreground: 0 0% 13%;      /* #222222 */
+    
+    --card: 0 0% 100%;           /* #FFFFFF */
+    --card-foreground: 0 0% 13%;
+    
+    --primary: 239 84% 67%;      /* #6366F1 Social Indigo */
     --primary-foreground: 0 0% 100%;
+    
     --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary-foreground: 0 0% 13%;
+    
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted-foreground: 0 0% 45%;  /* #717171 */
+    
     --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 10%;
+    --accent-foreground: 0 0% 13%;
+    
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 350 100% 60%;
-    --radius: 0.75rem;
     
-    /* Airbnb Action Color - Rausch Red */
-    --action: 350 100% 60%;
+    --border: 0 0% 87%;          /* #DDDDDD */
+    --input: 0 0% 87%;
+    --ring: 239 84% 67%;
+    --radius: 1.25rem;           /* 20px default */
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 13%;
+    
+    /* v5.0 Action Color - Social Indigo */
+    --action: 239 84% 67%;
     --action-foreground: 0 0% 100%;
     
     /* Clean Surface Colors */
@@ -56,28 +64,28 @@
     
     /* Shadows */
     --shadow-warm: 0 0% 10%;
-    --shadow-warm-glow: 350 100% 60%;
+    --shadow-warm-glow: 239 84% 67%;
     
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 45%;
-    --sidebar-primary: 350 100% 60%;
+    --sidebar-primary: 239 84% 67%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 350 100% 60%;
+    --sidebar-accent-foreground: 0 0% 13%;
+    --sidebar-border: 0 0% 87%;
+    --sidebar-ring: 239 84% 67%;
   }
 
   .dark {
-    /* Dark Mode - Clean & Modern */
+    /* Dark Mode - v5.0 Social Air */
     --background: 0 0% 7%;
     --foreground: 0 0% 95%;
     --card: 0 0% 10%;
     --card-foreground: 0 0% 95%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 95%;
-    --primary: 350 100% 65%;
+    --primary: 239 84% 70%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 95%;
@@ -89,9 +97,9 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 350 100% 65%;
+    --ring: 239 84% 70%;
     
-    --action: 350 100% 65%;
+    --action: 239 84% 70%;
     --action-foreground: 0 0% 100%;
     
     --surface-base: 0 0% 8%;
@@ -101,16 +109,16 @@
     --border-hairline: 0 0% 20%;
     
     --shadow-warm: 0 0% 5%;
-    --shadow-warm-glow: 350 100% 50%;
+    --shadow-warm-glow: 239 84% 60%;
     
     --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 55%;
-    --sidebar-primary: 350 100% 65%;
+    --sidebar-primary: 239 84% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 15%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 350 100% 65%;
+    --sidebar-ring: 239 84% 70%;
   }
 }
 

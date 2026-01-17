@@ -57,28 +57,27 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Action Color
-        action: {
-          DEFAULT: "hsl(var(--action))",
-          foreground: "hsl(var(--action-foreground))",
-        },
-        surface: {
-          base: "hsl(var(--surface-base))",
-          elevated: "hsl(var(--surface-elevated))",
-          overlay: "hsl(var(--surface-overlay))",
-          // Aliases for LCL Core 2026 Design System docs compatibility
-          primary: "hsl(var(--surface-elevated))", // Pure White - Main Surface
-          muted: "hsl(var(--surface-base))", // Cool Gray - Background
-        },
-        // LCL Core 2026 Design System v4.0
+        // LCL Core v5.0 Social Air Design System
+        // Brand Identity
         brand: {
-          action: "#FF385C", // LCL Radiant Coral
-          "action-hover": "#E31C5F",
+          primary: '#6366F1', // Social Indigo - Primary Action
+          secondary: '#4F46E5', // Indigo-700 - Hover State
+        },
+        // Semantic Roles
+        action: {
+          DEFAULT: '#6366F1',
+          foreground: '#FFFFFF',
+        },
+        // Neutrals (Airbnb-inspired)
+        surface: {
+          base: '#F7F7F7',    // Page Background (Canvas)
+          card: '#FFFFFF',    // Content Surface
+          overlay: 'rgba(0,0,0,0.4)', // Modal Dimmer
         },
         text: {
-          primary: "#09090B", // High Contrast Zinc
-          secondary: "#52525B",
-          muted: "#71717A",
+          primary: '#222222',   // Ink Black - Headings & Data
+          secondary: '#717171', // Stone Grey - Metadata
+          muted: '#B0B0B0',     // Light Grey - Placeholders
         },
       },
       borderRadius: {
@@ -88,27 +87,33 @@ export default {
         "2xl": "1rem",
         "3xl": "24px", // LCL Standard Card Radius (8pt grid)
         "4xl": "32px", // Large UI Elements
+        // v5.0 Social Air Border Radius System
+        'card': '20px',       // Soft, friendly card corners
+        'button': '12px',     // Primary buttons
+        'pill': '9999px',     // Search bars and tags
+        'input': '12px',      // Form inputs
       },
-      // 2026 Apple-Inspired Shadow System
+      // v5.0 Social Air "Air" Shadow System
       boxShadow: {
-        "card": "0 2px 12px rgba(0, 0, 0, 0.04)",
-        "card-hover": "0 8px 24px rgba(0, 0, 0, 0.08)",
+        // The "Air" Shadow System
+        'card': '0 6px 16px rgba(0,0,0,0.08)', 
+        'card-hover': '0 12px 32px rgba(0,0,0,0.12)',
+        'floating': '0 8px 24px rgba(0,0,0,0.12)',
+        'bottom-nav': '0 -4px 20px rgba(0,0,0,0.05)', // Upward shadow for sticky footer
+        // Legacy shadows for backward compatibility
         "card-elevated": "0 4px 20px rgba(0, 0, 0, 0.06)",
         "float": "0 8px 32px rgba(0, 0, 0, 0.12)",
-        "nav": "0 8px 32px rgba(0, 0, 0, 0.25)", // Updated for solid surfaces
+        "nav": "0 8px 32px rgba(0, 0, 0, 0.25)",
         "glass": "0 4px 24px rgba(0, 0, 0, 0.06)",
         "up-sheet": "0 -8px 32px rgba(0, 0, 0, 0.12)",
-        // Apple 2026 Precise Shadow System (LCL Core v4.0)
         "apple-sm": "0 2px 8px rgba(0, 0, 0, 0.04)",
         "apple-md": "0 4px 20px rgba(0, 0, 0, 0.08)",
         "apple-lg": "0 12px 40px rgba(0, 0, 0, 0.12)",
         "apple-xl": "0 20px 64px rgba(0, 0, 0, 0.16)",
       },
-      // 2026 Backdrop Blur System
-      backdropBlur: {
-        xs: "2px",
-        "3xl": "64px",
-        "4xl": "80px",
+      // Font Family (v5.0 Social Air)
+      fontFamily: {
+        sans: ['Inter', 'Circular', 'system-ui', 'sans-serif'],
       },
       // Touch Target Spacing
       spacing: {
