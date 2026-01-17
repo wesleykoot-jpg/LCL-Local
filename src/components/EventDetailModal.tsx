@@ -291,10 +291,12 @@ export const EventDetailModal = memo(function EventDetailModal({
                 )}
               </div>
 
-              {/* Date pill */}
-              <div className="absolute top-4 right-16 px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
-                {event.event_date ? formatDateShort(event.event_date) : ''}
-              </div>
+              {/* Date pill - only show if date is available */}
+              {event.event_date && (
+                <div className="absolute top-4 right-16 px-3 py-1.5 rounded-[1rem] bg-background/90 backdrop-blur-xl text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
+                  {formatDateShort(event.event_date)}
+                </div>
+              )}
 
               {/* Title overlay - Bottom of hero */}
               <div className="absolute bottom-0 left-0 right-0 p-5 pt-16">

@@ -26,7 +26,12 @@ const corsHeaders = {
 
 // Configuration
 const MAX_BATCH_SIZE = 50;
-const GOOGLE_PLACES_RATE_LIMIT_MS = 100; // 10 requests per second max
+// Rate limiting between Google API calls
+// Google Places API: 100 QPS limit (pay-as-you-go), but we use 100ms delay 
+// to be conservative and avoid bursting. Daily quota should be monitored separately.
+const GOOGLE_PLACES_RATE_LIMIT_MS = 100;
+// Coordinate indicating missing/null location
+const NULL_COORDINATES = 'POINT(0 0)';
 
 interface EnrichmentRequest {
   event_id?: string;
@@ -96,7 +101,7 @@ function needsEnrichment(event: EventRow): boolean {
   if (event.enrichment_source) return false;
   
   // Check for missing essential fields
-  const missingLocation = !event.location || event.location === 'POINT(0 0)';
+  const missingLocation = !event.location || event.location === NULL_COORDINATES;
   const missingContact = !event.contact_phone;
   const missingWebsite = !event.website_url;
   const missingGoogleId = !event.google_place_id;
