@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Calendar, Clock, Sun } from 'lucide-react';
 import type { TimeMode, OpeningHours } from '@/lib/openingHours';
 import { isOpenNow, getClosingTimeToday, getNextOpeningTime } from '@/lib/openingHours';
+import { isMidnightValidCategory } from '@/shared/lib/categories';
 
 interface SmartTimeLabelProps {
   timeMode: TimeMode;
@@ -9,6 +10,34 @@ interface SmartTimeLabelProps {
   eventDate?: string | null;
   openingHours?: OpeningHours | null;
   className?: string;
+  /** Categories that legitimately use midnight times (e.g., nightlife parties) */
+  category?: string;
+  /** If true, all_day events will show "All Day" instead of a time */
+  isAllDay?: boolean;
+}
+
+/**
+ * Check if a time string represents midnight (00:00)
+ * @param timeStr - Time string in HH:MM format
+ * @returns true if time is exactly midnight
+ */
+export function isMidnightTime(timeStr: string | undefined | null): boolean {
+  if (!timeStr) return false;
+  const normalized = timeStr.trim();
+  // Match 00:00, 0:00, 00:00:00
+  return /^0{1,2}:00(:00)?$/.test(normalized);
+}
+
+/**
+ * Determine if we should suppress showing the time
+ * Returns true if time is midnight and not a valid midnight category
+ */
+function shouldSuppressMidnight(
+  timeStr: string | undefined | null,
+  category: string | undefined
+): boolean {
+  if (!isMidnightTime(timeStr)) return false;
+  return !isMidnightValidCategory(category);
 }
 
 /**
@@ -17,6 +46,9 @@ interface SmartTimeLabelProps {
  * - Fixed Event: Shows specific date/time (e.g., "Sat 12 Oct • 20:00")
  * - Window Venue: Shows open/closed status (e.g., "🟢 Open Now • Closes 22:00")
  * - Anytime: Shows availability message (e.g., "☀️ Always Open")
+ * 
+ * Midnight Suppression: If time is 00:00 and category is not a nightlife event,
+ * the time is treated as "Time TBA" to avoid showing technical fallback values.
  */
 export const SmartTimeLabel = memo(function SmartTimeLabel({
   timeMode,
@@ -24,7 +56,19 @@ export const SmartTimeLabel = memo(function SmartTimeLabel({
   eventDate,
   openingHours,
   className = '',
+  category,
+  isAllDay = false,
 }: SmartTimeLabelProps) {
+  
+  // Handle all-day events first
+  if (isAllDay) {
+    return (
+      <div className={`flex items-center gap-1.5 text-primary ${className}`}>
+        <Sun size={14} className="flex-shrink-0" />
+        <span className="font-semibold text-[15px]">All Day</span>
+      </div>
+    );
+  }
   
   // Case A: Fixed Event (Concert, Movie, etc.)
   if (timeMode === 'fixed' && eventDate) {
@@ -33,14 +77,19 @@ export const SmartTimeLabel = memo(function SmartTimeLabel({
     const dayOfMonth = date.getDate();
     const month = date.toLocaleDateString('en-US', { month: 'short' });
     
-    // Format time
-    const formattedTime = formatTime(eventTime || '');
+    // Check if time should be suppressed (midnight and not a nightlife event)
+    const suppressTime = shouldSuppressMidnight(eventTime, category);
+    
+    // Format time - show "Time TBA" if suppressed, otherwise formatted time
+    const displayTime = suppressTime 
+      ? 'Time TBA' 
+      : (eventTime ? formatTime(eventTime) : null);
     
     return (
       <div className={`flex items-center gap-1.5 text-primary ${className}`}>
         <Calendar size={14} className="flex-shrink-0" />
         <span className="font-semibold text-[15px]">
-          {dayOfWeek} {dayOfMonth} {month} • {formattedTime}
+          {dayOfWeek} {dayOfMonth} {month}{displayTime ? ` • ${displayTime}` : ''}
         </span>
       </div>
     );
@@ -97,8 +146,20 @@ export const SmartTimeLabel = memo(function SmartTimeLabel({
     );
   }
 
-  // Fallback: Show event time if available
+  // Fallback: Show event time if available (but suppress midnight if not valid category)
   if (eventTime) {
+    const suppressTime = shouldSuppressMidnight(eventTime, category);
+    
+    // If time should be suppressed, show "Time TBA" instead of 00:00
+    if (suppressTime) {
+      return (
+        <div className={`flex items-center gap-1.5 text-muted-foreground ${className}`}>
+          <Clock size={14} className="flex-shrink-0" />
+          <span className="font-semibold text-[15px]">Time TBA</span>
+        </div>
+      );
+    }
+    
     return (
       <div className={`flex items-center gap-1.5 ${className}`}>
         <Clock size={14} className="flex-shrink-0" />

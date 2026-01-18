@@ -180,7 +180,7 @@ export function parseDate(
  * Parses raw location string into a structured location object.
  * @param locationStr - Raw location string from scraping
  * @param defaultCoords - Default coordinates from source config
- * @returns StructuredLocation object
+ * @returns StructuredLocation object with null for missing data
  */
 export function parseLocation(
   locationStr: string | null | undefined,
@@ -189,7 +189,8 @@ export function parseLocation(
   const name = normalizeWhitespace(locationStr || "");
   
   const result: StructuredLocation = {
-    name: name || "Unknown location",
+    // Use null instead of "Unknown location" - let frontend handle display
+    name: name || null,
   };
 
   if (defaultCoords) {

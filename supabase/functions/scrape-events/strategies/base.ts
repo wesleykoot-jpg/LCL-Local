@@ -11,6 +11,16 @@
 import { SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Categories where midnight (00:00) is a legitimate start time
+ * Keep in sync with frontend: src/shared/lib/categories.ts
+ */
+const MIDNIGHT_VALID_CATEGORIES = ['music', 'nightlife', 'entertainment'] as const;
+
+// ============================================================================
 // INTERFACES
 // ============================================================================
 
@@ -431,15 +441,26 @@ export abstract class BaseScraperStrategy {
       location = `POINT(${event.coordinates.lng} ${event.coordinates.lat})`;
     }
 
+    // Detect if time was inferred (midnight with no explicit time from source)
+    // If start_time exists and is at midnight (00:00), treat as "all_day" unless category suggests nightlife
+    const hasExplicitTime = event.start_time && !this.isMidnightWithNoContext(event);
+    const isAllDay = event.start_time && !hasExplicitTime;
+    
+    // Use null instead of empty strings for optional fields
+    const venueName = event.venue_name?.trim() || null;
+    const description = event.description?.trim() || null;
+    const address = event.address?.trim() || null;
+
     return {
       title: event.name.trim(),
-      description: event.description?.trim() || "",
+      description,
       category: event.category,
       event_type: "anchor",
-      venue_name: event.venue_name || "",
+      venue_name: venueName,
       location,
       event_date: event.start_time || new Date().toISOString(),
-      event_time: event.start_time ? new Date(event.start_time).toTimeString().slice(0, 5) : "TBD",
+      // If no explicit time or inferred midnight, set to null instead of "TBD" or "00:00"
+      event_time: hasExplicitTime ? new Date(event.start_time!).toTimeString().slice(0, 5) : null,
       image_url: event.image_url || null,
       created_by: null,
       status: "published",
@@ -449,14 +470,35 @@ export abstract class BaseScraperStrategy {
         utc_start: event.start_time,
         utc_end: event.end_time,
         timezone: "Europe/Amsterdam",
-        all_day: false,
+        all_day: isAllDay,
       } : null,
       structured_location: {
-        name: event.venue_name || "",
-        address: event.address,
+        name: venueName,
+        address: address,
         coordinates: event.coordinates,
       },
     };
+  }
+
+  /**
+   * Check if start_time is midnight and likely a default value (not explicitly set)
+   * Returns true if we should treat the event as all-day/time-unspecified
+   */
+  protected isMidnightWithNoContext(event: ScrapedEvent): boolean {
+    if (!event.start_time) return false;
+    
+    const date = new Date(event.start_time);
+    const hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes();
+    
+    // Check if time is exactly midnight
+    if (hours === 0 && minutes === 0) {
+      // Check against categories where midnight is a legitimate start time
+      const category = event.category?.toLowerCase() || '';
+      return !MIDNIGHT_VALID_CATEGORIES.includes(category as typeof MIDNIGHT_VALID_CATEGORIES[number]);
+    }
+    
+    return false;
   }
 
   /**

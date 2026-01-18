@@ -102,6 +102,22 @@ export const CATEGORY_MAP: Record<string, string> = {
   wellness: 'active',
 };
 
+/**
+ * Categories where midnight (00:00) is a legitimate start time
+ * These are typically nightlife, music, or entertainment events that genuinely start late
+ */
+export const MIDNIGHT_VALID_CATEGORIES = ['music', 'nightlife', 'entertainment'] as const;
+
+/**
+ * Check if a category legitimately uses midnight as a start time
+ * @param category - The event category to check
+ * @returns true if midnight is a valid start time for this category
+ */
+export function isMidnightValidCategory(category: string | undefined | null): boolean {
+  if (!category) return false;
+  return MIDNIGHT_VALID_CATEGORIES.includes(category.toLowerCase() as typeof MIDNIGHT_VALID_CATEGORIES[number]);
+}
+
 export function getCategoryConfig(categoryId: string): CategoryConfig {
   const mapped = CATEGORY_MAP[categoryId] || categoryId;
   return CATEGORIES.find(c => c.id === mapped) || CATEGORIES[0];

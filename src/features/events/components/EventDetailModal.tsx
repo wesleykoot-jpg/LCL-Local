@@ -75,15 +75,34 @@ const formatDateShort = (dateStr: string) => {
   return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
 };
 
-// Dutch 24-hour time format
-const formatTime = (timeStr: string) => {
-  if (!timeStr) return '';
+import { isMidnightValidCategory } from '@/shared/lib/categories';
+
+// Dutch 24-hour time format with smart midnight suppression
+const formatTime = (timeStr: string | undefined | null, category?: string) => {
+  if (!timeStr) return null;
+  
+  // Check for midnight time - suppress unless it's a nightlife category
+  const isMidnight = /^0{1,2}:00(:00)?$/.test(timeStr.trim());
+  
+  if (isMidnight && !isMidnightValidCategory(category)) {
+    return null; // Return null to hide the time pill entirely
+  }
+  
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
     const [hours, minutes] = timeStr.split(':');
     return `${hours.padStart(2, '0')}:${minutes}`;
   }
   return timeStr;
 };
+
+/**
+ * Check if a value is valid for display (not null, undefined, empty, or "Unknown")
+ */
+function isValidDisplayValue(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized !== '' && normalized !== 'unknown' && normalized !== 'unknown location';
+}
 
 /**
  * Open location in native maps app
@@ -136,6 +155,9 @@ export const EventDetailModal = memo(function EventDetailModal({
       ? 'Actieve host'
       : null;
 
+  // Pre-compute formatted time to avoid duplicate calls
+  const formattedTime = formatTime(event.event_time, event.category);
+
   const handleOpenMaps = useCallback(async () => {
     if (!venueCoords) return;
     await hapticImpact('light');
@@ -183,19 +205,16 @@ export const EventDetailModal = memo(function EventDetailModal({
       >
         {/* Backdrop */}
         <motion.div
-          className="absolute inset-0 bg-black/70 "
+          className="absolute inset-0 bg-black/70"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         />
 
-        {/* Modal Content - Squircle geometry */}
+        {/* Modal Content - Design System v5.0 "Social Air" */}
         <motion.div
-          className="relative w-full max-w-lg bg-background rounded-t-[2.5rem] sm:rounded-[2.5rem] max-h-[92vh] overflow-hidden border-[0.5px] border-border/20"
-          style={{
-            boxShadow: '0 -8px 40px -8px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.1)'
-          }}
+          className="relative w-full max-w-lg bg-white rounded-t-[20px] sm:rounded-[20px] max-h-[92vh] overflow-hidden border border-gray-200 shadow-floating"
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
@@ -203,13 +222,13 @@ export const EventDetailModal = memo(function EventDetailModal({
         >
           {/* Drag handle for mobile */}
           <div className="flex justify-center pt-3 pb-1 sm:hidden">
-            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/20" />
+            <div className="w-12 h-1.5 rounded-full bg-gray-200" />
           </div>
 
           {/* Close button and actions menu - 48pt touch targets */}
           <div className="absolute top-4 right-4 z-20 flex gap-2">
             {/* Actions Menu (Report/Block) */}
-            <div className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-gray-900  flex items-center justify-center border-[0.5px] border-gray-400">
+            <div className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[20px] bg-white shadow-card flex items-center justify-center border border-gray-200">
               <EventActionsMenu
                 eventId={event.id}
                 hostUserId={event.created_by || undefined}
@@ -217,17 +236,17 @@ export const EventDetailModal = memo(function EventDetailModal({
               />
             </div>
             
-            {/* Close button */}
+            {/* Close button - Design System v5.0 */}
             <button
               onClick={handleClose}
-              className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[1.25rem] bg-gray-900  flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-[0.95] border-[0.5px] border-gray-400"
+              className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[20px] bg-white shadow-card flex items-center justify-center text-foreground hover:bg-gray-50 transition-all active:scale-[0.95] border border-gray-200"
             >
               <X size={22} strokeWidth={2.5} />
             </button>
           </div>
 
           <div className="overflow-y-auto max-h-[88vh]">
-            {/* Netflix-style Hero Image - Full bleed, taller */}
+            {/* Hero Image - Full bleed */}
             <div className="relative aspect-[16/10] overflow-hidden">
               <img
                 src={imageUrl}
@@ -235,9 +254,8 @@ export const EventDetailModal = memo(function EventDetailModal({
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
               />
-              {/* Cinematic gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-background/40 via-transparent to-transparent" />
+              {/* Gradient overlay for text readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
               
               {/* Top badges */}
               <div className="absolute top-4 left-4 flex items-center gap-2">
@@ -263,66 +281,70 @@ export const EventDetailModal = memo(function EventDetailModal({
               </div>
             </div>
 
-            {/* Content - iOS spacing */}
-            <div className="p-5 pt-3 space-y-5">
-              {/* Quick info pills */}
+            {/* Content - iOS spacing with Design System v5.0 "Social Air" */}
+            <div className="p-6 pt-3 space-y-5">
+              {/* Quick info pills - only render pills with valid data */}
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px] bg-muted text-[14px] text-foreground font-medium shadow-card">
                   <Calendar size={15} className="text-primary" />
                   {formatDate(event.event_date)}
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
-                  <Clock size={15} className="text-primary" />
-                  {formatTime(event.event_time)}
-                </div>
+                {/* Time pill - conditionally rendered (hides 00:00 for non-nightlife events) */}
+                {formattedTime && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px] bg-muted text-[14px] text-foreground font-medium shadow-card">
+                    <Clock size={15} className="text-primary" />
+                    {formattedTime}
+                  </div>
+                )}
                 <DistanceBadge 
                   venueCoordinates={venueCoords} 
                   userLocation={userLocation}
-                  className="px-3 py-2 rounded-[1rem] bg-muted/50"
+                  className="px-3 py-2 rounded-[12px] bg-muted shadow-card"
                 />
               </div>
 
-              {/* Location with Map - Squircle */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-[15px]">
-                  <MapPin size={16} className="text-primary flex-shrink-0" />
-                  <span className="text-foreground font-medium">{hasValidCoords ? locationLabel : 'Location Unknown'}</span>
-                </div>
-
-                {/* Static Map - Squircle geometry */}
-                {hasValidCoords ? (
-                  <motion.div 
-                    className="relative h-44 rounded-[1.5rem] overflow-hidden bg-muted cursor-pointer group border-[0.5px] border-border/30"
-                    onClick={handleOpenMaps}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <iframe
-                      src={staticMapUrl}
-                      className="w-full h-full border-0 pointer-events-none"
-                      title="Event location map"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-                    
-                    {/* Open in Maps button - Squircle */}
-                    <div className="absolute bottom-3 right-3">
-                      <div
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95  text-[14px] font-semibold border-[0.5px] border-border/30"
-                        style={{
-                          boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.12)'
-                        }}
-                      >
-                        <Navigation size={15} className="text-primary" />
-                        Route
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <div className="relative h-44 rounded-[1.5rem] border border-dashed border-border/40 bg-muted/60 flex items-center justify-center text-muted-foreground">
-                    Location Unknown
+              {/* Location with Map - only show if we have valid location data */}
+              {(hasValidCoords || isValidDisplayValue(event.venue_name)) && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-[15px]">
+                    <MapPin size={16} className="text-primary flex-shrink-0" />
+                    <span className="text-foreground font-medium">
+                      {hasValidCoords ? locationLabel : (isValidDisplayValue(event.venue_name) ? event.venue_name : 'Location TBA')}
+                    </span>
                   </div>
-                )}
-              </div>
+
+                  {/* Static Map - Squircle geometry */}
+                  {hasValidCoords ? (
+                    <motion.div 
+                      className="relative h-44 rounded-[20px] overflow-hidden bg-muted cursor-pointer group border border-gray-200 shadow-card"
+                      onClick={handleOpenMaps}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                    >
+                      <iframe
+                        src={staticMapUrl}
+                        className="w-full h-full border-0 pointer-events-none"
+                        title="Event location map"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                      
+                      {/* Open in Maps button - Squircle */}
+                      <div className="absolute bottom-3 right-3">
+                        <div
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-[12px] bg-white text-[14px] font-semibold border border-gray-200 shadow-floating"
+                        >
+                          <Navigation size={15} className="text-primary" />
+                          Route
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <div className="relative h-44 rounded-[20px] border border-dashed border-gray-300 bg-muted flex items-center justify-center text-muted-foreground">
+                      Location TBA
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Description - iOS 17pt equivalent */}
               {event.description && (
@@ -363,45 +385,39 @@ export const EventDetailModal = memo(function EventDetailModal({
             </div>
           </div>
 
-          {/* Fixed Bottom Action Bar - Thumb zone optimized */}
+          {/* Fixed Bottom Action Bar - Design System v5.0 "Social Air" */}
           <div 
-            className="sticky bottom-0 left-0 right-0 p-4 pb-safe bg-background/95  border-t border-[0.5px] border-border/30"
-            style={{
-              boxShadow: '0 -4px 20px -4px rgba(0, 0, 0, 0.08)'
-            }}
+            className="sticky bottom-0 left-0 right-0 p-4 pb-safe bg-white border-t border-gray-200 shadow-bottom-nav"
           >
             <div className="flex gap-3 items-center">
-              {/* Secondary actions - 52pt squircle buttons */}
+              {/* Secondary actions - 52pt buttons */}
               <button
                 onClick={handleShare}
-                className="w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[1.5rem] bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-[0.95] border-[0.5px] border-border/30"
+                className="w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[12px] bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-200 transition-all active:scale-[0.95] border border-gray-200"
               >
                 <Share2 size={22} />
               </button>
               
               <button
                 onClick={handleSave}
-                className={`w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[1.5rem] flex items-center justify-center transition-all active:scale-[0.95] border-[0.5px] ${
+                className={`w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[12px] flex items-center justify-center transition-all active:scale-[0.95] border ${
                   isSaved 
                     ? 'bg-primary/10 text-primary border-primary/30' 
-                    : 'bg-muted/60 text-muted-foreground border-border/30 hover:bg-muted hover:text-foreground'
+                    : 'bg-muted text-muted-foreground border-gray-200 hover:bg-gray-200 hover:text-foreground'
                 }`}
               >
                 <Bookmark size={22} fill={isSaved ? 'currentColor' : 'none'} />
               </button>
 
-              {/* Primary CTA - Squircle, full height */}
+              {/* Primary CTA - Design System v5.0 */}
               <button
                 onClick={handleJoin}
                 disabled={isJoining || hasJoined}
-                className={`flex-1 h-[52px] min-h-[48px] rounded-[1.5rem] text-[17px] font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.97] border-[0.5px] ${
+                className={`flex-1 h-[52px] min-h-[48px] rounded-[12px] text-[17px] font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.97] shadow-card ${
                   hasJoined
-                    ? 'bg-muted text-muted-foreground border-border/30'
-                    : 'bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90'
+                    ? 'bg-muted text-muted-foreground'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
-                style={{
-                  boxShadow: hasJoined ? 'none' : '0 4px 12px -2px rgba(var(--primary) / 0.25)'
-                }}
               >
                 {isJoining ? (
                   <>
