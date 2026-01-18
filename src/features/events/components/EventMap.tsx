@@ -16,6 +16,7 @@ import { memo, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { EventWithAttendees } from '../hooks/hooks';
+import { getEventCoordinates } from '@/shared/lib/formatters';
 
 // Fix for default marker icons in Leaflet with bundlers
 // Leaflet's default icon paths don't work properly with Vite
@@ -26,19 +27,33 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
 
-// Fix the default icon issue
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
+// Fix the default icon issue - Leaflet's icon path resolution doesn't work with bundlers
+// We use a try-catch to handle potential issues with different Leaflet versions
+try {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+} catch {
+  // Ignore if property doesn't exist
+}
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
 
+/** Event with distance information from the live events query */
+type EventWithDistance = EventWithAttendees & { distanceKm?: number };
+
+/** Event with parsed coordinates for map display */
+interface EventWithCoords extends EventWithDistance {
+  coords: { lat: number; lng: number };
+}
+
 interface EventMapProps {
   /** User's current location */
   userLocation?: { lat: number; lng: number } | null;
   /** Events to display on the map */
-  events: (EventWithAttendees & { distanceKm?: number })[];
+  events: EventWithDistance[];
   /** Callback when an event marker is clicked */
   onEventClick?: (event: EventWithAttendees) => void;
   /** Map height in CSS (default: 100%) */
@@ -134,22 +149,29 @@ export const EventMap = memo(function EventMap({
   height = '100%',
   initialZoom = 13,
 }: EventMapProps) {
+  // Parse event coordinates from location/structured_location fields
+  const eventsWithCoords = useMemo((): EventWithCoords[] => {
+    const result: EventWithCoords[] = [];
+    for (const event of events) {
+      const coords = getEventCoordinates(event.location, event.structured_location);
+      if (coords) {
+        result.push({ ...event, coords });
+      }
+    }
+    return result;
+  }, [events]);
+
   const mapCenter = useMemo((): [number, number] => {
     if (userLocation) {
       return [userLocation.lat, userLocation.lng];
     }
     // If we have events with coordinates, center on the first one
-    const firstEventWithCoords = events.find(e => e.latitude && e.longitude);
-    if (firstEventWithCoords) {
-      return [firstEventWithCoords.latitude!, firstEventWithCoords.longitude!];
+    if (eventsWithCoords.length > 0) {
+      const firstEvent = eventsWithCoords[0];
+      return [firstEvent.coords.lat, firstEvent.coords.lng];
     }
     return DEFAULT_MAP_CENTER;
-  }, [userLocation, events]);
-
-  // Filter events that have valid coordinates
-  const eventsWithCoords = useMemo(() => 
-    events.filter(e => e.latitude !== null && e.longitude !== null),
-  [events]);
+  }, [userLocation, eventsWithCoords]);
 
   return (
     <div style={{ height, width: '100%', position: 'relative' }}>
@@ -297,35 +319,38 @@ export const EventMap = memo(function EventMap({
         )}
         
         {/* Event Markers */}
-        {eventsWithCoords.map((event) => (
-          <Marker
-            key={event.id}
-            position={[event.latitude!, event.longitude!]}
-            icon={createEventIcon(event.category)}
-          >
-            <Popup>
-              <div className="event-popup">
-                <p className="event-popup-title">{event.title}</p>
-                {event.venue_name && (
-                  <p className="event-popup-info">📍 {event.venue_name}</p>
-                )}
-                {(event as EventWithAttendees & { distanceKm?: number }).distanceKm !== undefined && (
-                  <p className="event-popup-info">
-                    🚶 {(event as EventWithAttendees & { distanceKm?: number }).distanceKm! < 1 
-                      ? `${Math.round((event as EventWithAttendees & { distanceKm?: number }).distanceKm! * 1000)}m away`
-                      : `${(event as EventWithAttendees & { distanceKm?: number }).distanceKm!.toFixed(1)}km away`}
-                  </p>
-                )}
-                <button
-                  className="event-popup-action"
-                  onClick={() => onEventClick?.(event)}
-                >
-                  Get Directions →
-                </button>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        {eventsWithCoords.map((event) => {
+          const distanceKm = event.distanceKm;
+          return (
+            <Marker
+              key={event.id}
+              position={[event.coords.lat, event.coords.lng]}
+              icon={createEventIcon(event.category)}
+            >
+              <Popup>
+                <div className="event-popup">
+                  <p className="event-popup-title">{event.title}</p>
+                  {event.venue_name && (
+                    <p className="event-popup-info">📍 {event.venue_name}</p>
+                  )}
+                  {distanceKm !== undefined && (
+                    <p className="event-popup-info">
+                      🚶 {distanceKm < 1 
+                        ? `${Math.round(distanceKm * 1000)}m away`
+                        : `${distanceKm.toFixed(1)}km away`}
+                    </p>
+                  )}
+                  <button
+                    className="event-popup-action"
+                    onClick={() => onEventClick?.(event)}
+                  >
+                    Get Directions →
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );
