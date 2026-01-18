@@ -15,14 +15,14 @@ interface GlassSearchBarProps {
 /**
  * GlassSearchBar - Smart search bar for Discovery page
  * 
- * Airbnb-style specifications:
+ * LCL v5.0 "Social Air" Design System:
  * - Height: h-14 (56px)
- * - Shape: rounded-full
- * - Shadow: shadow-[0_6px_16px_rgba(0,0,0,0.12)]
+ * - Shape: rounded-pill
+ * - Shadow: shadow-card
  * 
  * Interaction:
- * - Browsing: Transparent/Glass background
- * - Searching: Solid White/Black background + "Cancel" text button
+ * - Browsing: Solid muted background
+ * - Searching: Solid white background + "Cancel" text button
  */
 export const GlassSearchBar = memo(function GlassSearchBar({
   value,
@@ -59,18 +59,18 @@ export const GlassSearchBar = memo(function GlassSearchBar({
     >
       <motion.div
         className={`
-          flex-1 flex items-center gap-3 h-14 rounded-full px-5
+          flex-1 flex items-center gap-3 h-14 rounded-pill px-5
           transition-all duration-200
           ${isSearching 
-            ? 'bg-card border border-border shadow-sm' 
-            : 'bg-muted/60  shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
+            ? 'bg-white border border-gray-200 shadow-card' 
+            : 'bg-gray-100 shadow-card'
           }
         `}
         layout
       >
         <Search 
           size={20} 
-          className="text-muted-foreground flex-shrink-0"
+          className="text-text-secondary flex-shrink-0"
           strokeWidth={2}
         />
         
@@ -82,7 +82,7 @@ export const GlassSearchBar = memo(function GlassSearchBar({
           onFocus={handleFocus}
           placeholder={placeholder}
           className={`
-            flex-1 bg-transparent outline-none text-[16px] text-foreground placeholder:text-muted-foreground
+            flex-1 bg-transparent outline-none text-[16px] text-text-primary placeholder:text-text-muted
             min-w-0
           `}
         />
@@ -93,9 +93,9 @@ export const GlassSearchBar = memo(function GlassSearchBar({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={handleClear}
-            className="w-6 h-6 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 active:scale-95 transition-colors"
+            className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 active:scale-95 transition-colors"
           >
-            <X size={14} className="text-muted-foreground" />
+            <X size={14} className="text-text-secondary" />
           </motion.button>
         )}
       </motion.div>
@@ -110,7 +110,7 @@ export const GlassSearchBar = memo(function GlassSearchBar({
         }}
         transition={{ duration: 0.2 }}
         onClick={handleCancel}
-        className="text-[16px] font-medium text-primary whitespace-nowrap overflow-hidden min-h-[44px] flex items-center active:opacity-70"
+        className="text-[16px] font-medium text-brand-primary whitespace-nowrap overflow-hidden min-h-[44px] flex items-center active:opacity-70"
       >
         Cancel
       </motion.button>
