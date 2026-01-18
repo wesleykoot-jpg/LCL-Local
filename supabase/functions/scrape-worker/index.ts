@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { getTargetYearEnv, parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
+import { formatYearPhrase, getTargetYearEnv, parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
 import type { ScrapeJobPayload, ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
@@ -255,7 +255,7 @@ async function parseEventWithAI(
 ): Promise<NormalizedEvent | null> {
   const today = new Date().toISOString().split("T")[0];
   const allowedYears = resolveTargetYears(getTargetYearEnv());
-  const yearPhrase = allowedYears.length === 1 ? `${allowedYears[0]}` : allowedYears.join(" en ");
+  const yearPhrase = formatYearPhrase(allowedYears);
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
 - Retourneer uitsluitend geldige JSON.
 - Weiger evenementen die niet in ${yearPhrase} plaatsvinden.

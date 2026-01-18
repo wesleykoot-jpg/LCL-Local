@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllowedEventYears, isAllowedEventYear, resolveTargetYears } from "../supabase/functions/_shared/dateUtils.ts";
+import { formatYearPhrase, getAllowedEventYears, isAllowedEventYear, resolveTargetYears } from "../supabase/functions/_shared/dateUtils.ts";
 
 describe("event year guard", () => {
   const referenceDate = new Date("2026-01-18T00:00:00Z");
@@ -16,5 +16,10 @@ describe("event year guard", () => {
 
   it("honors explicit target year override", () => {
     expect(resolveTargetYears("2028", referenceDate)).toEqual([2028]);
+  });
+
+  it("formats year phrase with Dutch conjunction", () => {
+    expect(formatYearPhrase([2026])).toBe("2026");
+    expect(formatYearPhrase([2026, 2027])).toBe("2026 en 2027");
   });
 });

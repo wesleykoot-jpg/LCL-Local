@@ -97,5 +97,19 @@ export function resolveTargetYears(targetYearEnv?: string | null, today: Date = 
  * Safe helper to read TARGET_EVENT_YEAR from the environment (Deno or Node).
  */
 export function getTargetYearEnv(): string | null {
-  return typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") ?? null : null;
+  if (typeof Deno !== "undefined") {
+    return Deno.env.get("TARGET_EVENT_YEAR") ?? null;
+  }
+  if (typeof process !== "undefined" && process.env?.TARGET_EVENT_YEAR) {
+    return process.env.TARGET_EVENT_YEAR ?? null;
+  }
+  return null;
+}
+
+/**
+ * Formats a human-readable year phrase using the Dutch conjunction "en".
+ */
+export function formatYearPhrase(years: number[]): string {
+  if (years.length === 0) return "";
+  return years.length === 1 ? `${years[0]}` : years.join(" en ");
 }
