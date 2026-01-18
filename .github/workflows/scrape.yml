@@ -13,12 +13,11 @@ jobs:
       - name: Invoke Supabase Edge Function - run-scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_KEY }}
         run: |
           echo "🚀 Triggering scraper at $(date -u)"
           
-          AUTH_KEY="${SUPABASE_SERVICE_ROLE_KEY:-$SUPABASE_KEY}"
+          AUTH_KEY="${SUPABASE_SERVICE_ROLE_KEY}"
           if [ -z "$SUPABASE_URL" ] || [ -z "$AUTH_KEY" ]; then
             echo "❌ Missing SUPABASE_URL or service role key"
             exit 1
