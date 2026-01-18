@@ -58,3 +58,23 @@ export function parseToISODate(dateStr: string, today?: Date): string | null {
 
   return null;
 }
+
+/**
+ * Returns the allowed event years (current year and next year by default).
+ * Accepts an optional reference date for deterministic testing.
+ */
+export function getAllowedEventYears(today: Date = new Date()): number[] {
+  const currentYear = today.getFullYear();
+  return [currentYear, currentYear + 1];
+}
+
+/**
+ * Checks if a given ISO date string falls within the allowed event years.
+ * By default allows the current and next calendar year.
+ */
+export function isAllowedEventYear(isoDate: string | null, today: Date = new Date()): boolean {
+  if (!isoDate) return false;
+  const year = Number(isoDate.slice(0, 4));
+  if (!Number.isFinite(year)) return false;
+  return getAllowedEventYears(today).includes(year);
+}
