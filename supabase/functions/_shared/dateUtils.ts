@@ -78,3 +78,17 @@ export function isAllowedEventYear(isoDate: string | null, today: Date = new Dat
   if (!Number.isFinite(year)) return false;
   return getAllowedEventYears(today).includes(year);
 }
+
+/**
+ * Resolve the target years for scraping. Uses an optional target year override
+ * (e.g., from environment) and falls back to the current and next calendar year.
+ */
+export function resolveTargetYears(targetYearEnv?: string | null, today: Date = new Date()): number[] {
+  if (targetYearEnv) {
+    const parsed = Number(targetYearEnv);
+    if (!Number.isNaN(parsed)) {
+      return [parsed];
+    }
+  }
+  return getAllowedEventYears(today);
+}

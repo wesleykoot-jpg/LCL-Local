@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { getAllowedEventYears, parseToISODate } from "../_shared/dateUtils.ts";
+import { parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
 import { 
   createSpoofedFetch, 
@@ -218,20 +218,12 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   return "community";
 }
 
-function getTargetYears(): number[] {
-  const envYear = typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") : undefined;
-  if (envYear) {
-    const parsed = Number(envYear);
-    if (!Number.isNaN(parsed)) return [parsed];
-  }
-  return getAllowedEventYears();
-}
-
 function isTargetYear(isoDate: string | null): boolean {
   if (!isoDate) return false;
   const year = Number(isoDate.slice(0, 4));
   if (!Number.isFinite(year)) return false;
-  return getTargetYears().includes(year);
+  const targetYears = resolveTargetYears(typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") : undefined);
+  return targetYears.includes(year);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -430,7 +422,7 @@ export async function parseEventWithAI(
   const callFn = options.callGeminiFn || callGemini;
 
   const today = new Date().toISOString().split("T")[0];
-  const allowedYears = getTargetYears();
+  const allowedYears = resolveTargetYears(typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") : undefined);
   const yearPhrase = allowedYears.length === 1 ? `${allowedYears[0]}` : `${allowedYears[0]} of ${allowedYears[1]}`;
 
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.

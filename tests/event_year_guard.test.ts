@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllowedEventYears, isAllowedEventYear } from "../supabase/functions/_shared/dateUtils.ts";
+import { getAllowedEventYears, isAllowedEventYear, resolveTargetYears } from "../supabase/functions/_shared/dateUtils.ts";
 
 describe("event year guard", () => {
   const referenceDate = new Date("2026-01-18T00:00:00Z");
@@ -12,5 +12,9 @@ describe("event year guard", () => {
     expect(isAllowedEventYear("2026-05-01", referenceDate)).toBe(true);
     expect(isAllowedEventYear("2027-02-15", referenceDate)).toBe(true);
     expect(isAllowedEventYear("2028-01-01", referenceDate)).toBe(false);
+  });
+
+  it("honors explicit target year override", () => {
+    expect(resolveTargetYears("2028", referenceDate)).toEqual([2028]);
   });
 });
