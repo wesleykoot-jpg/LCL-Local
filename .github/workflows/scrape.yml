@@ -30,27 +30,39 @@ jobs:
           BODY=$(echo "$RESPONSE" | sed '$d')
           
           echo "📋 Response (HTTP $HTTP_CODE):"
-          echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+          
+          # Validate JSON and pretty-print, or show raw body if invalid
+          if echo "$BODY" | jq . > /tmp/parsed.json 2>/dev/null; then
+            cat /tmp/parsed.json
+          else
+            echo "⚠️ Response is not valid JSON:"
+            echo "$BODY"
+          fi
           
           # Check if request was successful
           if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
             echo "✅ Scraper invoked successfully"
             
-            # Extract stats from response
-            SUCCESS=$(echo "$BODY" | jq -r '.success // false')
-            TOTAL_SOURCES=$(echo "$BODY" | jq -r '.stats.totalSources // 0')
-            INSERTED=$(echo "$BODY" | jq -r '.stats.totalEventsInserted // 0')
-            FAILED=$(echo "$BODY" | jq -r '.stats.totalEventsFailed // 0')
-            
-            echo ""
-            echo "📊 Summary:"
-            echo "   Success: $SUCCESS"
-            echo "   Total Sources: $TOTAL_SOURCES"
-            echo "   Events Inserted: $INSERTED"
-            echo "   Events Failed: $FAILED"
-            
-            if [[ "$SUCCESS" != "true" ]]; then
-              echo "⚠️ Scraper returned success=false"
+            # Extract stats from response (with JSON validation)
+            if echo "$BODY" | jq empty 2>/dev/null; then
+              SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+              TOTAL_SOURCES=$(echo "$BODY" | jq -r '.stats.totalSources // 0')
+              INSERTED=$(echo "$BODY" | jq -r '.stats.totalEventsInserted // 0')
+              FAILED=$(echo "$BODY" | jq -r '.stats.totalEventsFailed // 0')
+              
+              echo ""
+              echo "📊 Summary:"
+              echo "   Success: $SUCCESS"
+              echo "   Total Sources: $TOTAL_SOURCES"
+              echo "   Events Inserted: $INSERTED"
+              echo "   Events Failed: $FAILED"
+              
+              if [[ "$SUCCESS" != "true" ]]; then
+                echo "⚠️ Scraper returned success=false"
+                exit 1
+              fi
+            else
+              echo "⚠️ Unable to parse response as JSON, treating as error"
               exit 1
             fi
           else
