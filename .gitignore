@@ -38,3 +38,6 @@ E2E_AUDIT_REPORT.md
 
 *storybook.log
 storybook-static
+
+# IDE
+.antigravity/
