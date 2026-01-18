@@ -401,3 +401,141 @@ export async function runScraperTests(): Promise<IntegrityTestReport> {
 
   return data as IntegrityTestReport;
 }
+
+/**
+ * Trigger run-scraper edge function
+ */
+export async function triggerRunScraper(sourceIds?: string[]): Promise<ScrapeResult> {
+  const { data, error } = await supabase.functions.invoke('run-scraper', {
+    body: sourceIds ? { sourceIds } : undefined,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as ScrapeResult;
+}
+
+/**
+ * Trigger scrape-worker edge function for specific source
+ */
+export async function triggerScrapeWorker(sourceId: string): Promise<ScrapeResult> {
+  const { data, error } = await supabase.functions.invoke('scrape-worker', {
+    body: { sourceId },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as ScrapeResult;
+}
+
+/**
+ * Retry failed jobs
+ */
+export async function retryFailedJobs(): Promise<{ success: boolean; retriedCount: number; error?: string }> {
+  try {
+    // Get all failed jobs
+    const { data: failedJobs, error: fetchError } = await supabase
+      .from('scrape_jobs')
+      .select('id, source_id')
+      .eq('status', 'failed')
+      .lt('attempts', 3); // Only retry if attempts < 3
+
+    if (fetchError) {
+      throw new Error(fetchError.message);
+    }
+
+    if (!failedJobs || failedJobs.length === 0) {
+      return { success: true, retriedCount: 0 };
+    }
+
+    // Reset them to pending
+    const { error: updateError } = await supabase
+      .from('scrape_jobs')
+      .update({ 
+        status: 'pending',
+        error_message: null,
+      })
+      .in('id', failedJobs.map(j => j.id));
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    return { success: true, retriedCount: failedJobs.length };
+  } catch (error) {
+    return {
+      success: false,
+      retriedCount: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Queue specific sources for scraping
+ */
+export async function queueSourcesForScraping(sourceIds: string[]): Promise<{ success: boolean; jobsCreated: number; error?: string }> {
+  try {
+    const jobs = sourceIds.map(sourceId => ({
+      source_id: sourceId,
+      status: 'pending',
+      attempts: 0,
+      events_scraped: 0,
+      events_inserted: 0,
+      created_at: new Date().toISOString(),
+    }));
+
+    const { data, error } = await supabase
+      .from('scrape_jobs')
+      .insert(jobs)
+      .select('id');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, jobsCreated: data?.length ?? 0 };
+  } catch (error) {
+    return {
+      success: false,
+      jobsCreated: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Get detailed job information
+ */
+export async function getJobDetails(jobId: string) {
+  const { data, error } = await supabase
+    .from('scrape_jobs')
+    .select('*, scraper_sources(name, url)')
+    .eq('id', jobId)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Trigger scrape for selected sources (bypassing queue)
+ */
+export async function triggerSelectedSources(sourceIds: string[]): Promise<ScrapeResult> {
+  const { data, error } = await supabase.functions.invoke('scrape-events', {
+    body: { sourceIds },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as ScrapeResult;
+}
