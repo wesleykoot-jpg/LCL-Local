@@ -126,7 +126,7 @@ export function ShareProfile() {
         {/* Profile Preview */}
         <motion.section
           {...motionProps()}
-          className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-5 text-center"
+          className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-card p-5 text-center"
         >
           <div
             role="img"
@@ -154,7 +154,7 @@ export function ShareProfile() {
         {/* Copy Link */}
         <motion.section
           {...motionProps(0.1)}
-          className="bg-card border border-border rounded-2xl p-4"
+          className="bg-card border border-border rounded-card p-4"
         >
           <label className="block text-sm font-medium text-foreground mb-2">
             Profile Link
@@ -198,7 +198,7 @@ export function ShareProfile() {
           <button
             onClick={handleShowQR}
             aria-label="Show QR code"
-            className="w-full bg-card border border-border rounded-2xl p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+            className="w-full bg-card border border-border rounded-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -216,7 +216,7 @@ export function ShareProfile() {
         {/* Share Options */}
         <motion.section
           {...motionProps(0.3)}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <h2 className="font-semibold text-foreground">Share Via</h2>
@@ -365,7 +365,7 @@ function QrModal({ open, onClose, profileUrl, onCopy, onShare }: QrModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="qr-modal-title"
-        className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-lg p-5 focus:outline-none"
+        className="w-full max-w-sm bg-card border border-border rounded-card shadow-lg p-5 focus:outline-none"
         tabIndex={-1}
       >
         <div className="flex items-start justify-between mb-4">
@@ -390,7 +390,7 @@ function QrModal({ open, onClose, profileUrl, onCopy, onShare }: QrModalProps) {
           <Suspense
             fallback={
               <div
-                className="w-56 h-56 rounded-2xl bg-muted animate-pulse"
+                className="w-56 h-56 rounded-card bg-muted animate-pulse"
                 aria-busy="true"
                 aria-label="Loading QR code"
               />

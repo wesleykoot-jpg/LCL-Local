@@ -128,7 +128,7 @@ export function PrivacySettings() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-primary/10 border border-primary/20 rounded-2xl p-4"
+          className="bg-primary/10 border border-primary/20 rounded-card p-4"
         >
           <div className="flex items-start gap-3">
             <AlertCircle size={20} className="text-primary flex-shrink-0 mt-0.5" />
@@ -147,7 +147,7 @@ export function PrivacySettings() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
@@ -220,7 +220,7 @@ export function PrivacySettings() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
@@ -272,7 +272,7 @@ export function PrivacySettings() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
@@ -317,7 +317,7 @@ export function PrivacySettings() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
@@ -347,7 +347,7 @@ export function PrivacySettings() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-destructive/10 border-2 border-destructive/30 rounded-2xl overflow-hidden"
+          className="bg-destructive/10 border-2 border-destructive/30 rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-destructive/30">
             <div className="flex items-center gap-2">
@@ -377,7 +377,7 @@ export function PrivacySettings() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-muted/50 rounded-2xl p-4"
+          className="bg-muted/50 rounded-card p-4"
         >
           <h3 className="font-semibold text-foreground mb-2 text-sm">Data Protection Officer</h3>
           <p className="text-xs text-muted-foreground mb-2">

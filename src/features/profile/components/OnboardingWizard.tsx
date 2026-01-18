@@ -169,7 +169,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="relative w-full max-w-lg bg-background rounded-t-3xl sm:rounded-3xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="relative w-full max-w-lg bg-background rounded-t-card sm:rounded-card overflow-hidden max-h-[90vh] flex flex-col"
         style={{
           boxShadow: '0 -8px 40px -8px rgba(0, 0, 0, 0.2)'
         }}
@@ -234,7 +234,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                       key={cat.id}
                       onClick={() => toggleCategory(cat.id)}
                       className={cn(
-                        'relative p-4 rounded-2xl transition-all text-left min-h-[80px]',
+                        'relative p-4 rounded-card transition-all text-left min-h-[80px]',
                         'hover:scale-[1.02] active:scale-[0.98]',
                         'border-2',
                         isSelected
@@ -460,7 +460,7 @@ export function OnboardingWizard({ onComplete, onClose }: OnboardingWizardProps)
                 </p>
                 
                 {/* Smart Feed Explainer */}
-                <div className="max-w-md px-4 py-4 mb-6 bg-primary/5 border border-primary/10 rounded-2xl">
+                <div className="max-w-md px-4 py-4 mb-6 bg-primary/5 border border-primary/10 rounded-card">
                   <div className="flex items-start gap-3 mb-2">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <span className="text-lg">✨</span>

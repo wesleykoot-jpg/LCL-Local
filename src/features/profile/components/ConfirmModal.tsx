@@ -99,7 +99,7 @@ export function ConfirmModal({
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
         className={cn(
-          'w-full max-w-sm rounded-2xl bg-card border border-border shadow-lg p-5 focus:outline-none',
+          'w-full max-w-sm rounded-card bg-card border border-border shadow-lg p-5 focus:outline-none',
           'animate-in fade-in zoom-in duration-150'
         )}
         tabIndex={-1}

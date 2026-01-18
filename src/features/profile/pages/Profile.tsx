@@ -104,7 +104,7 @@ const Profile = () => {
         </div>
 
         {/* Pill-Style Tabs */}
-        <div className="sticky top-0 z-40 px-6 py-3 bg-surface-base/95 backdrop-blur-sm">
+        <div className="sticky top-0 z-40 px-6 py-3 bg-surface-base">
           <div 
             className="bg-surface-card shadow-card rounded-pill p-1 flex"
             role="tablist"
