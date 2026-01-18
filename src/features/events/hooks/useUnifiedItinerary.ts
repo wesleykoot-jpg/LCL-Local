@@ -16,7 +16,7 @@ export interface ItineraryItem {
   endTime?: Date;
   location?: string;
   image?: string;
-  status: 'confirmed' | 'tentative';
+  status: 'confirmed' | 'tentative' | 'pending';
   category?: string;
   attendeeCount?: number;
   ticketNumber?: string;
@@ -73,6 +73,25 @@ const getMockItems = (): ItineraryItem[] => {
       location: 'Schiphol Airport',
       status: 'tentative',
       originalData: {},
+      originalData: {},
+    },
+    {
+      id: 'mock-invite-1',
+      type: 'LCL_EVENT',
+      title: 'Secret rooftop party',
+      startTime: setHours(addDays(today, 3), 20), // 8:00 PM in 3 days
+      location: 'Unknown Location',
+      image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80',
+      status: 'pending', // Pending Invite!
+      category: 'social',
+      attendeeCount: 5,
+      originalData: {
+        id: 'mock-invite-1-data',
+        title: 'Secret rooftop party',
+        venue_name: 'Unknown Location',
+        category: 'social',
+        attendee_count: 5,
+      }
     }
   ];
 };
@@ -86,26 +105,26 @@ const getMockItems = (): ItineraryItem[] => {
 function detectTimeOverlaps(items: ItineraryItem[]): ItineraryItem[] {
   // Clone items and reset conflictType
   const cloned = items.map(i => ({ ...i, conflictType: null as 'overlap' | null }));
-  
+
   // Sort by startTime for comparison
   const sorted = cloned.slice().sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-  
+
   // Check each pair for overlaps
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const cur = sorted[i];
-    
+
     // Get end times (if missing, use startTime for zero-length)
     const prevEnd = (prev.endTime ?? prev.startTime).getTime();
     const curStart = cur.startTime.getTime();
-    
+
     // Strict overlap check (curStart < prevEnd, not <=)
     if (curStart < prevEnd) {
       prev.conflictType = 'overlap';
       cur.conflictType = 'overlap';
     }
   }
-  
+
   // Map back to original order using item IDs
   const byId = new Map(sorted.map(it => [it.id, it]));
   return items.map(orig => byId.get(orig.id) ?? { ...orig, conflictType: null });
@@ -233,8 +252,8 @@ export const useUnifiedItinerary = () => {
   const groupedTimeline = useMemo(() => {
     const groups: Record<string, ItineraryItem[]> = {};
     timelineItems.forEach(item => {
-      const dateKey = item.startTime.toLocaleDateString('en-US', { 
-        weekday: 'long', month: 'short', day: 'numeric' 
+      const dateKey = item.startTime.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'short', day: 'numeric'
       });
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(item);

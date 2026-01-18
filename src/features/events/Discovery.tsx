@@ -12,6 +12,7 @@ import { FriendsPulseRail } from './components/FriendsPulseRail';
 import { DiscoveryRail } from './components/DiscoveryRail';
 import { GlassSearchBar } from './components/GlassSearchBar';
 import { DeepDiveView } from './components/DeepDiveView';
+import { CategoryPills } from './components/CategoryPills';
 import { groupEventsIntoStacks } from './api/feedGrouping';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { MapPin, Plus, Navigation, ChevronDown, Flame, Calendar, Zap, RefreshCw } from 'lucide-react';
@@ -143,6 +144,7 @@ const Discovery = () => {
   // Mode state: browsing (rails) vs searching (deep dive list)
   const [mode, setMode] = useState<'browsing' | 'searching'>('browsing');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [explicitEvent, setExplicitEvent] = useState<EventWithAttendees | null>(null);
@@ -210,16 +212,29 @@ const Discovery = () => {
     [allEvents, featuredEvent]
   );
 
-  // Search filtered events
+  // Search filtered events (Combined Search + Category)
   const searchFilteredEvents = useMemo(() => {
-    if (!searchQuery.trim()) return allEvents;
-    const q = searchQuery.toLowerCase();
-    return allEvents.filter(e =>
-      e.title.toLowerCase().includes(q) ||
-      e.venue_name?.toLowerCase().includes(q) ||
-      e.category?.toLowerCase().includes(q)
-    );
-  }, [allEvents, searchQuery]);
+    let filtered = allEvents;
+
+    // 1. Text Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(e =>
+        e.title.toLowerCase().includes(q) ||
+        e.venue_name?.toLowerCase().includes(q) ||
+        e.category?.toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Category Filter
+    if (selectedCategory) {
+      filtered = filtered.filter(e =>
+        e.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    return filtered;
+  }, [allEvents, searchQuery, selectedCategory]);
 
   // Event handlers
   const handleEventClick = useCallback((eventId: string) => {
@@ -258,7 +273,20 @@ const Discovery = () => {
   const handleSearchCancel = useCallback(() => {
     setMode('browsing');
     setSearchQuery('');
+    setSelectedCategory(null);
   }, []);
+
+  const handleCategorySelect = useCallback((category: string | null) => {
+    setSelectedCategory(category);
+    // Auto-switch to searching mode if a category is selected and we are browsing
+    if (category && mode === 'browsing') {
+      setMode('searching');
+    }
+    // If deselecting and no search query, go back to browsing
+    if (!category && !searchQuery && mode === 'searching') {
+      setMode('browsing');
+    }
+  }, [mode, searchQuery]);
 
   const selectedEvent = useMemo(() => {
     if (explicitEvent) return explicitEvent;
@@ -280,7 +308,7 @@ const Discovery = () => {
   }, [locationPrefs, permissionState, profile?.location_city]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
+    <div className="min-h-screen bg-surface-base text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -288,7 +316,7 @@ const Discovery = () => {
         className="pb-32"
       >
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-card shadow-card border-b border-border pt-safe">
+        <header className="sticky top-0 z-40 bg-surface-card shadow-card border-b border-border pt-safe">
           {/* Location row */}
           <div className="px-6 py-3 flex items-center justify-between">
             <button
@@ -317,6 +345,14 @@ const Discovery = () => {
               onCancel={handleSearchCancel}
               mode={mode}
               placeholder="Search events, venues, categories..."
+            />
+          </div>
+
+          {/* Category Pills (New v5.0) */}
+          <div className="pb-3">
+            <CategoryPills
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleCategorySelect}
             />
           </div>
         </header>
