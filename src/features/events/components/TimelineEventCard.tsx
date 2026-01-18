@@ -312,6 +312,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
             eventTime={event.event_time}
             eventDate={event.event_date}
             openingHours={openingHours}
+            category={event.category}
             className={isPast ? 'opacity-60' : ''}
           />
           <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
