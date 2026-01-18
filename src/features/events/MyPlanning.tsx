@@ -16,10 +16,11 @@ import { FloatingNav } from '@/shared/components/FloatingNav';
  * - Google Calendar events (if connected)
  * 
  * Features:
- * - Solid surface sticky header with Apple 2026 shadows
+ * - Solid card surface sticky header with Air shadow system
  * - Vertical rail timeline with date grouping
  * - Empty state with journey prompt
- * - Social Indigo (#6366F1) action buttons
+ * - Social Indigo (#6366F1) primary action color
+ * - Consistent design tokens matching Discovery page
  */
 const MyPlanning = () => {
   const { groupedTimeline, timelineItems, isLoading, isEmpty, refresh } = useUnifiedItinerary();
@@ -27,10 +28,10 @@ const MyPlanning = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-muted">
+      <div className="min-h-screen bg-background">
         {/* Sticky Solid Header - LCL Core 2026 */}
-        <header className="sticky top-0 z-30 bg-surface-primary border-b border-border shadow-apple-sm px-6 py-4">
-          <h1 className="text-2xl font-bold text-text-primary">My Planning</h1>
+        <header className="sticky top-0 z-30 bg-card border-b border-border shadow-card px-6 py-4">
+          <h1 className="text-2xl font-bold text-foreground">My Planning</h1>
         </header>
         <div className="pt-4 px-4">
           <LoadingSkeleton />
@@ -41,16 +42,16 @@ const MyPlanning = () => {
   }
 
   return (
-    <div className="min-h-screen bg-surface-muted pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Sticky Solid Header - LCL Core 2026 */}
-      <header className="sticky top-0 z-30 bg-surface-primary border-b border-border shadow-apple-sm">
+      <header className="sticky top-0 z-30 bg-card border-b border-border shadow-card">
         <div className="px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-              <Map className="w-6 h-6 text-brand-primary" />
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Map className="w-6 h-6 text-primary" />
               My Planning
             </h1>
-            <p className="text-text-secondary text-sm mt-0.5">
+            <p className="text-muted-foreground text-sm mt-0.5">
               {isEmpty 
                 ? 'Your upcoming journey awaits' 
                 : `${timelineItems.length} event${timelineItems.length === 1 ? '' : 's'} planned`
@@ -61,7 +62,7 @@ const MyPlanning = () => {
             variant="ghost" 
             size="icon" 
             onClick={refresh} 
-            className="text-text-secondary hover:text-text-primary min-h-touch min-w-touch"
+            className="text-muted-foreground hover:text-foreground min-h-touch min-w-touch"
             aria-label="Refresh planning"
           >
             <RefreshCw className="w-5 h-5" />
@@ -73,18 +74,18 @@ const MyPlanning = () => {
       {isEmpty ? (
         /* Empty State - Start your Journey - LCL Core 2026 */
         <div className="flex flex-col items-center justify-center h-[60vh] px-8 text-center space-y-6">
-          <div className="w-24 h-24 rounded-full bg-brand-primary/10 flex items-center justify-center shadow-apple-sm">
-            <Calendar className="w-12 h-12 text-brand-primary" />
+          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center shadow-card">
+            <Calendar className="w-12 h-12 text-primary" />
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-text-primary">Start Your Journey</h3>
-            <p className="text-text-secondary mt-2 text-sm max-w-xs">
+            <h3 className="text-xl font-semibold text-foreground">Start Your Journey</h3>
+            <p className="text-muted-foreground mt-2 text-sm max-w-xs">
               Explore events near you and join one to build your personal itinerary.
             </p>
           </div>
           <button 
             onClick={() => navigate('/feed')} 
-            className="h-touch bg-brand-primary text-white font-bold rounded-2xl shadow-apple-sm active:opacity-90 transition-all px-6 flex items-center gap-2"
+            className="h-touch bg-primary text-primary-foreground font-bold rounded-2xl shadow-card active:opacity-90 transition-all px-6 flex items-center gap-2"
           >
             <Compass className="w-4 h-4" />
             Explore Events
