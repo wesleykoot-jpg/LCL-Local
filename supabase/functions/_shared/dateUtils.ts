@@ -92,3 +92,10 @@ export function resolveTargetYears(targetYearEnv?: string | null, today: Date = 
   }
   return getAllowedEventYears(today);
 }
+
+/**
+ * Safe helper to read TARGET_EVENT_YEAR from the environment (Deno or Node).
+ */
+export function getTargetYearEnv(): string | null {
+  return typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") ?? null : null;
+}

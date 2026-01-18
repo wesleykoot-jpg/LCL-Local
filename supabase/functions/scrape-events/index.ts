@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
+import { getTargetYearEnv, parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
 import { 
   createSpoofedFetch, 
@@ -216,10 +216,6 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   
   // Default fallback to community (most general category)
   return "community";
-}
-
-function getTargetYearEnv(): string | null {
-  return typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") ?? null : null;
 }
 
 function isTargetYear(isoDate: string | null): boolean {

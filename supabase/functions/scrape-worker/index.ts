@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
+import { getTargetYearEnv, parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
 import type { ScrapeJobPayload, ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
@@ -80,10 +80,6 @@ function getProxyApiKey(): string | undefined {
   return Deno.env.get("SCRAPER_PROXY_API_KEY") ||
     Deno.env.get("PROXY_PROVIDER_API_KEY") ||
     Deno.env.get("SCRAPINGBEE_API_KEY");
-}
-
-function getTargetYearEnv(): string | null {
-  return typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") ?? null : null;
 }
 
 function isTargetYear(isoDate: string | null): boolean {
