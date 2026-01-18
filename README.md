@@ -177,10 +177,12 @@ npx cap open ios
 |----------|---------|
 | [AI_CONTEXT.md](./AI_CONTEXT.md) | Concise context for AI assistants |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture and diagrams |
-| [FEED_ALGORITHM.md](./FEED_ALGORITHM.md) | Feed ranking algorithm details |
-| [BACKEND_SETUP.md](./BACKEND_SETUP.md) | Database configuration |
-| [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | iOS App Store deployment |
-| [**DOCS/DESIGN_SYSTEM_CORE.md**](./DOCS/DESIGN_SYSTEM_CORE.md) | **Design System v4.0** - Color tokens, shadows, spacing, components |
+| [docs/core/STRATEGIES.md](docs/core/STRATEGIES.md) | **Important**: Strategy Pattern (Production vs Test) |
+| [docs/core/FEED_ALGORITHM.md](docs/core/FEED_ALGORITHM.md) | Feed ranking algorithm details |
+| [docs/core/BACKEND_SETUP.md](docs/core/BACKEND_SETUP.md) | Database configuration |
+| [docs/core/DEPLOYMENT_GUIDE.md](docs/core/DEPLOYMENT_GUIDE.md) | iOS App Store deployment |
+| [docs/design_system/README.md](docs/design_system/README.md) | **Design System v4.0** |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Documentation & Contribution Guidelines |
 
 ## Current Status
 
@@ -215,7 +217,7 @@ The event scraper runs as a Supabase Edge Function (`supabase/functions/scrape-e
 
 ### Documentation
 
-- [**Runbook**](docs/runbook.md): Operational guide for monitoring and troubleshooting (if exists)
+- [**Runbook**](docs/scraper/RUNBOOK.md): Operational guide for monitoring and troubleshooting
 - **Configuration**: See `scraper_sources` table in Supabase for source configuration
 - **Schema**: Database tables in `supabase/migrations/`
 
