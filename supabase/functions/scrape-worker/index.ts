@@ -13,7 +13,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TARGET_YEAR = 2026;
+// Dynamically calculate target year (current year, or configurable via env)
+function getTargetYear(): number {
+  const envYear = Deno.env.get("TARGET_EVENT_YEAR");
+  if (envYear) {
+    const parsed = parseInt(envYear, 10);
+    if (!isNaN(parsed) && parsed >= 2020 && parsed <= 2100) {
+      return parsed;
+    }
+  }
+  return new Date().getFullYear();
+}
+
+const TARGET_YEAR = getTargetYear();
 const DEFAULT_EVENT_TYPE = "anchor";
 const BATCH_SIZE = 5;
 
@@ -64,15 +76,15 @@ function normalizeEventDateForStorage(
 
 function mapToInternalCategory(input?: string): InternalCategory {
   const value = (input || "").toLowerCase();
-  
+
   // Use the modern category classification system
   const category = classifyTextToCategory(value);
-  
+
   // Validate that the result is one of our internal categories
   if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
     return category as InternalCategory;
   }
-  
+
   // Default fallback to community (most general category)
   return "community";
 }
@@ -555,7 +567,7 @@ async function processSingleSource(
     );
     const defaultCoords = source.default_coordinates || source.config.default_coordinates;
     const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(0 0)";
-    
+
     // Log warning if coordinates are missing
     if (!defaultCoords) {
       console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);

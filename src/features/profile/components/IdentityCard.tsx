@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { Settings, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useDeviceTilt } from '@/hooks/useDeviceTilt';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { useAuth } from '@/features/auth';
@@ -34,10 +36,11 @@ const MOCK_STATS = {
 
 export function IdentityCard() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const motionPreset = useMotionPreset();
   const [isPressed, setIsPressed] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Enable subtle device tilt for 3D effect (optional enhancement)
   const tilt = useDeviceTilt({
     sensitivity: 0.5,
@@ -74,8 +77,8 @@ export function IdentityCard() {
   const stats = {
     events: profile?.events_attended ?? MOCK_STATS.events,
     friends: 84, // TODO: Add friends_count to profile schema when available
-    score: profile?.reliability_score 
-      ? Math.round(profile.reliability_score) 
+    score: profile?.reliability_score
+      ? Math.round(profile.reliability_score)
       : MOCK_STATS.score,
   };
 
@@ -118,9 +121,8 @@ export function IdentityCard() {
                 aria-label={`${displayProfile.full_name}'s avatar - long press to interact`}
               >
                 <div
-                  className={`w-16 h-16 rounded-full bg-gray-200 border-2 border-white shadow-card flex items-center justify-center text-text-secondary text-2xl font-bold overflow-hidden transition-all ${
-                    isPressed ? 'ring-4 ring-brand-primary/30' : ''
-                  }`}
+                  className={`w-16 h-16 rounded-full bg-gray-200 border-2 border-white shadow-card flex items-center justify-center text-text-secondary text-2xl font-bold overflow-hidden transition-all ${isPressed ? 'ring-4 ring-brand-primary/30' : ''
+                    }`}
                 >
                   {displayProfile.avatar_url ? (
                     <img
@@ -148,12 +150,26 @@ export function IdentityCard() {
                 <h2 className="text-xl font-bold text-text-primary leading-tight truncate mb-2">
                   {displayProfile.full_name}
                 </h2>
-                <ReliabilityBadge score={stats.score} />
+                <div className="flex items-center justify-between">
+                  <ReliabilityBadge score={stats.score} />
+
+                  {/* Edit Profile Button - Subtle */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/profile/personal-information');
+                    }}
+                    className="p-1.5 rounded-full text-text-muted hover:text-text-primary hover:bg-gray-100 transition-colors"
+                    aria-label="Edit Profile"
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Social Stats Bar - v5.0 Clean Style */}
-            <motion.div 
+            <motion.div
               className="flex items-center justify-around pt-4 mt-4 border-t border-gray-100"
               role="region"
               aria-label="Profile statistics"
@@ -165,7 +181,20 @@ export function IdentityCard() {
             >
               <StatBlock value={stats.events} label="Events" />
               <div className="w-px h-8 bg-gray-200" aria-hidden="true" />
-              <StatBlock value={stats.friends} label="Friends" />
+              <StatBlock value={stats.events} label="Events" />
+              <div className="w-px h-8 bg-gray-200" aria-hidden="true" />
+
+              {/* Interactive Friends Stat */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // TODO: Open Friends List Modal
+                  console.log('Open friends list');
+                }}
+                className="hover:bg-gray-50 rounded-lg -mx-2 px-2 transition-colors"
+              >
+                <StatBlock value={stats.friends} label="Friends" />
+              </button>
             </motion.div>
           </div>
         </motion.div>

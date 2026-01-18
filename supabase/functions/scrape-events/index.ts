@@ -3,8 +3,8 @@ import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScraperSource, RawEventCard, StructuredDate, StructuredLocation } from "./shared.ts";
-import { 
-  createSpoofedFetch, 
+import {
+  createSpoofedFetch,
   resolveStrategy,
   type PageFetcher,
   StaticPageFetcher,
@@ -13,11 +13,11 @@ import {
 } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { jitteredDelay, isRateLimited } from "../_shared/rateLimiting.ts";
-import { 
-  logScraperFailure, 
-  getHistoricalEventCount, 
-  increaseRateLimit, 
-  getEffectiveRateLimit 
+import {
+  logScraperFailure,
+  getHistoricalEventCount,
+  increaseRateLimit,
+  getEffectiveRateLimit
 } from "../_shared/scraperObservability.ts";
 import { parseRateLimitHeaders } from "../_shared/rateLimitParsing.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
@@ -59,7 +59,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-scraper-key",
 };
 
-const TARGET_YEAR = 2026;
+// Dynamically calculate target year (current year, or configurable via env)
+function getTargetYear(): number {
+  const envYear = Deno.env.get("TARGET_EVENT_YEAR");
+  if (envYear) {
+    const parsed = parseInt(envYear, 10);
+    if (!isNaN(parsed) && parsed >= 2020 && parsed <= 2100) {
+      return parsed;
+    }
+  }
+  return new Date().getFullYear();
+}
+
+const TARGET_YEAR = getTargetYear();
 
 const DEFAULT_EVENT_TYPE = "anchor";
 
@@ -134,15 +146,15 @@ export function parseDate(
   if (!isoDate) return null;
 
   const normalizedTime = timeStr?.trim().toLowerCase() || "";
-  const isAllDay = !normalizedTime || 
-    normalizedTime === "tbd" || 
+  const isAllDay = !normalizedTime ||
+    normalizedTime === "tbd" ||
     normalizedTime === "hele dag" ||
     normalizedTime === "all day";
 
   // Parse time if available
   let hours = 12;
   let minutes = 0;
-  
+
   if (!isAllDay) {
     const timeMatch = normalizedTime.match(/^(\d{1,2}):(\d{2})$/);
     if (timeMatch) {
@@ -187,7 +199,7 @@ export function parseLocation(
   defaultCoords?: { lat: number; lng: number }
 ): StructuredLocation {
   const name = normalizeWhitespace(locationStr || "");
-  
+
   const result: StructuredLocation = {
     // Use null instead of "Unknown location" - let frontend handle display
     name: name || null,
@@ -205,18 +217,18 @@ export function parseLocation(
 
 export function mapToInternalCategory(input?: string): InternalCategory {
   const value = (input || "").toLowerCase();
-  
+
   // Use the modern category classification system
   const category = classifyTextToCategory(value);
-  
+
   // Validate that the result is one of our internal categories
   if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
     return category as InternalCategory;
   }
-  
+
   // Log unexpected category results for debugging
   console.warn(`classifyTextToCategory returned unexpected value: "${category}" for input: "${input?.slice(0, MAX_LOG_INPUT_LENGTH)}". Using fallback "community"`);
-  
+
   // Default fallback to community (most general category)
   return "community";
 }
@@ -265,7 +277,7 @@ export async function fetchEventDetailTime(
     // Use provided fetcher or create a default StaticPageFetcher
     const pageFetcher = fetcher || new StaticPageFetcher();
     const { html, statusCode } = await pageFetcher.fetchPage(fullUrl);
-    
+
     if (statusCode < 200 || statusCode >= 400) return null;
 
     const $ = cheerio.load(html);
@@ -387,7 +399,7 @@ async function callGemini(
     }
 
     const text = await response.text();
-    
+
     // Handle rate limiting with exponential backoff
     if (response.status === 429) {
       console.warn(`Gemini 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`);
@@ -398,7 +410,7 @@ async function callGemini(
     }
 
     console.error("Gemini error", response.status, text);
-    
+
     // Don't retry on non-429 errors
     if (response.status !== 429) {
       return null;
@@ -447,7 +459,7 @@ ${rawEvent.rawHtml}`;
 
   let cleaned = text.trim();
   cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
-  
+
   let parsed: Partial<NormalizedEvent>;
   try {
     parsed = JSON.parse(cleaned) as Partial<NormalizedEvent>;
@@ -480,8 +492,8 @@ ${rawEvent.rawHtml}`;
     image_url: rawEvent.imageUrl ?? parsed.image_url ?? null,
     internal_category: mapToInternalCategory(
       (parsed as Record<string, unknown>).category as string ||
-        parsed.description ||
-        rawEvent.title,
+      parsed.description ||
+      rawEvent.title,
     ),
     detail_url: rawEvent.detailUrl,
     structured_date: structuredDate || undefined,
@@ -543,11 +555,11 @@ export async function scrapeEventCards(
 ): Promise<RawEventCard[]> {
   const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
   const fetcher = options.fetcher || createFetcherForSource(source);
-  
+
   // Use effective rate limit (may be dynamically increased)
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const rateLimit = supabaseUrl && supabaseKey 
+  const rateLimit = supabaseUrl && supabaseKey
     ? await getEffectiveRateLimit(supabaseUrl, supabaseKey, source.id)
     : source.config.rate_limit_ms ?? 150;
 
@@ -558,16 +570,16 @@ export async function scrapeEventCards(
     const candidates = await strategy.discoverListingUrls(fetcher);
     for (const candidate of candidates) {
       const resp = await strategy.fetchListing(candidate, fetcher);
-      
+
       // Handle rate limiting responses
       if (isRateLimited(resp.status) && supabaseUrl && supabaseKey) {
         // Parse rate-limit headers from the response
         const rateLimitInfo = parseRateLimitHeaders(resp.headers);
-        
+
         await increaseRateLimit(
-          supabaseUrl, 
-          supabaseKey, 
-          source.id, 
+          supabaseUrl,
+          supabaseKey,
+          source.id,
           resp.status,
           rateLimitInfo.retryAfterSeconds,
           rateLimitInfo.remaining,
@@ -575,7 +587,7 @@ export async function scrapeEventCards(
         );
         console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
       }
-      
+
       if (resp.status === 404 || !resp.html) continue;
       listingHtml = resp.html;
       listingUrl = resp.finalUrl || candidate;
@@ -586,7 +598,7 @@ export async function scrapeEventCards(
   if (!listingHtml) return [];
 
   const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug: options.enableDebug, fetcher });
-  
+
   if (enableDeepScraping) {
     for (const raw of rawEvents) {
       if (!raw.detailUrl || raw.detailPageTime) continue;
@@ -611,14 +623,14 @@ function ensureValidCategory(category: unknown): InternalCategory {
     console.warn(`Category is not a string (type: ${typeof category}, value: ${JSON.stringify(category)}). Falling back to "community"`);
     return "community";
   }
-  
+
   const normalized = category.toLowerCase().trim();
-  
+
   // Validate against the allowed categories
   if (INTERNAL_CATEGORIES.includes(normalized as InternalCategory)) {
     return normalized as InternalCategory;
   }
-  
+
   // Log invalid category attempts for debugging
   console.warn(`Invalid category detected: "${category}". Falling back to "community"`);
   return "community";
@@ -636,7 +648,7 @@ async function insertEvent(
     console.warn("Event missing category field, defaulting to community");
     event.category = "community";
   }
-  
+
   const { error } = await supabase.from("events").insert(event);
   if (error) {
     // Enhanced error logging for constraint violations
@@ -789,7 +801,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
       const fetcher = createFetcherForSource(source);
       const probeLog: Array<{ candidate: string; status: number; finalUrl: string; ok: boolean }> = [];
-      
+
       // Get effective rate limit (may be dynamically adjusted)
       const rateLimit = await getEffectiveRateLimit(supabaseUrl, supabaseKey, source.id);
       const sourceStats = { name: source.name, scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
@@ -804,23 +816,23 @@ export async function handleRequest(req: Request): Promise<Response> {
           const resp = await strategy.fetchListing(candidate, fetcher);
           lastHttpStatus = resp.status; // Track last HTTP status
           probeLog.push({ candidate, status: resp.status, finalUrl: resp.finalUrl, ok: resp.status >= 200 && resp.status < 400 });
-          
+
           // Handle rate limiting responses
           if (isRateLimited(resp.status)) {
             // Parse rate-limit headers from the response
             const rateLimitInfo = parseRateLimitHeaders(resp.headers);
-            
+
             await increaseRateLimit(
-              supabaseUrl, 
-              supabaseKey, 
-              source.id, 
+              supabaseUrl,
+              supabaseKey,
+              source.id,
               resp.status,
               rateLimitInfo.retryAfterSeconds,
               rateLimitInfo.remaining,
               rateLimitInfo.resetTs
             );
             console.warn(`Rate limited (${resp.status}) for ${source.name}, backing off`);
-            
+
             // Log the failure
             await logScraperFailure(supabaseUrl, supabaseKey, {
               source_id: source.id,
@@ -830,7 +842,7 @@ export async function handleRequest(req: Request): Promise<Response> {
               status_code: resp.status,
             });
           }
-          
+
           if (resp.status === 404 || !resp.html) continue;
           listingHtml = resp.html;
           listingUrl = resp.finalUrl || candidate;
@@ -847,7 +859,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug, fetcher });
         sourceStats.scraped = rawEvents.length;
         stats.totalEventsScraped += rawEvents.length;
-        
+
         // Check for anomaly: 0 events when we expected more (broken selectors)
         if (rawEvents.length === 0) {
           const historicalCount = await getHistoricalEventCount(supabaseUrl, supabaseKey, source.id);
@@ -904,7 +916,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           const { point, isFallback } = toPostgisPoint(defaultCoords);
           const sanitizedTitle = toTitleCase(normalized.title);
           const sanitizedDescription = stripHtml(normalized.description || "");
-          
+
           // Log warning if coordinates are missing or fallback
           if (isFallback) {
             console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);
@@ -931,12 +943,12 @@ export async function handleRequest(req: Request): Promise<Response> {
             structured_date: normalized.structured_date || null,
             structured_location: normalized.structured_location
               ? {
-                  ...normalized.structured_location,
-                  coordinates: normalized.structured_location.coordinates || (!isFallback ? defaultCoords : undefined),
-                }
+                ...normalized.structured_location,
+                coordinates: normalized.structured_location.coordinates || (!isFallback ? defaultCoords : undefined),
+              }
               : (!isFallback && defaultCoords
-                  ? { name: normalized.venue_name || source.name, coordinates: defaultCoords }
-                  : null),
+                ? { name: normalized.venue_name || source.name, coordinates: defaultCoords }
+                : null),
             organizer: normalized.organizer || null,
           };
 
@@ -961,7 +973,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
         await upsertProbeLog(supabase, source.id, probeLog);
         await updateSourceStats(supabase, source.id, sourceStats.scraped, sourceStats.scraped > 0);
-        
+
         // Self-healing: Check if fetcher_type needs to be upgraded
         // Only if we got HTTP 200 OK but 0 events
         if (lastHttpStatus === 200 && sourceStats.scraped === 0) {
@@ -989,11 +1001,11 @@ export async function handleRequest(req: Request): Promise<Response> {
     });
   } catch (error) {
     console.error("Scraper error", error);
-    
+
     // Send Slack notification for errors
     const errorMessage = `❌ Scraper Error\n${error instanceof Error ? error.message : "Unknown error"}`;
     await sendSlackNotification(errorMessage, true);
-    
+
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -1011,9 +1023,9 @@ export { StaticPageFetcher, DynamicPageFetcher, createFetcherForSource } from ".
 // ============================================================================
 
 // Import strategy configurations
-import { 
-  ALL_STRATEGIES, 
-  getEnabledStrategies, 
+import {
+  ALL_STRATEGIES,
+  getEnabledStrategies,
   shouldRunNow,
 } from "./config.ts";
 
@@ -1068,7 +1080,7 @@ async function runScheduledScrapers(supabase: SupabaseClient): Promise<Record<st
 
   for (const strategyName of getEnabledStrategies()) {
     const strategyConfig = ALL_STRATEGIES[strategyName as keyof typeof ALL_STRATEGIES];
-    
+
     // Check if this strategy should run based on its cron schedule
     if (shouldRunNow(strategyConfig.config.schedule, now)) {
       console.log(`[scheduler] Running ${strategyName} (schedule: ${strategyConfig.config.schedule})`);
@@ -1176,10 +1188,10 @@ export async function handleStrategyRequest(req: Request): Promise<Response> {
     );
   } catch (error) {
     console.error("Strategy scraper error:", error);
-    
+
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     await sendSlackNotification(`❌ Strategy Scraper Error\n${errorMessage}`, true);
-    
+
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1188,8 +1200,8 @@ export async function handleStrategyRequest(req: Request): Promise<Response> {
 }
 
 // Export strategy types and factories for testing
-export { 
-  ALL_STRATEGIES, 
+export {
+  ALL_STRATEGIES,
   getEnabledStrategies,
   STRATEGY_FACTORIES,
   runStrategy,

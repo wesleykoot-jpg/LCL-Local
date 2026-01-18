@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth';
 import { FloatingNav } from '@/shared/components';
 import { MorphingHeader } from '../components/MorphingHeader';
 import { LivingPassport } from '../components/LivingPassport';
+import { UpcomingBoardingPasses } from '../components/UpcomingBoardingPasses';
 import { SettingsDeck } from '../components/SettingsDeck';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { hapticImpact } from '@/shared/lib/haptics';
@@ -27,14 +28,15 @@ import toast from 'react-hot-toast';
  * - Off-white background (#F7F7F7) with solid white cards
  */
 
-type TabType = 'passport' | 'settings';
+type TabType = 'plans' | 'passport' | 'settings';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const motionPreset = useMotionPreset();
+
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('passport');
+  const [activeTab, setActiveTab] = useState<TabType>('plans');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
@@ -54,9 +56,9 @@ const Profile = () => {
       handleTabChange(tab);
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();
-      const tabs: TabType[] = ['passport', 'settings'];
+      const tabs: TabType[] = ['plans', 'passport', 'settings'];
       const currentIndex = tabs.indexOf(activeTab);
-      const nextIndex = e.key === 'ArrowLeft' 
+      const nextIndex = e.key === 'ArrowLeft'
         ? (currentIndex - 1 + tabs.length) % tabs.length
         : (currentIndex + 1) % tabs.length;
       handleTabChange(tabs[nextIndex]);
@@ -86,7 +88,7 @@ const Profile = () => {
   return (
     <>
       {/* v5.0 Social Air Background - Clean Off-White Canvas */}
-      <div 
+      <div
         ref={containerRef}
         className="min-h-screen bg-surface-base"
       >
@@ -105,7 +107,7 @@ const Profile = () => {
 
         {/* Pill-Style Tabs */}
         <div className="sticky top-0 z-40 px-6 py-3 bg-surface-base">
-          <div 
+          <div
             className="bg-surface-card shadow-card rounded-pill p-1 flex"
             role="tablist"
             aria-label="Profile sections"
@@ -116,12 +118,25 @@ const Profile = () => {
               role="tab"
               aria-selected={activeTab === 'passport'}
               aria-controls="passport-panel"
+              id="plans-tab"
+              className={`flex-1 py-2.5 px-4 rounded-pill text-sm font-semibold transition-all min-h-[44px] ${activeTab === 'plans'
+                ? 'bg-brand-primary text-white shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
+                }`}
+            >
+              Plans
+            </button>
+            <button
+              onClick={() => handleTabChange('passport')}
+              onKeyDown={(e) => handleKeyDown(e, 'passport')}
+              role="tab"
+              aria-selected={activeTab === 'passport'}
+              aria-controls="passport-panel"
               id="passport-tab"
-              className={`flex-1 py-2.5 px-4 rounded-pill text-sm font-semibold transition-all min-h-[44px] ${
-                activeTab === 'passport'
-                  ? 'bg-brand-primary text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
+              className={`flex-1 py-2.5 px-4 rounded-pill text-sm font-semibold transition-all min-h-[44px] ${activeTab === 'passport'
+                ? 'bg-brand-primary text-white shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
+                }`}
             >
               Passport
             </button>
@@ -132,11 +147,10 @@ const Profile = () => {
               aria-selected={activeTab === 'settings'}
               aria-controls="settings-panel"
               id="settings-tab"
-              className={`flex-1 py-2.5 px-4 rounded-pill text-sm font-semibold transition-all min-h-[44px] ${
-                activeTab === 'settings'
-                  ? 'bg-brand-primary text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
+              className={`flex-1 py-2.5 px-4 rounded-pill text-sm font-semibold transition-all min-h-[44px] ${activeTab === 'settings'
+                ? 'bg-brand-primary text-white shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
+                }`}
             >
               Settings
             </button>
@@ -146,6 +160,30 @@ const Profile = () => {
         {/* Main Content Area */}
         <main className="px-6 pb-32 pt-4">
           <AnimatePresence mode="wait">
+            {/* Plans Tab - Upcoming Events */}
+            {activeTab === 'plans' && (
+              <motion.div
+                key="plans"
+                role="tabpanel"
+                id="plans-panel"
+                aria-labelledby="plans-tab"
+                {...(motionPreset.prefersReducedMotion ? {} : {
+                  initial: { opacity: 0, x: -20 },
+                  animate: { opacity: 1, x: 0 },
+                  exit: { opacity: 0, x: 20 },
+                  transition: { duration: 0.2 },
+                })}
+              >
+                <h2 className="text-lg font-bold text-text-primary mb-4">
+                  Boarding Passes
+                </h2>
+                <p className="text-text-secondary text-sm mb-6">
+                  Your upcoming events and tickets
+                </p>
+                <UpcomingBoardingPasses />
+              </motion.div>
+            )}
+
             {/* Passport Tab - Living Timeline */}
             {activeTab === 'passport' && (
               <motion.div
@@ -187,7 +225,7 @@ const Profile = () => {
                 <h2 className="text-lg font-bold text-text-primary mb-4">
                   Settings
                 </h2>
-                <SettingsDeck 
+                <SettingsDeck
                   onSignOut={handleSignOutClick}
                   isSigningOut={isSigningOut}
                 />
