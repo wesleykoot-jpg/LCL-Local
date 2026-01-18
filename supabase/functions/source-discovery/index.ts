@@ -253,7 +253,7 @@ function isNoiseDomain(url: string): boolean {
  * Query Multiplexing strategy for high-authority ANCHOR agenda pages.
  * 
  * Now includes category-specific queries to discover sources for
- * sports, music, gaming, and other specialized event types.
+ * sports, music, entertainment, and other specialized event types.
  */
 function generateSearchQueries(municipalityName: string): string[] {
   const baseQueries = [
