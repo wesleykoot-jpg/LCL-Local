@@ -194,7 +194,7 @@ To run the scraper outside the schedule:
 2. Click **Run workflow**
 3. Workflow will execute with the environment variables configured in the workflow file
 
-**Note:** The scraper runs via a scheduled GitHub Actions workflow that invokes the scraper CLI. For testing individual sources with dry-run mode, use the `./scripts/run-scraper-dryrun.sh` script instead.
+**Note:** The scraper runs via a scheduled GitHub Actions workflow that invokes the `run-scraper` Supabase Edge Function via HTTP. For testing individual sources with dry-run mode, use the `./scripts/run-scraper-dryrun.sh` script instead.
 
 ### Running Locally
 
