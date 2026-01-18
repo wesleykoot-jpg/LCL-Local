@@ -218,11 +218,15 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   return "community";
 }
 
+function getTargetYearEnv(): string | null {
+  return typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") ?? null : null;
+}
+
 function isTargetYear(isoDate: string | null): boolean {
   if (!isoDate) return false;
   const year = Number(isoDate.slice(0, 4));
   if (!Number.isFinite(year)) return false;
-  const targetYears = resolveTargetYears(typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") : undefined);
+  const targetYears = resolveTargetYears(getTargetYearEnv());
   return targetYears.includes(year);
 }
 
@@ -422,8 +426,8 @@ export async function parseEventWithAI(
   const callFn = options.callGeminiFn || callGemini;
 
   const today = new Date().toISOString().split("T")[0];
-  const allowedYears = resolveTargetYears(typeof Deno !== "undefined" ? Deno.env.get("TARGET_EVENT_YEAR") : undefined);
-  const yearPhrase = allowedYears.length === 1 ? `${allowedYears[0]}` : `${allowedYears[0]} of ${allowedYears[1]}`;
+  const allowedYears = resolveTargetYears(getTargetYearEnv());
+  const yearPhrase = allowedYears.length === 1 ? `${allowedYears[0]}` : `${allowedYears[0]} en ${allowedYears[1]}`;
 
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
 - Retourneer uitsluitend geldige JSON.
