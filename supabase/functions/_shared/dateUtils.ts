@@ -86,7 +86,7 @@ export function isAllowedEventYear(isoDate: string | null, today: Date = new Dat
 export function resolveTargetYears(targetYearEnv?: string | null, today: Date = new Date()): number[] {
   if (targetYearEnv) {
     const parsed = Number(targetYearEnv);
-    if (!Number.isNaN(parsed)) {
+    if (!Number.isNaN(parsed) && parsed >= 2020 && parsed <= 2100) {
       return [parsed];
     }
   }

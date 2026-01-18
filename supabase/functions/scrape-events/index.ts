@@ -423,7 +423,7 @@ export async function parseEventWithAI(
 
   const today = new Date().toISOString().split("T")[0];
   const allowedYears = resolveTargetYears(getTargetYearEnv());
-  const yearPhrase = allowedYears.length === 1 ? `${allowedYears[0]}` : `${allowedYears[0]} en ${allowedYears[1]}`;
+  const yearPhrase = allowedYears.length === 1 ? `${allowedYears[0]}` : allowedYears.join(" en ");
 
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
 - Retourneer uitsluitend geldige JSON.
