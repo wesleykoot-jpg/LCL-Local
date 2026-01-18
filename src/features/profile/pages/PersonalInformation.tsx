@@ -65,7 +65,7 @@ export function PersonalInformation() {
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border rounded-2xl p-4 space-y-4"
+          className="bg-card border border-border rounded-card p-4 space-y-4"
         >
           <h2 className="font-semibold text-foreground mb-4">Basic Information</h2>
           
@@ -144,7 +144,7 @@ export function PersonalInformation() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-card border border-border rounded-2xl p-4 space-y-4"
+          className="bg-card border border-border rounded-card p-4 space-y-4"
         >
           <h2 className="font-semibold text-foreground mb-4">
             <div className="flex items-center gap-2">
@@ -191,7 +191,7 @@ export function PersonalInformation() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-card border border-border rounded-2xl p-4 space-y-4"
+          className="bg-card border border-border rounded-card p-4 space-y-4"
         >
           <h2 className="font-semibold text-foreground mb-4">About You</h2>
           

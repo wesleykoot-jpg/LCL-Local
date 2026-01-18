@@ -45,7 +45,7 @@ export function VerificationSafety() {
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-5"
+          className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-card p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -74,7 +74,7 @@ export function VerificationSafety() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <h2 className="font-semibold text-foreground">Verification Status</h2>
@@ -206,7 +206,7 @@ export function VerificationSafety() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-card border border-border rounded-2xl p-4"
+          className="bg-card border border-border rounded-card p-4"
         >
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle size={18} className="text-amber-500" />

@@ -63,7 +63,7 @@ export function NotificationPreferences() {
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center justify-between">
@@ -228,7 +228,7 @@ export function NotificationPreferences() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center justify-between">
@@ -318,7 +318,7 @@ export function NotificationPreferences() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-card border border-border rounded-2xl overflow-hidden"
+          className="bg-card border border-border rounded-card overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">

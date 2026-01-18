@@ -37,7 +37,7 @@ export function PassportGrid() {
   if (!isLoading && pastEvents.length === 0) {
     return (
       <motion.div
-        className=" bg-white/5 border border-gray-400 rounded-2xl p-12 text-center"
+        className=" bg-white/5 border border-gray-400 rounded-card p-12 text-center"
         {...motionPreset.slideUp}
       >
         {/* Ghost Stamp Book Illustration */}
