@@ -49,7 +49,45 @@ chmod +x scripts/run-e2e-scraper-test.sh
 
 # Run full pipeline: discovery + scraping
 ./scripts/run-e2e-scraper-test.sh full
+
+# Run initial load: full E2E discovery-to-ingestion flow with validation & metrics
+./scripts/run-e2e-scraper-test.sh initial-load
+
+# Validate discovered sources and check data integrity
+./scripts/run-e2e-scraper-test.sh validate
+
+# Generate success metrics report
+./scripts/run-e2e-scraper-test.sh metrics
 ```
+
+### Initial Load Mode (Recommended for New Deployments)
+
+The `initial-load` mode executes a complete 5-step discovery-to-ingestion flow:
+
+1. **Broad Source Discovery**: Calls the `source-discovery` edge function with parameters:
+   - `minPopulation`: 15000
+   - `maxMunicipalities`: 50
+   - `dryRun`: false
+
+2. **Source Validation & Filtering**: Inspects the `scraper_sources` table for:
+   - Sources where `last_scraped_at` is NULL
+   - Sources where `total_events_scraped` is 0
+   - Verifies confidence scores are above 60
+
+3. **Live Scraper Execution**: Triggers the `scrape-events` edge function with:
+   - `dryRun`: false (writes to production)
+   - Self-healing: Automatically upgrades `fetcher_type` from static to dynamic if needed
+
+4. **Verification & Data Integrity**: Checks:
+   - Event fingerprint uniqueness
+   - No duplicate events from the same source
+   - Source health status
+
+5. **Success Metrics Reporting**: Reports:
+   - New Sources Discovered
+   - Successful Scrapes
+   - Total Events Ingested
+   - Failed Sources (with error types)
 
 ## Architecture Overview
 
