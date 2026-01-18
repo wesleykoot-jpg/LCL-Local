@@ -59,45 +59,26 @@ Runs Deno linter and tests on push and pull requests to the main branch.
 ### 3. Scheduled Scraper
 **File:** [`scrape.yml`](./scrape.yml)
 
-Runs the event scraper on a daily schedule or manually via workflow dispatch.
-
-**⚠️ Current Status:** This workflow references `npx tsx src/cli.ts` which does not exist in the repository. The scraper has been migrated to Supabase Edge Functions. This workflow should be updated to invoke the [`run-scraper`](../../supabase/functions/run-scraper/) Edge Function instead.
+Runs the event scraper on a daily schedule or manually via workflow dispatch using the Supabase Edge [`run-scraper`](../../supabase/functions/run-scraper/) function (no local Node.js CLI required).
 
 **Triggers:**
 - Scheduled: Daily at 03:00 UTC (cron: `0 3 * * *`)
 - Manual: workflow_dispatch
 
-**Current Steps (needs update):**
+**Steps:**
 1. Checkout repository
-2. Setup Node.js v18
-3. Install dependencies with `npm ci`
-4. Build project with `npm run build`
-5. Run scraper via `npx tsx src/cli.ts --run-id=github-actions-${{ github.run_id }}`
+2. Call the `run-scraper` Edge Function via `curl` with the service role key
+3. Parse the JSON response and fail the job if `success` is `false`
 
 **Required Secrets:**
 - `SUPABASE_URL` - Supabase project URL
-- `SUPABASE_KEY` - Supabase service role key for database writes
+- `SUPABASE_SERVICE_ROLE_KEY` **or** `SUPABASE_KEY` - Supabase service role key for database writes
 - `SLACK_WEBHOOK_URL` - Slack webhook for scraper alerts
 - `SCRAPER_USER_AGENT` - User agent string for web scraping
 
 **Environment Variables:**
 - `MAX_CONSECUTIVE_FAILURES` - Number of consecutive failures before alerting (default: 3)
 - `ALERT_SUPPRESSION_MS` - Milliseconds to suppress duplicate alerts (default: 1800000 = 30 min)
-
-**Recommended Update:**
-Replace the "Run scraper" step with a call to the Edge Function:
-
-```yaml
-- name: Run scraper
-  env:
-    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-    SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-  run: |
-    curl -X POST "${SUPABASE_URL}/functions/v1/run-scraper" \
-      -H "Authorization: Bearer ${SUPABASE_KEY}" \
-      -H "Content-Type: application/json" \
-      -d '{"runId":"github-actions-${{ github.run_id }}"}'
-```
 
 **Alternative Architectures:**
 - [`supabase/functions/run-scraper/`](../../supabase/functions/run-scraper/) - Direct scraper execution (recommended for scheduled runs)
