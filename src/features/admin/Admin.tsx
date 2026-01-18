@@ -21,7 +21,13 @@ import {
   Globe,
   MapPin,
   FileText,
-  Download
+  Download,
+  Play,
+  PlayCircle,
+  RotateCcw,
+  Target,
+  Wrench,
+  Server
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Switch } from '@/shared/components/ui/switch';
@@ -43,6 +49,13 @@ import {
   getDiscoveredSources,
   fetchLogs,
   runScraperTests,
+  triggerRunScraper,
+  triggerScrapeWorker,
+  retryFailedJobs,
+  queueSourcesForScraping,
+  triggerSelectedSources,
+  getInsertedCount,
+  MAX_RETRY_ATTEMPTS,
   type ScraperSource,
   type ScrapeResult,
   type DryRunResult,
@@ -108,9 +121,13 @@ interface LogsSummary {
 type HealthStatus = 'healthy' | 'warning' | 'error';
 
 // Utility functions
+function isSourceEnabled(source: ScraperSource): boolean {
+  return source.enabled && !source.auto_disabled;
+}
+
 function getHealthStatus(source: ScraperSource): HealthStatus {
   if (source.auto_disabled) return 'error';
-  if ((source.consecutive_failures ?? 0) >= 3) return 'error';
+  if ((source.consecutive_failures ?? 0) >= MAX_RETRY_ATTEMPTS) return 'error';
   if ((source.consecutive_failures ?? 0) >= 1) return 'warning';
   if (source.last_success === false) return 'warning';
   return 'healthy';
@@ -195,6 +212,15 @@ export default function Admin() {
   // Error state for API failures
   const [apiError, setApiError] = useState<string | null>(null);
   const [showErrorBanner, setShowErrorBanner] = useState(true);
+
+  // Pipeline control state
+  const [pipelineLoading, setPipelineLoading] = useState<Record<string, boolean>>({
+    runScraper: false,
+    scrapeWorker: false,
+    selectedSources: false,
+    queueSources: false,
+    retryFailed: false,
+  });
 
   // Load functions
   const loadSources = useCallback(async () => {
@@ -365,7 +391,7 @@ export default function Admin() {
       const result = await triggerScraper();
       setLastResult(result);
       setShowResults(true);
-      toast.success(`Scraped ${result.totals?.inserted ?? result.inserted ?? 0} new events`);
+      toast.success(`Scraped ${getInsertedCount(result)} new events`);
       await loadSources();
     } catch (error) {
       toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -491,6 +517,122 @@ export default function Admin() {
     }
   }
 
+  // Pipeline control handlers
+  async function handleTriggerRunScraper() {
+    setPipelineLoading(prev => ({ ...prev, runScraper: true }));
+    try {
+      const result = await triggerRunScraper();
+      setLastResult(result);
+      setShowResults(true);
+      toast.success(`Run-scraper: Scraped ${getInsertedCount(result)} new events`);
+      await loadSources();
+      await loadJobs();
+    } catch (error) {
+      toast.error('Run-scraper failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setPipelineLoading(prev => ({ ...prev, runScraper: false }));
+    }
+  }
+
+  async function handleTriggerScrapeWorker(sourceId: string) {
+    setPipelineLoading(prev => ({ ...prev, scrapeWorker: true }));
+    try {
+      const result = await triggerScrapeWorker(sourceId);
+      setLastResult(result);
+      setShowResults(true);
+      toast.success(`Scrape-worker: Scraped ${getInsertedCount(result)} new events`);
+      await loadSources();
+    } catch (error) {
+      toast.error('Scrape-worker failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setPipelineLoading(prev => ({ ...prev, scrapeWorker: false }));
+    }
+  }
+
+  async function handleRunSelectedSources() {
+    if (selectedSources.size === 0) {
+      toast.error('No sources selected');
+      return;
+    }
+    
+    setPipelineLoading(prev => ({ ...prev, selectedSources: true }));
+    try {
+      const sourceIds = Array.from(selectedSources);
+      const result = await triggerSelectedSources(sourceIds);
+      setLastResult(result);
+      setShowResults(true);
+      toast.success(`Ran ${sourceIds.length} sources: ${getInsertedCount(result)} new events`);
+      await loadSources();
+    } catch (error) {
+      toast.error('Failed to run selected sources: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setPipelineLoading(prev => ({ ...prev, selectedSources: false }));
+    }
+  }
+
+  async function handleQueueSelectedSources() {
+    if (selectedSources.size === 0) {
+      toast.error('No sources selected');
+      return;
+    }
+    
+    setPipelineLoading(prev => ({ ...prev, queueSources: true }));
+    try {
+      const sourceIds = Array.from(selectedSources);
+      const result = await queueSourcesForScraping(sourceIds);
+      if (result.success) {
+        toast.success(`Queued ${result.jobsCreated} sources for scraping`);
+        await loadJobs();
+        setSelectedSources(new Set()); // Clear selection
+      } else {
+        toast.error(result.error || 'Failed to queue sources');
+      }
+    } catch (error) {
+      toast.error('Failed to queue sources: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setPipelineLoading(prev => ({ ...prev, queueSources: false }));
+    }
+  }
+
+  async function handleRetryFailedJobs() {
+    setPipelineLoading(prev => ({ ...prev, retryFailed: true }));
+    try {
+      const result = await retryFailedJobs();
+      if (result.success) {
+        if (result.retriedCount > 0) {
+          toast.success(`Retrying ${result.retriedCount} failed job(s)`);
+          await loadJobs();
+        } else {
+          toast.info('No failed jobs to retry');
+        }
+      } else {
+        toast.error(result.error || 'Failed to retry jobs');
+      }
+    } catch (error) {
+      toast.error('Failed to retry jobs: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setPipelineLoading(prev => ({ ...prev, retryFailed: false }));
+    }
+  }
+
+  function handleSelectAll() {
+    if (selectedSources.size === sources.length) {
+      setSelectedSources(new Set());
+    } else {
+      setSelectedSources(new Set(sources.map(s => s.id)));
+    }
+  }
+
+  function handleSelectEnabled() {
+    const enabledSourceIds = sources.filter(isSourceEnabled).map(s => s.id);
+    setSelectedSources(new Set(enabledSourceIds));
+  }
+
+  function handleSelectBroken() {
+    const brokenSourceIds = sources.filter(s => getHealthStatus(s) === 'error').map(s => s.id);
+    setSelectedSources(new Set(brokenSourceIds));
+  }
+
   function downloadLogs() {
     if (logs.length === 0) return;
     const jsonl = logs.map(l => JSON.stringify(l)).join('\n');
@@ -514,7 +656,7 @@ export default function Admin() {
   }
 
   // Stats
-  const enabledCount = sources.filter(s => s.enabled && !s.auto_disabled).length;
+  const enabledCount = sources.filter(isSourceEnabled).length;
   const brokenCount = sources.filter(s => getHealthStatus(s) === 'error').length;
   const warningCount = sources.filter(s => getHealthStatus(s) === 'warning').length;
   const lastScrapedAt = sources
@@ -595,6 +737,165 @@ export default function Admin() {
           </Button>
         </div>
       </header>
+
+      {/* Scraper Pipeline Control */}
+      <section className="px-4 py-4 border-b border-border bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10">
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <Wrench size={18} /> Scraper Pipeline Control
+            </h2>
+            <p className="text-sm text-muted-foreground">Manual triggers and troubleshooting tools for the scraper pipeline</p>
+          </div>
+          <Badge variant="outline" className="gap-1">
+            <Server size={12} /> {selectedSources.size} selected
+          </Badge>
+        </div>
+
+        {/* Selection Controls */}
+        <div className="mb-4 p-3 bg-background/80 rounded-lg border border-border">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <span className="text-sm font-medium">Source Selection</span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" onClick={handleSelectAll} className="h-7 px-2 text-xs">
+                {selectedSources.size === sources.length ? 'Deselect All' : 'Select All'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSelectEnabled} className="h-7 px-2 text-xs">
+                <CheckCircle2 size={12} className="mr-1" /> Enabled ({enabledCount})
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSelectBroken} className="h-7 px-2 text-xs">
+                <XCircle size={12} className="mr-1" /> Broken ({brokenCount})
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Select sources from the list below, then use the action buttons to run or queue them
+          </p>
+        </div>
+
+        {/* Pipeline Triggers */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Run Selected Sources */}
+          <div className="p-3 bg-background/80 rounded-lg border border-border">
+            <div className="flex items-start gap-2 mb-2">
+              <Play size={16} className="text-primary mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm">Run Selected Sources</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Execute scraper immediately for selected sources (bypasses queue)
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleRunSelectedSources}
+              disabled={selectedSources.size === 0 || pipelineLoading.selectedSources}
+              className="w-full gap-2 mt-2"
+              variant="default"
+            >
+              {pipelineLoading.selectedSources ? (
+                <><Loader2 size={14} className="animate-spin" /> Running...</>
+              ) : (
+                <><Play size={14} /> Run {selectedSources.size} Source{selectedSources.size !== 1 ? 's' : ''}</>
+              )}
+            </Button>
+          </div>
+
+          {/* Queue Selected Sources */}
+          <div className="p-3 bg-background/80 rounded-lg border border-border">
+            <div className="flex items-start gap-2 mb-2">
+              <ListChecks size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm">Queue Selected Sources</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Add selected sources to scrape job queue for async processing
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleQueueSelectedSources}
+              disabled={selectedSources.size === 0 || pipelineLoading.queueSources}
+              className="w-full gap-2 mt-2"
+              variant="outline"
+            >
+              {pipelineLoading.queueSources ? (
+                <><Loader2 size={14} className="animate-spin" /> Queueing...</>
+              ) : (
+                <><ListChecks size={14} /> Queue {selectedSources.size} Source{selectedSources.size !== 1 ? 's' : ''}</>
+              )}
+            </Button>
+          </div>
+
+          {/* Run-Scraper Function */}
+          <div className="p-3 bg-background/80 rounded-lg border border-border">
+            <div className="flex items-start gap-2 mb-2">
+              <Server size={16} className="text-purple-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm">Trigger run-scraper</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Execute run-scraper edge function (all enabled sources)
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleTriggerRunScraper}
+              disabled={pipelineLoading.runScraper}
+              className="w-full gap-2 mt-2"
+              variant="outline"
+            >
+              {pipelineLoading.runScraper ? (
+                <><Loader2 size={14} className="animate-spin" /> Running...</>
+              ) : (
+                <><Server size={14} /> Trigger run-scraper</>
+              )}
+            </Button>
+          </div>
+
+          {/* Retry Failed Jobs */}
+          <div className="p-3 bg-background/80 rounded-lg border border-border">
+            <div className="flex items-start gap-2 mb-2">
+              <RotateCcw size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm">Retry Failed Jobs</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Reset failed jobs to pending status and retry them (max 3 attempts)
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleRetryFailedJobs}
+              disabled={jobStats.failed === 0 || pipelineLoading.retryFailed}
+              className="w-full gap-2 mt-2"
+              variant="outline"
+            >
+              {pipelineLoading.retryFailed ? (
+                <><Loader2 size={14} className="animate-spin" /> Retrying...</>
+              ) : (
+                <><RotateCcw size={14} /> Retry {jobStats.failed} Failed Job{jobStats.failed !== 1 ? 's' : ''}</>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Pipeline Status Indicators */}
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="p-2 bg-background/50 rounded border border-border text-center">
+            <div className="text-xs text-muted-foreground mb-1">Selected</div>
+            <div className="text-lg font-bold text-blue-600">{selectedSources.size}</div>
+          </div>
+          <div className="p-2 bg-background/50 rounded border border-border text-center">
+            <div className="text-xs text-muted-foreground mb-1">Enabled</div>
+            <div className="text-lg font-bold text-green-600">{enabledCount}</div>
+          </div>
+          <div className="p-2 bg-background/50 rounded border border-border text-center">
+            <div className="text-xs text-muted-foreground mb-1">Warning</div>
+            <div className="text-lg font-bold text-amber-600">{warningCount}</div>
+          </div>
+          <div className="p-2 bg-background/50 rounded border border-border text-center">
+            <div className="text-xs text-muted-foreground mb-1">Broken</div>
+            <div className="text-lg font-bold text-red-600">{brokenCount}</div>
+          </div>
+        </div>
+      </section>
 
       {/* Automation & Scheduling */}
       <section className="px-4 py-4 border-b border-border bg-muted/20">
