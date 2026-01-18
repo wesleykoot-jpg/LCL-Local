@@ -80,15 +80,38 @@ function canonicalizeUrl(url: string): string {
   }
 }
 
+/**
+ * Generate diverse queries for a municipality to maximize recall.
+ * Query Multiplexing strategy for high-authority ANCHOR agenda pages.
+ * 
+ * Now includes category-specific queries to discover sources for
+ * sports, music, gaming, and other specialized event types.
+ */
 function generateSearchQueries(municipalityName: string): string[] {
   const name = municipalityName.toLowerCase();
-  return [
+  const baseQueries = [
+    // General event agenda queries
     `uitagenda ${name}`,
     `evenementen ${name}`,
     `agenda activiteiten ${name}`,
     `wat te doen in ${name}`,
     `festivals ${name} 2026`,
   ];
+  
+  // Category-specific queries to discover specialized event sources
+  const categoryQueries = [
+    // Sports/Active - including soccer (voetbal)
+    `voetbal wedstrijden ${name} programma`,
+    `sport evenementen ${name} agenda`,
+    // Music
+    `concerten live muziek ${name}`,
+    // Entertainment
+    `theater voorstellingen ${name} agenda`,
+    // Workshops/Learning
+    `workshops cursussen ${name}`,
+  ];
+  
+  return [...baseQueries, ...categoryQueries];
 }
 
 async function callSerperWithRetry(

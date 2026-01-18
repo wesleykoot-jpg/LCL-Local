@@ -185,18 +185,29 @@ describe('Source Discovery Integration', () => {
 
   describe('Query Multiplexing', () => {
     function generateSearchQueries(municipalityName: string): string[] {
-      return [
+      const baseQueries = [
         `${municipalityName} agenda evenementen`,
         `${municipalityName} uitagenda`,
         `${municipalityName} evenementenkalender`,
         `wat te doen ${municipalityName}`,
         `${municipalityName} activiteiten programma`,
       ];
+      
+      // Category-specific queries to discover specialized event sources
+      const categoryQueries = [
+        `${municipalityName} voetbal wedstrijden programma`,
+        `${municipalityName} sport evenementen agenda`,
+        `${municipalityName} concerten live muziek`,
+        `${municipalityName} theater voorstellingen agenda`,
+        `${municipalityName} workshops cursussen`,
+      ];
+      
+      return [...baseQueries, ...categoryQueries];
     }
 
-    it('generates 5 diverse queries per municipality', () => {
+    it('generates 10 diverse queries per municipality (5 base + 5 category-specific)', () => {
       const queries = generateSearchQueries('Amsterdam');
-      expect(queries.length).toBe(5);
+      expect(queries.length).toBe(10);
     });
 
     it('includes Dutch agenda terms', () => {
@@ -208,11 +219,22 @@ describe('Source Discovery Integration', () => {
       expect(combined).toContain('uitagenda');
       expect(combined).toContain('wat te doen');
     });
+    
+    it('includes category-specific terms for sports/soccer', () => {
+      const queries = generateSearchQueries('Rotterdam');
+      const combined = queries.join(' ');
+      
+      expect(combined).toContain('voetbal');
+      expect(combined).toContain('sport');
+      expect(combined).toContain('concerten');
+      expect(combined).toContain('theater');
+      expect(combined).toContain('workshops');
+    });
 
     it('generates unique queries', () => {
       const queries = generateSearchQueries('Utrecht');
       const uniqueQueries = new Set(queries);
-      expect(uniqueQueries.size).toBe(5);
+      expect(uniqueQueries.size).toBe(10);
     });
 
     it('includes municipality name in all queries', () => {
