@@ -470,29 +470,33 @@ async function upsertToSupabase(client: SupabaseClient | null, event: Normalized
   try {
     const { data, error } = await client
       .from("events")
-      .upsert(
+      .insert(
         {
-          source: event.source,
-          source_url: event.source_url,
+          // Map to 'events' table App Schema
+          // Missing 'id' (auto), 'created_at' (auto)
+
           title: event.title,
-          description: event.description,
-          start_date: event.start_date,
-          end_date: event.end_date,
-          location_name: event.location_name,
-          location_address: event.location_address,
-          price: event.price,
-          currency: event.currency,
+          description: event.description || '',
+          event_date: event.start_date, // Map start_date -> event_date
+          event_time: event.start_date ? event.start_date.split('T')[1]?.slice(0, 5) || '12:00' : '12:00', // Extract time
+          venue_name: event.location_name || 'Unknown Venue', // Map location_name -> venue_name
+
+          // Geometry: Default to generic point if unknown (Zwolle area: 6.09, 52.51)
+          // Ideally parseLLMEvent provides coords, but for demo we default
+          location: 'SRID=4326;POINT(6.0944 52.5168)',
+
           category: (event.categories && event.categories.length > 0) ? event.categories[0] : 'entertainment',
-          // categories: event.categories, // DB schema uses singular category
-          image: event.image,
-          raw_html: event.raw_html,
-          json_ld: event.json_ld,
-          dedup_hash: event.dedup_hash,
-          extracted_at: event.extracted_at,
-        },
-        { onConflict: "dedup_hash" },
+          event_type: 'signal', // Default to 'signal' (scraped event)
+
+          image_url: event.image, // Map image -> image_url
+
+          // Removed unsupported columns: source, source_url, price, currency, raw_html, json_ld, dedup_hash, extracted_at
+          // (These should be stored in a 'scraper_events' table in production)
+
+          status: 'published',
+        }
       )
-      .select("id, dedup_hash");
+      .select("id");
 
     if (error) {
       if (error.message?.toLowerCase().includes("duplicate")) {
