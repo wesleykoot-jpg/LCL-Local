@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Map, Clock, Users, MapPin, Heart, Loader2, Check, SlidersHorizontal } from 'lucide-react';
 import { LoadingSkeleton } from '@/shared/components';
 import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
+import EventMap from './EventMap';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { getEventImage } from '../hooks/useImageFallback';
 import type { EventWithAttendees } from '../hooks/hooks';
@@ -30,7 +31,7 @@ function parseLocalDate(dateString: string): Date {
 function filterByTime(events: EventWithAttendees[], filter: TimeFilter): EventWithAttendees[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   switch (filter) {
     case 'tonight':
       return events.filter(e => {
@@ -83,16 +84,16 @@ function formatDate(dateStr: string): string {
   const eventDate = new Date(datePart + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-  
+
   if (eventDate.getTime() === today.getTime()) {
     return 'Vandaag';
   } else if (eventDate.getTime() === tomorrow.getTime()) {
     return 'Morgen';
   }
-  
+
   return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
@@ -138,21 +139,21 @@ const MasonryEventCard = memo(function MasonryEventCard({
     >
       {/* Image */}
       <div className={`relative overflow-hidden bg-muted ${tall ? 'aspect-[3/4]' : 'aspect-square'}`}>
-        <img 
-          src={imageUrl} 
+        <img
+          src={imageUrl}
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
-        
+
         {/* Heart button */}
         <button
           onClick={handleSave}
           className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
         >
-          <Heart 
-            size={16} 
-            className={isSaved ? 'text-primary fill-primary' : 'text-foreground'} 
+          <Heart
+            size={16}
+            className={isSaved ? 'text-primary fill-primary' : 'text-foreground'}
           />
         </button>
 
@@ -161,18 +162,18 @@ const MasonryEventCard = memo(function MasonryEventCard({
           {formatDate(event.event_date)}
         </div>
       </div>
-      
+
       {/* Content */}
       <div className="p-3 space-y-1.5">
         <h3 className="text-[14px] font-semibold text-foreground leading-tight line-clamp-2">
           {event.title}
         </h3>
-        
+
         <p className="text-[12px] text-muted-foreground line-clamp-1 flex items-center gap-1">
           <MapPin size={11} className="flex-shrink-0" />
           {event.venue_name}
         </p>
-        
+
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           {formatTime(event.event_time) && (
             <span className="flex items-center gap-1">
@@ -192,8 +193,8 @@ const MasonryEventCard = memo(function MasonryEventCard({
           disabled={isJoining || hasJoined}
           className={`
             w-full py-2 rounded-lg text-[12px] font-semibold transition-all active:scale-[0.98] mt-2
-            ${hasJoined 
-              ? 'bg-muted text-muted-foreground' 
+            ${hasJoined
+              ? 'bg-muted text-muted-foreground'
               : 'bg-primary text-primary-foreground hover:bg-primary/90'
             }
           `}
@@ -232,7 +233,7 @@ export const DeepDiveView = memo(function DeepDiveView({
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [showMap, setShowMap] = useState(false);
 
-  const filteredEvents = useMemo(() => 
+  const filteredEvents = useMemo(() =>
     filterByTime(events, timeFilter),
     [events, timeFilter]
   );
@@ -257,7 +258,7 @@ export const DeepDiveView = memo(function DeepDiveView({
   const columns = useMemo(() => {
     const col1: { event: EventWithAttendees; tall: boolean }[] = [];
     const col2: { event: EventWithAttendees; tall: boolean }[] = [];
-    
+
     filteredEvents.forEach((event, index) => {
       const tall = index % 3 === 0; // Every 3rd item is tall
       if (index % 2 === 0) {
@@ -266,7 +267,7 @@ export const DeepDiveView = memo(function DeepDiveView({
         col2.push({ event, tall });
       }
     });
-    
+
     return [col1, col2];
   }, [filteredEvents]);
 
@@ -278,19 +279,19 @@ export const DeepDiveView = memo(function DeepDiveView({
           {/* Filter Row: Pills + Filter Button */}
           <div className="flex items-center gap-3">
             {/* Time Filter Pills - takes available space */}
-            <div className="flex-1 min-w-0">
+            <div className={`flex-1 min-w-0 transition-opacity duration-200 ${showMap ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
               <TimeFilterPills
                 activeFilter={timeFilter}
                 onFilterChange={handleTimeFilterChange}
               />
             </div>
-            
+
             {/* Filter Button */}
             <Button
               variant="outline"
               size="icon"
               onClick={handleFilterClick}
-              className="flex-shrink-0 rounded-full w-11 h-11"
+              className={`flex-shrink-0 rounded-full w-11 h-11 ${showMap ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
               aria-label="Open filters"
             >
               <SlidersHorizontal size={18} />
@@ -300,53 +301,77 @@ export const DeepDiveView = memo(function DeepDiveView({
       </div>
 
       {/* Content */}
-      {loading ? (
-        <div className="px-6 py-4">
-          <LoadingSkeleton />
-        </div>
-      ) : filteredEvents.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-16 px-6"
-        >
-          <p className="text-muted-foreground text-[17px]">Geen evenementen gevonden</p>
-          <p className="text-muted-foreground/60 text-[15px] mt-2">
-            Probeer een andere zoekopdracht of filter
-          </p>
-        </motion.div>
-      ) : (
-        <div className="px-4 py-4">
-          {/* Masonry Grid - 2 columns */}
-          <div className="flex gap-3">
-            {columns.map((column, colIndex) => (
-              <div key={colIndex} className="flex-1 flex flex-col gap-3">
-                <AnimatePresence>
-                  {column.map(({ event, tall }) => {
-                    const hasJoined = Boolean(
-                      currentUserProfileId && event.attendees?.some(
-                        a => a.profile?.id === currentUserProfileId
-                      )
-                    );
-                    
-                    return (
-                      <MasonryEventCard
-                        key={event.id}
-                        event={event}
-                        tall={tall}
-                        onClick={() => onEventClick?.(event.id)}
-                        onJoin={() => onJoinEvent?.(event.id)}
-                        isJoining={isJoining(event.id)}
-                        hasJoined={hasJoined}
-                      />
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="relative min-h-[50vh]">
+        <AnimatePresence mode="wait">
+          {showMap ? (
+            <motion.div
+              key="map"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 h-[calc(100vh-200px)] z-10"
+            >
+              <EventMap
+                events={filteredEvents}
+                onEventClick={onEventClick}
+                // Mock Amsterdam location for now if no user location provided
+                userLocation={{ lat: 52.3676, lng: 4.9041 }}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {loading ? (
+                <div className="px-6 py-4">
+                  <LoadingSkeleton />
+                </div>
+              ) : filteredEvents.length === 0 ? (
+                <div className="text-center py-16 px-6">
+                  <p className="text-muted-foreground text-[17px]">Geen evenementen gevonden</p>
+                  <p className="text-muted-foreground/60 text-[15px] mt-2">
+                    Probeer een andere zoekopdracht of filter
+                  </p>
+                </div>
+              ) : (
+                <div className="px-4 py-4">
+                  {/* Masonry Grid - 2 columns */}
+                  <div className="flex gap-3">
+                    {columns.map((column, colIndex) => (
+                      <div key={colIndex} className="flex-1 flex flex-col gap-3">
+                        <AnimatePresence>
+                          {column.map(({ event, tall }) => {
+                            const hasJoined = Boolean(
+                              currentUserProfileId && event.attendees?.some(
+                                a => a.profile?.id === currentUserProfileId
+                              )
+                            );
+
+                            return (
+                              <MasonryEventCard
+                                key={event.id}
+                                event={event}
+                                tall={tall}
+                                onClick={() => onEventClick?.(event.id)}
+                                onJoin={() => onJoinEvent?.(event.id)}
+                                isJoining={isJoining(event.id)}
+                                hasJoined={hasJoined}
+                              />
+                            );
+                          })}
+                        </AnimatePresence>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Floating Map Toggle */}
       <motion.button
@@ -355,8 +380,17 @@ export const DeepDiveView = memo(function DeepDiveView({
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <Map size={18} />
-        Kaart
+        {showMap ? (
+          <>
+            <SlidersHorizontal size={18} />
+            Lijst
+          </>
+        ) : (
+          <>
+            <Map size={18} />
+            Kaart
+          </>
+        )}
       </motion.button>
     </div>
   );

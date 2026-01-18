@@ -13,6 +13,7 @@ import { DiscoveryRail } from './components/DiscoveryRail';
 import { GlassSearchBar } from './components/GlassSearchBar';
 import { DeepDiveView } from './components/DeepDiveView';
 import { CategoryPills } from './components/CategoryPills';
+import { PullToRefresh } from './components/PullToRefresh';
 import { groupEventsIntoStacks } from './api/feedGrouping';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { MapPin, Plus, Navigation, ChevronDown, Flame, Calendar, Zap, RefreshCw } from 'lucide-react';
