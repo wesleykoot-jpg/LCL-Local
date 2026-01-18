@@ -187,14 +187,14 @@ verify_data_integrity() {
   
   if [[ "$duplicate_count" -gt 0 ]]; then
     echo "   ⚠️ Found $duplicate_count fingerprints with potential duplicates:"
-    echo "$duplicate_fingerprints" | jq -r '.[] | "      Fingerprint: \(.fingerprint[:16])... | Count: \(.count)"'
+    echo "$duplicate_fingerprints" | jq -r '.[] | "      Fingerprint: \(.fingerprint[0:16])... | Count: \(.count)"'
   else
     echo "   ✅ No duplicate fingerprints found"
   fi
   
   echo ""
   echo "3️⃣ Checking for events without source_id:"
-  local events_no_source=$(query_supabase "events" "?select=id,title&source_id=is.null&limit=100")
+  local events_no_source=$(query_supabase "events" "?select=id,title&source_id=is.null&limit=1000")
   local no_source_count=$(echo "$events_no_source" | jq 'length')
   echo "   Events without source_id: $no_source_count"
   
