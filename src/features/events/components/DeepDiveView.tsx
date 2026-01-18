@@ -88,12 +88,12 @@ function formatDate(dateStr: string): string {
   tomorrow.setDate(today.getDate() + 1);
   
   if (eventDate.getTime() === today.getTime()) {
-    return 'Today';
+    return 'Vandaag';
   } else if (eventDate.getTime() === tomorrow.getTime()) {
-    return 'Tomorrow';
+    return 'Morgen';
   }
   
-  return eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 // Masonry Card component
@@ -201,9 +201,9 @@ const MasonryEventCard = memo(function MasonryEventCard({
           {isJoining ? (
             <Loader2 size={14} className="animate-spin mx-auto" />
           ) : hasJoined ? (
-            <span className="flex items-center justify-center gap-1"><Check size={12} /> Joined</span>
+            <span className="flex items-center justify-center gap-1"><Check size={12} /> Aangemeld</span>
           ) : (
-            'Join'
+            'Meedoen'
           )}
         </button>
       </div>
@@ -310,9 +310,9 @@ export const DeepDiveView = memo(function DeepDiveView({
           animate={{ opacity: 1 }}
           className="text-center py-16 px-6"
         >
-          <p className="text-muted-foreground text-[17px]">No events found</p>
+          <p className="text-muted-foreground text-[17px]">Geen evenementen gevonden</p>
           <p className="text-muted-foreground/60 text-[15px] mt-2">
-            Try adjusting your search or filters
+            Probeer een andere zoekopdracht of filter
           </p>
         </motion.div>
       ) : (
@@ -356,7 +356,7 @@ export const DeepDiveView = memo(function DeepDiveView({
         whileTap={{ scale: 0.95 }}
       >
         <Map size={18} />
-        Map
+        Kaart
       </motion.button>
     </div>
   );
