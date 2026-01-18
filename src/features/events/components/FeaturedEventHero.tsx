@@ -86,10 +86,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
 
   return (
     <motion.div
-      className="relative w-full overflow-hidden rounded-2xl cursor-pointer group bg-card"
-      style={{
-        boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.1)'
-      }}
+      className="relative w-full overflow-hidden rounded-card cursor-pointer group bg-white shadow-card"
       onClick={() => onEventClick?.(event.id)}
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
@@ -106,7 +103,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
         {/* Heart/Save button - Airbnb style top right */}
         <button
           onClick={handleSave}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90  flex items-center justify-center text-foreground hover:scale-110 transition-transform shadow-sm"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white flex items-center justify-center text-text-secondary hover:scale-110 transition-transform shadow-card"
         >
           <Heart size={16} />
         </button>
@@ -117,7 +114,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
         </div>
 
         {/* Date badge */}
-        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95  text-[13px] font-semibold text-foreground shadow-sm">
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-button bg-white text-[13px] font-semibold text-text-primary shadow-card">
           {formatDatePill(event.event_date)}
         </div>
       </div>
@@ -125,18 +122,18 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
       {/* Content Section - Below image (Airbnb style) */}
       <div className="p-4">
         {/* Title */}
-        <h2 className="text-[17px] font-semibold text-foreground leading-tight mb-1 line-clamp-1">
+        <h2 className="text-[17px] font-semibold text-text-primary leading-tight mb-1 line-clamp-1">
           {event.title}
         </h2>
         
         {/* Location */}
-        <p className="text-[15px] text-muted-foreground mb-2 flex items-center gap-1">
+        <p className="text-[15px] text-text-secondary mb-2 flex items-center gap-1">
           <MapPin size={14} className="flex-shrink-0" />
           <span className="truncate">{event.venue_name}</span>
         </p>
         
         {/* Metadata row */}
-        <div className="flex items-center gap-3 text-[13px] text-muted-foreground mb-4">
+        <div className="flex items-center gap-3 text-[13px] text-text-secondary mb-4">
           {formatTime(event.event_time) && (
             <span className="flex items-center gap-1">
               <Clock size={12} />
@@ -153,10 +150,10 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
         <button
           onClick={handleJoin}
           disabled={isJoining || hasJoined}
-          className={`w-full h-[48px] rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98] ${
+          className={`w-full h-[48px] rounded-button text-[15px] font-semibold transition-all active:scale-[0.98] ${
             hasJoined
-              ? 'bg-muted text-muted-foreground'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              ? 'bg-muted text-text-secondary'
+              : 'bg-brand-primary text-white hover:bg-brand-secondary'
           }`}
         >
           {isJoining ? (

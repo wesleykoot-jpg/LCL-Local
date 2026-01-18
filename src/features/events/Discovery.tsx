@@ -277,7 +277,7 @@ const Discovery = () => {
   }, [locationPrefs, permissionState, profile?.location_city]);
 
   return (
-    <div className="min-h-screen bg-surface-muted text-foreground font-sans selection:bg-brand-primary selection:text-white">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -285,18 +285,18 @@ const Discovery = () => {
         className="pb-32"
       >
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-surface-primary shadow-apple-sm border-b border-border pt-safe">
+        <header className="sticky top-0 z-40 bg-card shadow-card border-b border-border pt-safe">
           {/* Location row */}
           <div className="px-6 py-3 flex items-center justify-between">
             <button 
               onClick={handleLocationClick}
-              className="flex items-center gap-2 hover:bg-surface-muted rounded-2xl py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary focus-visible:outline-none"
+              className="flex items-center gap-2 hover:bg-muted rounded-button py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
               aria-label="Change location"
             >
               {permissionState === 'granted' && locationPrefs.useGPS ? (
-                <Navigation size={18} className="text-brand-primary" />
+                <Navigation size={18} className="text-primary" />
               ) : (
-                <MapPin size={18} className="text-brand-primary" />
+                <MapPin size={18} className="text-primary" />
               )}
               <span className="text-[15px] font-semibold text-text-primary">
                 {locationText}
@@ -512,7 +512,7 @@ const Discovery = () => {
             await hapticImpact('medium');
             setShowCreateModal(true);
           }}
-          className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-3xl bg-brand-primary text-white flex items-center justify-center mb-safe shadow-float focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary focus-visible:outline-none"
+          className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-card bg-primary text-primary-foreground flex items-center justify-center mb-safe shadow-floating focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label="Create new event"
