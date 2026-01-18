@@ -10,6 +10,15 @@ interface FloatingNavProps {
   onNavigate?: (view: NavView) => void;
 }
 
+// Animation constants for icon scale effect
+const ICON_SCALE_ACTIVE = 1.1;
+const ICON_SCALE_INACTIVE = 1;
+const ICON_ANIMATION_CONFIG = {
+  type: 'spring' as const,
+  stiffness: 400,
+  damping: 17,
+};
+
 export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,14 +54,14 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
         {/* Planning button */}
         <button
           onClick={() => handleNav('planning', '/planning')}
-          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
+          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
           aria-label="Navigate to planning page"
         >
           <motion.div
             animate={{ 
-              scale: derivedActiveView === 'planning' ? 1.1 : 1,
+              scale: derivedActiveView === 'planning' ? ICON_SCALE_ACTIVE : ICON_SCALE_INACTIVE,
             }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            transition={ICON_ANIMATION_CONFIG}
             className="flex flex-col items-center gap-0.5"
           >
             <Map 
@@ -79,14 +88,14 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
         {/* Discover button */}
         <button
           onClick={() => handleNav('feed', '/')}
-          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
+          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
           aria-label="Navigate to discover page"
         >
           <motion.div
             animate={{ 
-              scale: derivedActiveView === 'feed' ? 1.1 : 1,
+              scale: derivedActiveView === 'feed' ? ICON_SCALE_ACTIVE : ICON_SCALE_INACTIVE,
             }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            transition={ICON_ANIMATION_CONFIG}
             className="flex flex-col items-center gap-0.5"
           >
             <Compass 
@@ -113,14 +122,14 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
         {/* Now button */}
         <button
           onClick={handleNowClick}
-          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
+          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
           aria-label="Navigate to now page"
         >
           <motion.div
             animate={{ 
-              scale: isNowActive ? 1.1 : 1,
+              scale: isNowActive ? ICON_SCALE_ACTIVE : ICON_SCALE_INACTIVE,
             }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            transition={ICON_ANIMATION_CONFIG}
             className="flex flex-col items-center gap-0.5"
           >
             <Sparkles 
@@ -147,14 +156,14 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
         {/* Profile button */}
         <button
           onClick={() => handleNav('profile', '/profile')}
-          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
+          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
           aria-label="Navigate to profile page"
         >
           <motion.div
             animate={{ 
-              scale: derivedActiveView === 'profile' ? 1.1 : 1,
+              scale: derivedActiveView === 'profile' ? ICON_SCALE_ACTIVE : ICON_SCALE_INACTIVE,
             }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            transition={ICON_ANIMATION_CONFIG}
             className="flex flex-col items-center gap-0.5"
           >
             <User 
