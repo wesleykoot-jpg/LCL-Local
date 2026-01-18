@@ -249,17 +249,36 @@ function isNoiseDomain(url: string): boolean {
 }
 
 /**
- * Generate 5 diverse queries for a municipality to maximize recall.
+ * Generate diverse queries for a municipality to maximize recall.
  * Query Multiplexing strategy for high-authority ANCHOR agenda pages.
+ * 
+ * Now includes category-specific queries to discover sources for
+ * sports, music, entertainment, and other specialized event types.
  */
 function generateSearchQueries(municipalityName: string): string[] {
-  return [
+  const baseQueries = [
+    // General event agenda queries
     `${municipalityName} agenda evenementen`,
     `${municipalityName} uitagenda`,
     `${municipalityName} evenementenkalender`,
     `wat te doen ${municipalityName}`,
     `${municipalityName} activiteiten programma`,
   ];
+  
+  // Category-specific queries to discover specialized event sources
+  const categoryQueries = [
+    // Sports/Active - including soccer (voetbal)
+    `${municipalityName} voetbal wedstrijden programma`,
+    `${municipalityName} sport evenementen agenda`,
+    // Music
+    `${municipalityName} concerten live muziek`,
+    // Entertainment
+    `${municipalityName} theater voorstellingen agenda`,
+    // Workshops/Learning
+    `${municipalityName} workshops cursussen`,
+  ];
+  
+  return [...baseQueries, ...categoryQueries];
 }
 
 /**
