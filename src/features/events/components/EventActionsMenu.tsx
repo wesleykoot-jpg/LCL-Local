@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { MoreVertical, Flag, Ban, Loader2 } from 'lucide-react';
+import { MoreVertical, Flag, Ban, Loader2, GitFork } from 'lucide-react';
+import { CreateEventModal } from './CreateEventModal';
+import type { EventWithAttendees } from '../hooks/hooks';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +41,7 @@ interface EventActionsMenuProps {
   hostUserId?: string;
   currentUserProfileId?: string;
   onBlock?: () => void;
+  event?: EventWithAttendees;
 }
 
 const REPORT_REASONS = [
@@ -54,10 +57,12 @@ export function EventActionsMenu({
   hostUserId,
   currentUserProfileId,
   onBlock,
+  event,
 }: EventActionsMenuProps) {
   const queryClient = useQueryClient();
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [showForkModal, setShowForkModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -139,10 +144,10 @@ export function EventActionsMenu({
         }
       } else {
         toast.success('User blocked. You won\'t see their content anymore.');
-        
+
         // Invalidate feed queries to remove blocked content immediately
         queryClient.invalidateQueries({ queryKey: ['events'] });
-        
+
         if (onBlock) {
           onBlock();
         }
@@ -173,6 +178,22 @@ export function EventActionsMenu({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          {event && (
+            <>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowForkModal(true);
+                  hapticImpact('light');
+                }}
+                className="cursor-pointer font-medium"
+              >
+                <GitFork className="mr-2 h-4 w-4 text-primary" />
+                <span>Host a Fork</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -213,11 +234,10 @@ export function EventActionsMenu({
               <button
                 key={reason.id}
                 onClick={() => setSelectedReason(reason.id)}
-                className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all ${
-                  selectedReason === reason.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-muted-foreground/30'
-                }`}
+                className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all ${selectedReason === reason.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground/30'
+                  }`}
               >
                 <span className="text-sm font-medium">{reason.label}</span>
               </button>
@@ -251,7 +271,6 @@ export function EventActionsMenu({
         </DialogContent>
       </Dialog>
 
-      {/* Block Confirmation Dialog */}
       <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -280,6 +299,15 @@ export function EventActionsMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Fork Creation Modal */}
+      {showForkModal && event && (
+        <CreateEventModal
+          isOpen={showForkModal}
+          onClose={() => setShowForkModal(false)}
+          initialParentEvent={event}
+        />
+      )}
     </>
   );
 }

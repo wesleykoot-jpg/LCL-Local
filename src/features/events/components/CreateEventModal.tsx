@@ -8,12 +8,14 @@ import { useAuth } from '@/features/auth';
 import { useLocation } from '@/features/location';
 import { createEventSchema, sanitizeInput } from '@/shared/lib/validation';
 import { UserPicker } from '@/components/UserPicker';
+import type { EventWithAttendees } from '../hooks/hooks';
 
 interface CreateEventModalProps {
   onClose: () => void;
   isOpen?: boolean;
   defaultCategory?: 'cinema' | 'market' | 'crafts' | 'sports' | 'gaming';
   defaultEventType?: 'anchor' | 'fork' | 'signal';
+  initialParentEvent?: EventWithAttendees;
 }
 
 export function CreateEventModal({
@@ -21,6 +23,7 @@ export function CreateEventModal({
   isOpen = true,
   defaultCategory = 'cinema',
   defaultEventType = 'anchor',
+  initialParentEvent,
 }: CreateEventModalProps) {
   const { profile } = useAuth();
   const { location: userLocation } = useLocation();
@@ -32,11 +35,11 @@ export function CreateEventModal({
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: defaultCategory,
-    event_type: defaultEventType,
-    event_date: '',
+    category: initialParentEvent?.category || defaultCategory,
+    event_type: initialParentEvent ? 'fork' : defaultEventType,
+    event_date: initialParentEvent?.event_date?.split('T')[0] || '',
     event_time: '',
-    venue_name: '',
+    venue_name: initialParentEvent?.venue_name || '',
     max_attendees: 0,
   });
 
@@ -112,6 +115,7 @@ export function CreateEventModal({
         creator_profile_id: profile.id,
         is_private: isPrivate,
         invited_user_ids: isPrivate ? invitedUserIds : undefined,
+        parent_event_id: initialParentEvent?.id,
       });
 
       if (error) throw error;
@@ -122,7 +126,7 @@ export function CreateEventModal({
     } catch (error) {
       console.error('Error creating event:', error);
       await hapticNotification('error');
-      
+
       // Better error messages for validation errors
       if (error instanceof Error) {
         toast.error(error.message);
@@ -300,6 +304,34 @@ export function CreateEventModal({
 
           <div>
             <label className="block text-sm font-bold text-zinc-900 mb-2">
+              Event Type
+            </label>
+            <select
+              required
+              value={formData.event_type}
+              disabled={!!initialParentEvent}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  event_type: e.target.value as 'anchor' | 'fork' | 'signal',
+                })
+              }
+              className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none ${initialParentEvent ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                }`}
+            >
+              <option value="anchor">Anchor</option>
+              <option value="fork">Fork</option>
+              <option value="signal">Signal</option>
+            </select>
+            {initialParentEvent && (
+              <p className="text-xs text-gray-500 mt-1">
+                Forks are linked to the original event
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-zinc-900 mb-2">
               Max Attendees (0 = unlimited)
             </label>
             <input
@@ -338,14 +370,12 @@ export function CreateEventModal({
                     setInvitedUserIds([]);
                   }
                 }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isPrivate ? 'bg-zinc-900' : 'bg-gray-300'
-                }`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isPrivate ? 'bg-zinc-900' : 'bg-gray-300'
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    isPrivate ? 'translate-x-6' : 'translate-x-1'
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isPrivate ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                 />
               </button>
             </div>

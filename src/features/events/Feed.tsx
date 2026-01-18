@@ -34,7 +34,7 @@ function parseLocalDate(dateString: string): Date {
 function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): EventWithAttendees[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   switch (filter) {
     case 'tonight':
       return events.filter(e => {
@@ -82,7 +82,7 @@ function getUpcomingEvents(events: EventWithAttendees[], limit = 6): EventWithAt
   today.setHours(0, 0, 0, 0);
   const twoDaysLater = new Date(today);
   twoDaysLater.setDate(today.getDate() + 2);
-  
+
   return events
     .filter(e => {
       const eventDay = parseLocalDate(e.event_date);
@@ -95,7 +95,7 @@ const Feed = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs, permissionState, requestPermission } = useLocation();
-  const { events: allEvents, loading, refetch } = useEventsQuery({ 
+  const { events: allEvents, loading, refetch } = useEventsQuery({
     currentUserProfileId: profile?.id,
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
@@ -103,11 +103,12 @@ const Feed = () => {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [explicitEvent, setExplicitEvent] = useState<EventWithAttendees | null>(null);
   const [activeFilter, setActiveFilter] = useState<TimeFilter>('all');
-  
+
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
   const { feedMode, isParentDetected, setIsParentDetected } = useFeedMode();
-  
+
   const {
     showOnboarding,
     setShowOnboarding,
@@ -161,7 +162,7 @@ const Feed = () => {
       featuredEvent?.id,
       ...trendingEvents.map(e => e.id),
     ].filter(Boolean) as string[]);
-    
+
     const remaining = rankedEvents.filter(e => !excludeIds.has(e.id));
     return groupEventsIntoStacks(remaining);
   }, [rankedEvents, featuredEvent, trendingEvents]);
@@ -174,7 +175,7 @@ const Feed = () => {
 
   const handleEventClick = useCallback(async (eventId: string) => {
     setSelectedEventId(eventId);
-    
+
     // Track event view for interest scoring
     if (profile?.id) {
       const event = allEvents.find(e => e.id === eventId);
@@ -189,6 +190,7 @@ const Feed = () => {
 
   const handleCloseEventDetail = () => {
     setSelectedEventId(null);
+    setExplicitEvent(null);
   };
 
   const handleLocationClick = async () => {
@@ -198,16 +200,17 @@ const Feed = () => {
   };
 
   const selectedEvent = useMemo(() => {
+    if (explicitEvent) return explicitEvent;
     if (!selectedEventId) return null;
     return allEvents.find(e => e.id === selectedEventId) || null;
-  }, [selectedEventId, allEvents]);
+  }, [selectedEventId, allEvents, explicitEvent]);
 
   const handleJoinEvent = useCallback(async (eventId?: string) => {
     const id = eventId || selectedEventId;
     if (!id) return;
     await joinEvent(id);
     if (!eventId) setSelectedEventId(null);
-    
+
     // Track event join for interest scoring (higher weight)
     if (profile?.id) {
       const event = allEvents.find(e => e.id === id);
@@ -242,215 +245,216 @@ const Feed = () => {
           transition={{ duration: 0.2 }}
           className="pb-32"
         >
-        {/* Header - Airbnb-style clean */}
-        <header className="sticky top-0 z-40 bg-card border-b border-border pt-safe">
-          {/* Location row */}
-          <div className="px-5 py-3 flex items-center justify-between">
-            {/* Location as primary element */}
-            <button 
-              onClick={handleLocationClick}
-              className="flex items-center gap-2 hover:bg-muted rounded-xl py-2 px-3 -ml-3 min-h-[44px] transition-all active:scale-[0.98]"
-            >
-              {permissionState === 'granted' && locationPrefs.useGPS ? (
-                <Navigation size={18} className="text-primary" />
-              ) : (
-                <MapPin size={18} className="text-primary" />
-              )}
-              <span className="text-[15px] font-semibold text-foreground">
-                {locationPrefs.useGPS && permissionState === 'granted' 
-                  ? 'Current location' 
-                  : preferences?.zone || locationPrefs.manualZone || profile?.location_city || 'Meppel, NL'}
-              </span>
-              <ChevronDown size={16} className="text-muted-foreground" />
-            </button>
-            
-            {/* Filter button */}
-            <button 
-              onClick={async () => {
-                await hapticImpact('light');
-                setShowOnboarding(true);
-              }}
-              className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-[0.95]"
-            >
-              <SlidersHorizontal size={18} />
-            </button>
-          </div>
-          
-          {/* Filter pills */}
-          <div className="px-4 pb-3">
-            <TimeFilterPills
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-            />
-          </div>
-        </header>
+          {/* Header - Airbnb-style clean */}
+          <header className="sticky top-0 z-40 bg-card border-b border-border pt-safe">
+            {/* Location row */}
+            <div className="px-5 py-3 flex items-center justify-between">
+              {/* Location as primary element */}
+              <button
+                onClick={handleLocationClick}
+                className="flex items-center gap-2 hover:bg-muted rounded-xl py-2 px-3 -ml-3 min-h-[44px] transition-all active:scale-[0.98]"
+              >
+                {permissionState === 'granted' && locationPrefs.useGPS ? (
+                  <Navigation size={18} className="text-primary" />
+                ) : (
+                  <MapPin size={18} className="text-primary" />
+                )}
+                <span className="text-[15px] font-semibold text-foreground">
+                  {locationPrefs.useGPS && permissionState === 'granted'
+                    ? 'Current location'
+                    : preferences?.zone || locationPrefs.manualZone || profile?.location_city || 'Meppel, NL'}
+                </span>
+                <ChevronDown size={16} className="text-muted-foreground" />
+              </button>
 
-        {/* Main Content - Netflix/Airbnb hybrid layout */}
-        <main className="px-4 pt-4 space-y-6 overflow-x-hidden">
-
-          {loading ? (
-            <div className="max-w-md mx-auto flex flex-col gap-5">
-              {[1, 2, 3].map(i => (
-                <motion.div
-                  key={i}
-                  className="aspect-[4/3] bg-muted/50 rounded-[2rem]"
-                  animate={{ opacity: [0.4, 0.6, 0.4] }}
-                  transition={{ repeat: Infinity, duration: 2, delay: i * 0.15 }}
-                />
-              ))}
+              {/* Filter button */}
+              <button
+                onClick={async () => {
+                  await hapticImpact('light');
+                  setShowOnboarding(true);
+                }}
+                className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-[0.95]"
+              >
+                <SlidersHorizontal size={18} />
+              </button>
             </div>
-          ) : rankedEvents.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-16"
-            >
-              <p className="text-muted-foreground text-[17px]">Geen evenementen gevonden</p>
-              <p className="text-muted-foreground/60 text-[15px] mt-2">Probeer een ander filter te selecteren</p>
-            </motion.div>
-          ) : (
-            <>
-              {/* Featured Hero - Only on 'all' filter */}
-              {activeFilter === 'all' && featuredEvent && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <FeaturedEventHero
-                    event={featuredEvent}
+
+            {/* Filter pills */}
+            <div className="px-4 pb-3">
+              <TimeFilterPills
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+              />
+            </div>
+          </header>
+
+          {/* Main Content - Netflix/Airbnb hybrid layout */}
+          <main className="px-4 pt-4 space-y-6 overflow-x-hidden">
+
+            {loading ? (
+              <div className="max-w-md mx-auto flex flex-col gap-5">
+                {[1, 2, 3].map(i => (
+                  <motion.div
+                    key={i}
+                    className="aspect-[4/3] bg-muted/50 rounded-[2rem]"
+                    animate={{ opacity: [0.4, 0.6, 0.4] }}
+                    transition={{ repeat: Infinity, duration: 2, delay: i * 0.15 }}
+                  />
+                ))}
+              </div>
+            ) : rankedEvents.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-16"
+              >
+                <p className="text-muted-foreground text-[17px]">Geen evenementen gevonden</p>
+                <p className="text-muted-foreground/60 text-[15px] mt-2">Probeer een ander filter te selecteren</p>
+              </motion.div>
+            ) : (
+              <>
+                {/* Featured Hero - Only on 'all' filter */}
+                {activeFilter === 'all' && featuredEvent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <FeaturedEventHero
+                      event={featuredEvent}
+                      onEventClick={handleEventClick}
+                      onJoinEvent={handleJoinEvent}
+                      isJoining={isJoining(featuredEvent.id)}
+                      hasJoined={hasJoinedFeatured}
+                    />
+                  </motion.div>
+                )}
+
+                {/* Friends Pulse Rail - Instagram Stories style */}
+                <FriendsPulseRail
+                  currentUserProfileId={profile?.id}
+                  onEventClick={handleEventClick}
+                />
+
+                {/* Trending Carousel */}
+                {activeFilter === 'all' && trendingEvents.length > 0 && (
+                  <HorizontalEventCarousel
+                    title="🔥 Populair in Meppel"
+                    events={trendingEvents}
                     onEventClick={handleEventClick}
                     onJoinEvent={handleJoinEvent}
-                    isJoining={isJoining(featuredEvent.id)}
-                    hasJoined={hasJoinedFeatured}
+                    joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                    currentUserProfileId={profile?.id}
                   />
-                </motion.div>
-              )}
+                )}
 
-              {/* Friends Pulse Rail - Instagram Stories style */}
-              <FriendsPulseRail
-                currentUserProfileId={profile?.id}
-                onEventClick={handleEventClick}
-              />
+                {/* Upcoming Carousel */}
+                {activeFilter === 'all' && upcomingEvents.length > 0 && (
+                  <HorizontalEventCarousel
+                    title="⚡ Binnenkort"
+                    events={upcomingEvents}
+                    onEventClick={handleEventClick}
+                    onJoinEvent={handleJoinEvent}
+                    joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                    currentUserProfileId={profile?.id}
+                  />
+                )}
 
-              {/* Trending Carousel */}
-              {activeFilter === 'all' && trendingEvents.length > 0 && (
-                <HorizontalEventCarousel
-                  title="🔥 Populair in Meppel"
-                  events={trendingEvents}
-                  onEventClick={handleEventClick}
-                  onJoinEvent={handleJoinEvent}
-                  joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                  currentUserProfileId={profile?.id}
-                />
-              )}
+                {/* All Events Section */}
+                {remainingStacks.length > 0 && (
+                  <div className="space-y-5">
+                    {activeFilter === 'all' && (
+                      <div className="flex items-center gap-2 px-1">
+                        <Sparkles size={18} className="text-primary" />
+                        <h2 className="text-[20px] font-semibold text-foreground tracking-tight">
+                          Alle evenementen
+                        </h2>
+                      </div>
+                    )}
 
-              {/* Upcoming Carousel */}
-              {activeFilter === 'all' && upcomingEvents.length > 0 && (
-                <HorizontalEventCarousel
-                  title="⚡ Binnenkort"
-                  events={upcomingEvents}
-                  onEventClick={handleEventClick}
-                  onJoinEvent={handleJoinEvent}
-                  joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                  currentUserProfileId={profile?.id}
-                />
-              )}
-
-              {/* All Events Section */}
-              {remainingStacks.length > 0 && (
-                <div className="space-y-5">
-                  {activeFilter === 'all' && (
-                    <div className="flex items-center gap-2 px-1">
-                      <Sparkles size={18} className="text-primary" />
-                      <h2 className="text-[20px] font-semibold text-foreground tracking-tight">
-                        Alle evenementen
-                      </h2>
+                    <div className="max-w-md mx-auto w-full flex flex-col gap-6">
+                      {remainingStacks.map((stack) => (
+                        <motion.div
+                          key={stack.anchor.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <EventStackCard
+                            stack={stack}
+                            onEventClick={handleEventClick}
+                            onJoinEvent={handleJoinEvent}
+                            joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
+                            currentUserProfileId={profile?.id}
+                            userLocation={userLocation || locationPrefs.manualCoordinates || null}
+                          />
+                        </motion.div>
+                      ))}
                     </div>
-                  )}
-                  
-                  <div className="max-w-md mx-auto w-full flex flex-col gap-6">
-                    {remainingStacks.map((stack) => (
-                      <motion.div
-                        key={stack.anchor.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <EventStackCard
-                          stack={stack}
-                          onEventClick={handleEventClick}
-                          onJoinEvent={handleJoinEvent}
-                          joiningEventId={allEvents.find(e => isJoining(e.id))?.id}
-                          currentUserProfileId={profile?.id}
-                          userLocation={userLocation || locationPrefs.manualCoordinates || null}
-                        />
-                      </motion.div>
-                    ))}
                   </div>
-                </div>
-              )}
-            </>
+                )}
+              </>
+            )}
+          </main>
+        </motion.div>
+
+        {/* Floating Action Button - Thumb zone */}
+        <motion.button
+          onClick={async () => {
+            await hapticImpact('medium');
+            setShowCreateModal(true);
+          }}
+          className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-[1.5rem] bg-primary text-primary-foreground flex items-center justify-center mb-safe border-[0.5px] border-primary/20"
+          style={{
+            boxShadow: '0 8px 24px -4px rgba(var(--primary) / 0.3), 0 16px 40px -8px rgba(0, 0, 0, 0.15)'
+          }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Plus size={28} strokeWidth={2.5} />
+        </motion.button>
+
+        <FloatingNav activeView="feed" onNavigate={handleNavigate} />
+
+        <DevPanel onRefetchEvents={refetch} />
+
+        {/* Onboarding Wizard */}
+        <AnimatePresence>
+          {showOnboarding && (
+            <OnboardingWizard
+              onComplete={completeOnboarding}
+              onClose={() => setShowOnboarding(false)}
+            />
           )}
-        </main>
-      </motion.div>
+        </AnimatePresence>
 
-      {/* Floating Action Button - Thumb zone */}
-      <motion.button
-        onClick={async () => {
-          await hapticImpact('medium');
-          setShowCreateModal(true);
-        }}
-        className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-[1.5rem] bg-primary text-primary-foreground flex items-center justify-center mb-safe border-[0.5px] border-primary/20"
-        style={{
-          boxShadow: '0 8px 24px -4px rgba(var(--primary) / 0.3), 0 16px 40px -8px rgba(0, 0, 0, 0.15)'
-        }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <Plus size={28} strokeWidth={2.5} />
-      </motion.button>
-
-      <FloatingNav activeView="feed" onNavigate={handleNavigate} />
-
-      <DevPanel onRefetchEvents={refetch} />
-
-      {/* Onboarding Wizard */}
-      <AnimatePresence>
-        {showOnboarding && (
-          <OnboardingWizard
-            onComplete={completeOnboarding}
-            onClose={() => setShowOnboarding(false)}
-          />
+        {/* Event Detail Modal */}
+        {selectedEvent && (
+          <ErrorBoundary>
+            <Suspense fallback={<div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
+              <EventDetailModal
+                event={selectedEvent}
+                onClose={handleCloseEventDetail}
+                onJoin={() => handleJoinEvent()}
+                isJoining={isJoining(selectedEventId || selectedEvent.id)}
+                currentUserProfileId={profile?.id}
+                onEventSelect={(event) => setExplicitEvent(event)}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
-      </AnimatePresence>
 
-      {/* Event Detail Modal */}
-      {selectedEvent && (
-        <ErrorBoundary>
-          <Suspense fallback={<div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
-            <EventDetailModal
-              event={selectedEvent}
-              onClose={handleCloseEventDetail}
-              onJoin={() => handleJoinEvent()}
-              isJoining={isJoining(selectedEventId || '')}
-              currentUserProfileId={profile?.id}
-            />
-          </Suspense>
-        </ErrorBoundary>
-      )}
-
-      {/* Create Event Modal */}
-      {showCreateModal && (
-        <ErrorBoundary>
-          <Suspense fallback={<div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
-            <CreateEventModal
-              onClose={() => setShowCreateModal(false)}
-              defaultEventType="anchor"
-            />
-          </Suspense>
-        </ErrorBoundary>
-      )}
+        {/* Create Event Modal */}
+        {showCreateModal && (
+          <ErrorBoundary>
+            <Suspense fallback={<div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
+              <CreateEventModal
+                onClose={() => setShowCreateModal(false)}
+                defaultEventType="anchor"
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
       </div>
     </PullToRefresh>
   );

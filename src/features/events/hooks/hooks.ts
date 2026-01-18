@@ -56,7 +56,7 @@ export function usePersonaStats(profileId: string) {
           .eq('profile_id', profileId);
 
         if (error) throw error;
-        
+
         // Combine stats from all persona types
         if (data && data.length > 0) {
           const combined: PersonaStats = {
@@ -121,7 +121,9 @@ export function useEvents(options?: {
   radiusKm?: number;
   page?: number;
   pageSize?: number;
+  pageSize?: number;
   currentUserProfileId?: string;
+  parentEventId?: string;
 }) {
   const [events, setEvents] = useState<EventWithAttendees[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,12 +131,15 @@ export function useEvents(options?: {
   // Stabilize dependency keys to prevent re-renders from reference changes
   const categoryKey = options?.category?.join(',') ?? '';
   const eventTypeKey = options?.eventType?.join(',') ?? '';
+  const categoryKey = options?.category?.join(',') ?? '';
+  const eventTypeKey = options?.eventType?.join(',') ?? '';
   const currentUserProfileId = options?.currentUserProfileId ?? '';
+  const parentEventId = options?.parentEventId ?? '';
 
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Fetch all events with attendees in a single query to solve N+1 problem
       // Limit attendees to first 4 per event to keep it light
       // Supabase default limit is 1000 rows which is sufficient for our use case
@@ -162,6 +167,10 @@ export function useEvents(options?: {
         query = query.in('event_type', options.eventType);
       }
 
+      if (options?.parentEventId) {
+        query = query.eq('parent_event_id', options.parentEventId);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -171,7 +180,7 @@ export function useEvents(options?: {
         const count = Array.isArray(event.attendee_count)
           ? event.attendee_count[0]?.count || 0
           : 0;
-        
+
         const attendees = Array.isArray(event.attendees)
           ? event.attendees as EventAttendee[]
           : [];
@@ -227,7 +236,7 @@ export function useEvents(options?: {
     } finally {
       setLoading(false);
     }
-  }, [categoryKey, eventTypeKey, currentUserProfileId]);
+  }, [categoryKey, eventTypeKey, currentUserProfileId, parentEventId]);
 
   useEffect(() => {
     fetchEvents();

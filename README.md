@@ -35,7 +35,7 @@ See AI_CONTEXT.md for comprehensive AI context.
 
 ## Architecture
 
-### Sidecar Event Model
+### Fork Event Model
 | Type | Description | Example |
 |------|-------------|---------|
 | **Anchor** | Official/scraped events | Cinema screening, festival, sports match |

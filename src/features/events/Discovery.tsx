@@ -61,7 +61,7 @@ function getTonightEvents(events: EventWithAttendees[], limit = 10): EventWithAt
   const endOfTonight = new Date(now);
   endOfTonight.setDate(endOfTonight.getDate() + 1);
   endOfTonight.setHours(4, 0, 0, 0); // 4 AM next day
-  
+
   return events
     .filter(e => {
       const eventDateTime = parseEventDateTime(e.event_date, e.event_time);
@@ -84,9 +84,9 @@ function getWeekendEvents(events: EventWithAttendees[], limit = 10): EventWithAt
   const now = new Date();
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  
+
   const dayOfWeek = today.getDay();
-  
+
   // Calculate Friday 5 PM
   let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
   // If today is Friday, Saturday, or Sunday, use this weekend
@@ -99,15 +99,15 @@ function getWeekendEvents(events: EventWithAttendees[], limit = 10): EventWithAt
       daysUntilFriday = 5 - dayOfWeek;
     }
   }
-  
+
   const friday = new Date(today);
   friday.setDate(today.getDate() + daysUntilFriday);
   friday.setHours(17, 0, 0, 0); // 5 PM Friday
-  
+
   const sunday = new Date(friday);
   sunday.setDate(friday.getDate() + 2);
   sunday.setHours(23, 0, 0, 0); // 11 PM Sunday
-  
+
   return events
     .filter(e => {
       const eventDateTime = parseEventDateTime(e.event_date, e.event_time);
@@ -139,24 +139,25 @@ const Discovery = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs, permissionState, requestPermission } = useLocation();
-  
+
   // Mode state: browsing (rails) vs searching (deep dive list)
   const [mode, setMode] = useState<'browsing' | 'searching'>('browsing');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  
+  const [explicitEvent, setExplicitEvent] = useState<EventWithAttendees | null>(null);
+
   // Ref for scroll container to trigger haptics on rail snaps
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch events
-  const { events: allEvents, loading, refetch } = useEventsQuery({ 
+  const { events: allEvents, loading, refetch } = useEventsQuery({
     currentUserProfileId: profile?.id,
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
     usePersonalizedFeed: !!userLocation && !!profile?.id,
   });
-  
+
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
 
   // Featured event (top event with image or high attendees - for Pulse hero)
@@ -169,8 +170,8 @@ const Discovery = () => {
   // ============================================================
 
   // Rail 1: "Pulse of [City]" - Hot events with high attendee counts
-  const pulseEvents = useMemo(() => 
-    getPulseEvents(allEvents.filter(e => e.id !== featuredEvent?.id)), 
+  const pulseEvents = useMemo(() =>
+    getPulseEvents(allEvents.filter(e => e.id !== featuredEvent?.id)),
     [allEvents, featuredEvent]
   );
 
@@ -181,31 +182,31 @@ const Discovery = () => {
     const recurringStacks = stacks.filter(stack => stack.type === 'stack');
     // Return the anchor events from recurring stacks
     const realEvents = recurringStacks.map(stack => stack.anchor).slice(0, 10);
-    
+
     // Per requirements: Create mock data to ensure the rail is visible if empty
     // Use events with recurring keywords or categories as placeholders
     if (realEvents.length === 0 && allEvents.length > 0) {
-      const potentialRituals = allEvents.filter(e => 
+      const potentialRituals = allEvents.filter(e =>
         e.title.toLowerCase().match(/weekly|monthly|club|class|group|meetup/i) ||
         e.category === 'sports' || e.category === 'wellness'
       ).slice(0, 3);
-      
+
       // Fallback to any events if no matches found
       return potentialRituals.length > 0 ? potentialRituals : allEvents.slice(0, 3);
     }
-    
+
     return realEvents;
   }, [allEvents]);
 
   // Rail 3: "The Weekend Radar" - Friday 5PM to Sunday 11PM
-  const weekendEvents = useMemo(() => 
-    getWeekendEvents(allEvents.filter(e => e.id !== featuredEvent?.id)), 
+  const weekendEvents = useMemo(() =>
+    getWeekendEvents(allEvents.filter(e => e.id !== featuredEvent?.id)),
     [allEvents, featuredEvent]
   );
 
   // Rail 4: "Tonight" - Events from now to 4AM next day
-  const tonightEvents = useMemo(() => 
-    getTonightEvents(allEvents.filter(e => e.id !== featuredEvent?.id)), 
+  const tonightEvents = useMemo(() =>
+    getTonightEvents(allEvents.filter(e => e.id !== featuredEvent?.id)),
     [allEvents, featuredEvent]
   );
 
@@ -213,7 +214,7 @@ const Discovery = () => {
   const searchFilteredEvents = useMemo(() => {
     if (!searchQuery.trim()) return allEvents;
     const q = searchQuery.toLowerCase();
-    return allEvents.filter(e => 
+    return allEvents.filter(e =>
       e.title.toLowerCase().includes(q) ||
       e.venue_name?.toLowerCase().includes(q) ||
       e.category?.toLowerCase().includes(q)
@@ -227,6 +228,7 @@ const Discovery = () => {
 
   const handleCloseEventDetail = useCallback(() => {
     setSelectedEventId(null);
+    setExplicitEvent(null);
   }, []);
 
   const handleJoinEvent = useCallback(async (eventId?: string) => {
@@ -259,9 +261,10 @@ const Discovery = () => {
   }, []);
 
   const selectedEvent = useMemo(() => {
+    if (explicitEvent) return explicitEvent;
     if (!selectedEventId) return null;
     return allEvents.find(e => e.id === selectedEventId) || null;
-  }, [selectedEventId, allEvents]);
+  }, [selectedEventId, allEvents, explicitEvent]);
 
   const hasJoinedFeatured = useMemo(() => {
     if (!featuredEvent || !profile?.id) return false;
@@ -288,7 +291,7 @@ const Discovery = () => {
         <header className="sticky top-0 z-40 bg-card shadow-card border-b border-border pt-safe">
           {/* Location row */}
           <div className="px-6 py-3 flex items-center justify-between">
-            <button 
+            <button
               onClick={handleLocationClick}
               className="flex items-center gap-2 hover:bg-muted rounded-button py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
               aria-label="Change location"
@@ -304,7 +307,7 @@ const Discovery = () => {
               <ChevronDown size={16} className="text-text-secondary" />
             </button>
           </div>
-          
+
           {/* Search Bar */}
           <div className="px-6 pb-4">
             <GlassSearchBar
@@ -348,7 +351,7 @@ const Discovery = () => {
                   <div className="space-y-6" ref={scrollContainerRef}>
                     {/* Featured Hero - Contextual top event */}
                     {featuredEvent && (
-                      <motion.div 
+                      <motion.div
                         className="mb-6 px-4"
                         {...railMotionConfig}
                       >
@@ -372,16 +375,16 @@ const Discovery = () => {
 
                     {/* Rail 1: Pulse of [City] - Hot events nearby */}
                     {pulseEvents.length > 0 && (
-                      <motion.div 
+                      <motion.div
                         className="mb-6"
                         initial={railMotionConfig.initial}
                         animate={railMotionConfig.animate}
                         transition={getRailTransition(0.1)}
                       >
-                        <DiscoveryRail 
+                        <DiscoveryRail
                           title={
                             <span className="flex items-center gap-2">
-                              <Flame size={20} className="text-orange-500" /> 
+                              <Flame size={20} className="text-orange-500" />
                               Pulse of {locationPrefs.manualZone || profile?.location_city || 'Your City'}
                             </span>
                           }
@@ -400,16 +403,16 @@ const Discovery = () => {
 
                     {/* Rail 2: Ritual Rails - Recurring event stacks */}
                     {ritualsEvents.length > 0 && (
-                      <motion.div 
+                      <motion.div
                         className="mb-6"
                         initial={railMotionConfig.initial}
                         animate={railMotionConfig.animate}
                         transition={getRailTransition(0.15)}
                       >
-                        <DiscoveryRail 
+                        <DiscoveryRail
                           title={
                             <span className="flex items-center gap-2">
-                              <RefreshCw size={20} className="text-green-500" /> 
+                              <RefreshCw size={20} className="text-green-500" />
                               Ritual Rails
                             </span>
                           }
@@ -428,16 +431,16 @@ const Discovery = () => {
 
                     {/* Rail 3: The Weekend Radar - Planning for upcoming weekend */}
                     {weekendEvents.length > 0 && (
-                      <motion.div 
+                      <motion.div
                         className="mb-6"
                         initial={railMotionConfig.initial}
                         animate={railMotionConfig.animate}
                         transition={getRailTransition(0.2)}
                       >
-                        <DiscoveryRail 
+                        <DiscoveryRail
                           title={
                             <span className="flex items-center gap-2">
-                              <Calendar size={20} className="text-blue-500" /> 
+                              <Calendar size={20} className="text-blue-500" />
                               The Weekend Radar
                             </span>
                           }
@@ -456,16 +459,16 @@ const Discovery = () => {
 
                     {/* Rail 4: Tonight - Spontaneous last-minute plans */}
                     {tonightEvents.length > 0 && (
-                      <motion.div 
+                      <motion.div
                         className="mb-6"
                         initial={railMotionConfig.initial}
                         animate={railMotionConfig.animate}
                         transition={getRailTransition(0.25)}
                       >
-                        <DiscoveryRail 
+                        <DiscoveryRail
                           title={
                             <span className="flex items-center gap-2">
-                              <Zap size={20} className="text-yellow-500" /> 
+                              <Zap size={20} className="text-yellow-500" />
                               Tonight
                             </span>
                           }
@@ -531,8 +534,9 @@ const Discovery = () => {
               event={selectedEvent}
               onClose={handleCloseEventDetail}
               onJoin={() => handleJoinEvent()}
-              isJoining={isJoining(selectedEventId || '')}
+              isJoining={isJoining(selectedEventId || selectedEvent.id)}
               currentUserProfileId={profile?.id}
+              onEventSelect={(event) => setExplicitEvent(event)}
             />
           </Suspense>
         </ErrorBoundary>

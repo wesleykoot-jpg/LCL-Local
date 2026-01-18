@@ -28,9 +28,9 @@ LCL is a hyper-local social events platform that combines scraped official event
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Sidecar Event Model
+## Fork Event Model
 
-The core innovation of LCL is the "sidecar" event model:
+The core innovation of LCL is the "fork" event model:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

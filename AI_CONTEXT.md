@@ -5,7 +5,7 @@
 ## One-Liner
 LCL is a React/TypeScript/Supabase social events app for discovering and joining local events globally, with an AI-powered event scraper.
 
-## Core Concept: Sidecar Event Model
+## Core Concept: Fork Event Model
 - **Anchors**: Official/scraped events (cinema, markets, sports, concerts)
 - **Forks**: User meetups attached to anchors (pre-movie drinks, post-game hangout)
 - **Signals**: Standalone user events (gaming sessions, casual meetups)

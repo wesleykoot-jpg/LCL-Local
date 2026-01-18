@@ -1,27 +1,29 @@
 import { memo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  MapPin, 
-  Clock, 
-  Calendar, 
-  Users, 
-  Share2, 
+import {
+  X,
+  MapPin,
+  Clock,
+  Calendar,
+  Users,
+  Share2,
   Bookmark,
   Navigation,
-  Loader2,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  GitFork,
+  Loader2
 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import { EventActionsMenu } from './EventActionsMenu';
 import { Facepile } from './Facepile';
 import { DistanceBadge } from './DistanceBadge';
+import { ForkEventCard } from './ForkEventCard';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import { useLocation } from '@/features/location';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { formatEventLocation, getEventCoordinates } from '@/shared/lib/formatters';
-import type { EventWithAttendees } from '../hooks/hooks';
+import { useEvents, type EventWithAttendees } from '../hooks/hooks';
 
 interface EventDetailModalProps {
   event: EventWithAttendees;
@@ -30,6 +32,7 @@ interface EventDetailModalProps {
   isJoining?: boolean;
   hasJoined?: boolean;
   currentUserProfileId?: string;
+  onEventSelect?: (event: EventWithAttendees) => void;
 }
 
 // Fallback images by category
@@ -51,9 +54,9 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
 const formatDate = (dateStr: string) => {
   const datePart = dateStr.split('T')[0].split(' ')[0];
   const date = new Date(datePart + 'T00:00:00');
-  return date.toLocaleDateString('nl-NL', { 
-    weekday: 'long', 
-    month: 'long', 
+  return date.toLocaleDateString('nl-NL', {
+    weekday: 'long',
+    month: 'long',
     day: 'numeric',
     year: 'numeric'
   });
@@ -65,13 +68,13 @@ const formatDateShort = (dateStr: string) => {
   const eventDate = new Date(datePart + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-  
+
   if (eventDate.getTime() === today.getTime()) return 'Vandaag';
   if (eventDate.getTime() === tomorrow.getTime()) return 'Morgen';
-  
+
   return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
 };
 
@@ -80,14 +83,14 @@ import { isMidnightValidCategory } from '@/shared/lib/categories';
 // Dutch 24-hour time format with smart midnight suppression
 const formatTime = (timeStr: string | undefined | null, category?: string) => {
   if (!timeStr) return null;
-  
+
   // Check for midnight time - suppress unless it's a nightlife category
   const isMidnight = /^0{1,2}:00(:00)?$/.test(timeStr.trim());
-  
+
   if (isMidnight && !isMidnightValidCategory(category)) {
     return null; // Return null to hide the time pill entirely
   }
-  
+
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
     const [hours, minutes] = timeStr.split(':');
     return `${hours.padStart(2, '0')}:${minutes}`;
@@ -110,7 +113,7 @@ function isValidDisplayValue(value: string | null | undefined): boolean {
 function openInMaps(lat: number, lng: number, label: string) {
   const encodedLabel = encodeURIComponent(label);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  
+
   if (isIOS) {
     window.open(`maps://maps.apple.com/?q=${encodedLabel}&ll=${lat},${lng}`, '_blank');
   } else {
@@ -125,13 +128,19 @@ export const EventDetailModal = memo(function EventDetailModal({
   isJoining = false,
   hasJoined = false,
   currentUserProfileId,
+  onEventSelect,
 }: EventDetailModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [imageError, setImageError] = useState(false);
   const { location: userLocation } = useLocation();
 
+  const { events: forks, loading: forksLoading } = useEvents({
+    parentEventId: event.id,
+    currentUserProfileId
+  });
+
   const categoryLabel = CATEGORY_MAP[event.category] || event.category;
-  const imageUrl = imageError 
+  const imageUrl = imageError
     ? (CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default)
     : (event.image_url || CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default);
 
@@ -233,9 +242,10 @@ export const EventDetailModal = memo(function EventDetailModal({
                 eventId={event.id}
                 hostUserId={event.created_by || undefined}
                 currentUserProfileId={currentUserProfileId}
+                event={event}
               />
             </div>
-            
+
             {/* Close button - Design System v5.0 */}
             <button
               onClick={handleClose}
@@ -256,7 +266,7 @@ export const EventDetailModal = memo(function EventDetailModal({
               />
               {/* Gradient overlay for text readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
-              
+
               {/* Top badges */}
               <div className="absolute top-4 left-4 flex items-center gap-2">
                 <CategoryBadge category={categoryLabel} variant="glass" />
@@ -296,8 +306,8 @@ export const EventDetailModal = memo(function EventDetailModal({
                     {formattedTime}
                   </div>
                 )}
-                <DistanceBadge 
-                  venueCoordinates={venueCoords} 
+                <DistanceBadge
+                  venueCoordinates={venueCoords}
                   userLocation={userLocation}
                   className="px-3 py-2 rounded-[12px] bg-muted shadow-card"
                 />
@@ -315,7 +325,7 @@ export const EventDetailModal = memo(function EventDetailModal({
 
                   {/* Static Map - Squircle geometry */}
                   {hasValidCoords ? (
-                    <motion.div 
+                    <motion.div
                       className="relative h-44 rounded-[20px] overflow-hidden bg-muted cursor-pointer group border border-gray-200 shadow-card"
                       onClick={handleOpenMaps}
                       whileHover={{ scale: 1.01 }}
@@ -327,7 +337,7 @@ export const EventDetailModal = memo(function EventDetailModal({
                         title="Event location map"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-                      
+
                       {/* Open in Maps button - Squircle */}
                       <div className="absolute bottom-3 right-3">
                         <div
@@ -356,6 +366,30 @@ export const EventDetailModal = memo(function EventDetailModal({
                 </div>
               )}
 
+              {/* Forks / Linked Events Section */}
+              {forks.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-[15px] font-semibold text-foreground flex items-center gap-2">
+                    <GitFork size={15} />
+                    Gekoppelde Events
+                  </h3>
+                  <div className="space-y-3">
+                    {forks.map((fork: EventWithAttendees) => (
+                      <ForkEventCard
+                        key={fork.id}
+                        event={fork}
+                        currentUserProfileId={currentUserProfileId}
+                        onClick={() => {
+                          onEventSelect?.(fork);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        showConnector={false}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Attendees section */}
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
@@ -367,12 +401,12 @@ export const EventDetailModal = memo(function EventDetailModal({
                     {event.max_attendees && ` · ${event.max_attendees - (event.attendee_count || 0)} plekken over`}
                   </span>
                 </div>
-                
+
                 {attendeeDisplay.length > 0 && (
                   <div className="flex items-center gap-3">
-                    <Facepile 
-                      users={attendeeDisplay} 
-                      extraCount={Math.max(0, (event.attendee_count || 0) - attendeeDisplay.length)} 
+                    <Facepile
+                      users={attendeeDisplay}
+                      extraCount={Math.max(0, (event.attendee_count || 0) - attendeeDisplay.length)}
                     />
                   </div>
                 )}
@@ -386,7 +420,7 @@ export const EventDetailModal = memo(function EventDetailModal({
           </div>
 
           {/* Fixed Bottom Action Bar - Design System v5.0 "Social Air" */}
-          <div 
+          <div
             className="sticky bottom-0 left-0 right-0 p-4 pb-safe bg-white border-t border-gray-200 shadow-bottom-nav"
           >
             <div className="flex gap-3 items-center">
@@ -397,14 +431,13 @@ export const EventDetailModal = memo(function EventDetailModal({
               >
                 <Share2 size={22} />
               </button>
-              
+
               <button
                 onClick={handleSave}
-                className={`w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[12px] flex items-center justify-center transition-all active:scale-[0.95] border ${
-                  isSaved 
-                    ? 'bg-primary/10 text-primary border-primary/30' 
-                    : 'bg-muted text-muted-foreground border-gray-200 hover:bg-gray-200 hover:text-foreground'
-                }`}
+                className={`w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[12px] flex items-center justify-center transition-all active:scale-[0.95] border ${isSaved
+                  ? 'bg-primary/10 text-primary border-primary/30'
+                  : 'bg-muted text-muted-foreground border-gray-200 hover:bg-gray-200 hover:text-foreground'
+                  }`}
               >
                 <Bookmark size={22} fill={isSaved ? 'currentColor' : 'none'} />
               </button>
@@ -413,11 +446,10 @@ export const EventDetailModal = memo(function EventDetailModal({
               <button
                 onClick={handleJoin}
                 disabled={isJoining || hasJoined}
-                className={`flex-1 h-[52px] min-h-[48px] rounded-[12px] text-[17px] font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.97] shadow-card ${
-                  hasJoined
-                    ? 'bg-muted text-muted-foreground'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                }`}
+                className={`flex-1 h-[52px] min-h-[48px] rounded-[12px] text-[17px] font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.97] shadow-card ${hasJoined
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  }`}
               >
                 {isJoining ? (
                   <>

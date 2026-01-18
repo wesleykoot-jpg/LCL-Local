@@ -8,8 +8,8 @@ import type { EventWithAttendees } from '../hooks/hooks';
 import { CATEGORY_MAP } from '@/shared/lib/categories';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { formatEventDate, formatEventTime } from '@/shared/lib/formatters';
-import { 
-  useImageFallback, 
+import {
+  useImageFallback,
   getEventImage
 } from '../hooks/useImageFallback';
 import { useFeedMode } from '@/contexts/FeedContext';
@@ -60,7 +60,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   const [isSaved, setIsSaved] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const { feedMode } = useFeedMode();
-  
+
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
       attendee => attendee.profile?.id === currentUserProfileId
@@ -87,8 +87,8 @@ const AnchorEventCard = memo(function AnchorEventCard({
     >
       {/* Image Section */}
       <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-3">
-        <motion.img 
-          src={imageUrl} 
+        <motion.img
+          src={imageUrl}
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={handleImageError}
@@ -98,7 +98,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
           animate={{ opacity: imageLoaded ? 1 : 0 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         />
-        
+
         {/* Action buttons - top right */}
         <div className="absolute top-3 right-3 flex gap-2">
           {/* Actions Menu (Report/Block) */}
@@ -107,32 +107,32 @@ const AnchorEventCard = memo(function AnchorEventCard({
               eventId={event.id}
               hostUserId={event.created_by || undefined}
               currentUserProfileId={currentUserProfileId}
+              event={event}
             />
           </div>
-          
+
           {/* Heart/Save button - Airbnb style */}
           <button
             onClick={handleSave}
             className="w-8 h-8 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
           >
-            <Heart 
-              size={16} 
-              className={isSaved ? 'text-primary fill-primary' : 'text-foreground'} 
+            <Heart
+              size={16}
+              className={isSaved ? 'text-primary fill-primary' : 'text-foreground'}
             />
           </button>
         </div>
-        
+
         {/* Category badge - top left */}
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           <CategoryBadge category={categoryLabel} variant="glass" size="sm" />
-          
+
           {/* Context badge - only shown when feed mode is active */}
           {contextBadge && (
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg  text-[11px] font-semibold shadow-sm ${
-              contextBadge.color === 'teal' 
-                ? 'bg-teal-500/90 text-white' 
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg  text-[11px] font-semibold shadow-sm ${contextBadge.color === 'teal'
+                ? 'bg-teal-500/90 text-white'
                 : 'bg-blue-500/90 text-white'
-            }`}>
+              }`}>
               <contextBadge.icon size={12} />
               {contextBadge.text}
             </div>
@@ -144,20 +144,20 @@ const AnchorEventCard = memo(function AnchorEventCard({
           {formatEventDate(event.event_date)}
         </div>
       </div>
-      
+
       {/* Content Section - Below image (Airbnb style) */}
       <div className="space-y-1">
         {/* Title */}
         <h3 className="text-[17px] font-semibold text-foreground leading-tight line-clamp-1">
           {event.title}
         </h3>
-        
+
         {/* Location */}
         <p className="text-[15px] text-muted-foreground flex items-center gap-1">
           <MapPin size={14} className="flex-shrink-0" />
           <span className="truncate">{event.venue_name}</span>
         </p>
-        
+
         {/* Metadata row */}
         <div className="flex items-center gap-3 text-[13px] text-muted-foreground pt-1">
           {formatEventTime(event.event_time) && (
@@ -171,7 +171,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
             {event.attendee_count || 0} going
           </span>
         </div>
-        
+
         {/* Join button */}
         <div className="pt-3">
           <button
@@ -183,11 +183,10 @@ const AnchorEventCard = memo(function AnchorEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`w-full h-[48px] rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98] ${
-              hasJoined
+            className={`w-full h-[48px] rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98] ${hasJoined
                 ? 'bg-muted text-muted-foreground'
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
-            }`}
+              }`}
           >
             {isJoining ? (
               <Loader2 size={18} className="animate-spin mx-auto" />
@@ -228,7 +227,7 @@ const ForkEventCard = memo(function ForkEventCard({
   const primaryImageUrl = getEventImage(event.image_url, event.category);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(primaryImageUrl, event.category);
   const [imageLoaded, setImageLoaded] = useState(false);
-  
+
   const hasJoined = Boolean(
     currentUserProfileId && event.attendees?.some(
       attendee => attendee.profile?.id === currentUserProfileId
@@ -258,8 +257,8 @@ const ForkEventCard = memo(function ForkEventCard({
         <div className="flex gap-3 items-center">
           {/* Thumbnail */}
           <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
-            <motion.img 
-              src={imageUrl} 
+            <motion.img
+              src={imageUrl}
               alt={event.title}
               className="w-full h-full object-cover"
               onError={handleImageError}
@@ -293,11 +292,10 @@ const ForkEventCard = memo(function ForkEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`min-h-[36px] px-4 rounded-lg text-[13px] font-semibold transition-all active:scale-[0.95] ${
-              hasJoined 
-                ? 'bg-muted text-muted-foreground' 
+            className={`min-h-[36px] px-4 rounded-lg text-[13px] font-semibold transition-all active:scale-[0.95] ${hasJoined
+                ? 'bg-muted text-muted-foreground'
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
-            }`}
+              }`}
           >
             {isJoining ? (
               <Loader2 size={14} className="animate-spin" />
