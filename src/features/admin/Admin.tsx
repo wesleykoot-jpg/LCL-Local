@@ -48,8 +48,7 @@ import {
   type DryRunResult,
   type DiscoveredSource,
   type LogEntry,
-  type IntegrityTestReport,
-  type TestResult
+  type IntegrityTestReport
 } from './api/scraperService';
 import { 
   Dialog, 
@@ -193,13 +192,24 @@ export default function Admin() {
   const [testReport, setTestReport] = useState<IntegrityTestReport | null>(null);
   const [showTestResults, setShowTestResults] = useState(false);
 
+  // Error state for API failures
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [showErrorBanner, setShowErrorBanner] = useState(true);
+
   // Load functions
   const loadSources = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getSources();
       setSources(data);
+      setApiError(null); // Clear error on success
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('Failed to fetch')) {
+        setApiError('API calls blocked - check browser extensions or network settings');
+      } else {
+        setApiError(errorMessage);
+      }
       toast.error('Failed to load sources');
       console.error(error);
     } finally {
@@ -521,6 +531,49 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      {/* API Error Banner */}
+      {apiError && showErrorBanner && (
+        <div className="bg-red-500/10 border-b border-red-500/30 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1">
+              <AlertTriangle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-600">API Connection Failed</p>
+                <p className="text-xs text-red-500 mt-1">
+                  {apiError}. This is likely caused by:
+                </p>
+                <ul className="text-xs text-red-500 mt-1 space-y-0.5 list-disc list-inside">
+                  <li>Browser extension blocking requests (ad blocker, privacy tool)</li>
+                  <li>Network firewall or VPN blocking Supabase domain</li>
+                  <li>Missing or incorrect environment variables</li>
+                </ul>
+                <p className="text-xs text-red-500 mt-2">
+                  <strong>Try:</strong> Disable browser extensions, check .env configuration, or try a different browser.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => { loadSources(); loadJobs(); loadDiscoveredSources(); }} 
+                className="h-8 gap-1 text-xs"
+              >
+                <RefreshCw size={12} /> Retry
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowErrorBanner(false)} 
+                className="h-8 w-8"
+              >
+                <XCircle size={16} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95  border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
