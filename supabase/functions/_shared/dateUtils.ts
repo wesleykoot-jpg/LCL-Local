@@ -101,7 +101,7 @@ export function getTargetYearEnv(): string | null {
     return Deno.env.get("TARGET_EVENT_YEAR") ?? null;
   }
   if (typeof process !== "undefined" && process.env?.TARGET_EVENT_YEAR) {
-    return process.env.TARGET_EVENT_YEAR ?? null;
+    return process.env.TARGET_EVENT_YEAR;
   }
   return null;
 }
