@@ -1,5 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 
+// Constants
+export const MAX_RETRY_ATTEMPTS = 3;
+
 export interface ScraperSource {
   id: string;
   name: string;
@@ -67,6 +70,21 @@ export interface CoordinatorResult {
   success: boolean;
   jobsCreated?: number;
   error?: string;
+}
+
+/**
+ * Helper function to safely extract inserted count from ScrapeResult
+ * Handles both new format (result.totals.inserted) and legacy format (result.inserted)
+ */
+export function getInsertedCount(result: ScrapeResult): number {
+  return result.totals?.inserted ?? result.inserted ?? 0;
+}
+
+/**
+ * Helper function to safely extract total scraped count from ScrapeResult
+ */
+export function getTotalScrapedCount(result: ScrapeResult): number {
+  return result.totals?.totalScraped ?? result.totalScraped ?? 0;
 }
 
 /**
@@ -442,7 +460,7 @@ export async function retryFailedJobs(): Promise<{ success: boolean; retriedCoun
       .from('scrape_jobs')
       .select('id, source_id')
       .eq('status', 'failed')
-      .lt('attempts', 3); // Only retry if attempts < 3
+      .lt('attempts', MAX_RETRY_ATTEMPTS); // Only retry if attempts < MAX_RETRY_ATTEMPTS
 
     if (fetchError) {
       throw new Error(fetchError.message);
@@ -527,6 +545,8 @@ export async function getJobDetails(jobId: string) {
 
 /**
  * Trigger scrape for selected sources (bypassing queue)
+ * Uses the scrape-events edge function with specific sourceIds.
+ * This allows immediate execution of scraping for chosen sources without going through the job queue.
  */
 export async function triggerSelectedSources(sourceIds: string[]): Promise<ScrapeResult> {
   const { data, error } = await supabase.functions.invoke('scrape-events', {

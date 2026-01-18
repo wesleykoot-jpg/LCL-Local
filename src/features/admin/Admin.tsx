@@ -54,6 +54,8 @@ import {
   retryFailedJobs,
   queueSourcesForScraping,
   triggerSelectedSources,
+  getInsertedCount,
+  MAX_RETRY_ATTEMPTS,
   type ScraperSource,
   type ScrapeResult,
   type DryRunResult,
@@ -119,9 +121,13 @@ interface LogsSummary {
 type HealthStatus = 'healthy' | 'warning' | 'error';
 
 // Utility functions
+function isSourceEnabled(source: ScraperSource): boolean {
+  return source.enabled && !source.auto_disabled;
+}
+
 function getHealthStatus(source: ScraperSource): HealthStatus {
   if (source.auto_disabled) return 'error';
-  if ((source.consecutive_failures ?? 0) >= 3) return 'error';
+  if ((source.consecutive_failures ?? 0) >= MAX_RETRY_ATTEMPTS) return 'error';
   if ((source.consecutive_failures ?? 0) >= 1) return 'warning';
   if (source.last_success === false) return 'warning';
   return 'healthy';
@@ -385,7 +391,7 @@ export default function Admin() {
       const result = await triggerScraper();
       setLastResult(result);
       setShowResults(true);
-      toast.success(`Scraped ${result.totals?.inserted ?? result.inserted ?? 0} new events`);
+      toast.success(`Scraped ${getInsertedCount(result)} new events`);
       await loadSources();
     } catch (error) {
       toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -518,7 +524,7 @@ export default function Admin() {
       const result = await triggerRunScraper();
       setLastResult(result);
       setShowResults(true);
-      toast.success(`Run-scraper: Scraped ${result.totals?.inserted ?? result.inserted ?? 0} new events`);
+      toast.success(`Run-scraper: Scraped ${getInsertedCount(result)} new events`);
       await loadSources();
       await loadJobs();
     } catch (error) {
@@ -534,7 +540,7 @@ export default function Admin() {
       const result = await triggerScrapeWorker(sourceId);
       setLastResult(result);
       setShowResults(true);
-      toast.success(`Scrape-worker: Scraped ${result.totals?.inserted ?? result.inserted ?? 0} new events`);
+      toast.success(`Scrape-worker: Scraped ${getInsertedCount(result)} new events`);
       await loadSources();
     } catch (error) {
       toast.error('Scrape-worker failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -555,7 +561,7 @@ export default function Admin() {
       const result = await triggerSelectedSources(sourceIds);
       setLastResult(result);
       setShowResults(true);
-      toast.success(`Ran ${sourceIds.length} sources: ${result.totals?.inserted ?? result.inserted ?? 0} new events`);
+      toast.success(`Ran ${sourceIds.length} sources: ${getInsertedCount(result)} new events`);
       await loadSources();
     } catch (error) {
       toast.error('Failed to run selected sources: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -618,7 +624,7 @@ export default function Admin() {
   }
 
   function handleSelectEnabled() {
-    const enabledSourceIds = sources.filter(s => s.enabled && !s.auto_disabled).map(s => s.id);
+    const enabledSourceIds = sources.filter(isSourceEnabled).map(s => s.id);
     setSelectedSources(new Set(enabledSourceIds));
   }
 
@@ -650,7 +656,7 @@ export default function Admin() {
   }
 
   // Stats
-  const enabledCount = sources.filter(s => s.enabled && !s.auto_disabled).length;
+  const enabledCount = sources.filter(isSourceEnabled).length;
   const brokenCount = sources.filter(s => getHealthStatus(s) === 'error').length;
   const warningCount = sources.filter(s => getHealthStatus(s) === 'warning').length;
   const lastScrapedAt = sources
@@ -755,10 +761,10 @@ export default function Admin() {
                 {selectedSources.size === sources.length ? 'Deselect All' : 'Select All'}
               </Button>
               <Button variant="outline" size="sm" onClick={handleSelectEnabled} className="h-7 px-2 text-xs">
-                <CheckCircle2 size={12} className="mr-1" /> Enabled ({sources.filter(s => s.enabled && !s.auto_disabled).length})
+                <CheckCircle2 size={12} className="mr-1" /> Enabled ({enabledCount})
               </Button>
               <Button variant="outline" size="sm" onClick={handleSelectBroken} className="h-7 px-2 text-xs">
-                <XCircle size={12} className="mr-1" /> Broken ({sources.filter(s => getHealthStatus(s) === 'error').length})
+                <XCircle size={12} className="mr-1" /> Broken ({brokenCount})
               </Button>
             </div>
           </div>
@@ -878,15 +884,15 @@ export default function Admin() {
           </div>
           <div className="p-2 bg-background/50 rounded border border-border text-center">
             <div className="text-xs text-muted-foreground mb-1">Enabled</div>
-            <div className="text-lg font-bold text-green-600">{sources.filter(s => s.enabled && !s.auto_disabled).length}</div>
+            <div className="text-lg font-bold text-green-600">{enabledCount}</div>
           </div>
           <div className="p-2 bg-background/50 rounded border border-border text-center">
             <div className="text-xs text-muted-foreground mb-1">Warning</div>
-            <div className="text-lg font-bold text-amber-600">{sources.filter(s => getHealthStatus(s) === 'warning').length}</div>
+            <div className="text-lg font-bold text-amber-600">{warningCount}</div>
           </div>
           <div className="p-2 bg-background/50 rounded border border-border text-center">
             <div className="text-xs text-muted-foreground mb-1">Broken</div>
-            <div className="text-lg font-bold text-red-600">{sources.filter(s => getHealthStatus(s) === 'error').length}</div>
+            <div className="text-lg font-bold text-red-600">{brokenCount}</div>
           </div>
         </div>
       </section>
