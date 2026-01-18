@@ -1,0 +1,1594 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Ontdek Meppel - Alle evenementen, de beste restaurants, de leukste winkeltjes, de gezelligste cafés, compleet overnachtings overzicht.</title>
+<link rel="stylesheet" href="https://use.typekit.net/bmk2ktf.css">
+<link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<link rel="stylesheet" href="/slick/slick.css?v=1" type="text/css" />
+<link rel="stylesheet" href="/slick/slick-theme.css?v=1" type="text/css" />
+<link rel="stylesheet" href="https://ontdekmeppel.nl/css/theme.css?v=1" type="text/css" />
+<link rel="stylesheet" href="/css/hover.css?v=1" type="text/css" />
+<link rel="stylesheet" href="/css/default.css?v=1.2" type="text/css" />
+<link rel="stylesheet" href="https://ontdekmeppel.nl/css/menu.css?v=1.1" type="text/css" />
+<link rel="stylesheet" href="https://ontdekmeppel.nl/css/style.css?v=1.42" type="text/css" />
+
+<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico"/>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@4.0/dist/fancybox.css" type="text/css" media="screen"/>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@4.0/dist/fancybox.umd.js"></script>
+<script type="text/javascript" src="/js/jquery.cycle.all.js"></script>
+<script type="text/javascript" src="/js/masonry.js"></script>
+<script src="/slick/slick.js" type="text/javascript"></script>
+<script type="text/javascript">
+    function checkItemsSliderItems(){
+        $('.item_slider').each(function(){
+            $slider = $(this);
+            if($(this).find('.slick-slide').length < 3 && $(window).width() > 900){
+                $(this).slick('unslick');
+            }else if($(this).find('.slick-slide').length == 3 && $(window).width() > 900){
+                $(this).slick('slickSetOption',"centerMode", false, true);
+            }
+            
+            
+           if($(window).width() < 900 && $(this).find('.placeholder_item').length > 0){
+                //console.log($(this).find('.placeholder_item').remove());
+                //console.log($(this));
+               
+                $(this).slick('reinit');
+            }
+        });
+
+    }
+    
+	$(document).ready(function() {
+		$('#mobile_menu').click(function(){
+           console.log('open menu');
+            $('#menu .overlay').addClass('open');
+           $('body').toggleClass('menu_active');
+        
+            console.log($('#menu .overlay.open').length);
+
+            if($('#menu .overlay.open').length > 0){
+                $('#menu .overlay.open').css('display', 'inline-block');
+                $('#menu .overlay.open').animate({'opacity':1},'fast');
+                $('#site_body').css('display', 'none');
+                console.log('neen');
+            }else{
+                console.log('yeah');
+                $('#menu .overlay').animate({'opacity':0},'fast');
+                $('#site_body').css('display', 'inline-block');
+                $('#menu .overlay').css('display', 'none');
+            }
+           
+       });
+        
+        $('#menu .close_btn').click(function(){
+            $('#menu .overlay').removeClass('open');
+			$('body').toggleClass('menu_active');
+            
+            console.log($('#menu .overlay.open').length);
+
+            if($('#menu .overlay.open').length > 0){
+                $('#menu .overlay.open').css('display', 'inline-block');
+                $('#menu .overlay.open').animate({'opacity':1},'fast');
+                $('#site_body').css('display', 'none');
+                console.log('neen');
+            }else{
+                console.log('yeah');
+                $('#menu .overlay').animate({'opacity':0},'fast');
+                $('#site_body').css('display', 'inline-block');
+                $('#menu .overlay').css('display', 'none');
+            }
+           
+       });
+		
+		
+		
+		$('.quote_slider').cycle({
+			paused: true,
+			timeout: 2000
+		});
+		
+		$('a[href^="#"]').on('click',function (e) {
+			e.preventDefault();
+
+			var target = this.hash,
+			$target = $(target);
+
+			$('html, body').stop().animate({
+			'scrollTop': ($target.offset().top - ($('#menu').height()))
+			}, 900, 'linear', function () {
+
+			});
+		});
+		
+		
+
+		$('.contains_slider .item').mouseover(function() {
+  			$(this).find('.quote_slider').cycle('resume');
+		});
+		
+		$('.contains_slider .item').mouseleave(function() {
+  			$(this).find('.quote_slider').cycle('pause');
+		});
+		
+        $('#meppel-diep-geluk .mobile_menu_btn').click(function(){
+            $('.sub_menu_geluk').slideToggle();
+        });
+        
+        
+        $('.slider_div').cycle({
+            slides: '> div',
+            speed: 300,
+			fx: 'scrollHorz' // choose your transition type, ex: fade, scrollUp, shuffle, etc...
+		});
+        
+	 	$('#slider_img').cycle({
+			fx: 'fade' // choose your transition type, ex: fade, scrollUp, shuffle, etc...
+		});
+        
+        $('.slider_bg').cycle({
+            slides: '> div'
+        });
+        
+        /*
+        $( "#map_summary" ).on('click', function(){
+           if($('#item_summary_btn').hasClass('open')){
+               $('#item_summary_btn').removeClass('open');
+           }
+            
+        });*/
+        
+        $('.slider-head-irregular').slick({
+            dots: true,
+            infinite: true,
+            speed: 300,
+            slidesToScroll: 1,
+            variableWidth: true,
+            autoplay: true,
+            fade: false,
+            prevArrow: '.slick-prev',
+            nextArrow: '.slick-next',
+            responsive: [
+                {
+                  breakpoint: 500,
+                  settings: {
+                    
+                    dots: false
+                  }
+                }]
+        });
+        
+        $('.movies-bios-slider').slick({
+			fx: 'fade', // choose your transition type, ex: fade, scrollUp, shuffle, etc...
+            slides: '> div',
+            slidesToShow: 3,
+            slidesToScroll: 1,
+            autoplay: false,
+            responsive: [
+                {
+                  breakpoint: 500,
+                  settings: {
+                    
+                    slidesToShow: 2
+                  }
+                }]
+		});
+        
+        $settings_item_slider = {
+            fx: 'fade', // choose your transition type, ex: fade, scrollUp, shuffle, etc...
+            slides: '> div',
+            slidesToShow: 3,
+            slidesToScroll: 1,
+            autoplay: false,
+            centerMode: true,
+            initialSlide: 1,
+            responsive: [
+                {
+                  breakpoint: 900,
+                  settings: {
+                    
+                    slidesToShow: 2,
+                    initialSlide: 0
+                  }
+                },{
+                  breakpoint: 700,
+                  settings: {
+                    
+                    slidesToShow: 1,
+                    initialSlide: 0
+                  }
+                }]
+        };
+        
+        $('.item_slider').slick($settings_item_slider);
+        
+        
+        
+        
+        $('.video-slider').slick({
+            slidesToShow: 2,
+            slidesToScroll: 1,
+            autoplay: false,
+            autoplaySpeed: 2000,
+            prevArrow: '.cycle-prev',
+            nextArrow: '.cycle-next'
+        });
+        
+        $('.block-slider').slick({
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            autoplay: false,
+            autoplaySpeed: 2000,
+            prevArrow: '.cycle-prev',
+            nextArrow: '.cycle-next'
+        });
+        
+        Fancybox.bind("[data-fancybox]", {
+          // Your options go here
+            padding:0
+        });
+		
+		/*$(".fancybox").fancybox({
+			padding:0
+		});
+        
+        $(".fancybox-inline").fancybox({
+			padding:0,
+            type:'inline',
+            width:'80%'
+		});
+        */
+        
+        /*
+		$(document).ready(function() {
+			$(".various").fancybox({
+				maxWidth	: 600,
+				maxHeight	: 1000,
+				fitToView	: true,
+				width		: '70%',
+				height		: '70%',
+				autoSize	: true,
+				closeClick	: false,
+				openEffect	: 'none',
+				closeEffect	: 'none'
+			});
+		});*/
+		/*$('#menu ul li').mouseover(function(){
+			if(!$('#menu').hasClass('expanded') && !$(this).hasClass('mobile_menu')){
+				if($(this).find('ul')){
+					$(this).find('ul').slideDown();
+				}
+			}
+		});
+		
+		$('.wrapper, #logo, .slide').mouseover(function(){
+			if(!$('#menu').hasClass('expanded')){
+				$('#menu ul ul').slideUp();	
+			}
+		});
+		*/
+        
+        
+        function onResizeMenuAdj(){
+            //console.log($(window).width());
+            if($(window).width() < 800){    
+                //console.log($('.menu_content_hover').css('display'));
+                if($('.menu_content_hover').css('display') !== 'none' && $('body').css('overflow') !== 'hidden'){
+                    /*$('body').children().wrapAll("<div class='site_wrap'></div>");
+                    $('html, body').css({overflow:'hidden',height:'100%',position:'relative'});
+                    $('#menu').css({overflow:'scroll',height:'100%'});*/
+                    if($('body > .site_wrap') == undefined || $('body > .site_wrap').length < 1){
+                        $('body').children().wrapAll("<div class='site_wrap'></div>");
+                    }
+                    $('.menu_content_hover').css({overflow:'scroll',height:'100%',position:'fixed'});
+                    
+                }else{
+                    /*
+                    $('#menu_wrap').unwrap('.site_map');
+                    $('html, body').css({overflow:'scroll',height:'auto',position:'static'});
+                    $('#menu').css({overflow:'visible',height:'auto'});
+                    */
+                    $('#menu_wrap').unwrap('.site_map');
+                    $('.menu_content_hover').css({overflow:'visible',height:'auto',position:'static'});
+                }
+            }
+           
+            
+            if($(window).width() < 600){
+              
+                $('#calendar').slick({
+                    fx: 'scroll', // choose your transition type, ex: fade, scrollUp, shuffle, etc...
+                    slides: '> div',
+                    slidesToShow: 1,
+                    slidesToScroll: 1,
+                    autoplay: false, 
+                    infinite: false
+                });
+              
+            }else{
+                if($('#calendar').hasClass('slick-initialized')){
+                    $('#calendar').slick("unslick");
+                }
+            }
+            
+            
+        }
+        
+        
+        if($(window).width() < 600){
+
+            $('#calendar').slick({
+                fx: 'scroll', // choose your transition type, ex: fade, scrollUp, shuffle, etc...
+                slides: '> div',
+                slidesToShow: 1,
+                slidesToScroll: 1,
+                autoplay: false, 
+                infinite: false
+            });
+
+        }
+        
+        /*$(document).click((event) => {
+            console.log($('.menu_content_hover:visible').length);
+            console.log($(this));
+            console.log(event.target.id);
+            
+            
+          /*if (!$(event.target).closest('.menu_content_hover').length && $('.menu_content_hover:visible').length == 1 && $(this) !== $('.menu_content') && event.target.id !== 'activate_menu') {
+              console.log($(this));
+            // the click occured outside '#element'
+              //console.log($('.menu_content_hover:visible').length);
+              //console.log('Close menu');
+              $('.menu_content_hover').slideUp();
+          } */       
+       // });
+        
+        $('.menu_content').click(function(e){
+            //console.log(e);
+            //console.log(e.target.id);
+            if(e.target.id !== 'logo' && e.target.id !== 'search_bar' && e.target.id !== 'search-field' && e.target.id !== 'search_submit' && e.target.id !== 'menu_lang_menu'){
+                $('.menu_content_hover').css('overflow-y','scroll');
+                $('.menu_content_hover').toggle();
+
+
+                onResizeMenuAdj();
+                $('.menu_content_hover').css('overflow-y','scroll');
+                $('.menu_content_hover').animate({
+                  scrollTop: 5
+                }, 500);
+            }
+            
+        });
+        
+        
+		
+        
+        $( window ).resize(function() {
+            onResizeMenuAdj();
+        });
+		
+		$('.close-btn-menu').click(function(){
+            //console.log('BLAAAH');
+            if(!$('#menu').hasClass('expanded')){
+                $('html, body').css('overflow', 'visible');
+                $('html, body').stop().animate({
+                'scrollTop': 0
+                }, 500, 'linear', function () {
+                });
+            }
+
+			$('#menu').toggleClass('expanded');
+			$('body').toggleClass('menu_active');
+            
+		});
+		
+		if($('.grid')){
+			var $grid = $('.grid').masonry({
+				columnWidth: '.grid-sizer',
+				itemSelector: '.grid-item'
+			});
+			
+			$(window).on("load", function() {
+				$grid.masonry('layout');
+			});
+		}
+		
+		$('.time-btn').click(function(){
+			$('.time-schedule').slideToggle();
+		});
+		
+        
+         $('.scroll-to-top').click(function(){
+            $('html, body').stop().animate({
+			'scrollTop': 0
+			}, 900, 'linear', function () {
+            });
+        });
+        
+        $(window).scroll(function() {
+            onResizeMenuAdj();
+            if(window.scrollY > 500){
+                $('.scroll-to-top').show();
+            }else{
+                
+                if($('.scroll-to-top').is(':visible')){
+                    $('.scroll-to-top').hide();
+                }
+            }
+        });
+		
+		url = window.location.href;
+
+		if(url.indexOf('#schedule') > 0){
+			$('.time-schedule').slideToggle();
+		}else if(url.indexOf('#to-schedule') > 0){
+			$('.back_btn').attr('href', $('.back_btn').attr('href').replace('#list-of-events', '#schedule'));
+		}
+        
+        $('.search-btn').click(function(){
+            $('#search_menu_head .search-menu').show();
+            $('#menu_wrap').hide();
+        });
+        
+        $('.search-menu .close-search').click(function(){
+            $('#search_menu_head .search-menu').hide();
+            $('#menu_wrap').show();
+        });
+        
+		
+		$('ul#site_menu li').hover(function(){
+			//alert($(this).find('a').attr('data-section'));
+			$('.menu_content_hover_content').hide();
+			$('.menu_content_hover_content[data-section="' + $(this).find('a').attr('data-section') + '"]').show();
+			
+			$('.menu_content_hover').css('overflow-y','scroll');
+            $('.menu_content_hover').slideDown();
+			
+		});
+        
+        
+        checkItemsSliderItems();
+	});
+
+    
+    /*
+    
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-15794887-26']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+  
+  */
+
+
+</script>
+	
+	 
+
+<script src="https://www.google.com/recaptcha/api.js?render=6LdxkwIeAAAAALF3mwkzQqLVTPLrPsNL0bJ2TZwm"></script>
+    <script type='text/javascript' src='//platform-api.sharethis.com/js/sharethis.js#property=5a3ce76e24deb20011a729f0&product=inline-share-buttons' async='async'></script></head>
+
+<body>
+<script src="https://ontdekmeppel.nl/js/js.cookie.js"></script>
+<script type="text/javascript">
+
+if(Cookies.get('consent_cookies')){
+	$(document).ready(function(){
+		$('#consent_banner').hide();
+	});
+}else{
+	$(document).ready(function(){
+		$('#consent_banner').css('display','inline-block');
+	});
+}
+
+$(document).ready(function(){
+	$('#accept_consent_c_btn').click(function(){
+        console.log('jaaahaaa');
+		Cookies.set('consent_cookies', 'true', { expires: 365 });
+        consentGrantedAdStorage();
+		$('#consent_banner').hide();
+	});
+	
+	$('#deny_consent_c_btn').click(function(){
+        console.log('jaaahaaa');
+		Cookies.set('consent_cookies', 'true', { expires: 7 });
+        //consentGrantedAdStorage();
+		$('#consent_banner').hide();
+	});
+});
+</script>
+
+<style type="text/css">
+body{
+	margin:0;
+}
+
+#consent_banner{
+    position:fixed;
+    left:30%;
+    bottom:45%;
+	background-color:#000;
+    color:#FFF;
+	width:40%;
+	display:none;
+    opacity:0.9;
+    z-index:999;
+    padding:10px;
+    font-size:15px;
+}
+
+#consent_banner .content{
+	width:90%;
+	display:inline-block;
+	margin:5%;
+	margin-top:10px;
+	margin-bottom:10px;
+	color:#FFF;
+}
+
+/*
+#consent_banner .small_btn{
+	background-color:#dde9f1;
+	padding:14px;
+	padding-top:7px;
+	padding-bottom:7px;
+	display:inline-block;
+	margin-right:20px;
+	font-size:0.8em;
+	-webkit-border-radius: 14px;
+	-moz-border-radius: 14px;
+	border-radius: 14px;
+	color:#000;
+	text-decoration:none;
+}
+
+    
+#consent_banner .small_btn:last-child{
+	margin-right:0;
+}
+*/
+
+#consent_banner .small_btn{
+    color:#F5F3F3;
+}
+    
+#consent_banner .small_btn:hover{
+    color:#FFF;
+}
+    
+#accept_consent_c_btn{
+	display:inline-block;
+	padding:18px;
+	padding-top:7px;
+	padding-bottom:7px;
+	color:#FFF;
+	background-color:#82B53D;
+	-webkit-border-radius: 14px;
+-moz-border-radius: 14px;
+border-radius: 14px;
+    width:calc(100% - 36px);
+    text-align:center;
+    font-size:1em;
+    margin-top:10px;
+}
+
+#consent_banner .small_btn_wrap{
+	display:inline-block;
+}
+
+#consent_banner .small_btn:hover, #consent_banner #accept_consent_c_btn:hover{
+	opacity:0.7;
+	cursor:pointer;
+}
+    
+#consent_banner .btn{
+    opacity:1em;
+	cursor:pointer;
+    font-size:0.9em;
+    padding:18px;
+	padding-top:7px;
+	padding-bottom:7px;
+    background-color:#474845;
+	-webkit-border-radius: 14px;
+    -moz-border-radius: 14px;
+    border-radius: 14px;
+    width:calc(100% - 36px);
+    display:inline-block;
+    text-align:center;
+    margin-top:10px;
+    color:#F5F3F3;
+}
+    
+#consent_banner #accept_consent_c_btn.btn{
+    background-color:#82B53D;
+}
+
+
+    
+@media all and (max-width:700px), (max-device-width:700px){
+    #consent_banner{
+        width:calc(100% - 10px);
+        left:0;
+        bottom:0;
+    }
+
+}
+
+
+</style>
+
+<div id="consent_banner">
+	<div class="content">
+		<div class="row_wrap">            
+            
+            Deze website maakt gebruik van Cookies. Wilt U meer weten?
+
+			<div class="small_btn_wrap">
+                <a href="https://ontdekmeppel.nl/cookie-policy/" class="small_btn">Cookie policy</a>, 
+                <a href="https://ontdekmeppel.nl/privacy-statement/" class="small_btn">Privacy statement</a>
+           	</div>
+       	</div>
+        
+        <div class="full_width_block">
+        
+            <div class="one_of_two_columns">    
+                <a href="https://ontdekmeppel.nl/?allow_cookies=true" class="btn" id="accept_consent_c_btn">
+                    ACCEPTEREN
+                </a>
+            </div>
+            
+            <div class="one_of_two_columns_last">  
+                <a href="https://ontdekmeppel.nl/?disable_cookies=true" class="btn" id="deny_consent_c_btn">
+                    AFWIJZEN
+                </a>
+                
+            </div>
+      	</div>
+  </div>
+</div>
+  
+    
+<div id="menu_wrap">
+    <div id="menu">
+        <div class="menu_content">
+            <a href="https://ontdekmeppel.nl/"><img src="/images/ontdekmeppel-2020.svg" id="logo"/></a>
+
+            <ul id="mobile_menu" class="float_right" style="display:inline-block;margin-right:2%;margin-top:25px;">
+                <li class="mobile_menu" id="btn"><img src="/images/mobile-menu.svg"  id="activate_menu" width="38" height="30" style="float:right;margin-top:-0.5em;"/></li>
+            </ul>
+            
+            <a href="https://ontdekmeppel.nl/zoeken/"><img src="/images/search-icon.svg" style="float:right;width:30px;" id="search_submit" /></a>
+            
+			
+			
+			<ul id="site_menu">
+				<li class="important"><a href="https://ontdekmeppel.nl/ontdek-meppel/" data-section="ontdekmeppel">ONTDEK MEPPEL <img src="/images/arrow-d.svg" /></a><div class="sub_menu"><ul><li><a href="https://ontdekmeppel.nl/ontdek-meppel/bezienswaardigheden/">BEZIENSWAARDIGHEDEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/evenementen/">EVENEMENTEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/">AGENDA</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/routes-natuur/">ROUTES &AMP; NATUUR</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/overnachten/">OVERNACHTEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/cultuur-in-meppel/">CULTUUR IN MEPPEL</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/eten-drinken/">ETEN &AMP; DRINKEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/shoppen/">SHOPPEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/actieve-uitjes/">ACTIEVE UITJES</a></li>
+					
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/voor-kinderen/">VOOR KINDEREN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/dorpen/">DORPEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/de-groene-muggen/">DE GROENE MUGGEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/geluksmomenten/">GELUKSMOMENTEN</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/parkeren-bereikbaarheid/">PARKEREN & BEREIKBAARHEID</a></li>
+				<li><a href="https://ontdekmeppel.nl/ontdek-meppel/nieuwsbrief/">NIEUWSBRIEF</a></li>
+
+				</ul>
+				</div></li>
+				<li class="important"><a href="https://ontdekmeppel.nl/leven-in-meppel/" data-section="leveninmeppel">LEVEN IN MEPPEL <img src="/images/arrow-d.svg" /></a><div class="sub_menu"><ul><li><a href="https://ontdekmeppel.nl/leven-in-meppel/wonen-in-meppel/">WONEN IN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/leven-in-meppel/voorzieningen/">VOORZIENINGEN</a></li>
+								<li><a href="https://ontdekmeppel.nl/leven-in-meppel/verhuizen-naar-meppel/">VERHUIZEN NAAR MEPPEL</a></li>
+					</ul></div></li>
+				<li class="important"><a href="https://ontdekmeppel.nl/werken-en-ondernemen/" data-section="werkenondernemen">WERKEN &AMP; ONDERNEMEN <img src="/images/arrow-d.svg" /></a><div class="sub_menu"><ul>
+					<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/werken-in-meppel/">WERKEN IN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemen-in-meppel/">ONDERNEMEN IN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemersverenigingen/">ONDERNEMERSVERENIGINGEN</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/bedrijventerrein/">BEDRIJVENTERREIN</a></li>
+					
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/starters-en-zzp/">STARTERS & ZZP</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemersgala/">ONDERNEMERSGALA</a></li>
+							</ul></div></li>
+				<li class="important"><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/" data-section="overmeppeldiepgeluk">OVER MEPPEL DIEP GELUK <img src="/images/arrow-d.svg" /></a><div class="sub_menu"><ul>
+					<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/het-dna-van-meppel/">HET DNA VAN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/toolkit-en-downloads/">TOOLKIT & DOWNLOADS</a></li>
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/festival-van-geluk/">FESTIVAL VAN GELUK</a></li>
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/contact/">CONTACT</a></li>
+							</ul></div></li>
+				
+			</ul>
+            
+            <div id="menu_lang_menu">
+                
+                <ul>
+                    <li><form method="post"><input type="hidden" name="lang" value="nl" /><input type="image" src="/images/lang/nl-flags-round.svg" /></form></li>
+                    <li><form method="post"><input type="hidden" name="lang" value="en" /><input type="image" src="/images/lang/en-flags-round.svg" /></form></li>
+                    <li><form method="post"><input type="hidden" name="lang" value="de" /><input type="image" src="/images/lang/de-flags-round.svg" /></form></li>
+                </ul>
+            </div>
+        </div>
+        
+        
+        <div class="overlay">
+            <div class="wrapper">
+				<div class="full_width_block">
+				
+					<div class="close_btn">X</div>
+
+
+					<h2><a href="https://ontdekmeppel.nl/">Ontdek Meppel</a></h2>
+
+					<div class="one_of_two_columns">
+
+						<ul>
+							<li class="important"><a href="https://ontdekmeppel.nl/ontdek-meppel/" data-section="ontdekmeppel">ONTDEK MEPPEL </a></li>
+
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/bezienswaardigheden/">BEZIENSWAARDIGHEDEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/evenementen/">EVENEMENTEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/">AGENDA</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/routes-natuur/">ROUTES &AMP; NATUUR</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/overnachten/">OVERNACHTEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/cultuur-in-meppel/">CULTUUR IN MEPPEL</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/eten-drinken/">ETEN &AMP; DRINKEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/shoppen/">SHOPPEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/actieve-uitjes/">ACTIEVE UITJES</a></li>
+
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/voor-kinderen/">VOOR KINDEREN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/dorpen/">DORPEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/de-groene-muggen/">DE GROENE MUGGEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/geluksmomenten/">GELUKSMOMENTEN</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/parkeren-bereikbaarheid/">PARKEREN & BEREIKBAARHEID</a></li>
+							<li><a href="https://ontdekmeppel.nl/ontdek-meppel/nieuwsbrief/">NIEUWSBRIEF</a></li>
+
+
+
+						</ul>
+					</div>
+
+
+					<div class="one_of_two_columns_last">
+						<ul>
+							<li class="important"><a href="https://ontdekmeppel.nl/leven-in-meppel/" data-section="leveninmeppel">LEVEN IN MEPPEL</a>
+							<li><a href="https://ontdekmeppel.nl/leven-in-meppel/wonen-in-meppel/">WONEN IN MEPPEL</a></li>
+									<li><a href="https://ontdekmeppel.nl/leven-in-meppel/voorzieningen/">VOORZIENINGEN</a></li>
+									<li><a href="https://ontdekmeppel.nl/leven-in-meppel/verhuizen-naar-meppel/">VERHUIZEN NAAR MEPPEL</a></li>
+
+
+							<li class="important"><a href="https://ontdekmeppel.nl/werken-en-ondernemen/" data-section="werkenondernemen">WERKEN &AMP; ONDERNEMEN</a></li>
+
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/werken-in-meppel/">WERKEN IN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemen-in-meppel/">ONDERNEMEN IN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemersverenigingen/">ONDERNEMERSVERENIGINGEN</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/bedrijventerrein/">BEDRIJVENTERREIN</a></li>
+
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/starters-en-zzp/">STARTERS & ZZP</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemersgala/">ONDERNEMERSGALA</a></li>
+
+								<li class="important"><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/" data-section="overmeppeldiepgeluk">OVER MEPPEL DIEP GELUK</a></li>
+
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/het-dna-van-meppel/">HET DNA VAN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/toolkit-en-downloads/">TOOLKIT & DOWNLOADS</a></li>
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/contact/">CONTACT</a></li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="row_wrap">
+					<ul class="horizontal_menu">
+						<li class="footer_head_title"><a href="https://ontdekmeppel.nl/"><b>HOME</b></a></li>
+						<li class="footer_head_title"><a href="https://ontdekmeppel.nl/kaart/"><b>KAART</b></a></li>
+						<li class="footer_head_title"><a href="https://ontdekmeppel.nl/ontdek-meppel/nieuwsbrief/"><b>NIEUWSBRIEF</b></a></li>
+						<li class="footer_head_title"><a href="https://ontdekmeppel.nl/nieuws/"><b>NIEUWS</b></a></li>
+
+					</ul>
+
+				</div>
+                
+                                
+            </div>
+        </div>
+        
+        
+    </div>
+    
+    
+        
+</div>
+
+<script type="text/javascript">
+$(document).ready(function(){
+	$('#insert-event-form .btn').click(function(){
+		$('#insert-event-form .form').toggle();
+	});
+	
+    /*
+	$(".fancybox-inline").fancybox({
+		maxWidth	: 600,
+		maxHeight	: 600,
+		fitToView	: false,
+		width		: '70%',
+		height		: '90%',
+		closeClick	: false,
+		type: 'inline',
+		autoSize	: false,
+		padding:0
+	});
+		$(".fancybox-inline-bezorgen").fancybox({
+		maxWidth	: 600,
+		maxHeight	: 600,
+		fitToView	: false,
+		width		: '70%',
+		height		: '90%',
+		closeClick	: false,
+		type: 'inline',
+		autoSize	: false,
+		padding:0
+	});
+*/
+	 function isMobile() {
+		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+	}
+	
+	if($("html").hasClass("touch") || isMobile()) {
+		if($('#event-summary').height() > 1500){
+			$height_of_el =	Math.round(($('#event-summary').height() / 2)) + 'px';	
+		}else{
+			$height_of_el = '950px';
+		}
+	}else{
+		$height_of_el = '1450px';
+	}
+    
+	$('.content-block').animate({height:$height_of_el});
+	
+	$('.load-more').click(function(){
+		$org_height = $(this).parents('.slide').find('.content-block').css('height');
+		if($org_height == $height_of_el){	
+			$(this).parents('.slide').find('.content-block').css('height','auto');
+			$height = $(this).parents('.slide').find('.content-block').css('height');
+			$(this).parents('.slide').find('.content-block').css('height',$org_height);
+			$(this).parents('.slide').find('.content-block').animate({height:$height});
+			$(this).html('MINDER WEERGEVEN');
+		}else{
+			$(this).parents('.slide').find('.content-block').animate({height:$height_of_el});
+			$(this).html('MEER WEERGEVEN');
+		}
+	});
+	
+	$('.calendar_day_event').click(function(){
+			$org_height = $(this).parents('.slide').find('.content-block').css('height','auto');
+			$height = $('.events.content-block').css('height');
+			$('.events.content-block').css('height',$org_height);
+			$('.events.content-block').animate({height:$height});
+			
+	});
+	
+	
+});
+
+function checkFileExtension(file){
+			pieces = file.value.split('.');
+			if(pieces.slice(-1)[0] !== "jpg" && pieces.slice(-1)[0] !== "jpeg" && pieces.slice(-1)[0] !== "JPG" && pieces.slice(-1)[0] !== "JPEG" && pieces.slice(-1)[0] !== "png" && pieces.slice(-1)[0] !== "PNG" && pieces.slice(-1)[0] !== "gif" && pieces.slice(-1)[0] !== "GIF"){
+				$('#img_placeholder').find('img').value="";
+				alert("Choose a \'jpg, png or gif\' document\r\nYou\'ve chosen a " +pieces.slice(-1)[0]);
+                $('.img_src_table').val('');
+                //console.log(this);
+			
+			}else{
+				//alert(file.files[0].size||file.files[0].fileSize)
+				document.getElementsByClassName("img_src_table").value = file;
+				input = file;
+				if(window.FileReader){
+					if(input.files && input.files[0]){
+						var reader = new FileReader();
+						reader.onload = function(e){
+							var image = new Image();
+							image.src = e.target.result;
+							
+							$('#img_placeholder').find('img').attr('src', e.target.result);
+							$('#img_placeholder').find('img').css('width','100%');
+							$('#img_placeholder').find('img').css('width','100%');
+							$('#img_placeholder').css('padding',0);
+						}
+					reader.readAsDataURL(input.files[0]);
+					}
+				}else{
+					document.getElementById("img_placeholder").find('img').setAttribute('src', '/images/img_placeholder.svg');
+				}
+			}
+		}
+	
+</script>
+
+
+
+<div class="slide uitagenda" id="event-summary">
+   <div class="wrapper">
+       <script type="text/javascript">
+        $(document).ready(function(){
+            $('#cats_agenda .cat').click(function(){    
+                if($(this).find('input:checked').length > 0 && $(this).hasClass('active')){
+                    console.log('taken');
+                    $(this).removeClass('active');
+                    $(this).find('input').removeAttr('checked');
+                }else{
+                    console.log('added');
+                    $(this).addClass('active');
+                    $($(this).find('input')).attr('checked', 'checked');
+                    
+                }
+                $('#cats_agenda').submit();
+            });
+            
+            $('#cats_agenda input').click(function(){
+                $('#cats_agenda').submit();
+            });
+            
+            
+        });
+       </script>
+       
+       <div class="one_of_four_columns_last float_right">
+           
+           <div id="insert-event-form">
+                <script type="text/javascript">
+                    function onCaptchaFormSuccess(){
+                        $('.meld-event-aan-btn').hide();
+                        $('.meld-event-aan-btn-thnx').show();
+                    }
+                </script>
+
+                <a data-src="#insert-event-form-form" href="javascript:;" class="fancybox-inline meld-event-aan-btn" data-fancybox>
+                    <h3>Meld uw evenement aan</h3>
+                    <span class="btn">Aanmelden &gt;</span>
+                </a>
+
+               <a href="https://ontdekmeppel.nl/" style="display:none;" class="meld-event-aan-btn-thnx">
+                    <h3>Hartelijk dank!</h3>
+
+                    We hebben de aanvraag voor plaatsing van uw event ontvangen. En zullen deze z.s.m. beoordelen.
+                </a>
+
+                <div class="form" id="insert-event-form-form">
+                    <div class="head-form">UW EVENEMENT</div>
+                    <div class="content">
+                        <form action="#agenda-slide" method="post" enctype="multipart/form-data" class="recaptcha_form">
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Titel van het event:
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <input type="text" name="title" required="required"/>
+                                </div>
+                            </div>
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Categorie:
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <select name="cat_id">
+                                        <option value="0">Evenement</option><option value="1">Exposities</option><option value="2">Kids</option><option value="3">Films</option><option value="4">Theater</option><option value="5">Muziek</option><option value="6">Shopping</option><option value="7">Koopzondag</option><option value="8">Sport</option>                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Afbeelding:
+                                    <span class="small">Afbeelding mag niet groter zijn dan 5MB en enkel bestanden van het format (jpg, jpeg, gif of png) worden geaccepteerd.</span>
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <div class="img_placeholder" id="img_placeholder">
+                                        <img src="/images/img_placeholder.svg" />
+                                    </div>
+
+                                    <input type="file" name="event_img" onchange="checkFileExtension(this);" class="img_src_table" required="required"/>
+                                </div>
+                            </div>
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Waar vindt het event plaats?
+                                    <span class="small">Straatnaam/eventhal/plein</span>
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <input type="text" name="address"/>
+                                </div>
+                            </div>
+
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Welke stad/dorp? 
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <input type="text" name="city"/>
+                                </div>
+                            </div>
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Wanneer vind het event plaats?
+                                </div>
+
+                                <div class="two_of_three_columns_last date_field">
+                                    <select name="pub_date_day"><option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18" selected="selected">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select><select name="pub_date_month"><option value="01" selected="selected">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><select name="pub_date_year"><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option></select>
+                                    <div class="error"></div>
+                                </div>
+                            </div>
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Event duurt tot?
+                                </div>
+
+                                <div class="two_of_three_columns_last date_field">
+                                    <select name="end_date_day"><option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18" selected="selected">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select><select name="end_date_month"><option value="01" selected="selected">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><select name="end_date_year"><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option></select>                                    <div class="error"></div>
+                                </div>
+                            </div>
+
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Start tijd?
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <select name="start_time"><option value="00:00:00">00:00</option><option value="00:15:00">00:15</option><option value="00:30:00">00:30</option><option value="00:45:00">00:45</option><option value="01:00:00">01:00</option><option value="01:15:00">01:15</option><option value="01:30:00">01:30</option><option value="01:45:00">01:45</option><option value="02:00:00">02:00</option><option value="02:15:00">02:15</option><option value="02:30:00">02:30</option><option value="02:45:00">02:45</option><option value="03:00:00">03:00</option><option value="03:15:00">03:15</option><option value="03:30:00">03:30</option><option value="03:45:00">03:45</option><option value="04:00:00">04:00</option><option value="04:15:00">04:15</option><option value="04:30:00">04:30</option><option value="04:45:00">04:45</option><option value="05:00:00">05:00</option><option value="05:15:00">05:15</option><option value="05:30:00">05:30</option><option value="05:45:00">05:45</option><option value="06:00:00">06:00</option><option value="06:15:00">06:15</option><option value="06:30:00">06:30</option><option value="06:45:00">06:45</option><option value="07:00:00">07:00</option><option value="07:15:00">07:15</option><option value="07:30:00">07:30</option><option value="07:45:00">07:45</option><option value="08:00:00">08:00</option><option value="08:15:00">08:15</option><option value="08:30:00">08:30</option><option value="08:45:00">08:45</option><option value="09:00:00">09:00</option><option value="09:15:00">09:15</option><option value="09:30:00">09:30</option><option value="09:45:00">09:45</option><option value="10:00:00">10:00</option><option value="10:15:00">10:15</option><option value="10:30:00">10:30</option><option value="10:45:00">10:45</option><option value="11:00:00">11:00</option><option value="11:15:00">11:15</option><option value="11:30:00">11:30</option><option value="11:45:00">11:45</option><option value="12:00:00">12:00</option><option value="12:15:00">12:15</option><option value="12:30:00">12:30</option><option value="12:45:00">12:45</option><option value="13:00:00">13:00</option><option value="13:15:00">13:15</option><option value="13:30:00">13:30</option><option value="13:45:00">13:45</option><option value="14:00:00">14:00</option><option value="14:15:00">14:15</option><option value="14:30:00">14:30</option><option value="14:45:00">14:45</option><option value="15:00:00">15:00</option><option value="15:15:00">15:15</option><option value="15:30:00">15:30</option><option value="15:45:00">15:45</option><option value="16:00:00">16:00</option><option value="16:15:00">16:15</option><option value="16:30:00">16:30</option><option value="16:45:00">16:45</option><option value="17:00:00">17:00</option><option value="17:15:00">17:15</option><option value="17:30:00">17:30</option><option value="17:45:00">17:45</option><option value="18:00:00">18:00</option><option value="18:15:00">18:15</option><option value="18:30:00">18:30</option><option value="18:45:00">18:45</option><option value="19:00:00">19:00</option><option value="19:15:00">19:15</option><option value="19:30:00">19:30</option><option value="19:45:00">19:45</option><option value="20:00:00">20:00</option><option value="20:15:00">20:15</option><option value="20:30:00">20:30</option><option value="20:45:00">20:45</option><option value="21:00:00">21:00</option><option value="21:15:00">21:15</option><option value="21:30:00">21:30</option><option value="21:45:00">21:45</option><option value="22:00:00">22:00</option><option value="22:15:00">22:15</option><option value="22:30:00">22:30</option><option value="22:45:00">22:45</option><option value="23:00:00">23:00</option><option value="23:15:00">23:15</option><option value="23:30:00">23:30</option><option value="23:45:00">23:45</option></select>                                </div>
+                            </div>
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Eind tijd?
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <select name="end_time"><option value="00:00:00">00:00</option><option value="00:15:00">00:15</option><option value="00:30:00">00:30</option><option value="00:45:00">00:45</option><option value="01:00:00">01:00</option><option value="01:15:00">01:15</option><option value="01:30:00">01:30</option><option value="01:45:00">01:45</option><option value="02:00:00">02:00</option><option value="02:15:00">02:15</option><option value="02:30:00">02:30</option><option value="02:45:00">02:45</option><option value="03:00:00">03:00</option><option value="03:15:00">03:15</option><option value="03:30:00">03:30</option><option value="03:45:00">03:45</option><option value="04:00:00">04:00</option><option value="04:15:00">04:15</option><option value="04:30:00">04:30</option><option value="04:45:00">04:45</option><option value="05:00:00">05:00</option><option value="05:15:00">05:15</option><option value="05:30:00">05:30</option><option value="05:45:00">05:45</option><option value="06:00:00">06:00</option><option value="06:15:00">06:15</option><option value="06:30:00">06:30</option><option value="06:45:00">06:45</option><option value="07:00:00">07:00</option><option value="07:15:00">07:15</option><option value="07:30:00">07:30</option><option value="07:45:00">07:45</option><option value="08:00:00">08:00</option><option value="08:15:00">08:15</option><option value="08:30:00">08:30</option><option value="08:45:00">08:45</option><option value="09:00:00">09:00</option><option value="09:15:00">09:15</option><option value="09:30:00">09:30</option><option value="09:45:00">09:45</option><option value="10:00:00">10:00</option><option value="10:15:00">10:15</option><option value="10:30:00">10:30</option><option value="10:45:00">10:45</option><option value="11:00:00">11:00</option><option value="11:15:00">11:15</option><option value="11:30:00">11:30</option><option value="11:45:00">11:45</option><option value="12:00:00">12:00</option><option value="12:15:00">12:15</option><option value="12:30:00">12:30</option><option value="12:45:00">12:45</option><option value="13:00:00">13:00</option><option value="13:15:00">13:15</option><option value="13:30:00">13:30</option><option value="13:45:00">13:45</option><option value="14:00:00">14:00</option><option value="14:15:00">14:15</option><option value="14:30:00">14:30</option><option value="14:45:00">14:45</option><option value="15:00:00">15:00</option><option value="15:15:00">15:15</option><option value="15:30:00">15:30</option><option value="15:45:00">15:45</option><option value="16:00:00">16:00</option><option value="16:15:00">16:15</option><option value="16:30:00">16:30</option><option value="16:45:00">16:45</option><option value="17:00:00">17:00</option><option value="17:15:00">17:15</option><option value="17:30:00">17:30</option><option value="17:45:00">17:45</option><option value="18:00:00">18:00</option><option value="18:15:00">18:15</option><option value="18:30:00">18:30</option><option value="18:45:00">18:45</option><option value="19:00:00">19:00</option><option value="19:15:00">19:15</option><option value="19:30:00">19:30</option><option value="19:45:00">19:45</option><option value="20:00:00">20:00</option><option value="20:15:00">20:15</option><option value="20:30:00">20:30</option><option value="20:45:00">20:45</option><option value="21:00:00">21:00</option><option value="21:15:00">21:15</option><option value="21:30:00">21:30</option><option value="21:45:00">21:45</option><option value="22:00:00">22:00</option><option value="22:15:00">22:15</option><option value="22:30:00">22:30</option><option value="22:45:00">22:45</option><option value="23:00:00">23:00</option><option value="23:15:00">23:15</option><option value="23:30:00">23:30</option><option value="23:45:00">23:45</option></select>                                </div>
+                            </div>
+
+
+                             <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Omschrijving evenement:
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <textarea name="description"></textarea>
+                                </div>
+                            </div>
+
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Website link:
+
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <textarea name="link"></textarea>
+                                </div>
+                            </div>
+
+                             <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Youtube link:
+                                    <span class="small">Volledige Youtube url (geen embed)</span>
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <textarea name="youtube_link"></textarea>
+                                </div>
+                            </div>
+
+                             <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Contact persoon:
+                                    <span class="small">Deze gegevens worden niet op de website getoond</span>
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <input type="text" name="contact_persoon" required="required"/>
+                                </div>
+                            </div>
+
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Contact persoon mail:
+                                    <span class="small">Deze gegevens worden niet op de website getoond</span>
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <input type="email" name="contact_mail" required="required"/>
+                                </div>
+                            </div>
+
+                            <div class="full_width_block">
+                                <div class="one_of_three_columns">
+                                    Organisatie:
+
+                                </div>
+
+                                <div class="two_of_three_columns_last">
+                                    <input type="text" name="organisator" />
+                                </div>
+                            </div>
+
+                            
+
+                            <input type="hidden" name="contact_tel" />
+                            <input type="hidden" name="places_id" value="0"/>
+                            <input type="hidden" name="cache_action" value="send-mail"/>
+                            <input type="hidden" name="action" value="insert_agenda"/>
+                            <input type="submit" value="Indienen" />
+
+                        </form>
+                        <style type="text/css">
+.mail-response-message{
+	width:60%;
+	padding:1%;
+	padding-top:25px;
+	padding-bottom:25px;
+	display:inline-block;
+	margin-top:20%;
+	margin-bottom:0px;
+    margin-left:19%;
+	text-align:center;
+	font-weight:bold;
+}
+
+#positive-response.mail-response-message{
+	background-color:#AFE882;
+	border:thin solid #55893A;
+	color:#55893A;
+}
+
+#bad-response.mail-response-message{
+	background-color:#F78E8E;
+	color:#C00;
+	border:thin solid #C00;
+}
+    
+#overlay-mail-response{
+    background-color:#000;
+    opacity:0.9;
+    position:fixed;
+    width:100%;
+    height:100%;
+    display:inline-block;
+    color:#FFF;
+    z-index:999;
+}
+    
+@media all and (max-width:600px), (max-device-width:600px){
+    .mail-response-message{
+        width:80%;
+        margin-left:8%;
+        margin-top:40%;
+    }
+}
+</style>
+
+
+<script>
+
+    // when form is submit
+    $('.recaptcha_form').submit(function(event) {
+        // we stoped it
+        event.preventDefault();
+        $form_element = $(this);
+        //console.log($(this)[0]);
+        // needs for recaptacha ready
+        grecaptcha.ready(function() {
+            // do request for recaptcha token
+            // response is promise with passed token
+            grecaptcha.execute('6LdxkwIeAAAAALF3mwkzQqLVTPLrPsNL0bJ2TZwm', {action: 'create_comment'}).then(function(token) {
+                // add token to form
+                $form_element.prepend('<div class="error"></div><input type="hidden" name="token" value="' + token + '">');
+                    t = 0;
+                    var fd = new FormData($form_element[0]);
+                    //console.log(fd);
+        
+                   $.ajax({
+                      url: '/captcha/captcha-validate.php?p=agenda',
+                      type: 'post',
+                      data: fd,
+                      contentType: false,
+                      processData: false,
+                      success: function(response){
+                          
+                          console.log(response);
+                         if(response != 0){
+                             if($.fancybox){
+                                $.fancybox.close()
+                            }
+                             
+                             if(Fancybox){
+                                Fancybox.close();
+                             }
+
+                            if(response.bool == true){
+                                $('<div class="overlay-mail-response" id="overlay-mail-response"><div class="mail-response-message" id="positive-response">Uw mail was succesvol verstuurd</div></div>').prependTo('body');
+
+                            }else if(response.bool == false){
+                                $('<div class="overlay-mail-response" id="overlay-mail-response"><div class="mail-response-message" id="bad-response">Er is een fout opgetreden bij het versturen van uw mail. Probeer het nogmaals.</div></div>').prependTo('body');
+                            }
+
+                            //console.log($('#overlay-mail-response'));
+                            setTimeout(function(){
+                                $('#overlay-mail-response').fadeOut();
+                                     console.log('komyeah');
+                            },5000);
+
+                            $('#overlay-mail-response').on('click', function(){
+                                $('#overlay-mail-response').fadeOut();
+                               // console.log('yeah');
+                            });
+                            //$("#img").attr("src",response); 
+                            //$(".preview img").show(); // Display image element
+                             if (typeof onCaptchaFormSuccess == 'function') { 
+                              onCaptchaFormSuccess(); 
+                            }
+                         }else{
+                            $('.error').html('You\'ve failed to pass the validation test.');
+                         }
+                      },
+                       error: function (xhr, ajaxOptions, thrownError) {
+                        console.log(xhr.status);
+                        console.log(xhr.responseText);
+                        console.log(thrownError);
+                      }
+                   });
+                    /*const postvalues = {};
+                    $i=0;
+                    $form_element.find('input, textarea, select').each(function(index){
+                        //console.log($(this).attr('name'));
+                        //console.log($(this).attr('type'));
+                        /*if($(this).attr('type') !== 'checkbox' || $(this).attr('type') == 'checkbox' && $(this).is(":checked")){
+                            if($(this).attr('name') !== undefined && ($(this).attr('name')).includes('[]') == true){
+                                console.log($(this).val());
+                                $name = $(this).attr('name').replace('[]','');
+
+                                if(postvalues[$name] == undefined){
+                                    
+                                    postvalues[$name] = Array();
+                                }
+
+                                
+                                
+                                    console.log(this);
+                                    postvalues[$name][$i] = this.value;
+                                    console.log('value: ');
+                                    console.log(this.value);
+                                    $i++;
+                                
+                                
+                            }else{
+                                if($(this).attr('type') == 'file'){
+                                    postvalues[$(this).attr('name')] = $(this)[0].files;
+                                }else{
+                                    postvalues[$(this).attr('name')] = $(this).val();
+                                }
+                            }
+                        }
+                    });
+                    console.log(postvalues);        
+                    var formData = new FormData($form_element);
+                    
+                    console.log($form_element);
+                    console.log(formData);
+                    
+                    $.post("/captcha-new/captcha-validate.php",formData, function(result) {
+                        console.log(result);
+                        
+                            if(result.success) {
+                                //successss
+
+                                if($.fancybox){
+                                    $.fancybox.close()
+                                }
+
+                                if(result.bool == true){
+                                    $('<div class="overlay-mail-response" id="overlay-mail-response"><div class="mail-response-message" id="positive-response">Uw mail was succesvol verstuurd</div></div>').prependTo('body');
+
+                                }else if(result.bool == false){
+                                    $('<div class="overlay-mail-response" id="overlay-mail-response"><div class="mail-response-message" id="bad-response">Er is een fout opgetreden bij het versturen van uw mail. Probeer het nogmaals.</div></div>').prependTo('body');
+                                }
+
+                                console.log($('#overlay-mail-response'));
+                                setTimeout(function(){
+                                    $('#overlay-mail-response').fadeOut();
+                                         console.log('komyeah');
+                                },5000);
+
+                                $('#overlay-mail-response').on('click', function(){
+                                    $('#overlay-mail-response').fadeOut();
+                                    console.log('yeah');
+                                });
+                                console.log('iets');
+
+
+                            } else {
+                                $('.error').html('You\'ve failed to pass the validation test.');
+                            }
+                    });
+                    
+                /*
+                    var formData = new FormData($($form_element)[0]);
+                    console.log(formData);
+                    
+                    $.ajax({
+                        url:'/captcha-new/captcha-validate.php',
+                        type: 'POST',
+                        data: postvalues,
+                        processData: false,
+                        contentType: false,
+                        async: true,
+                        success:function(response){
+                            if(response.success){
+                               if($.fancybox){
+                                    $.fancybox.close()
+                                }
+
+                                if(result.bool == true){
+                                    $('<div class="overlay-mail-response" id="overlay-mail-response"><div class="mail-response-message" id="positive-response">Uw mail was succesvol verstuurd</div></div>').prependTo('body');
+
+                                }else if(result.bool == false){
+                                    $('<div class="overlay-mail-response" id="overlay-mail-response"><div class="mail-response-message" id="bad-response">Er is een fout opgetreden bij het versturen van uw mail. Probeer het nogmaals.</div></div>').prependTo('body');
+                                }
+
+                                console.log($('#overlay-mail-response'));
+                                setTimeout(function(){
+                                    $('#overlay-mail-response').fadeOut();
+                                         console.log('komyeah');
+                                },5000);
+
+                                $('#overlay-mail-response').on('click', function(){
+                                    $('#overlay-mail-response').fadeOut();
+                                    console.log('yeah');
+                                });
+                            }else{
+                                $('.error').html('You\'ve failed to pass the validation test.');
+                            }
+                        }
+                    }); 
+                */
+            });
+        });
+  });
+
+    
+   
+</script>
+                        <script type="text/javascript">
+                            $today = "20260118";
+
+                            $('.date_field select').change(function(){
+                                console.log($today);
+                                $element = $($(this).parent('.date_field')).find('select');
+                                //console.log($element[0].value, $element[1].value, $element[2].value);
+                                console.log(($element[2].value+ '' + $element[1].value + '' +$element[0].value));
+                                if($today > ($element[2].value+ '' + $element[1].value + '' +$element[0].value)){
+                                    $options = $($($($(this).parent('.date_field')).find('select'))[0]).find('option');
+                                    console.log('in the past');
+                                    $($($(this).parent('.date_field')).find('.error')).html('U heeft een datum in het verleden gekozen');
+                                    /*for($i=0; $i < $options.length;$i++){
+                                        if($options[$i].value == 18){
+
+                                            $($options[$i]).attr('selected', 'true');
+                                            $($($($options[$i]).parent('select'))[0]).value = "18";
+                                            console.log($(this).value);
+                                            $(this).selectIndex = $i;
+                                        }
+                                    }*/
+
+
+                                }else{
+                                    $($($(this).parent('.date_field')).find('.error')).html('');
+                                    console.log('in the future');
+                                }
+                                /*for($i=0;$($(this).parent('.date_field')).length;$i++){
+                                    //if($(this).attr('name').includes('_day')){
+                                    $element = $(this).find('select');
+                                    console.log($element);
+                                    console.log($(this));
+                                    if($element == $(this)){
+                                        console.log('changed ' + $element.attr('name'));
+                                    }
+                                }*/
+                            });
+                        </script>
+
+                    </div>
+                </div>
+            </div>
+           
+            <div id="calendar">
+                
+
+
+
+                  <div class="calendar_month"><div class="full_width_block"><div class="month_title">JANUARI 2026</div><i>Klik op een datum voor de dag agenda</i></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-18/"><div class="calendar_day_event">18</div></a><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-22/"><div class="calendar_day_event">22</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-23/"><div class="calendar_day_event">23</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-24/"><div class="calendar_day_event">24</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-25/"><div class="calendar_day_event">25</div></a><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-28/"><div class="calendar_day_event">28</div></a><div class="calendar_day_no_event">29</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-30/"><div class="calendar_day_event">30</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-01-31/"><div class="calendar_day_event">31</div></a></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">FEBRUARI 2026</div><i>Klik op een datum voor de dag agenda</i></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-01/"><div class="calendar_day_event">1</div></a><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-05/"><div class="calendar_day_event">5</div></a><div class="calendar_day_no_event">6</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-07/"><div class="calendar_day_event">7</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-08/"><div class="calendar_day_event">8</div></a><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-12/"><div class="calendar_day_event">12</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-13/"><div class="calendar_day_event">13</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-14/"><div class="calendar_day_event">14</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-15/"><div class="calendar_day_event">15</div></a><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-19/"><div class="calendar_day_event">19</div></a><div class="calendar_day_no_event">20</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-21/"><div class="calendar_day_event">21</div></a><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-02-28/"><div class="calendar_day_event">28</div></a></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">MAART 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-05/"><div class="calendar_day_event">5</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-06/"><div class="calendar_day_event">6</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-07/"><div class="calendar_day_event">7</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-08/"><div class="calendar_day_event">8</div></a><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-14/"><div class="calendar_day_event">14</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-15/"><div class="calendar_day_event">15</div></a><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-19/"><div class="calendar_day_event">19</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-20/"><div class="calendar_day_event">20</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-21/"><div class="calendar_day_event">21</div></a><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-26/"><div class="calendar_day_event">26</div></a><div class="calendar_day_no_event">27</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-28/"><div class="calendar_day_event">28</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-03-29/"><div class="calendar_day_event">29</div></a><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">APRIL 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-04-09/"><div class="calendar_day_event">9</div></a><div class="calendar_day_no_event">10</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-04-11/"><div class="calendar_day_event">11</div></a><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-04-16/"><div class="calendar_day_event">16</div></a><div class="calendar_day_no_event">17</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-04-18/"><div class="calendar_day_event">18</div></a><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">MEI 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-05-03/"><div class="calendar_day_event">3</div></a><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-05-07/"><div class="calendar_day_event">7</div></a><div class="calendar_day_no_event">8</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-05-09/"><div class="calendar_day_event">9</div></a><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-05-22/"><div class="calendar_day_event">22</div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-05-23/"><div class="calendar_day_event">23</div></a><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">JUNI 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-06-06/"><div class="calendar_day_event">6</div></a><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">JULI 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-07-08/"><div class="calendar_day_event">8</div></a><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">AUGUSTUS 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-08-14/"><div class="calendar_day_event">14</div></a><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">SEPTEMBER 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/2026-09-26/"><div class="calendar_day_event">26</div></a><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">OKTOBER 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">NOVEMBER 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">DECEMBER 2026</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">JANUARI 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">FEBRUARI 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">MAART 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">APRIL 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">MEI 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">JUNI 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">JULI 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">AUGUSTUS 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">SEPTEMBER 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">OKTOBER 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">NOVEMBER 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div></div><div class="calendar_month"><div class="full_width_block"><div class="month_title">DECEMBER 2027</div><i>Klik op een datum voor de dag agenda</i></div><div class="calendar_day_no_event">1</div><div class="calendar_day_no_event">2</div><div class="calendar_day_no_event">3</div><div class="calendar_day_no_event">4</div><div class="calendar_day_no_event">5</div><div class="calendar_day_no_event">6</div><div class="calendar_day_no_event">7</div><div class="calendar_day_no_event">8</div><div class="calendar_day_no_event">9</div><div class="calendar_day_no_event">10</div><div class="calendar_day_no_event">11</div><div class="calendar_day_no_event">12</div><div class="calendar_day_no_event">13</div><div class="calendar_day_no_event">14</div><div class="calendar_day_no_event">15</div><div class="calendar_day_no_event">16</div><div class="calendar_day_no_event">17</div><div class="calendar_day_no_event">18</div><div class="calendar_day_no_event">19</div><div class="calendar_day_no_event">20</div><div class="calendar_day_no_event">21</div><div class="calendar_day_no_event">22</div><div class="calendar_day_no_event">23</div><div class="calendar_day_no_event">24</div><div class="calendar_day_no_event">25</div><div class="calendar_day_no_event">26</div><div class="calendar_day_no_event">27</div><div class="calendar_day_no_event">28</div><div class="calendar_day_no_event">29</div><div class="calendar_day_no_event">30</div><div class="calendar_day_no_event">31</div></div>
+              </div>
+        </div>
+       
+        <div class="three_of_four_columns float_right event-list">
+            <div class="content">
+                <h2> <a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/">Agenda</a></h2>
+                <div class="small_row_wrap">
+                    Wat is er te doen in Meppel? Theater, muziek, tentoonstellingen, festivals en nog veel meer. Je vindt hier de leukste ideeën voor een dagje weg, avondje uit of vakantie.                </div>
+                <div class="cat_selection full_width_block">
+                <form method="post" id="cats_agenda">
+                <div class="cat "><input type="checkbox" name="cat_id[]" value="0"  />Evenement</div><div class="cat "><input type="checkbox" name="cat_id[]" value="1"  />Exposities</div><div class="cat "><input type="checkbox" name="cat_id[]" value="2"  />Kids</div><div class="cat "><input type="checkbox" name="cat_id[]" value="3"  />Films</div><div class="cat "><input type="checkbox" name="cat_id[]" value="4"  />Theater</div><div class="cat "><input type="checkbox" name="cat_id[]" value="5"  />Muziek</div><div class="cat "><input type="checkbox" name="cat_id[]" value="6"  />Shopping</div><div class="cat "><input type="checkbox" name="cat_id[]" value="7"  />Koopzondag</div><div class="cat "><input type="checkbox" name="cat_id[]" value="8"  />Sport</div></form></div><div id="2026-01-13"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/pottery-painting/3234/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/12121954034411508012026.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Pottery Painting</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />13/01/2026 t/m 31/03/2026</div><div class="place"><img src="/images/place.svg" />Pand M, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-01-18"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/de-8-weekse-mindfulness-training/3161/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211872938519421110092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De 8-weekse Mindfulness training</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />Vandaag</div><div class="place"><img src="/images/place.svg" />Zentrum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-01-22"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/pubquiz/3253/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/112707853656301515012026.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Pubquiz</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />22/01/2026</div><div class="place"><img src="/images/place.svg" />Stadscafé Oasis, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div class="movies-bios-slider-wrap"><h3>IN DE BIOSCOOP</h3><div class="movies-bios-slider"><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/avatar-fire-and-ash" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/avatar-fire-and-ash_34709_202860_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/the-housemaid" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/the-housemaid_36206_202385_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/greenland-migration" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/greenland-migration_34372_202847_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/hond-ik" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/hond-ik_36478_202488_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/amsterdamned-ii" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/amsterdamned-ii_35981_200296_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/zootropolis-2-nl" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/zootropolis-2-nl_35043_200013_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/juf-braaksel-en-de-mysterieuze-verdwijning" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/juf-braaksel-en-de-mysterieuze-verdwijning_36143_200592_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/song-sung-blue" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/song-sung-blue_36332_202340_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/verliefd-op-curacao" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/verliefd-op-curacao_36168_200429_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/sentimental-value" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/sentimental-value_36412_200983_ps.jpg" /></div></a></div></div><div class="one_of_three_columns_without_margin"><div class="width_80"><a href="https://www.luxor.nl/films/wuthering-heights" target="_BLANK">
+                        <div class="img_full_column_width"><img src="https://www.luxor.nl/media/poster/thumb/wuthering-heights_36117_199982_ps.jpg" /></div></a></div></div></div></div><div id="2026-01-23"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/exposities/soil-works/3225/" data-cats="exposities "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/115226109449241902012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Soil Works</h2><span class="cat_title">//Exposities</span><div class="date"><img src="/images/date.svg" />23/01/2026 t/m 25/01/2026</div><div class="place"><img src="/images/place.svg" />Kunstwerk Kolderveen, Kolderveen, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/karaoke-night-dubbel/3243/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/170504548202131412012026.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Karaoke night @Dubbel</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />23/01/2026</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-01-24"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/workshop-keramiek-tegeltjes-maken/3237/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/51984987659271309012026.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Workshop Keramiek tegeltjes maken</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />24/01/2026</div><div class="place"><img src="/images/place.svg" />Industrieweg 5, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/exposities/3-delige-schilderworkshop-met-sylvia-frankena/3220/" data-cats="exposities "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/15924477901172129122025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>3 delige schilderworkshop met Sylvia Frankena</h2><span class="cat_title">//Exposities</span><div class="date"><img src="/images/date.svg" />24/01/2026 t/m 28/02/2026</div><div class="place"><img src="/images/place.svg" />Reestkerk, Balkbrug</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/dos46-dvo-transus/3141/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/13215592550181617112025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Dos'46 - DVO/Transus</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />24/01/2026</div><div class="place"><img src="/images/place.svg" />Eendracht, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-01-25"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/de-8-weekse-mindfulness-training/3162/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211872938519421110092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De 8-weekse Mindfulness training</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />25/01/2026</div><div class="place"><img src="/images/place.svg" />Zentrum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/informatiemiddag-voor-de-vakantiefietser-/3247/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/9078867634131014012026.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Informatiemiddag voor de vakantiefietser </h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />25/01/2026</div><div class="place"><img src="/images/place.svg" />Glorie BikeLab/l'Hirondelle bikeshop, Kruisstraat 15 , Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-01-28"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/open-avond-carnicaloge/3227/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/62358759638131903012026.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Open avond Carnicaloge</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />28/01/2026</div><div class="place"><img src="/images/place.svg" />Odd Fellows, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/samen-aan-tafel-dineravond/3254/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/177241789356381515012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Samen aan tafel dineravond</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />28/01/2026</div><div class="place"><img src="/images/place.svg" />Stadscafé Oasis, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/lezing-marion-bruinenberg-ontaard/3236/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/55951095909161109012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Lezing Marion Bruinenberg - Ontaard</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />28/01/2026</div><div class="place"><img src="/images/place.svg" />Bibliotheek Meppel , Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-01-30"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/exposities/soil-works/3226/" data-cats="exposities "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/156779278135261902012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Soil Works</h2><span class="cat_title">//Exposities</span><div class="date"><img src="/images/date.svg" />30/01/2026 t/m 01/02/2026</div><div class="place"><img src="/images/place.svg" />Kunstwerk Kolderveen, Kolderveen, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/arie-vuyk-/3245/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/171632189415331412012026.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Arie Vuyk </h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />30/01/2026</div><div class="place"><img src="/images/place.svg" />Theatercafé Dubbel, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-01-31"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/exposities/de-zwarte-ijsbeer/3198/" data-cats="exposities "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/88001702843212227122025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De Zwarte IJsbeer</h2><span class="cat_title">//Exposities</span><div class="date"><img src="/images/date.svg" />31/01/2026</div><div class="place"><img src="/images/place.svg" />Kunst- en cultuursalon Articum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/discozwemmen/3221/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/1431662915241430122025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Discozwemmen</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />31/01/2026</div><div class="place"><img src="/images/place.svg" />Bad Hesselingen, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/dance-night-dubbel/3244/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/36810798116211412012026.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Dance Night @Dubbel</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />31/01/2026</div><div class="place"><img src="/images/place.svg" />Theatercafé Dubbel, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/herberg-t-plein-40-jaar/3251/" data-cats="evenement "><div class="event-item hi_imp_event"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/22986158401011015012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text hi_imp_event"><div class="content"><h2>Herberg 't Plein 40 jaar</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />31/01/2026</div><div class="time"><img src="/images/time.svg" />20:30 - 00:30</div><div class="place"><img src="/images/place.svg" />ME Studio, Meppel</div><br />Herberg 't Plein
+40 jaar
+1986 - 2026
+
+IN AMSTERDAMSE SFEER
+
+VOOR DE VROEGE VOGELS
+&euro; 27,50 p.p.
+
+Maak je klaar voor een avond vol sfeer, meezingers en gezelligheid! Op deze fees...</div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-01"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/de-8-weekse-mindfulness-training/3163/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211872938519421110092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De 8-weekse Mindfulness training</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />01/02/2026</div><div class="place"><img src="/images/place.svg" />Zentrum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/muziek/drents-symfonie-orkest-speelt-the-music-makers-/3179/" data-cats="muziek "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/90429261437561810122025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Drents Symfonie Orkest speelt The Music Makers </h2><span class="cat_title">//Muziek</span><div class="date"><img src="/images/date.svg" />01/02/2026</div><div class="place"><img src="/images/place.svg" />De Samenstroom, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-05"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/uit-de-dagboeken-van-sofia-tolstoj/3235/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/33445878510131109012026.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Uit de dagboeken van Sofia Tolstoj</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />05/02/2026</div><div class="place"><img src="/images/place.svg" />Bibliotheek Meppel , Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-07"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/just-90s-party/2864/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/128483801408230918042025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Just 90's Party</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />07/02/2026 t/m 08/02/2026</div><div class="place"><img src="/images/place.svg" />Studio2, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/muziek/saartje-van-camp-band/3054/" data-cats="muziek "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/207983058734461102102025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Saartje van Camp & band</h2><span class="cat_title">//Muziek</span><div class="date"><img src="/images/date.svg" />07/02/2026</div><div class="place"><img src="/images/place.svg" />Vegafabriek, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-08"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/de-8-weekse-mindfulness-training/3164/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211872938519421110092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De 8-weekse Mindfulness training</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />08/02/2026</div><div class="place"><img src="/images/place.svg" />Zentrum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-12"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/patrick-nederkoorn/3207/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/72025300125411429122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Patrick Nederkoorn</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />12/02/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-13"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/martijn-crins/3206/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/71033046718401429122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Martijn Crins</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />13/02/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-14"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/vier-valentijnsdag-bij-ons/3252/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/168773956000281515012026.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Vier Valentijnsdag bij ons!</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />14/02/2026</div><div class="place"><img src="/images/place.svg" />Stadscafé Oasis, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/dos46-kz-keukensalecom/3142/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/13215592550181617112025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Dos'46 - KZ/Keukensale.com</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />14/02/2026</div><div class="place"><img src="/images/place.svg" />Eendracht, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-15"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/tour-damour/3229/" data-cats="evenement "><div class="event-item hi_imp_event"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/102667815128041605012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text hi_imp_event"><div class="content"><h2>Tour d'Amour</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />15/02/2026</div><div class="place"><img src="/images/place.svg" />Reestdal</div><div class="time">&nbsp;</div><br />Stap samen in de auto en beleef een romantische roadtrip door het prachtige Reestdal, vol smaakvolle verrassingen en bijzondere stops. Onderweg genieten jullie van heerlijke gerechten van ma...</div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/de-8-weekse-mindfulness-training/3165/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211872938519421110092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De 8-weekse Mindfulness training</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />15/02/2026</div><div class="place"><img src="/images/place.svg" />Zentrum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-19"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/workshop-keramiek-tegeltjes-maken/3233/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/9710461948141508012026.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Workshop Keramiek Tegeltjes maken</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />19/02/2026</div><div class="place"><img src="/images/place.svg" />Industrieweg 5, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/ed-struijlaart/3205/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/186663437628391429122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Ed Struijlaart</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />19/02/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-21"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/klaas-van-der-eerden/3204/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211113012545361429122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Klaas van der Eerden</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />21/02/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-02-28"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/dos46-fortuna-ruitenheer/3143/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/13215592550181617112025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Dos'46 - Fortuna/Ruitenheer</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />28/02/2026</div><div class="place"><img src="/images/place.svg" />Eendracht, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/muziek/canto-kaarslicht-concert/3248/" data-cats="muziek "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/150643874532151514012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Canto Kaarslicht Concert</h2><span class="cat_title">//Muziek</span><div class="date"><img src="/images/date.svg" />28/02/2026</div><div class="place"><img src="/images/place.svg" />Grote of Mariakerk, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/muziek/the-bullfight-x-emma-hessels/3059/" data-cats="muziek "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/65171366058311306102025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>The Bullfight x Emma Hessels</h2><span class="cat_title">//Muziek</span><div class="date"><img src="/images/date.svg" />28/02/2026</div><div class="place"><img src="/images/place.svg" />De Vegafabriek, Kolderveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-05"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/esther-groenenberg/3203/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/111723676242071429122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Esther Groenenberg</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />05/03/2026</div><div class="place"><img src="/images/place.svg" />Schouwburg Ogterop, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-06"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/cirqulinair/3246/" data-cats="evenement "><div class="event-item mid_imp_event"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/6663002330261613012026.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text mid_imp_event"><div class="content"><h2>Cirqulinair</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />06/03/2026 t/m 14/03/2026</div><div class="place"><img src="/images/place.svg" />Grote of Mariakerk, Meppel</div><br />Cirqulinair keert terug in 2026! Een nieuwe editie, een nieuw verhaal,...</div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-07"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/profound-play/3202/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="29.778772241929" style="background-image:url(/images/cms/159928059205051429122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Profound Play</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />07/03/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-08"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/de-8-weekse-mindfulness-training/3166/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211872938519421110092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De 8-weekse Mindfulness training</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />08/03/2026</div><div class="place"><img src="/images/place.svg" />Zentrum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-14"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/nathalie-baartman/3201/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="28.492644253899" style="background-image:url(/images/cms/110590284739001429122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Nathalie Baartman</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />14/03/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-15"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/de-8-weekse-mindfulness-training/3167/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/211872938519421110092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De 8-weekse Mindfulness training</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />15/03/2026</div><div class="place"><img src="/images/place.svg" />Zentrum, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/dos46-dsc/3144/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/13215592550181617112025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Dos'46 - DSC</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />15/03/2026</div><div class="place"><img src="/images/place.svg" />Eendracht, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-19"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/maurits-fondse-trio/3200/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="43.382033179788" style="background-image:url(/images/cms/47938744449551329122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Maurits Fondse Trio</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />19/03/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-20"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/izaline-calister/3199/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/64491482505531329122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Izaline Calister</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />20/03/2026</div><div class="place"><img src="/images/place.svg" />ME Studio, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-21"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/tegels-taart/3232/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/30327094806541408012026.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Tegels & Taart</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />21/03/2026</div><div class="place"><img src="/images/place.svg" />Pand M, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/muziek/mister-mississippi/3075/" data-cats="muziek "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/147702307620001009102025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Mister & Mississippi</h2><span class="cat_title">//Muziek</span><div class="date"><img src="/images/date.svg" />21/03/2026</div><div class="place"><img src="/images/place.svg" />De Vegafabriek, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-26"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/project-bruckman/3210/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/35354603214171529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Project Bruckman</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />26/03/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-28"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/vrienden-van-meppel-live/3030/" data-cats="evenement "><div class="event-item hi_imp_event"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/208813679002061218092025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text hi_imp_event"><div class="content"><h2>Vrienden van Meppel Live</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />28/03/2026</div><div class="place"><img src="/images/place.svg" />Grote Maria Kerk, Meppel</div><div class="time">&nbsp;</div><br />Heb jij ook weer zo'n zin in een fantastische avond vol livemuziek, gezelligheid en meezingen tot je stem het begeeft? Wij ook! En goed nieuws: de datum staat vast en we zijn alweer druk bez...</div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/teun-van-den-elzen/3211/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/71835948018181529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Teun van den Elzen</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />28/03/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/sport/dos46-blauw-wit-a/3145/" data-cats="sport "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/13215592550181617112025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Dos'46 - Blauw-Wit (A)</h2><span class="cat_title">//Sport</span><div class="date"><img src="/images/date.svg" />28/03/2026</div><div class="place"><img src="/images/place.svg" />Eendracht, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-03-29"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/theater-tieret/3212/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/61903484712191529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Theater Tieret</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />29/03/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-04-09"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/alex-roeka/3213/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="-0.0016249279941767" style="background-image:url(/images/cms/72834327051231529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Alex Roeka</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />09/04/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-04-11"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/soul-woman-tour-sta-concert/3214/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/75093562540241529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Soul Woman Tour (Sta concert)</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />11/04/2026</div><div class="place"><img src="/images/place.svg" />De Vegafabriek, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/michelle-david-the-true-tones/3060/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/195492663534381406102025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Michelle David & The True-tones</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />11/04/2026</div><div class="place"><img src="/images/place.svg" />De Vegafabriek, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-04-16"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/man-co/3215/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/151169184120261529122025.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>MAN || CO</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />16/04/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-04-18"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/eric-devries/3216/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/161552290043271529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Eric DeVries</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />18/04/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-05-03"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/ronald-snijders-pieter-jouke/3217/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/101123910420311529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Ronald Snijders & Pieter Jouke</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />03/05/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-05-07"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/thijs-kemperink/3218/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/42952385901301529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Thijs Kemperink</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />07/05/2026</div><div class="place"><img src="/images/place.svg" />De Plataan, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-05-09"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/muziek/de-broers-roo-olde-jetta-tour/3053/" data-cats="muziek "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/63987390701411102102025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>De Broers Roo - Olde Jetta Tour</h2><span class="cat_title">//Muziek</span><div class="date"><img src="/images/date.svg" />09/05/2026</div><div class="place"><img src="/images/place.svg" />Vegafabriek, Nijeveen</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-05-22"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/fuse/3219/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/144481609256321529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Fuse</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />22/05/2026</div><div class="place"><img src="/images/place.svg" />Grote of Mariakerk, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-05-23"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/muziek/35-jaar-clouso-met-peter-pan-speedrock/3102/" data-cats="muziek "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/34210687217201321102025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>35 Jaar Clouso met Peter Pan Speedrock</h2><span class="cat_title">//Muziek</span><div class="date"><img src="/images/date.svg" />23/05/2026</div><div class="place"><img src="/images/place.svg" />Muziekcafé Clouso, Meppel</div><div class="time">&nbsp;</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-06-06"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/theater/florian-myjer/3209/" data-cats="theater "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/127667564909151529122025.jpeg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Florian Myjer</h2><span class="cat_title">//Theater</span><div class="date"><img src="/images/date.svg" />06/06/2026</div><div class="place"><img src="/images/place.svg" />Me Studio, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-07-08"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/fiets4daagse-meppel/3192/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/16184225441461121122025.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Fiets4daagse Meppel</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />08/07/2026 t/m 11/07/2026</div><div class="place"><img src="/images/place.svg" />Sportpark Ezinge, Meppel</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-08-14"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/drijf-in-blues/3180/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/138754976437121216122025.jpg)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Drijf-in Blues</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />14/08/2026 t/m 16/08/2026</div><div class="place"><img src="/images/place.svg" />Smit's Paviljoen, Binnenpad 29a, Giethoorn</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a><div id="2026-09-26"></div><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/evenement/kijk-je-ogen-uit-2026/3151/" data-cats="evenement "><div class="event-item"><div class="one_of_two_columns_without_margin"><div class="fill" data-margin="0" style="background-image:url(/images/cms/105963170825322119112025.png)"></div></div><div class="one_of_two_columns_without_margin event-text"><div class="content"><h2>Kijk je ogen uit 2026</h2><span class="cat_title">//Evenement</span><div class="date"><img src="/images/date.svg" />26/09/2026 t/m 27/09/2026</div><div class="place"><img src="/images/place.svg" />Diverse locaties, Meppel</div><div class="time">&nbsp;</div></div></div><!--<span class="readmore">Lees meer &gt;</span>--></div></a>            </div>
+        </div>
+        
+        
+            
+    </div>
+</div>
+
+
+
+
+    
+<div id="footer">
+	<div class="wrapper">
+        <div id="footer-inside-wrap">
+            <img src="https://ontdekmeppel.nl/images/logo-drenthe.svg" class="logo_drenthe"/>
+
+            <h2>OntdekMeppel.nl</h2>
+            
+            <div class="one_of_five_columns">
+                <ul>
+                    <li class="footer_head_title"><a href="https://ontdekmeppel.nl/"><b>HOME</b></a></li>
+                    <li class="footer_head_title"><a href="https://ontdekmeppel.nl/kaart/"><b>KAART</b></a></li>
+                 	<li class="footer_head_title"><a href="https://ontdekmeppel.nl/ontdek-meppel/nieuwsbrief/"><b>NIEUWSBRIEF</b></a></li>
+					<li class="footer_head_title"><a href="https://ontdekmeppel.nl/nieuws/"><b>NIEUWS</b></a></li>
+                    <li class="footer_head_title"><a href="https://ontdekmeppel.nl/meppelpas/"><b>MEPPELPAS</b></a></li>
+                   
+                    
+
+                </ul>
+                
+            </div>
+
+            <div class="one_of_five_columns">
+                 <ul>
+					 <li class="important footer_head_title"><a href="https://ontdekmeppel.nl/ontdek-meppel/" data-section="ontdekmeppel"><b>ONTDEK MEPPEL </b></a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/bezienswaardigheden/">BEZIENSWAARDIGHEDEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/evenementen/">EVENEMENTEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/agenda/">AGENDA</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/routes-natuur/">ROUTES &AMP; NATUUR</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/overnachten/">OVERNACHTEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/cultuur-in-meppel/">CULTUUR IN MEPPEL</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/eten-drinken/">ETEN &AMP; DRINKEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/shoppen/">SHOPPEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/actieve-uitjes/">ACTIEVE UITJES</a></li>
+
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/voor-kinderen/">VOOR KINDEREN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/dorpen/">DORPEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/de-groene-muggen/">DE GROENE MUGGEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/geluksmomenten/">GELUKSMOMENTEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/parkeren-bereikbaarheid/">PARKEREN & BEREIKBAARHEID</a></li>
+					<li><a href="https://ontdekmeppel.nl/ontdek-meppel/nieuwsbrief/">NIEUWSBRIEF</a></li>
+					 
+                    
+					
+                </ul>
+            </div>
+            
+            <div class="one_of_five_columns">
+                        <ul>
+							<li class="important footer_head_title"><a href="https://ontdekmeppel.nl/leven-in-meppel/" data-section="leveninmeppel"><b>LEVEN IN MEPPEL </b></a></li>
+					 <li><a href="https://ontdekmeppel.nl/leven-in-meppel/wonen-in-meppel/">WONEN IN MEPPEL</a></li>
+					<li><a href="https://ontdekmeppel.nl/leven-in-meppel/voorzieningen/">VOORZIENINGEN</a></li>
+					<li><a href="https://ontdekmeppel.nl/leven-in-meppel/verhuizen-naar-meppel/">VERHUIZEN NAAR MEPPEL</a></li>
+							
+                            
+							
+                        </ul>
+                    </div>
+
+                    <div class="one_of_five_columns">
+                        <ul>
+							<li class="important footer_head_title"><a href="https://ontdekmeppel.nl/werken-en-ondernemen/" data-section="werkenondernemen"><b>WERKEN &AMP; ONDERNEMEN</b></a></li>
+					<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/werken-in-meppel/">WERKEN IN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemen-in-meppel/">ONDERNEMEN IN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemersverenigingen/">ONDERNEMERSVERENIGINGEN</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/starters-en-zzp/">STARTERS & ZZP</a></li>
+								<li><a href="https://ontdekmeppel.nl/werken-en-ondernemen/ondernemersgala/">ONDERNEMERSGALA</a></li>
+							
+                            
+                            
+                            
+                        </ul>
+                    </div>
+
+                    <div class="one_of_five_columns_last">
+                        <ul>
+						<li class="important footer_head_title"><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/" data-section="overmeppeldiepgeluk"><b>OVER MEPPEL DIEP GELUK</b></a></li>
+					<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/het-dna-van-meppel/">HET DNA VAN MEPPEL</a></li>
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/toolkit-en-downloads/">TOOLKIT & DOWNLOADS</a></li>
+								<li><a href="https://ontdekmeppel.nl/over-meppel-diep-geluk/contact/">CONTACT</a></li>
+						</ul>
+                         
+                       
+                    </div>
+            
+           
+            
+            <div class="row_wrap contact_bar">
+                <div class="float_right">
+                    Taalkeuze: <form method="post" id="lang_form"><select name="lang"><option value="nl">Nederlands</option><option value="en" >Engels</option><option value="de" >Duits</option></select></form>
+                </div>
+                
+                <script type="text/javascript">
+                    $('#lang_form').change(function(){
+                        $(this).submit();
+                    });
+                </script>
+                
+                Contact: <a href="mailto:info@ontdekmeppel.nl">info@ontdekmeppel.nl</a>
+                <div class="full_width_block social_wrap">
+                    Ontdek Meppel op Social media<br />
+                    <ul class="socials">
+                        <li><a href="https://www.facebook.com/ontdekmeppel.nl" target="_blank"><img src="/images/socials/fb-icon.svg" /></a></li>
+                        <li><a href="https://www.instagram.com/ontdekmeppel/" target="_blank"><img src="/images/socials/insta-icon.svg" /></a></li>
+                    </ul>
+                </div>
+                
+            </div>
+            
+            
+            
+         </div>
+	</div>
+</div>
+
+<div class="scroll-to-top"><img src="/images/arrow-up.svg" /></div>
+
+
+	
+	
+	
+</body>
+</html>

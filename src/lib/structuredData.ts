@@ -1,5 +1,5 @@
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { parseToISODate } from "../../supabase/functions/scrape-events/dateUtils.ts";
+import { parseToISODate } from "../../supabase/functions/_shared/dateUtils.ts";
 import type { RawEventCard } from "../../supabase/functions/scrape-events/shared.ts";
 
 function mapStructuredEvent(

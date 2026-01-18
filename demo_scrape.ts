@@ -482,7 +482,8 @@ async function upsertToSupabase(client: SupabaseClient | null, event: Normalized
           location_address: event.location_address,
           price: event.price,
           currency: event.currency,
-          categories: event.categories,
+          category: (event.categories && event.categories.length > 0) ? event.categories[0] : 'entertainment',
+          // categories: event.categories, // DB schema uses singular category
           image: event.image,
           raw_html: event.raw_html,
           json_ld: event.json_ld,
