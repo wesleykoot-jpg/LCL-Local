@@ -10,23 +10,62 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Build
-        run: npm run build
-        
-      - name: Run scraper
+      - name: Invoke Supabase Edge Function - run-scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SCRAPER_USER_AGENT: ${{ secrets.SCRAPER_USER_AGENT }}
-          MAX_CONSECUTIVE_FAILURES: 3
-          ALERT_SUPPRESSION_MS: 1800000
-        run: npx tsx src/cli.ts --run-id=github-actions-${{ github.run_id }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          echo "🚀 Triggering scraper at $(date -u)"
+          
+          # Invoke the run-scraper edge function
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${SUPABASE_URL}/functions/v1/run-scraper" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -d '{"enableDeepScraping": true}')
+          
+          # Extract HTTP status code (last line)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          # Extract response body (all but last line)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "📋 Response (HTTP $HTTP_CODE):"
+          
+          # Validate JSON and pretty-print, or show raw body if invalid
+          if echo "$BODY" | jq . > /tmp/parsed.json 2>/dev/null; then
+            cat /tmp/parsed.json
+          else
+            echo "⚠️ Response is not valid JSON:"
+            echo "$BODY"
+          fi
+          
+          # Check if request was successful
+          if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
+            echo "✅ Scraper invoked successfully"
+            
+            # Extract stats from response (with JSON validation)
+            if echo "$BODY" | jq empty 2>/dev/null; then
+              SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+              TOTAL_SOURCES=$(echo "$BODY" | jq -r '.stats.totalSources // 0')
+              INSERTED=$(echo "$BODY" | jq -r '.stats.totalEventsInserted // 0')
+              FAILED=$(echo "$BODY" | jq -r '.stats.totalEventsFailed // 0')
+              
+              echo ""
+              echo "📊 Summary:"
+              echo "   Success: $SUCCESS"
+              echo "   Total Sources: $TOTAL_SOURCES"
+              echo "   Events Inserted: $INSERTED"
+              echo "   Events Failed: $FAILED"
+              
+              if [[ "$SUCCESS" != "true" ]]; then
+                echo "⚠️ Scraper returned success=false"
+                exit 1
+              fi
+            else
+              echo "⚠️ Unable to parse response as JSON, treating as error"
+              exit 1
+            fi
+          else
+            echo "❌ Error: Scraper invocation failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
