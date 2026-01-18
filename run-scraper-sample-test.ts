@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno run -A
-import { DefaultStrategy } from "./src/scrapers/DefaultStrategy.ts";
+import { DefaultStrategy, type PageFetcher } from "./supabase/functions/_shared/strategies.ts";
 import { extractStructuredEvents } from "./src/lib/structuredData.ts";
 import {
   constructEventDateTime,
@@ -40,6 +40,22 @@ const GEO_STUBS: Record<string, { lat: number; lng: number }> = {
   "Town Hall": { lat: 52.692, lng: 6.186 },
   "Community Center": { lat: 52.7, lng: 6.2 },
 };
+
+class MockPageFetcher implements PageFetcher {
+  constructor(private fetchFn: typeof fetch) { }
+
+  async fetchPage(url: string) {
+    const res = await this.fetchFn(url);
+    const html = await res.text();
+    return {
+      html,
+      finalUrl: res.url || url,
+      statusCode: res.status,
+      headers: res.headers,
+    };
+  }
+}
+
 
 const MIGRATIONS_DIR = new URL("./supabase/migrations/", import.meta.url);
 
@@ -115,11 +131,11 @@ async function readMigrationSources(): Promise<ScraperSource[]> {
     sources.push({
       id: "render-mock",
       name: "Render Mock Source",
-    url: "https://render.example/agenda",
-    enabled: true,
-    requires_render: true,
-    config: { selectors: [], headers: {} },
-  });
+      url: "https://render.example/agenda",
+      enabled: true,
+      requires_render: true,
+      config: { selectors: [], headers: {} },
+    });
   }
 
   return sources;
@@ -275,15 +291,17 @@ async function runSource(source: ScraperSource): Promise<SourceResult> {
   const failed: string[] = [];
 
   const strategy = new DefaultStrategy(source);
+  const discoveryFetch = (_url: string, init?: RequestInit) => {
+    const html = `<html><head><base href="${source.url}" /></head><body><a href="/agenda">Agenda</a></body></html>`;
+    const resp = new Response(html, {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+    });
+    return Promise.resolve(resp);
+  };
+
   await strategy
-    .discoverListingUrls((_url: string, init?: RequestInit) => {
-      const html = `<html><head><base href="${source.url}" /></head><body><a href="/agenda">Agenda</a></body></html>`;
-      const resp = new Response(html, {
-        status: 200,
-        headers: { "Content-Type": "text/html" },
-      });
-      return Promise.resolve(resp);
-    })
+    .discoverListingUrls(new MockPageFetcher(discoveryFetch as typeof fetch))
     .catch(() => []);
 
   let rendererFetch: typeof fetch | undefined;
@@ -304,25 +322,24 @@ async function runSource(source: ScraperSource): Promise<SourceResult> {
     };
   }
 
-  let restoreFetch: (() => void) | undefined;
-  if (rendererFetch) {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = rendererFetch as typeof fetch;
-    restoreFetch = () => {
-      globalThis.fetch = originalFetch;
-    };
-  }
+  // Combine fetchers for scrapeEventCards
+  const combinedFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (rendererFetch && (url.includes("/render") || url === source.url)) {
+      return rendererFetch(input);
+    }
+    return detailFetcher(input, init);
+  };
+  const mockFetcher = new MockPageFetcher(combinedFetch as typeof fetch);
 
   const rawEvents = await scrapeEventCards(source, true, {
     listingHtml: source.requires_render ? undefined : sample.listingHtml,
     listingUrl: source.url,
-    fetcher: source.requires_render ? rendererFetch : undefined,
-    detailFetcher,
-    rendererUrl: source.requires_render ? "https://renderer.test" : undefined,
+    fetcher: mockFetcher,
     enableDebug: true,
   });
 
-  if (restoreFetch) restoreFetch();
+
 
   const structuredEvents = extractStructuredEvents(sample.structuredHtml, source.url);
   assertAndRecord(passed, failed, "structured-data", structuredEvents.length > 0, "No JSON-LD events detected");

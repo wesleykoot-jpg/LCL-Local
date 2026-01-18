@@ -10,7 +10,7 @@
  */
 import * as cheerio from "cheerio";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { parseToISODate } from "./supabase/functions/scrape-events/dateUtils.ts";
+import { parseToISODate } from "./supabase/functions/_shared/dateUtils.ts";
 import { normalizeAndResolveUrl } from "./src/lib/urlUtils.ts";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -234,8 +234,8 @@ function mapJsonLdEvent(node: Record<string, JsonValue>, baseUrl: string): { raw
   const title = typeof node.name === "string"
     ? node.name
     : typeof node.headline === "string"
-    ? node.headline
-    : "";
+      ? node.headline
+      : "";
   const startDateRaw = typeof node.startDate === "string" ? node.startDate : "";
   const parsedDate = parseToISODate(startDateRaw);
   if (!title || !parsedDate) return null;
@@ -421,8 +421,8 @@ async function parseLLMEvent(snippet: string, pageUrl: string) {
   const llmText = openaiKey
     ? await callOpenAILLM(prompt, openaiKey)
     : geminiKey
-    ? await callGeminiLLM(prompt, geminiKey)
-    : null;
+      ? await callGeminiLLM(prompt, geminiKey)
+      : null;
   if (!llmText) return { event: null, prompt, response: null };
 
   let cleaned = llmText.trim();
