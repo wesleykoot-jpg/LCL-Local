@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { parseToISODate } from "../_shared/dateUtils.ts";
+import { formatYearPhrase, getTargetYearEnv, parseToISODate, resolveTargetYears } from "../_shared/dateUtils.ts";
 import type { ScrapeJobPayload, ScraperSource, RawEventCard } from "../_shared/types.ts";
 import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
@@ -13,7 +13,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TARGET_YEAR = 2026;
 const DEFAULT_EVENT_TYPE = "anchor";
 const BATCH_SIZE = 5;
 
@@ -84,7 +83,11 @@ function getProxyApiKey(): string | undefined {
 }
 
 function isTargetYear(isoDate: string | null): boolean {
-  return !!isoDate && isoDate.startsWith(`${TARGET_YEAR}-`);
+  if (!isoDate) return false;
+  const year = Number(isoDate.slice(0, 4));
+  if (!Number.isFinite(year)) return false;
+  const targetYears = resolveTargetYears(getTargetYearEnv());
+  return targetYears.includes(year);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -251,9 +254,11 @@ async function parseEventWithAI(
   fetcher: typeof fetch
 ): Promise<NormalizedEvent | null> {
   const today = new Date().toISOString().split("T")[0];
+  const allowedYears = resolveTargetYears(getTargetYearEnv());
+  const yearPhrase = formatYearPhrase(allowedYears);
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
 - Retourneer uitsluitend geldige JSON.
-- Weiger evenementen die niet in 2026 plaatsvinden.
+- Weiger evenementen die niet in ${yearPhrase} plaatsvinden.
 - Houd tekst in originele taal (${language}).
 - velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name, venue_address, image_url`;
 

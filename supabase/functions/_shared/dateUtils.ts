@@ -58,3 +58,58 @@ export function parseToISODate(dateStr: string, today?: Date): string | null {
 
   return null;
 }
+
+/**
+ * Returns the allowed event years (current year and next year by default).
+ * Accepts an optional reference date for deterministic testing.
+ */
+export function getAllowedEventYears(today: Date = new Date()): number[] {
+  const currentYear = today.getFullYear();
+  return [currentYear, currentYear + 1];
+}
+
+/**
+ * Checks if a given ISO date string falls within the allowed event years.
+ * By default allows the current and next calendar year.
+ */
+export function isAllowedEventYear(isoDate: string | null, today: Date = new Date()): boolean {
+  if (!isoDate) return false;
+  const year = Number(isoDate.slice(0, 4));
+  if (!Number.isFinite(year)) return false;
+  return getAllowedEventYears(today).includes(year);
+}
+
+/**
+ * Resolve the target years for scraping. Uses an optional target year override
+ * (e.g., from environment) and falls back to the current and next calendar year.
+ */
+export function resolveTargetYears(targetYearEnv?: string | null, today: Date = new Date()): number[] {
+  if (targetYearEnv) {
+    const parsed = Number(targetYearEnv);
+    if (!Number.isNaN(parsed) && parsed >= 2020 && parsed <= 2100) {
+      return [parsed];
+    }
+  }
+  return getAllowedEventYears(today);
+}
+
+/**
+ * Safe helper to read TARGET_EVENT_YEAR from the environment (Deno or Node).
+ */
+export function getTargetYearEnv(): string | null {
+  if (typeof Deno !== "undefined") {
+    return Deno.env.get("TARGET_EVENT_YEAR") ?? null;
+  }
+  if (typeof process !== "undefined" && process.env?.TARGET_EVENT_YEAR) {
+    return process.env.TARGET_EVENT_YEAR;
+  }
+  return null;
+}
+
+/**
+ * Formats a human-readable year phrase using the Dutch conjunction "en".
+ */
+export function formatYearPhrase(years: number[]): string {
+  if (years.length === 0) return "";
+  return years.length === 1 ? `${years[0]}` : years.join(" en ");
+}
