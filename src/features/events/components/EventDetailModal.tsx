@@ -75,15 +75,16 @@ const formatDateShort = (dateStr: string) => {
   return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
 };
 
+import { isMidnightValidCategory } from '@/shared/lib/categories';
+
 // Dutch 24-hour time format with smart midnight suppression
 const formatTime = (timeStr: string | undefined | null, category?: string) => {
   if (!timeStr) return null;
   
   // Check for midnight time - suppress unless it's a nightlife category
   const isMidnight = /^0{1,2}:00(:00)?$/.test(timeStr.trim());
-  const isMidnightValid = category && ['music', 'nightlife', 'entertainment'].includes(category.toLowerCase());
   
-  if (isMidnight && !isMidnightValid) {
+  if (isMidnight && !isMidnightValidCategory(category)) {
     return null; // Return null to hide the time pill entirely
   }
   
@@ -153,6 +154,9 @@ export const EventDetailModal = memo(function EventDetailModal({
     : event.created_by
       ? 'Actieve host'
       : null;
+
+  // Pre-compute formatted time to avoid duplicate calls
+  const formattedTime = formatTime(event.event_time, event.category);
 
   const handleOpenMaps = useCallback(async () => {
     if (!venueCoords) return;
@@ -286,10 +290,10 @@ export const EventDetailModal = memo(function EventDetailModal({
                   {formatDate(event.event_date)}
                 </div>
                 {/* Time pill - conditionally rendered (hides 00:00 for non-nightlife events) */}
-                {formatTime(event.event_time, event.category) && (
+                {formattedTime && (
                   <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px] bg-muted text-[14px] text-foreground font-medium shadow-card">
                     <Clock size={15} className="text-primary" />
-                    {formatTime(event.event_time, event.category)}
+                    {formattedTime}
                   </div>
                 )}
                 <DistanceBadge 

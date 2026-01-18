@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Calendar, Clock, Sun } from 'lucide-react';
 import type { TimeMode, OpeningHours } from '@/lib/openingHours';
 import { isOpenNow, getClosingTimeToday, getNextOpeningTime } from '@/lib/openingHours';
+import { isMidnightValidCategory } from '@/shared/lib/categories';
 
 interface SmartTimeLabelProps {
   timeMode: TimeMode;
@@ -14,11 +15,6 @@ interface SmartTimeLabelProps {
   /** If true, all_day events will show "All Day" instead of a time */
   isAllDay?: boolean;
 }
-
-/**
- * Categories where midnight (00:00) is a legitimate start time
- */
-const MIDNIGHT_VALID_CATEGORIES = ['music', 'nightlife', 'entertainment'];
 
 /**
  * Check if a time string represents midnight (00:00)
@@ -41,8 +37,7 @@ function shouldSuppressMidnight(
   category: string | undefined
 ): boolean {
   if (!isMidnightTime(timeStr)) return false;
-  if (!category) return true; // Suppress if no category
-  return !MIDNIGHT_VALID_CATEGORIES.includes(category.toLowerCase());
+  return !isMidnightValidCategory(category);
 }
 
 /**
@@ -85,14 +80,16 @@ export const SmartTimeLabel = memo(function SmartTimeLabel({
     // Check if time should be suppressed (midnight and not a nightlife event)
     const suppressTime = shouldSuppressMidnight(eventTime, category);
     
-    // Format time - show "Time TBA" if suppressed
-    const formattedTime = suppressTime ? 'Time TBA' : formatTime(eventTime || '');
+    // Format time - show "Time TBA" if suppressed, otherwise formatted time
+    const displayTime = suppressTime 
+      ? 'Time TBA' 
+      : (eventTime ? formatTime(eventTime) : null);
     
     return (
       <div className={`flex items-center gap-1.5 text-primary ${className}`}>
         <Calendar size={14} className="flex-shrink-0" />
         <span className="font-semibold text-[15px]">
-          {dayOfWeek} {dayOfMonth} {month}{formattedTime ? ` • ${formattedTime}` : ''}
+          {dayOfWeek} {dayOfMonth} {month}{displayTime ? ` • ${displayTime}` : ''}
         </span>
       </div>
     );

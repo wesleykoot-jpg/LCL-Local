@@ -75,14 +75,34 @@ const formatDateShort = (dateStr: string) => {
 };
 
 // Dutch 24-hour time format
-const formatTime = (timeStr: string) => {
-  if (!timeStr) return '';
+import { isMidnightValidCategory } from '@/shared/lib/categories';
+
+// Dutch 24-hour time format with smart midnight suppression
+const formatTime = (timeStr: string | undefined | null, category?: string) => {
+  if (!timeStr) return null;
+  
+  // Check for midnight time - suppress unless it's a nightlife category
+  const isMidnight = /^0{1,2}:00(:00)?$/.test(timeStr.trim());
+  
+  if (isMidnight && !isMidnightValidCategory(category)) {
+    return null; // Return null to hide the time pill entirely
+  }
+  
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
     const [hours, minutes] = timeStr.split(':');
     return `${hours.padStart(2, '0')}:${minutes}`;
   }
   return timeStr;
 };
+
+/**
+ * Check if a value is valid for display (not null, undefined, empty, or "Unknown")
+ */
+function isValidDisplayValue(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized !== '' && normalized !== 'unknown' && normalized !== 'unknown location';
+}
 
 /**
  * Open location in native maps app
@@ -131,9 +151,13 @@ export const EventDetailModal = memo(function EventDetailModal({
     ? (CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default)
     : (event.image_url || CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default);
 
-  const venueCoords = parseEventLocation(event.location) || { lat: 52.5, lng: 6.0 };
+  const parsedCoords = parseEventLocation(event.location);
+  const hasValidCoords = !!parsedCoords && (parsedCoords.lat !== 0 || parsedCoords.lng !== 0);
+  const venueCoords = parsedCoords || { lat: 52.5, lng: 6.0 };
   
-  const staticMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`;
+  const staticMapUrl = hasValidCoords 
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`
+    : '';
 
   const attendeeDisplay = event.attendees?.slice(0, 8).map(a => ({
     id: a.profile?.id || '',
@@ -146,6 +170,9 @@ export const EventDetailModal = memo(function EventDetailModal({
     : event.created_by
       ? 'Actieve host'
       : null;
+
+  // Pre-compute formatted time to avoid duplicate calls
+  const formattedTime = formatTime(event.event_time, event.category);
 
   const handleOpenMaps = useCallback(async () => {
     await hapticImpact('light');
@@ -281,10 +308,13 @@ export const EventDetailModal = memo(function EventDetailModal({
                   <Calendar size={15} className="text-primary" />
                   {formatDate(event.event_date)}
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
-                  <Clock size={15} className="text-primary" />
-                  {formatTime(event.event_time)}
-                </div>
+                {/* Time pill - conditionally rendered (hides 00:00 for non-nightlife events) */}
+                {formattedTime && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-[1rem] bg-muted/50 text-[14px] text-foreground font-medium">
+                    <Clock size={15} className="text-primary" />
+                    {formattedTime}
+                  </div>
+                )}
                 <DistanceBadge 
                   venueCoordinates={venueCoords} 
                   userLocation={userLocation}
@@ -292,41 +322,47 @@ export const EventDetailModal = memo(function EventDetailModal({
                 />
               </div>
 
-              {/* Location with Map - Squircle */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-[15px]">
-                  <MapPin size={16} className="text-primary flex-shrink-0" />
-                  <span className="text-foreground font-medium">{event.venue_name}</span>
-                </div>
-
-                {/* Static Map - Squircle geometry */}
-                <motion.div 
-                  className="relative h-44 rounded-[1.5rem] overflow-hidden bg-muted cursor-pointer group border-[0.5px] border-border/30"
-                  onClick={handleOpenMaps}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <iframe
-                    src={staticMapUrl}
-                    className="w-full h-full border-0 pointer-events-none"
-                    title="Event location map"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-                  
-                  {/* Open in Maps button - Squircle */}
-                  <div className="absolute bottom-3 right-3">
-                    <div
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95  text-[14px] font-semibold border-[0.5px] border-border/30"
-                      style={{
-                        boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.12)'
-                      }}
-                    >
-                      <Navigation size={15} className="text-primary" />
-                      Route
-                    </div>
+              {/* Location with Map - only show if we have valid location data */}
+              {(hasValidCoords || isValidDisplayValue(event.venue_name)) && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-[15px]">
+                    <MapPin size={16} className="text-primary flex-shrink-0" />
+                    <span className="text-foreground font-medium">
+                      {isValidDisplayValue(event.venue_name) ? event.venue_name : 'Location TBA'}
+                    </span>
                   </div>
-                </motion.div>
-              </div>
+
+                  {/* Static Map - Squircle geometry */}
+                  {hasValidCoords && (
+                    <motion.div 
+                      className="relative h-44 rounded-[1.5rem] overflow-hidden bg-muted cursor-pointer group border-[0.5px] border-border/30"
+                      onClick={handleOpenMaps}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                    >
+                      <iframe
+                        src={staticMapUrl}
+                        className="w-full h-full border-0 pointer-events-none"
+                        title="Event location map"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                      
+                      {/* Open in Maps button - Squircle */}
+                      <div className="absolute bottom-3 right-3">
+                        <div
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-[1rem] bg-background/95  text-[14px] font-semibold border-[0.5px] border-border/30"
+                          style={{
+                            boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.12)'
+                          }}
+                        >
+                          <Navigation size={15} className="text-primary" />
+                          Route
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              )}
 
               {/* Description - iOS 17pt equivalent */}
               {event.description && (

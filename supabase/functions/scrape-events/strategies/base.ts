@@ -11,6 +11,16 @@
 import { SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Categories where midnight (00:00) is a legitimate start time
+ * Keep in sync with frontend: src/shared/lib/categories.ts
+ */
+const MIDNIGHT_VALID_CATEGORIES = ['music', 'nightlife', 'entertainment'] as const;
+
+// ============================================================================
 // INTERFACES
 // ============================================================================
 
@@ -483,9 +493,9 @@ export abstract class BaseScraperStrategy {
     
     // Check if time is exactly midnight
     if (hours === 0 && minutes === 0) {
-      // Categories where midnight is a legitimate start time
-      const nightlifeCategories = ['music', 'nightlife', 'entertainment'];
-      return !nightlifeCategories.includes(event.category?.toLowerCase() || '');
+      // Check against categories where midnight is a legitimate start time
+      const category = event.category?.toLowerCase() || '';
+      return !MIDNIGHT_VALID_CATEGORIES.includes(category as typeof MIDNIGHT_VALID_CATEGORIES[number]);
     }
     
     return false;
