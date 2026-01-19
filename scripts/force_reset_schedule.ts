@@ -16,7 +16,12 @@ async function main() {
     
     const { error } = await supabase
         .from("scraper_sources")
-        .update({ next_scrape_at: new Date().toISOString() })
+        .update({ 
+            next_scrape_at: new Date(Date.now() - 86400000).toISOString(), // 24h ago
+            consecutive_errors: 0,
+            consecutive_failures: 0,
+            last_error: null 
+        })
         .eq("enabled", true);
         
     if (error) {
