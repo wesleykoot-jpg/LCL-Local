@@ -11,7 +11,8 @@ import {
   normalizeEventDateForStorage,
   createContentHash,
   createEventFingerprint,
-  cheapNormalizeEvent
+  cheapNormalizeEvent,
+  eventToText
 } from "../_shared/scraperUtils.ts";
 
 import { jitteredDelay } from "../_shared/rateLimiting.ts";
