@@ -17,7 +17,7 @@ try {
     }
   }
 } catch (e) {
-  console.warn("Could not read .env file:", e.message);
+  console.warn("Could not read .env file:", (e instanceof Error) ? e.message : String(e));
 }
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
