@@ -114,6 +114,17 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   return "community";
 }
 
+export function eventToText(event: any): string {
+  const parts = [
+    event.title,
+    event.description || "",
+    event.internal_category || event.category || "",
+    event.venue_name || "",
+  ];
+
+  return parts.filter(Boolean).join(" ").trim();
+}
+
 export function cheapNormalizeEvent(
   raw: RawEventCard, 
   source: ScraperSource,
