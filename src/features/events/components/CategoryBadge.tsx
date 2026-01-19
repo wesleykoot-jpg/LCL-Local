@@ -32,7 +32,7 @@ export const CategoryBadge = memo(function CategoryBadge({
         size === 'sm' ? 'px-2 py-0.5 text-[11px] h-6' : 'px-3 py-1 text-[12px] h-8',
         // Style variants
         variant === 'glass' 
-          ? 'bg-gray-900  text-white border-gray-300' 
+          ? 'bg-black text-white border-transparent shadow-sm' // Solid high-contrast
           : cn(config.bgClass, config.textClass, config.borderClass),
         className
       )}

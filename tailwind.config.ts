@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
+
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -57,7 +57,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // LCL Core v5.0 Social Air Design System
+        // LCL Core v6.0 Social Air Design System - Liquid Solid
         // Brand Identity
         brand: {
           primary: '#6366F1', // Social Indigo - Primary Action
@@ -70,15 +70,17 @@ export default {
         },
         // Neutrals (Airbnb-inspired)
         surface: {
-          base: '#F7F7F7',    // Page Background (Canvas)
-          card: '#FFFFFF',    // Content Surface
+          base: '#FFFFFF',    // Page Background (Canvas) - Pure White
+          card: '#FFFFFF',    // Content Surface - Pure White
+          subtle: '#F9FAFB',  // Secondary/App Background
           overlay: 'rgba(0,0,0,0.4)', // Modal Dimmer
         },
         text: {
-          primary: '#222222',   // Ink Black - Headings & Data
-          secondary: '#717171', // Stone Grey - Metadata
-          muted: '#B0B0B0',     // Light Grey - Placeholders
+          primary: '#1A1A1A',   // Deep Charcoal - Max Legibility
+          secondary: '#4B5563', // Neutral Gray - Metadata
+          muted: '#9CA3AF',     // Light Grey - Placeholders
         },
+        border: '#E5E7EB', // Solid Neutral Divider
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -87,31 +89,27 @@ export default {
         "2xl": "1rem",
         "3xl": "24px", // LCL Standard Card Radius (8pt grid)
         "4xl": "32px", // Large UI Elements
-        // v5.0 Social Air Border Radius System
+        // v6.0 Social Air Border Radius System
         'card': '20px',       // Soft, friendly card corners
         'button': '12px',     // Primary buttons
         'pill': '9999px',     // Search bars and tags
         'input': '12px',      // Form inputs
       },
-      // v5.0 Social Air "Air" Shadow System
+      // v6.0 Social Air "Liquid Solid" Shadow System
       boxShadow: {
-        // The "Air" Shadow System
+        // The "Liquid Solid" Shadow System
         'card': '0 6px 16px rgba(0,0,0,0.08)', 
-        'card-hover': '0 12px 32px rgba(0,0,0,0.12)',
+        'card-active': '0 2px 4px rgba(0,0,0,0.18)',
         'floating': '0 8px 24px rgba(0,0,0,0.12)',
-        'bottom-nav': '0 -4px 20px rgba(0,0,0,0.05)', // Upward shadow for sticky footer
-        // Legacy shadows for backward compatibility
-        "card-elevated": "0 4px 20px rgba(0, 0, 0, 0.06)",
-        "float": "0 8px 32px rgba(0, 0, 0, 0.12)",
-        "nav": "0 8px 32px rgba(0, 0, 0, 0.25)",
-        "glass": "0 4px 24px rgba(0, 0, 0, 0.06)",
+        'bottom-nav': '0 -4px 20px rgba(0,0,0,0.05)',
+        // Legacy shadows mapping (for backward compatibility during migration)
+        "card-elevated": "0 6px 16px rgba(0,0,0,0.08)",
+        "float": "0 8px 24px rgba(0,0,0,0.12)",
+        "nav": "0 -4px 20px rgba(0,0,0,0.05)",
+        "glass": "0 6px 16px rgba(0,0,0,0.08)", // No more glass, just shadow
         "up-sheet": "0 -8px 32px rgba(0, 0, 0, 0.12)",
-        "apple-sm": "0 2px 8px rgba(0, 0, 0, 0.04)",
-        "apple-md": "0 4px 20px rgba(0, 0, 0, 0.08)",
-        "apple-lg": "0 12px 40px rgba(0, 0, 0, 0.12)",
-        "apple-xl": "0 20px 64px rgba(0, 0, 0, 0.16)",
       },
-      // Font Family (v5.0 Social Air)
+      // Font Family (v6.0 Social Air)
       fontFamily: {
         sans: ['Inter', 'Circular', 'system-ui', 'sans-serif'],
       },

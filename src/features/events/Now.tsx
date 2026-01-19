@@ -77,7 +77,7 @@ const Now = () => {
 
           {/* Location indicator overlay */}
           <div className="absolute top-safe left-4 right-4 pt-4 z-[1000]">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-card/95 backdrop-blur-sm rounded-full shadow-lg border border-border/50">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-card rounded-full shadow-floating border border-border">
               <MapPin size={16} className="text-primary" />
               <span className="text-[14px] font-medium text-foreground">
                 {locationPrefs.manualZone || 'Current Location'}

@@ -51,9 +51,9 @@ export function PersonaPill({
   };
 
   const variantClasses = {
-    default: 'bg-gray-100 border border-gray-300 text-white',
-    glass: 'bg-gray-50  border border-gray-200 text-white',
-    solid: 'bg-primary text-primary-foreground border-0',
+    default: 'bg-white border border-gray-200 text-text-primary shadow-sm',
+    glass: 'bg-white border border-gray-200 text-text-primary shadow-sm', // Glass deprecated -> Solid
+    solid: 'bg-brand-primary text-white border-0 shadow-sm',
   };
 
   return (

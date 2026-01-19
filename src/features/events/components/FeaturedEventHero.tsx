@@ -99,6 +99,8 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="eager"
         />
+        {/* Netflix-style Scrim */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
         
         {/* Heart/Save button - Airbnb style top right */}
         <button

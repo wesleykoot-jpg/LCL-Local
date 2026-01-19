@@ -126,7 +126,7 @@ export const WhosOutRail = memo(function WhosOutRail({
                 </div>
                 
                 {/* Name label */}
-                <span className="text-white/80 text-[11px] font-medium max-w-[48px] truncate">
+                <span className="text-text-secondary text-[11px] font-medium max-w-[48px] truncate">
                   {activity.user.first_name}
                 </span>
               </motion.button>

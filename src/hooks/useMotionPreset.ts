@@ -10,6 +10,14 @@ import { useReducedMotion } from 'framer-motion';
  * const motionPreset = useMotionPreset();
  * <motion.div initial={motionPreset.initial} animate={motionPreset.animate} />
  */
+// Social Air 6.0 "Liquid Solid" Physics
+export const SOCIAL_AIR_6_SPRING = {
+  type: 'spring',
+  stiffness: 350,
+  damping: 25,
+  mass: 0.8,
+};
+
 export function useMotionPreset() {
   const prefersReducedMotion = useReducedMotion();
 
@@ -55,7 +63,7 @@ export function useMotionPreset() {
       : {
           initial: { scale: 0.9, opacity: 0 },
           animate: { scale: 1, opacity: 1 },
-          transition: { type: 'spring', damping: 20, stiffness: 150 },
+          transition: SOCIAL_AIR_6_SPRING,
         },
 
     /**

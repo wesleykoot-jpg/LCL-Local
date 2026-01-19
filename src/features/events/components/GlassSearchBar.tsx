@@ -62,8 +62,8 @@ export const GlassSearchBar = memo(function GlassSearchBar({
           flex-1 flex items-center gap-3 h-14 rounded-pill px-5
           transition-all duration-200
           ${isSearching 
-            ? 'bg-white border border-gray-200 shadow-card' 
-            : 'bg-gray-100 shadow-card'
+            ? 'bg-white border border-border shadow-card' 
+            : 'bg-white border border-border shadow-card'
           }
         `}
         layout
