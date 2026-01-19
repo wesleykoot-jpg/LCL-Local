@@ -15,14 +15,19 @@ with elastic, organic momentum.
 
 ### A. Color Palette (Indigo & White)
 
-- **Primary (Action Indigo)**: `#6366F1` (Electric Indigo) — The Brand Hero.
+**1. Brand & Action (Interaction)**
+
+- **Brand Primary**: `#6366F1` (Electric Indigo) — Active icons, links, primary
+  buttons.
+- **Brand Secondary**: `#4F46E5` (Indigo-700) — Hover states.
+
+**2. Content & Text (Readability)**
+
+- **Text Primary**: `#1A1A1A` (Deep Charcoal) — Headings, body text.
+- **Text Secondary**: `#4B5563` (Neutral Gray) — Metadata.
 - **Background**: `#FFFFFF` (Pure White).
-- **Surface (Subtle)**: `#F9FAFB` (Soft Slate) — For secondary background
-  sections.
-- **Border**: `#E5E7EB` (Solid Neutral Divider) — Replaces all translucent/glass
-  borders.
-- **Text (Primary)**: `#1A1A1A` (Deep Charcoal) — Maximum legibility.
-- **Text (Secondary)**: `#4B5563` (Neutral Gray).
+- **Surface**: `#F9FAFB` (Soft Slate).
+- **Border**: `#E5E7EB` (Solid Neutral Divider).
 
 ### B. Depth & Elevation
 

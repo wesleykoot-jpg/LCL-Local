@@ -33,7 +33,7 @@ export const CategorySubscribeCard = memo(function CategorySubscribeCard({
         <div className="relative flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-              <Bell className="w-5 h-5 text-primary" />
+              <Bell className="w-5 h-5 text-brand-primary" />
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">

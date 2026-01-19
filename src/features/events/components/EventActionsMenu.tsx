@@ -188,7 +188,7 @@ export function EventActionsMenu({
                 }}
                 className="cursor-pointer font-medium"
               >
-                <GitFork className="mr-2 h-4 w-4 text-primary" />
+                <GitFork className="mr-2 h-4 w-4 text-brand-primary" />
                 <span>Host a Fork</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
