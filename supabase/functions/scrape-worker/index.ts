@@ -675,7 +675,9 @@ if (import.meta.main) {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
       const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
+      const aiApiKey = openaiApiKey || geminiApiKey;
 
       if (!supabaseUrl || !supabaseKey) {
         throw new Error("Missing Supabase env vars");
@@ -709,7 +711,7 @@ if (import.meta.main) {
       console.log(`Worker: Processing ${jobs.length} jobs`);
 
       const results = await Promise.allSettled(
-        jobs.map((job) => processJob(supabase, job, geminiApiKey, enableDeepScraping))
+        jobs.map((job) => processJob(supabase, job, aiApiKey, enableDeepScraping))
       );
 
       const summary = results.reduce(
