@@ -21,6 +21,16 @@ with elastic, organic momentum.
   buttons.
 - **Brand Secondary**: `#4F46E5` (Indigo-700) — Hover states.
 
+#### Semantic Mappings
+
+| Usage              | Token Class          | Color Value |
+| :----------------- | :------------------- | :---------- |
+| **Active Icon**    | `text-brand-primary` | Indigo      |
+| **Text Link**      | `text-brand-primary` | Indigo      |
+| **Primary Button** | `bg-brand-primary`   | Indigo      |
+| **Body Text**      | `text-text-primary`  | Black       |
+| **Heading**        | `text-text-primary`  | Black       |
+
 **2. Content & Text (Readability)**
 
 - **Text Primary**: `#1A1A1A` (Deep Charcoal) — Headings, body text.

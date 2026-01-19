@@ -268,7 +268,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           {!isPast && showJoinButton && hasJoined && (
             <div className="mt-3 pt-3 border-t border-border">
               <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
-                <Check size={16} className="text-primary" />
+                <Check size={16} className="text-brand-primary" />
                 <span>Going</span>
               </div>
             </div>
@@ -409,7 +409,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
       {!isPast && showJoinButton && hasJoined && (
         <div className="mt-3 pt-3 border-t border-border">
           <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
-            <Check size={16} className="text-primary" />
+            <Check size={16} className="text-brand-primary" />
             <span>Going</span>
           </div>
         </div>
