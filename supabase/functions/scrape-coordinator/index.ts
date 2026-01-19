@@ -26,7 +26,7 @@ const CIRCUIT_BREAKER_THRESHOLD = 3;
  * 
  * Usage:
  * POST /functions/v1/scrape-coordinator
- * Body (optional): { "sourceIds": ["uuid1", "uuid2"] }
+ * Body (optional): { "sourceIds": ["uuid1", "uuid2"], "triggerWorker": true }
  */
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -60,7 +60,7 @@ serve(async (req: Request): Promise<Response> => {
     };
 
     // Parse optional request body
-    let options: { sourceIds?: string[] } = {};
+    let options: { sourceIds?: string[]; triggerWorker?: boolean } = {};
     if (req.method === "POST") {
       try {
         const body = await req.text();
@@ -70,7 +70,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    const { sourceIds } = options;
+    const { sourceIds, triggerWorker } = options;
 
     // Get available sources - filter for enabled, not auto-disabled sources
     let query = supabase
@@ -139,6 +139,20 @@ serve(async (req: Request): Promise<Response> => {
       `🚀 Scrape Coordinator: queued ${jobsCreated} jobs for ${eligibleSources.length} sources`,
       false
     );
+
+    // Trigger worker if requested
+    if (triggerWorker && jobsCreated > 0) {
+      console.log("Coordinator: Triggering worker...");
+      // Fire and forget worker trigger
+      fetch(`${supabaseUrl}/functions/v1/scrape-worker`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ enableDeepScraping: true }),
+      }).catch((err) => console.error("Failed to trigger worker:", err));
+    }
 
     return new Response(
       JSON.stringify({

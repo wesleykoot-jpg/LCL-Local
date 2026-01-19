@@ -27,7 +27,7 @@ function getTargetYear(): number {
 
 const TARGET_YEAR = getTargetYear();
 const DEFAULT_EVENT_TYPE = "anchor";
-const BATCH_SIZE = 5;
+const BATCH_SIZE = 20;
 
 class ProxyRetryError extends Error {
   constructor(message: string) {
@@ -788,6 +788,27 @@ serve(async (req: Request): Promise<Response> => {
     );
 
     const allJobsSucceeded = summary.failed === 0;
+
+    // Chain-triggering: if we processed a full batch, check for more jobs
+    if (jobs.length === BATCH_SIZE) {
+      const { count } = await supabase
+        .from("scrape_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+
+      if (count && count > 0) {
+        console.log(`Worker: ${count} more jobs pending, chain-triggering...`);
+        fetch(`${supabaseUrl}/functions/v1/scrape-worker`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify(options),
+        }).catch((err) => console.error("Failed to chain-trigger worker:", err));
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: allJobsSucceeded,
