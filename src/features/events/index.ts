@@ -48,7 +48,7 @@ export { HorizontalEventCarousel } from './components/HorizontalEventCarousel';
 export { Facepile } from './components/Facepile';
 export { CategorySubscribeCard } from './components/CategorySubscribeCard';
 export { DiscoveryRail } from './components/DiscoveryRail';
-export { GlassSearchBar } from './components/GlassSearchBar';
+export { SolidSearchBar } from './components/SolidSearchBar';
 export { DeepDiveView } from './components/DeepDiveView';
 
 // Now Mode Components
