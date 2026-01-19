@@ -36,7 +36,7 @@ export function parseToISODate(dateStr: string, today?: Date): string | null {
 
   const textual = cleaned.replace(/,/g, " ").replace(/\s+/g, " ").trim();
   const dayNamePattern = "(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|monday|tuesday|wednesday|thursday|friday|saturday|sunday)?";
-  const textualMatch = textual.match(new RegExp(`^${dayNamePattern}\\s*(\\d{1,2})\\s*([\\p{L}.]+)\\s*(\\d{2,4})?$`, "iu"));
+  const textualMatch = textual.match(new RegExp(`^${dayNamePattern}\\s*(\\d{1,2})\\s*([\\p{L}.]+)(?:\\s*(\\d{2,4}))?`, "iu"));
   if (textualMatch) {
     const day = parseInt(textualMatch[2], 10);
     const monthNameRaw = textualMatch[3].replace(/\./g, "");

@@ -549,6 +549,7 @@ async function processSingleSource(
     }
 
     if (!normalized) {
+      console.log(`   ⏭️ Skipping: Normalization failed for "${raw.title}" (Date: ${raw.date})`);
       stats.failed++;
       continue;
     }
@@ -556,6 +557,7 @@ async function processSingleSource(
     const contentHash = await createContentHash(normalized.title, normalized.event_date);
     const contentExists = await contentHashExists(supabase, contentHash);
     if (contentExists) {
+      console.log(`   ⏭️ Skipping: Duplicate content_hash for "${normalized.title}"`);
       stats.duplicates++;
       continue;
     }
@@ -563,6 +565,7 @@ async function processSingleSource(
     const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, source.id);
     const exists = await fingerprintExists(supabase, source.id, fingerprint);
     if (exists) {
+      console.log(`   ⏭️ Skipping: Duplicate fingerprint for "${normalized.title}"`);
       stats.duplicates++;
       continue;
     }
@@ -596,6 +599,7 @@ async function processSingleSource(
       content_hash: contentHash,
     };
 
+    console.log(`   ✅ Inserting: "${normalized.title}" [${normalized.event_date}]`);
     const inserted = await insertEvent(supabase, eventInsert, source.id);
     if (inserted) {
       stats.inserted++;

@@ -37,14 +37,12 @@ async function main() {
             console.log(`📦 Claimed ${jobs.length} jobs.`);
             
             // Process sequentially or parallel? Parallel is faster.
-            const results = await Promise.allSettled(
-                jobs.map(job => processJob(supabase, job, undefined, true)) // Disable Gemini by passing undefined
-            );
-            
-            const succeeded = results.filter(r => r.status === 'fulfilled' && r.value.status === 'completed').length;
-            const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value.status === 'failed')).length;
-            
-            console.log(`🏁 Batch finished: ${succeeded} succeeded, ${failed} failed.`);
+            console.log("Processing batch...");
+            for (const job of jobs) {
+                 const res = await processJob(supabase, job, undefined, true);
+                 const stats = (res as any).stats;
+                 console.log(`Job ${job.id} for source ${job.source_id}: Scraped ${stats?.scraped ?? 0}, Inserted ${stats?.inserted ?? 0}`);
+            }
             
         } catch (err) {
             console.error("❌ Cycle error:", err);
