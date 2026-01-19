@@ -6,6 +6,8 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { config } from "https://deno.land/std@0.168.0/dotenv/mod.ts";
+config({ export: true, safe: false });
 
 // Use the public URL and anon key from .env (available in repo)
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://mlpefjsbriqgxcaqxhic.supabase.co";

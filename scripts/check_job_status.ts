@@ -1,5 +1,6 @@
-
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { config } from "https://deno.land/std@0.168.0/dotenv/mod.ts";
+config({ export: true, safe: false });
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
