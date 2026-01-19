@@ -404,13 +404,16 @@ async function processSingleSource(
             if (embedResult && embedResult.embedding) {
                 embedding = embedResult.embedding;
                 // Check for existing similar events
-                const { data: matches } = await supabase.rpc("match_events", {
+                const { data: matches, error: matchError } = await supabase.rpc("match_events", {
                     query_embedding: embedding,
                     match_threshold: 0.95, // Very strict
                     match_count: 1
                 });
                 
-                if (matches && matches.length > 0) {
+                if (matchError) {
+                    // This often happens if schema cache is old
+                    console.warn(`Semantic match RPC failed (schema cache?): ${matchError.message}`);
+                } else if (matches && matches.length > 0) {
                     const match = matches[0];
                     // Check date proximity (within 24h)
                     const matchDate = new Date(match.event_date).getTime();
@@ -429,6 +432,20 @@ async function processSingleSource(
     }
 
     if (semanticDuplicate) {
+        stats.duplicates++;
+        continue;
+    }
+
+    // --- NEW: Title/Date Exact Match Fallback ---
+    // This is a safety net in case AI de-duplication is skipped or fails
+    const exactExists = await supabase.from("events")
+        .select("id")
+        .eq("title", normalized.title)
+        .eq("event_date", normalizedDate.timestamp)
+        .limit(1);
+    
+    if (exactExists.data && exactExists.data.length > 0) {
+        console.log(`Exact title/date duplicate found: "${normalized.title}" on ${normalized.event_date}`);
         stats.duplicates++;
         continue;
     }
