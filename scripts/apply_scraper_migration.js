@@ -22,8 +22,12 @@ async function run() {
         await client.connect();
         console.log("Connected successfully.");
 
-        // Path to migration file relative to this script
-        const sqlPath = path.join(__dirname, '../supabase/migrations/20260118000001_fix_scraper_schema_and_config.sql');
+        // Path to migration file from command line arg or default
+        const migrationFile = process.argv[2];
+        if (!migrationFile) {
+            throw new Error("Please provide a migration file path as an argument");
+        }
+        const sqlPath = path.resolve(__dirname, migrationFile);
 
         if (!fs.existsSync(sqlPath)) {
             throw new Error(`Migration file not found at: ${sqlPath}`);
