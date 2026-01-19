@@ -185,7 +185,7 @@ export async function healSelectors(
   } catch (e) {
     console.warn("Failed to parse healed selectors:", e);
   }
-
+  return null;
 }
 
 export interface EmbeddingResponse {

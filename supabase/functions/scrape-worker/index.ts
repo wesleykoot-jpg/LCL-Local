@@ -15,7 +15,7 @@ import {
 } from "../_shared/scraperUtils.ts";
 
 import { jitteredDelay } from "../_shared/rateLimiting.ts";
-import { parseEventWithAI, healSelectors } from "../_shared/aiParsing.ts";
+import { parseEventWithAI, healSelectors, generateEmbedding } from "../_shared/aiParsing.ts";
 
 
 const corsHeaders = {
