@@ -176,7 +176,8 @@ interface NormalizedEvent {
 
 function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): NormalizedEvent | null {
   if (!raw.title) return null;
-  const isoDate = parseToISODate(raw.date);
+  const cleanedDate = (raw.date || "").replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+  const isoDate = parseToISODate(cleanedDate);
   if (!isoDate || !isTargetYear(isoDate)) return null;
 
   const time = raw.detailPageTime || extractTimeFromHtml(raw.rawHtml) || extractTimeFromHtml(raw.description) || "TBD";
