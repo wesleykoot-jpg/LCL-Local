@@ -1,7 +1,7 @@
 import { Compass, Map, User, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/shared/lib/haptics';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 
 type NavView = 'feed' | 'planning' | 'profile' | 'now';

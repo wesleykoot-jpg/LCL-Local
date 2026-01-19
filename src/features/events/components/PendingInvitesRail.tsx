@@ -50,7 +50,7 @@ function InviteCard({ invite, onRespond }: { invite: ItineraryItem; onRespond: a
     return (
         <motion.div
             className="flex-shrink-0 w-[260px] bg-surface-card rounded-card shadow-card p-3 border border-border snap-center"
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.96 }}
         >
             <div className="flex items-start gap-3 mb-3">
                 {/* Date Box */}
