@@ -22,7 +22,7 @@ port = 54322
 # Database name
 # name = "lcl_local"
 # Enable PostGIS extension for geospatial features
-major_version = 15
+major_version = 17
 
 [studio]
 # Port for Supabase Studio (local dashboard)

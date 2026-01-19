@@ -30,5 +30,19 @@ jobs:
             exit 1
           fi
 
-          supabase link --project-ref $SUPABASE_PROJECT_ID --password $SUPABASE_DB_PASSWORD
-          supabase db push
+          echo "🔗 Linking to project..."
+          supabase link --project-ref $SUPABASE_PROJECT_ID --password "$SUPABASE_DB_PASSWORD"
+
+          echo "📤 Pushing migrations..."
+          # Retry up to 3 times in case of transient connection issues
+          for i in 1 2 3; do
+            if supabase db push; then
+              echo "✅ Migrations pushed successfully!"
+              exit 0
+            else
+              echo "⚠️ Attempt $i failed, retrying in 10s..."
+              sleep 10
+            fi
+          done
+          echo "❌ All attempts failed."
+          exit 1
