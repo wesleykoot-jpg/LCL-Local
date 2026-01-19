@@ -32,6 +32,128 @@ export type Database = {
         }
         Relationships: []
       }
+      cities: {
+        Row: {
+          admin1_code: string | null
+          continent: string | null
+          country_code: string
+          created_at: string | null
+          discovery_status: string | null
+          geoname_id: number | null
+          id: string
+          last_discovery_at: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          population: number | null
+          priority_tier: number | null
+          timezone: string | null
+        }
+        Insert: {
+          admin1_code?: string | null
+          continent?: string | null
+          country_code: string
+          created_at?: string | null
+          discovery_status?: string | null
+          geoname_id?: number | null
+          id?: string
+          last_discovery_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          population?: number | null
+          priority_tier?: number | null
+          timezone?: string | null
+        }
+        Update: {
+          admin1_code?: string | null
+          continent?: string | null
+          country_code?: string
+          created_at?: string | null
+          discovery_status?: string | null
+          geoname_id?: number | null
+          id?: string
+          last_discovery_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          population?: number | null
+          priority_tier?: number | null
+          timezone?: string | null
+        }
+        Relationships: []
+      }
+      content_reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          event_id: string | null
+          id: string
+          reason: string
+          reported_user_id: string | null
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          reason: string
+          reported_user_id?: string | null
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          reason?: string
+          reported_user_id?: string | null
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_reports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reports_reported_user_id_fkey"
+            columns: ["reported_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discovery_jobs: {
         Row: {
           attempts: number | null
@@ -191,9 +313,62 @@ export type Database = {
           },
         ]
       }
+      event_invites: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          invited_by: string
+          invited_user_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          invited_by: string
+          invited_user_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          invited_by?: string
+          invited_user_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_invites_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_invites_invited_user_id_fkey"
+            columns: ["invited_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           category: string
+          content_hash: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -201,13 +376,16 @@ export type Database = {
           event_fingerprint: string | null
           event_time: string
           event_type: string
+          google_place_id: string | null
           id: string
           image_url: string | null
+          is_private: boolean
           location: unknown
           match_percentage: number | null
           max_attendees: number | null
           parent_event_id: string | null
           source_id: string | null
+          source_url: string | null
           status: string | null
           title: string
           updated_at: string | null
@@ -215,6 +393,7 @@ export type Database = {
         }
         Insert: {
           category: string
+          content_hash?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -222,13 +401,16 @@ export type Database = {
           event_fingerprint?: string | null
           event_time: string
           event_type: string
+          google_place_id?: string | null
           id?: string
           image_url?: string | null
+          is_private?: boolean
           location: unknown
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
           source_id?: string | null
+          source_url?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
@@ -236,6 +418,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          content_hash?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -243,13 +426,16 @@ export type Database = {
           event_fingerprint?: string | null
           event_time?: string
           event_type?: string
+          google_place_id?: string | null
           id?: string
           image_url?: string | null
+          is_private?: boolean
           location?: unknown
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
           source_id?: string | null
+          source_url?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
@@ -449,6 +635,7 @@ export type Database = {
           events_scraped: number | null
           id: string
           max_attempts: number | null
+          payload: Json | null
           priority: number | null
           source_id: string
           started_at: string | null
@@ -464,6 +651,7 @@ export type Database = {
           events_scraped?: number | null
           id?: string
           max_attempts?: number | null
+          payload?: Json | null
           priority?: number | null
           source_id: string
           started_at?: string | null
@@ -479,6 +667,7 @@ export type Database = {
           events_scraped?: number | null
           id?: string
           max_attempts?: number | null
+          payload?: Json | null
           priority?: number | null
           source_id?: string
           started_at?: string | null
@@ -495,11 +684,48 @@ export type Database = {
           },
         ]
       }
+      scraper_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          events_failed: number | null
+          events_scraped: number | null
+          events_skipped: number | null
+          id: string
+          status: string
+          strategy: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          events_failed?: number | null
+          events_scraped?: number | null
+          events_skipped?: number | null
+          id?: string
+          status: string
+          strategy: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          events_failed?: number | null
+          events_scraped?: number | null
+          events_skipped?: number | null
+          id?: string
+          status?: string
+          strategy?: string
+        }
+        Relationships: []
+      }
       scraper_sources: {
         Row: {
           auto_disabled: boolean | null
           auto_discovered: boolean | null
           config: Json
+          consecutive_errors: number | null
           consecutive_failures: number | null
           country: string | null
           created_at: string
@@ -511,19 +737,25 @@ export type Database = {
           language: string | null
           last_discovery_at: string | null
           last_error: string | null
+          last_rate_limit_remaining: number | null
+          last_rate_limit_reset_ts: string | null
+          last_rate_limit_retry_after_seconds: number | null
           last_scraped_at: string | null
           last_success: boolean | null
           location_name: string | null
           name: string
+          next_scrape_at: string | null
           requires_render: boolean | null
           total_events_scraped: number | null
           updated_at: string
           url: string
+          volatility_score: number | null
         }
         Insert: {
           auto_disabled?: boolean | null
           auto_discovered?: boolean | null
           config?: Json
+          consecutive_errors?: number | null
           consecutive_failures?: number | null
           country?: string | null
           created_at?: string
@@ -535,19 +767,25 @@ export type Database = {
           language?: string | null
           last_discovery_at?: string | null
           last_error?: string | null
+          last_rate_limit_remaining?: number | null
+          last_rate_limit_reset_ts?: string | null
+          last_rate_limit_retry_after_seconds?: number | null
           last_scraped_at?: string | null
           last_success?: boolean | null
           location_name?: string | null
           name: string
+          next_scrape_at?: string | null
           requires_render?: boolean | null
           total_events_scraped?: number | null
           updated_at?: string
           url: string
+          volatility_score?: number | null
         }
         Update: {
           auto_disabled?: boolean | null
           auto_discovered?: boolean | null
           config?: Json
+          consecutive_errors?: number | null
           consecutive_failures?: number | null
           country?: string | null
           created_at?: string
@@ -559,14 +797,19 @@ export type Database = {
           language?: string | null
           last_discovery_at?: string | null
           last_error?: string | null
+          last_rate_limit_remaining?: number | null
+          last_rate_limit_reset_ts?: string | null
+          last_rate_limit_retry_after_seconds?: number | null
           last_scraped_at?: string | null
           last_success?: boolean | null
           location_name?: string | null
           name?: string
+          next_scrape_at?: string | null
           requires_render?: boolean | null
           total_events_scraped?: number | null
           updated_at?: string
           url?: string
+          volatility_score?: number | null
         }
         Relationships: []
       }
@@ -659,6 +902,84 @@ export type Database = {
           srtext?: string | null
         }
         Relationships: []
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_relationships: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_relationships_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_relationships_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -833,6 +1154,16 @@ export type Database = {
             }
             Returns: string
           }
+      claim_scrape_jobs: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          out_attempts: number
+          out_id: string
+          out_max_attempts: number
+          out_payload: Json
+          out_source_id: string
+        }[]
+      }
       cleanup_old_error_logs: { Args: never; Returns: number }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
@@ -866,6 +1197,13 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
+      enqueue_scrape_jobs: {
+        Args: { p_jobs: Json }
+        Returns: {
+          out_job_id: string
+          out_source_id: string
+        }[]
+      }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
@@ -973,7 +1311,44 @@ export type Database = {
           requests_per_minute: number
         }[]
       }
+      get_friends_pulse: { Args: { current_user_id: string }; Returns: Json }
+      get_recent_scraper_runs: {
+        Args: { p_limit?: number; p_strategy?: string }
+        Returns: {
+          completed_at: string
+          error_message: string
+          events_failed: number
+          events_scraped: number
+          events_skipped: number
+          id: string
+          status: string
+          strategy: string
+        }[]
+      }
+      get_scraper_stats: {
+        Args: { p_days?: number; p_strategy?: string }
+        Returns: {
+          failed_runs: number
+          strategy: string
+          success_rate: number
+          successful_runs: number
+          total_events_failed: number
+          total_events_scraped: number
+          total_events_skipped: number
+          total_runs: number
+        }[]
+      }
       gettransactionid: { Args: never; Returns: unknown }
+      increase_source_rate_limit: {
+        Args: {
+          p_remaining?: number
+          p_reset_ts?: string
+          p_retry_after_seconds?: number
+          p_source_id: string
+          p_status_code: number
+        }
+        Returns: undefined
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
@@ -1598,14 +1973,24 @@ export type Database = {
       }
       trigger_scrape_coordinator: { Args: never; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
-      update_scraper_source_stats: {
-        Args: {
-          p_events_scraped: number
-          p_source_id: string
-          p_success: boolean
-        }
-        Returns: undefined
-      }
+      update_scraper_source_stats:
+        | {
+            Args: {
+              p_events_scraped: number
+              p_source_id: string
+              p_success: boolean
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_events_scraped: number
+              p_last_error?: string
+              p_source_id: string
+              p_success: boolean
+            }
+            Returns: undefined
+          }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
