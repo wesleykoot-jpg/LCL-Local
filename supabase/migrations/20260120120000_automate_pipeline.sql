@@ -130,11 +130,73 @@ BEGIN
 END;
 $$;
 
--- 5. Schedule cron jobs
+-- 5. Audit Logging for pg_net (Recommended by Supabase AI)
+CREATE TABLE IF NOT EXISTS public.net_http_responses_audit (
+    id bigserial PRIMARY KEY,
+    request_id uuid,
+    status integer,
+    url text,
+    method text,
+    headers jsonb,
+    body jsonb,
+    started_at timestamptz,
+    completed_at timestamptz,
+    duration_ms integer,
+    created_at timestamptz DEFAULT now()
+);
+
+-- Polling function to archive net responses
+CREATE OR REPLACE FUNCTION public.poll_net_http_responses_audit(p_since interval DEFAULT '5 minutes') 
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_count integer;
+BEGIN
+    -- Check if net._http_response exists (it should if pg_net is enabled)
+    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = '_http_response' AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'net')) THEN
+        RETURN 0;
+    END IF;
+
+    WITH moved_rows AS (
+        SELECT 
+            id, request_id, status, url, method, headers, body, started_at, completed_at,
+            EXTRACT(EPOCH FROM (completed_at - started_at)) * 1000 AS duration_ms
+        FROM net._http_response
+        WHERE started_at >= now() - p_since
+    ),
+    inserted AS (
+        INSERT INTO public.net_http_responses_audit 
+        (request_id, status, url, method, headers, body, started_at, completed_at, duration_ms)
+        SELECT request_id, status, url, method, headers, body, started_at, completed_at, duration_ms
+        FROM moved_rows
+        ON CONFLICT DO NOTHING -- Avoid duplicates if running overlapping
+        RETURNING id
+    )
+    SELECT count(*) INTO v_count FROM inserted;
+
+    RETURN v_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.poll_net_http_responses_audit(interval) TO postgres;
+GRANT EXECUTE ON FUNCTION public.poll_net_http_responses_audit(interval) TO service_role;
+
+
+-- 6. Schedule cron jobs
 -- Note: 'postgres' database is usually where pg_cron runs in Supabase
 -- If pg_cron is not enabled on this DB, these calls might fail or be ignored.
 
--- 5a. Cleanup Stuck Jobs (Every 30 mins)
+-- 6a. Poll Audit Logs (Every 5 mins)
+SELECT cron.schedule(
+  'poll_net_audit',
+  '*/5 * * * *',
+  $$SELECT public.poll_net_http_responses_audit('5 minutes'::interval)$$
+);
+
+-- 6b. Cleanup Stuck Jobs (Every 30 mins)
 SELECT cron.schedule(
   'cleanup-stuck-jobs',
   '*/30 * * * *',
