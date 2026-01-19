@@ -5,13 +5,14 @@
 export { 
   getSources, 
   toggleSource, 
-  triggerScraper, 
-  testSource,
-  disableBrokenSources,
-  resetSourceHealth,
+  triggerCoordinator,
+  triggerWorker,
+  retryFailedJobs,
+  fetchLogs,
   type ScraperSource,
-  type ScrapeResult,
-  type DryRunResult
+  type LogEntry,
+  type LogsResult,
+  type CoordinatorResult
 } from './api/scraperService';
 
 // Pages (for route usage)
