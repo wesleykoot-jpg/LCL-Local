@@ -47,9 +47,9 @@ export const TimeFilterPills = memo(function TimeFilterPills({
     <div className="relative pl-1">
       <div 
         ref={containerRef}
-        className="flex items-center gap-2 p-1.5 bg-muted/50 rounded-[1.5rem] border-[0.5px] border-border/20 overflow-x-auto scrollbar-hide"
+        className="flex items-center gap-2 p-1.5 bg-muted rounded-[1.5rem] border-[0.5px] border-border overflow-x-auto scrollbar-hide"
         style={{
-          boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.04)'
+          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.02)'
         }}
       >
         {FILTERS.map((filter) => {
@@ -86,7 +86,7 @@ export const TimeFilterPills = memo(function TimeFilterPills({
       {/* Right fade indicator - matches muted/50 background */}
       {showFade && (
         <div 
-          className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-muted/50 to-transparent pointer-events-none rounded-r-[1.5rem]"
+          className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-muted to-transparent pointer-events-none rounded-r-[1.5rem]"
           aria-hidden="true"
         />
       )}

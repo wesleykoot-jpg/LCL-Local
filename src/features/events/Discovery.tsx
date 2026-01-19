@@ -254,11 +254,11 @@ const Discovery = () => {
     if (!eventId) setSelectedEventId(null);
   }, [selectedEventId, joinEvent]);
 
-  const handleNavigate = useCallback((view: 'feed' | 'planning' | 'profile' | 'scraper') => {
+  const handleNavigate = useCallback((view: 'feed' | 'planning' | 'profile' | 'now') => {
     if (view === 'feed') navigate('/');
     else if (view === 'profile') navigate('/profile');
     else if (view === 'planning') navigate('/planning');
-    else if (view === 'scraper') navigate('/scraper-admin');
+    else if (view === 'now') navigate('/now');
   }, [navigate]);
 
   const handleLocationClick = useCallback(async () => {
@@ -554,7 +554,7 @@ const Discovery = () => {
           }}
           className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-card bg-primary text-primary-foreground flex items-center justify-center mb-safe shadow-floating focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
           whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileTap={{ scale: 0.96 }}
           aria-label="Create new event"
         >
           <Plus size={28} strokeWidth={2.5} />

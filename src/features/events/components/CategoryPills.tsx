@@ -56,7 +56,7 @@ export const CategoryPills = ({ selectedCategory, onSelectCategory }: CategoryPi
                                 : 'bg-surface-card text-text-secondary border-border hover:border-brand-primary/30 hover:bg-surface-base'
                             }
             `}
-                        whileTap={{ scale: 0.95 }}
+                        whileTap={{ scale: 0.96 }}
                     >
                         <Icon size={14} className={isSelected ? 'text-white' : cat.color} />
                         {cat.label}

@@ -46,7 +46,7 @@ export const EventCard = ({
         />
         
         {/* Social Proof Overlay (Facepile) */}
-        <div className="absolute bottom-3 right-3 flex -space-x-2 bg-white/90 p-1.5 rounded-full shadow-sm">
+        <div className="absolute bottom-3 right-3 flex -space-x-2 bg-white p-1.5 rounded-full shadow-sm">
           {friendAvatars.slice(0, 3).map((src, i) => (
             <img 
               key={i} 

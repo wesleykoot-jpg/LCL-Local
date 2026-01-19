@@ -112,7 +112,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
         
         {/* Category badge - top left */}
         <div className="absolute top-3 left-3">
-          <CategoryBadge category={categoryLabel} variant="glass" size="sm" />
+          <CategoryBadge category={categoryLabel} variant="default" size="sm" />
         </div>
 
         {/* Date badge */}
