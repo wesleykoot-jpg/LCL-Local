@@ -139,8 +139,18 @@ export function formatEventLocation(
   if (structuredLocation?.name) {
     return structuredLocation.name;
   }
+
+  // Fallback to structured location address
+  if (structuredLocation?.address) {
+    return structuredLocation.address;
+  }
   
-  return venueName || 'Locatie onbekend';
+  // Last resort: legacy venue name (if valid)
+  if (venueName && venueName.toLowerCase() !== 'unknown' && venueName.toLowerCase() !== 'unknown location') {
+    return venueName;
+  }
+
+  return 'Locatie onbekend';
 }
 
 /**
