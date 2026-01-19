@@ -22,7 +22,7 @@ ON public.events (content_hash);
 
 -- Enqueue jobs and update scheduling in a single transaction
 CREATE OR REPLACE FUNCTION public.enqueue_scrape_jobs(p_jobs jsonb)
-RETURNS TABLE(job_id uuid, source_id uuid)
+RETURNS TABLE(out_job_id uuid, out_source_id uuid)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -35,30 +35,30 @@ BEGIN
   RETURN QUERY
   WITH job_rows AS (
     SELECT
-      (job->>'source_id')::uuid AS source_id,
-      COALESCE(job->'payload', '{}'::jsonb) AS payload,
-      (job->>'next_scrape_at')::timestamptz AS next_scrape_at
+      (job->>'source_id')::uuid AS src_id,
+      COALESCE(job->'payload', '{}'::jsonb) AS job_payload,
+      (job->>'next_scrape_at')::timestamptz AS next_at
     FROM jsonb_array_elements(p_jobs) job
   ),
   cleaned AS (
     DELETE FROM public.scrape_jobs
     WHERE status = 'pending'
-      AND source_id IN (SELECT source_id FROM job_rows)
+      AND public.scrape_jobs.source_id IN (SELECT src_id FROM job_rows)
   ),
   inserted AS (
     INSERT INTO public.scrape_jobs (source_id, status, payload, created_at)
-    SELECT source_id, 'pending', payload, NOW()
+    SELECT src_id, 'pending', job_payload, NOW()
     FROM job_rows
     RETURNING id, source_id
   ),
   updated AS (
     UPDATE public.scraper_sources s
-    SET next_scrape_at = jr.next_scrape_at
+    SET next_scrape_at = jr.next_at
     FROM job_rows jr
-    WHERE s.id = jr.source_id
-      AND jr.next_scrape_at IS NOT NULL
+    WHERE s.id = jr.src_id
+      AND jr.next_at IS NOT NULL
   )
-  SELECT id, source_id FROM inserted;
+  SELECT i.id, i.source_id FROM inserted i;
 END;
 $$;
 
