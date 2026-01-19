@@ -182,7 +182,15 @@ export async function claimScrapeJobs(
   }
 
   // Map RPC output (out_*) to ScrapeJobRecord interface
-  return (data ?? []).map((row: ScraperSource) => ({
+  interface ClaimedJob {
+    out_id: string;
+    out_source_id: string;
+    // deno-lint-ignore no-explicit-any
+    out_payload: any;
+    out_attempts: number;
+    out_max_attempts: number;
+  }
+  return (data ?? []).map((row: ClaimedJob) => ({
     id: row.out_id,
     source_id: row.out_source_id,
     payload: row.out_payload,
