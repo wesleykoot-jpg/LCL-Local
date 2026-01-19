@@ -56,11 +56,11 @@ export async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-export async function createEventFingerprint(title: string, eventDate: string, sourceId: string): Promise<string> {
+export function createEventFingerprint(title: string, eventDate: string, sourceId: string): Promise<string> {
   return sha256Hex(`${title}|${eventDate}|${sourceId}`);
 }
 
-export async function createContentHash(title: string, eventDate: string): Promise<string> {
+export function createContentHash(title: string, eventDate: string): Promise<string> {
   return sha256Hex(`${title}|${eventDate}`);
 }
 
@@ -114,7 +114,16 @@ export function mapToInternalCategory(input?: string): InternalCategory {
   return "community";
 }
 
-export function eventToText(event: any): string {
+
+interface EventLike {
+  title?: string;
+  description?: string;
+  internal_category?: string;
+  category?: string;
+  venue_name?: string;
+}
+
+export function eventToText(event: EventLike): string {
   const parts = [
     event.title,
     event.description || "",

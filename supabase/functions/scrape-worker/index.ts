@@ -182,7 +182,7 @@ export async function claimScrapeJobs(
   }
 
   // Map RPC output (out_*) to ScrapeJobRecord interface
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: ScraperSource) => ({
     id: row.out_id,
     source_id: row.out_source_id,
     payload: row.out_payload,
@@ -379,6 +379,46 @@ async function processSingleSource(
       normalized.event_time === "TBD" ? "12:00" : normalized.event_time
     ); // _shared
 
+    // Semantic De-Duplication
+    // Only strictly if we have an API key and the event passed basic deduplication
+    // This catches "Jazz in Park" vs "Jazz @ Park" variations on same day
+    let semanticDuplicate = false;
+    let embedding: number[] | null = null;
+    
+    if (geminiApiKey) {
+        const textToEmbed = eventToText(normalized);
+        const embedResult = await generateEmbedding(geminiApiKey, textToEmbed, fetch);
+        if (embedResult) {
+            embedding = embedResult.embedding;
+            // Check for existing similar events
+            if (embedding) {
+               const { data: matches } = await supabase.rpc("match_events", {
+                   query_embedding: embedding,
+                   match_threshold: 0.95, // Very strict
+                   match_count: 1
+               });
+               
+               if (matches && matches.length > 0) {
+                   const match = matches[0];
+                   // Check date proximity (within 24h)
+                   const matchDate = new Date(match.event_date).getTime();
+                   const currentDate = new Date(normalizedDate.timestamp).getTime();
+                   const diffHours = Math.abs(matchDate - currentDate) / (1000 * 60 * 60);
+                   
+                   if (diffHours < 24) {
+                       console.log(`Semantic duplicate found: "${normalized.title}" ~= "${match.title}" (${match.similarity.toFixed(4)})`);
+                       semanticDuplicate = true;
+                   }
+               }
+            }
+        }
+    }
+
+    if (semanticDuplicate) {
+        stats.duplicates++;
+        continue;
+    }
+
     const defaultCoords = source.default_coordinates || source.config.default_coordinates;
     const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(0 0)";
 
@@ -402,6 +442,9 @@ async function processSingleSource(
       source_id: source.id,
       event_fingerprint: fingerprint,
       content_hash: contentHash,
+      embedding: embedding, // Store the embedding we generated!
+      embedding_generated_at: embedding ? new Date().toISOString() : null,
+      embedding_model: embedding ? 'gemini-text-embedding-004' : null,
     };
 
     const inserted = await insertEvent(supabase, eventInsert, source.id);
