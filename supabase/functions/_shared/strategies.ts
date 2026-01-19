@@ -499,6 +499,10 @@ const SELECTORS = [
   "[class*='agenda']",
   "li.event",
   ".post-item",
+  ".datum-item",
+  ".activity-card",
+  ".card--event",
+  ".event-list-item",
 ];
 
 export class DefaultStrategy implements ScraperStrategy {
@@ -550,8 +554,17 @@ export class DefaultStrategy implements ScraperStrategy {
         if (!title || title.length < 3) return;
 
         // Extract date
-        const dateText = $el.find("time, .date, [class*='date'], [datetime]").first().text().trim() ||
+        let dateText = $el.find("time, .date, [class*='date'], [class*='datum'], [class*='tijd'], [datetime]").first().text().trim() ||
           $el.attr("datetime") || "";
+
+        // Fallback: If no date element, look at first few lines of text
+        if (!dateText) {
+            const allText = $el.text().trim();
+            // Match strings like "21 jan", "12 februari", "vrijdag 7 mrt"
+            const datePattern = /(?:\d{1,2}\s+(?:jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)[a-z]*|\d{1,2}-\d{1,2}-\d{2,4})/i;
+            const match = allText.match(datePattern);
+            if (match) dateText = match[0];
+        }
 
         // Extract location
         const location = $el.find(".location, .venue, [class*='location'], [class*='venue']").first().text().trim() ||

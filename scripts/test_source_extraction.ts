@@ -13,21 +13,21 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function main() {
-    // 1. Pick a source that was recently scraped (even if 0 events)
-    const { data: job } = await supabase
-        .from("scrape_jobs")
-        .select("source_id")
-        .eq("status", "completed")
-        .gt("events_scraped", 0) // Pick one that actually found something
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .single();
-        
-    if (!job) {
-        console.log("No completed jobs with scraped > 0 found. Searching all sources...");
-    }
+    let sourceId = Deno.args[0];
     
-    const sourceId = job?.source_id || "d4038737-6bf7-43ca-870e-034ceba85cad"; // Default fallback
+    if (!sourceId) {
+        // 1. Pick a source that was recently scraped (even if 0 events)
+        const { data: job } = await supabase
+            .from("scrape_jobs")
+            .select("source_id")
+            .eq("status", "completed")
+            .gt("events_scraped", 0) // Pick one that actually found something
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .single();
+            
+        sourceId = job?.source_id || "d4038737-6bf7-43ca-870e-034ceba85cad"; // Default fallback
+    }
     
     console.log(`Debugging Source ID: ${sourceId}`);
     
