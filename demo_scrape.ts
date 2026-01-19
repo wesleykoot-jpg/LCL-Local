@@ -468,6 +468,12 @@ async function parseLLMEvent(snippet: string, pageUrl: string) {
 
 async function upsertToSupabase(client: SupabaseClient | null, event: NormalizedEvent) {
   if (!client) return { insertedId: null, duplicate: false, error: null };
+  // Fetch sources
+  const { data: sources, error: sourceError } = await client
+    .from("scraper_sources")
+    .select("*")
+    .ilike("location_name", "%Venlo%")
+    .eq("enabled", true);
   try {
     const { data, error } = await client
       .from("events")

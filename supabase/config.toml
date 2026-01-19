@@ -1,8 +1,8 @@
 # LCL Local Development - Supabase Configuration
 # This file configures local Supabase development environment
 
-[project]
-id = "lcl-local-dev"
+#[project]
+#id = "lcl-local-dev"
 
 [api]
 # Port to use for the local Supabase API server
@@ -20,7 +20,7 @@ max_rows = 1000
 # Port to use for the local Postgres database
 port = 54322
 # Database name
-name = "lcl_local"
+# name = "lcl_local"
 # Enable PostGIS extension for geospatial features
 major_version = 15
 
@@ -29,7 +29,7 @@ major_version = 15
 port = 54323
 enabled = true
 # Enable API documentation
-api_docs_enabled = true
+# api_docs_enabled = true
 
 [inbucket]
 # Port for email testing (captures outgoing emails locally)
@@ -38,14 +38,14 @@ enabled = true
 
 [storage]
 # Port for Storage API
-port = 54325
+# port = 54325
 enabled = true
 # Maximum file size for uploads (10MB for dev)
 file_size_limit = "10MiB"
 
 [auth]
 # Port for GoTrue (auth server)
-port = 54326
+# port = 54326
 # Auth configuration for local development
 site_url = "http://localhost:8080"
 # Disable email confirmation for easier testing
@@ -92,7 +92,7 @@ ip_version = "IPv4"
 # Enable edge functions for local development
 enabled = true
 # Use latest version
-version = "1.30.3"
+# version = "1.30.3"
 
 [functions.scrape-events]
 # Allow unauthenticated access - protected by service role key usage

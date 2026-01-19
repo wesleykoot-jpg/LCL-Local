@@ -267,7 +267,8 @@ async function parseEventWithAI(
 - Retourneer uitsluitend geldige JSON.
 - Weiger evenementen die niet in 2026 plaatsvinden.
 - Houd tekst in originele taal (${language}).
-- velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name, venue_address, image_url`;
+- velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name, venue_address, image_url
+- category: Kies de BEST PASSENDE uit: [active, gaming, entertainment, social, family, outdoors, music, workshops, foodie, community]. Indien onzeker of geen match, kies 'community'.`;
 
   const userPrompt = `Vandaag is ${today}.
 Bron hint titel: ${rawEvent.title}
