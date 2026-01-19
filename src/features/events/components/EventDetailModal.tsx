@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   ChevronDown,
   GitFork,
-  Loader2
+  Loader2,
+  Globe
 } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import { EventActionsMenu } from './EventActionsMenu';
@@ -425,6 +426,19 @@ export const EventDetailModal = memo(function EventDetailModal({
           >
             <div className="flex gap-3 items-center">
               {/* Secondary actions - 52pt buttons */}
+              {event.website_url && (
+                <button
+                  onClick={() => {
+                    hapticImpact('light');
+                    window.open(event.website_url!, '_blank');
+                  }}
+                  className="w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[12px] bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-200 transition-all active:scale-[0.95] border border-gray-200"
+                  aria-label="Event Website"
+                >
+                  <Globe size={22} />
+                </button>
+              )}
+
               <button
                 onClick={handleShare}
                 className="w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[12px] bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-200 transition-all active:scale-[0.95] border border-gray-200"
