@@ -143,4 +143,47 @@ ${rawEvent.rawHtml}`;
     internal_category: category,
     detail_url: rawEvent.detailUrl,
   };
+
+
+export async function healSelectors(
+  apiKey: string,
+  html: string,
+  fetcher: typeof fetch
+): Promise<string[] | null> {
+  // Truncate HTML to avoid token limits, but keep enough structure
+  // Focus on the body content, usually up to 15000 chars is enough for a sample
+  const sampleHtml = normalizeWhitespace(html).slice(0, 15000);
+
+  const systemPrompt = `You are an expert web scraper. Your task is to analyze HTML and discover the CSS selectors for event listings.
+      - Return ONLY valid JSON.
+      - Find the container selector for a single event card/listing.
+      - The selector must return multiple elements (the list of events).
+      - Examples of good selectors: "article.event", ".calendar-item", "div[class*='event-card']", "li.agenda-item".
+      - Return a JSON object with a "selectors" array containing the best 3 candidate selectors for the event card container.`;
+
+  const userPrompt = `Analyze this HTML and find the CSS identifiers for the event cards:
+      ${sampleHtml}`;
+
+  const payload = {
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        { role: "user", parts: [{ text: userPrompt }] },
+      ],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
+  };
+
+  const text = await callGemini(apiKey, payload, fetcher);
+  if (!text) return null;
+
+  try {
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+    const result = JSON.parse(cleaned);
+    if (result.selectors && Array.isArray(result.selectors)) {
+      return result.selectors;
+    }
+  } catch (e) {
+    console.warn("Failed to parse healed selectors:", e);
+  }
+  return null;
 }
