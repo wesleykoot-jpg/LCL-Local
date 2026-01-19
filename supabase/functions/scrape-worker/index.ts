@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 
 import type { ScrapeJobPayload, ScraperSource, NormalizedEvent } from "../_shared/types.ts";

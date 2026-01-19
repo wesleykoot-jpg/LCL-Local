@@ -1,7 +1,7 @@
 import { parseToISODate } from "./dateUtils.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "./categoryMapping.ts";
 import { RawEventCard, ScraperSource, NormalizedEvent } from "./types.ts";
-import * as cheerio from "cheerio";
+import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 
 export function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
