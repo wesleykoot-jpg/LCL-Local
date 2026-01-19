@@ -185,5 +185,56 @@ export async function healSelectors(
   } catch (e) {
     console.warn("Failed to parse healed selectors:", e);
   }
-  return null;
+
+}
+
+export interface EmbeddingResponse {
+  embedding: number[];
+  model: string;
+}
+
+export async function generateEmbedding(
+  apiKey: string,
+  text: string,
+  fetcher: typeof fetch
+): Promise<EmbeddingResponse | null> {
+    try {
+        const response = await fetcher(
+        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+            model: "models/text-embedding-004",
+            content: {
+                parts: [{ text }],
+            },
+            }),
+        }
+        );
+
+        if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Gemini API error:", response.status, errorText);
+        return null;
+        }
+
+        const data = await response.json();
+        const embedding = data.embedding?.values;
+
+        if (!embedding || !Array.isArray(embedding)) {
+        console.error("Invalid embedding response from Gemini");
+        return null;
+        }
+
+        const paddedEmbedding = [...embedding, ...new Array(1536 - embedding.length).fill(0)];
+
+        return {
+        embedding: paddedEmbedding,
+        model: "gemini-text-embedding-004",
+        };
+    } catch (error) {
+        console.error("Error generating Gemini embedding:", error);
+        return null;
+    }
 }
