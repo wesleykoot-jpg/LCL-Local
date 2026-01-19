@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScrapeJobPayload, ScraperSource, RawEventCard } from "../_shared/types.ts";
-import { createFetcherForSource, resolveStrategy } from "../_shared/strategies.ts";
+import { createFetcherForSource, resolveStrategy, type PageFetcher } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 import { logError, logWarning, logSupabaseError } from "../_shared/errorLogging.ts";
@@ -129,7 +129,7 @@ function extractTimeFromHtml(html: string): string | null {
 async function fetchEventDetailTime(
   detailUrl: string,
   baseUrl: string,
-  fetcher: typeof fetch
+  fetcher: PageFetcher
 ): Promise<string | null> {
   try {
     let fullUrl = detailUrl;
@@ -140,10 +140,8 @@ async function fetchEventDetailTime(
       fullUrl = `${baseUrl.replace(/\/$/, "")}/${detailUrl}`;
     }
 
-    const response = await fetcher(fullUrl, { method: "GET" });
-    if (!response.ok) return null;
-
-    const html = await response.text();
+    const { html, statusCode } = await fetcher.fetchPage(fullUrl);
+    if (statusCode >= 400) return null;
     const $ = cheerio.load(html);
     const pageText = $("body").text();
 
@@ -546,7 +544,7 @@ async function processSingleSource(
 
     // Use AI if needed (this is Wall Clock time, not CPU time!)
     if ((!normalized || normalized.event_time === "TBD" || !normalized.description) && geminiApiKey) {
-      const aiResult = await parseEventWithAI(geminiApiKey, raw, source.language || "nl", fetcher);
+      const aiResult = await parseEventWithAI(geminiApiKey, raw, source.language || "nl", fetch);
       if (aiResult) normalized = aiResult;
     }
 
