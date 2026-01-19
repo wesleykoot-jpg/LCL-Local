@@ -231,6 +231,18 @@ export interface RawEvent {
   created_at: string;
 }
 
+export interface NormalizedEvent {
+  title: string;
+  description: string;
+  event_date: string;
+  event_time: string;
+  image_url: string | null;
+  venue_name: string;
+  venue_address?: string;
+  internal_category: InternalCategory;
+  detail_url?: string | null;
+}
+
 // ============================================================================
 // STAGED EVENT TYPES (normalize stage output)
 // ============================================================================

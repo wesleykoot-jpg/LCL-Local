@@ -406,9 +406,13 @@ export class FailoverPageFetcher implements PageFetcher {
  * dynamic fetching (ScrapingBee) for the session.
  * 
  * @param source - The scraper source configuration
+ * @param options - Optional configuration, including useProxy to force proxy usage
  * @returns A PageFetcher instance (with failover capability)
  */
-export function createFetcherForSource(source: ScraperSource): PageFetcher {
+export function createFetcherForSource(
+  source: ScraperSource, 
+  options: { useProxy?: boolean } = {}
+): PageFetcher {
   const fetcherType = source.fetcher_type || 'static';
   const retryConfig: RetryConfig = {
     maxRetries: 3,
@@ -416,19 +420,29 @@ export function createFetcherForSource(source: ScraperSource): PageFetcher {
     maxDelayMs: 10000,
   };
 
+  const dynamicConfig = {
+    apiKey: source.config.scrapingbee_api_key || Deno.env.get('SCRAPINGBEE_API_KEY'),
+    headless: source.config.headless ?? true,
+    waitForSelector: source.config.wait_for_selector,
+    waitForTimeout: source.config.wait_for_timeout,
+  };
+
+  // If proxy is explicitly requested (e.g. for retries), force usage of ScrapingBee
+  if (options.useProxy) {
+    console.log(`Using proxy (ScrapingBee) for ${source.name} as requested`);
+    return new DynamicPageFetcher(
+      'scrapingbee',
+      dynamicConfig,
+      retryConfig
+    );
+  }
+
   // Use failover fetcher for static sources (automatic pivot to dynamic if needed)
   if (fetcherType === 'static') {
     return new FailoverPageFetcher(source);
   }
 
   // Dynamic fetchers (Puppeteer, Playwright, ScrapingBee) - no failover needed
-  const dynamicConfig = {
-    apiKey: source.config.scrapingbee_api_key,
-    headless: source.config.headless ?? true,
-    waitForSelector: source.config.wait_for_selector,
-    waitForTimeout: source.config.wait_for_timeout,
-  };
-
   return new DynamicPageFetcher(
     fetcherType as 'puppeteer' | 'playwright' | 'scrapingbee',
     dynamicConfig,
