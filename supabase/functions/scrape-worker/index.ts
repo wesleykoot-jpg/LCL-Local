@@ -1,9 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+```
+import { serve } "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScrapeJobPayload, ScraperSource, RawEventCard } from "../_shared/types.ts";
-import { createSpoofedFetch, resolveStrategy } from "../_shared/strategies.ts";
+import createFetcherForSource, { resolveStrategy, ProxyRetryError } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 import { logError, logWarning, logSupabaseError } from "../_shared/errorLogging.ts";
@@ -499,7 +500,7 @@ async function processSingleSource(
   const stats = { scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
 
   const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
-  const fetcher = createSpoofedFetch({ headers: source.config.headers });
+  const fetcher = createFetcherForSource(source);
   const rateLimit = source.config.rate_limit_ms ?? 200;
   const proxyApiKey = getProxyApiKey();
 
