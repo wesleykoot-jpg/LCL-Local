@@ -24,10 +24,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SCRAPE_INTERVAL_MS: "3000"
-          BATCH_SIZE: "1"
-          MAX_JOBS_PER_RUN: "10" # Process 10 jobs per 5-minute window
+          SCRAPE_INTERVAL_MS: "2000"
+          MAX_JOBS_PER_RUN: "50"
         run: |
-          # Run for ~3 minutes, processing 1 job every 3 seconds
-          timeout 180 deno run --allow-net --allow-env --allow-read scripts/scraper-daemon.ts || true
+          deno run --allow-net --allow-env scripts/scraper-daemon-light.ts
           echo "Batch complete"
