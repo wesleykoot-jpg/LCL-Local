@@ -5,8 +5,15 @@ import { processJob, claimScrapeJobs } from "../supabase/functions/scrape-worker
 
 config({ export: true, safe: false, allowEmptyValues: true });
 
+console.log("Current working directory:", Deno.cwd());
+const env = Deno.env.toObject();
+console.log("Env vars keys:", Object.keys(env).filter(k => k.includes("SUPABASE")));
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+if (!SUPABASE_URL) console.error("Missing SUPABASE_URL");
+if (!SUPABASE_SERVICE_ROLE_KEY) console.error("Missing SUPABASE_SERVICE_ROLE_KEY");
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing supabase credentials");
