@@ -15,7 +15,7 @@ import {
 } from "../_shared/scraperUtils.ts";
 
 import { jitteredDelay } from "../_shared/rateLimiting.ts";
-import { parseEventWithAI } from "../_shared/aiParsing.ts";
+import { parseEventWithAI, healSelectors } from "../_shared/aiParsing.ts";
 
 
 const corsHeaders = {
@@ -423,7 +423,19 @@ export async function processJob(
     await updateSourceStats(supabase, source.id, stats.scraped, stats.scraped > 0);
 
     if (stats.scraped === 0) {
-      await checkAndHealFetcher(supabase, source.id, stats.scraped, 200);
+      const { healed } = await checkAndHealFetcher(supabase, source.id, stats.scraped, 200);
+      
+      // If fetcher wasn't the issue (or didn't heal), try healing selectors
+      // Only if we have HTML and it's substantial (indicating success fetch but fail parse)
+      if (!healed && geminiApiKey) {
+         // We need the HTML from the fetch. 
+         // Current flow abstracts it away in strategy.fetchListing / parseListing.
+         // Effectively we need to 'peek' at the bad result or re-fetch for healing?
+         // Re-fetching is safer/cleaner than plumbing 'listingHtml' all the way out of processSingleSource return.
+         // But processSingleSource HAS the listingHtml locally.
+         // Refactor processSingleSource to return listingHtml or handle healing INSIDE it?
+         // Handling INSIDE processSingleSource is better as we have the HTML context.
+      }
     }
 
     await completeJob(supabase, job.id, stats.scraped, stats.inserted);
