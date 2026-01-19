@@ -1,12 +1,30 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 
-// Config from environment or defaults (matching autofix_pipeline.ts)
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://mlpefjsbriqgxcaqxhic.supabase.co";
+// Load .env manually for robustness
+try {
+  const envText = await Deno.readTextFile(".env");
+  for (const line of envText.split("\n")) {
+    const match = line.match(/^([^=]+)=(.*)$/);
+    if (match) {
+      const key = match[1].trim();
+      let value = match[2].trim();
+      // Remove quotes if present
+      if (value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1);
+      }
+      Deno.env.set(key, value);
+    }
+  }
+} catch (e) {
+  console.warn("Could not read .env file:", e.message);
+}
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("Missing SUPABASE_SERVICE_ROLE_KEY");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env");
   Deno.exit(1);
 }
 
