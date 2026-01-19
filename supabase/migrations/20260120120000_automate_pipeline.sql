@@ -208,12 +208,12 @@ SELECT cron.schedule(
   $$SELECT public.invoke_edge_function('scrape-coordinator', '{"triggerWorker": true}'::jsonb)$$
 );
 
--- 5c. Invoke Worker (Every 5 minutes to process any pending queue + new items)
--- This ensures that even if coordinator didn't trigger it, or it failed, we retry.
+-- 6c. Invoke Worker (Every 10 minutes at offset :02, :12, :22... to avoid overlap with coordinator)
+-- Slow and steady to avoid resource limits.
 SELECT cron.schedule(
   'invoke-worker-watchdog',
-  '*/5 * * * *',
-  $$SELECT public.invoke_edge_function('scrape-worker', '{"enableDeepScraping": true}'::jsonb)$$
+  '2,12,22,32,42,52 * * * *',
+  $$SELECT public.invoke_edge_function('scrape-worker', '{"enableDeepScraping": false}'::jsonb)$$
 );
 
 -- 5d. Discovery Coordinator (Daily at 03:00 AM)
@@ -223,9 +223,9 @@ SELECT cron.schedule(
   $$SELECT public.invoke_edge_function('source-discovery-coordinator')$$
 );
 
--- 5e. Discovery Worker (Every 15 minutes)
+-- 6e. Discovery Worker (Every 30 minutes at offset :07 and :37 to avoid overlap)
 SELECT cron.schedule(
   'invoke-discovery-worker',
-  '*/15 * * * *',
+  '7,37 * * * *',
   $$SELECT public.invoke_edge_function('source-discovery-worker')$$
 );
