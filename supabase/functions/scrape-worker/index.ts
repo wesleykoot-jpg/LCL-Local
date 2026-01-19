@@ -1,10 +1,9 @@
-```
-import { serve } "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import type { ScrapeJobPayload, ScraperSource, RawEventCard } from "../_shared/types.ts";
-import createFetcherForSource, { resolveStrategy, ProxyRetryError } from "../_shared/strategies.ts";
+import { createFetcherForSource, resolveStrategy, ProxyRetryError } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../_shared/categoryMapping.ts";
 import { logError, logWarning, logSupabaseError } from "../_shared/errorLogging.ts";
