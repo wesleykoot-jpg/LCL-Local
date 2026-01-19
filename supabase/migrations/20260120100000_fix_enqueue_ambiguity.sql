@@ -1,6 +1,8 @@
 -- Migration: Fix ambiguous column in enqueue_scrape_jobs
 -- Description: Replaces the enqueue_scrape_jobs function with unambiguous column references and aliases.
 
+DROP FUNCTION IF EXISTS public.enqueue_scrape_jobs(jsonb);
+
 CREATE OR REPLACE FUNCTION public.enqueue_scrape_jobs(p_jobs jsonb)
 RETURNS TABLE(out_job_id uuid, out_source_id uuid)
 LANGUAGE plpgsql
