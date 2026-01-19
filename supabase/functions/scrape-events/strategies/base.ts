@@ -477,6 +477,7 @@ export abstract class BaseScraperStrategy {
         address: address,
         coordinates: event.coordinates,
       },
+      website_url: event.website_url || null,
     };
   }
 

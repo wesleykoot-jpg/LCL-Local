@@ -320,6 +320,7 @@ interface NormalizedEvent {
   structured_date?: StructuredDate;
   structured_location?: StructuredLocation;
   organizer?: string;
+  website_url?: string | null;
 }
 
 function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): NormalizedEvent | null {
@@ -437,7 +438,7 @@ export async function parseEventWithAI(
 - Retourneer uitsluitend geldige JSON.
 - Weiger evenementen die niet in 2026 plaatsvinden.
 - Houd tekst in originele taal (${language}).
-- velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name, venue_address, image_url`;
+- velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name (extract specifieke locatienaam, NIET alleen de stad), venue_address, website_url (officiele website van het event of locatie, indien aanwezig), image_url`;
 
   const userPrompt = `Vandaag is ${today}.
 Bron hint titel: ${rawEvent.title}
@@ -460,9 +461,9 @@ ${rawEvent.rawHtml}`;
   let cleaned = text.trim();
   cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
 
-  let parsed: Partial<NormalizedEvent>;
+  let parsed: Partial<NormalizedEvent> & { website_url?: string };
   try {
-    parsed = JSON.parse(cleaned) as Partial<NormalizedEvent>;
+    parsed = JSON.parse(cleaned) as Partial<NormalizedEvent> & { website_url?: string };
   } catch (e) {
     console.warn("Failed to parse AI response as JSON:", e);
     return null;
@@ -489,6 +490,7 @@ ${rawEvent.rawHtml}`;
     event_time: parsed.event_time || "TBD",
     venue_name: parsed.venue_name || rawEvent.location || "",
     venue_address: parsed.venue_address,
+    website_url: parsed.website_url || null, // Add website_url mapping
     image_url: rawEvent.imageUrl ?? parsed.image_url ?? null,
     internal_category: mapToInternalCategory(
       (parsed as Record<string, unknown>).category as string ||
