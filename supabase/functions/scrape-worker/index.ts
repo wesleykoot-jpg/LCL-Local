@@ -713,133 +713,135 @@ export async function processJob(
  * POST /functions/v1/scrape-worker
  * Body (optional): { "enableDeepScraping": true }
  */
-serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
-
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Missing Supabase env vars");
+if (import.meta.main) {
+  serve(async (req: Request): Promise<Response> => {
+    if (req.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
 
-    // Parse options
-    let options: { enableDeepScraping?: boolean } = {};
-    if (req.method === "POST") {
-      try {
-        const body = await req.text();
-        options = body ? JSON.parse(body) : {};
-      } catch {
-        options = {};
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Missing Supabase env vars");
       }
-    }
 
-    const { enableDeepScraping = true } = options;
+      const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const jobs = await claimScrapeJobs(supabase, BATCH_SIZE);
+      // Parse options
+      let options: { enableDeepScraping?: boolean } = {};
+      if (req.method === "POST") {
+        try {
+          const body = await req.text();
+          options = body ? JSON.parse(body) : {};
+        } catch {
+          options = {};
+        }
+      }
 
-    if (jobs.length === 0) {
-      console.log("Worker: No pending jobs to process");
+      const { enableDeepScraping = true } = options;
+
+      const jobs = await claimScrapeJobs(supabase, BATCH_SIZE);
+
+      if (jobs.length === 0) {
+        console.log("Worker: No pending jobs to process");
+        return new Response(
+          JSON.stringify({ success: true, message: "No pending jobs", processed: false }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Worker: Processing ${jobs.length} jobs`);
+
+      const results = await Promise.allSettled(
+        jobs.map((job) => processJob(supabase, job, geminiApiKey, enableDeepScraping))
+      );
+
+      const summary = results.reduce(
+        (acc, result) => {
+          if (result.status === "fulfilled") {
+            acc.processed += 1;
+            if (result.value.status === "completed") {
+              acc.completed += 1;
+            } else {
+              acc.failed += 1;
+            }
+            acc.results.push(result.value);
+          } else {
+            acc.processed += 1;
+            acc.failed += 1;
+            acc.results.push({
+              jobId: "unknown",
+              sourceId: "unknown",
+              status: "failed",
+              error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+            });
+          }
+          return acc;
+        },
+        {
+          processed: 0,
+          completed: 0,
+          failed: 0,
+          results: [] as Array<{
+            jobId: string;
+            sourceId: string;
+            status: "completed" | "failed";
+            stats?: { scraped: number; inserted: number; duplicates: number; failed: number };
+            error?: string;
+          }>,
+        }
+      );
+
+      const allJobsSucceeded = summary.failed === 0;
+
+      // Chain-triggering: if we processed a full batch, check for more jobs
+      if (jobs.length === BATCH_SIZE) {
+        const { count } = await supabase
+          .from("scrape_jobs")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending");
+
+        if (count && count > 0) {
+          console.log(`Worker: ${count} more jobs pending, chain-triggering...`);
+          fetch(`${supabaseUrl}/functions/v1/scrape-worker`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify(options),
+          }).catch((err) => console.error("Failed to chain-trigger worker:", err));
+        }
+      }
+
       return new Response(
-        JSON.stringify({ success: true, message: "No pending jobs", processed: false }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: allJobsSucceeded,
+          allJobsSucceeded,
+          processed: true,
+          batchSize: jobs.length,
+          summary,
+        }),
+        { status: allJobsSucceeded ? 200 : 207, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (error) {
+      console.error("Worker error:", error);
+      // Log top-level errors
+      await logError({
+        level: 'fatal',
+        source: 'scrape-worker',
+        function_name: 'serve',
+        message: `Worker fatal error: ${error instanceof Error ? error.message : String(error)}`,
+        error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
+        stack_trace: error instanceof Error ? error.stack : undefined,
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`Worker: Processing ${jobs.length} jobs`);
-
-    const results = await Promise.allSettled(
-      jobs.map((job) => processJob(supabase, job, geminiApiKey, enableDeepScraping))
-    );
-
-    const summary = results.reduce(
-      (acc, result) => {
-        if (result.status === "fulfilled") {
-          acc.processed += 1;
-          if (result.value.status === "completed") {
-            acc.completed += 1;
-          } else {
-            acc.failed += 1;
-          }
-          acc.results.push(result.value);
-        } else {
-          acc.processed += 1;
-          acc.failed += 1;
-          acc.results.push({
-            jobId: "unknown",
-            sourceId: "unknown",
-            status: "failed",
-            error: result.reason instanceof Error ? result.reason.message : String(result.reason),
-          });
-        }
-        return acc;
-      },
-      {
-        processed: 0,
-        completed: 0,
-        failed: 0,
-        results: [] as Array<{
-          jobId: string;
-          sourceId: string;
-          status: "completed" | "failed";
-          stats?: { scraped: number; inserted: number; duplicates: number; failed: number };
-          error?: string;
-        }>,
-      }
-    );
-
-    const allJobsSucceeded = summary.failed === 0;
-
-    // Chain-triggering: if we processed a full batch, check for more jobs
-    if (jobs.length === BATCH_SIZE) {
-      const { count } = await supabase
-        .from("scrape_jobs")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
-
-      if (count && count > 0) {
-        console.log(`Worker: ${count} more jobs pending, chain-triggering...`);
-        fetch(`${supabaseUrl}/functions/v1/scrape-worker`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify(options),
-        }).catch((err) => console.error("Failed to chain-trigger worker:", err));
-      }
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: allJobsSucceeded,
-        allJobsSucceeded,
-        processed: true,
-        batchSize: jobs.length,
-        summary,
-      }),
-      { status: allJobsSucceeded ? 200 : 207, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Worker error:", error);
-    // Log top-level errors
-    await logError({
-      level: 'fatal',
-      source: 'scrape-worker',
-      function_name: 'serve',
-      message: `Worker fatal error: ${error instanceof Error ? error.message : String(error)}`,
-      error_type: error instanceof Error ? error.constructor.name : 'UnknownError',
-      stack_trace: error instanceof Error ? error.stack : undefined,
-    });
-    return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
+  });
+}
