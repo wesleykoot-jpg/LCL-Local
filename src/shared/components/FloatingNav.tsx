@@ -54,7 +54,7 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
       initial={{ y: 0 }}
       animate={{ y: isHidden ? 100 : 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border pb-safe shadow-bottom-nav"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-t border-border pb-safe shadow-bottom-nav bg-red-500/20"
     >
       <div className="flex items-center justify-around h-[56px] max-w-lg mx-auto px-2">
         {/* Planning button */}

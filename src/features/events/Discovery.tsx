@@ -317,7 +317,7 @@ const Discovery = () => {
         className="pb-32"
       >
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-surface-card shadow-card border-b border-border pt-safe">
+        <header className="sticky top-0 z-40 bg-surface-card shadow-card pt-safe">
           {/* Location row */}
           <div className="px-6 py-3 flex items-center justify-between">
             <button
