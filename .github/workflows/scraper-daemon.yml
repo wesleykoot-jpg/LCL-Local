@@ -1,0 +1,33 @@
+name: Scraper Daemon
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4 # Stay under 5min to avoid overlap
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Run Scraper Batch
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPE_INTERVAL_MS: "3000"
+          BATCH_SIZE: "1"
+          MAX_JOBS_PER_RUN: "10" # Process 10 jobs per 5-minute window
+        run: |
+          # Run for ~3 minutes, processing 1 job every 3 seconds
+          timeout 180 deno run --allow-net --allow-env --allow-read scripts/scraper-daemon.ts || true
+          echo "Batch complete"
