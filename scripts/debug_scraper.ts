@@ -4,12 +4,9 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { parseToISODate } from "../supabase/functions/_shared/dateUtils.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "../supabase/functions/_shared/categoryMapping.ts";
 
-// MOCK ENV
-const TARGET_YEAR = 2026; // Hardcoded to match presumed env
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://mock.supabase.co";
-const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "mock-key";
+const TARGET_YEAR = 2026;
 
-// --- Copied Logic from run-scraper/index.ts ---
+// --- Copied Logic ---
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -23,20 +20,10 @@ function extractTimeFromHtml(html: string): string | null {
   for (const pattern of timePatterns) {
     const match = html.match(pattern);
     if (match) {
-      // Simplification for debug: just return HH:MM
       return `${match[1].padStart(2, '0')}:${match[2].padStart(2, '0')}`;
     }
   }
   return null;
-}
-
-function mapToInternalCategory(input?: string): InternalCategory {
-  const value = (input || "").toLowerCase();
-  const category = classifyTextToCategory(value);
-  if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
-    return category as InternalCategory;
-  }
-  return "community";
 }
 
 function isTargetYear(isoDate: string | null): boolean {
@@ -56,141 +43,60 @@ async function createEventFingerprint(title: string, eventDate: string, sourceId
   return sha256Hex(`${title}|${eventDate}|${sourceId}`);
 }
 
-interface NormalizedEvent {
-  title: string;
-  description: string;
-  event_date: string;
-  event_time: string;
-  image_url: string | null;
-  venue_name: string;
-  venue_address?: string;
-  internal_category: InternalCategory;
-  detail_url?: string | null;
+// Global deduplication hash
+async function createContentHash(title: string, eventDate: string): Promise<string> {
+  return sha256Hex(`${title}|${eventDate}`);
 }
 
-// Mock ScraperSource
-interface ScraperSource {
-    id: string;
-    name: string;
-    url: string;
-    config: any;
-    default_coordinates?: { lat: number, lng: number };
-}
+// Mock DB State
+const EXISTING_EVENTS_DB = new Set<string>(); // Stores contentHashes
 
-interface RawEventCard {
-    title?: string;
-    date: string;
-    location?: string;
-    description?: string;
-    rawHtml: string;
-    url?: string;
-    imageUrl?: string;
-    detailUrl?: string;
-    categoryHint?: string;
-    detailPageTime?: string | null;
-}
-
-function cheapNormalizeEvent(raw: RawEventCard, source: ScraperSource): NormalizedEvent | null {
-  console.log(`\n--- Normalizing Event: ${raw.title} ---`);
-  
-  if (!raw.title) {
-      console.log("FAIL: No title");
-      return null;
-  }
-  
-  const isoDate = parseToISODate(raw.date);
-  console.log(`Date: raw="${raw.date}" -> iso="${isoDate}"`);
-  
-  if (!isoDate) {
-      console.log("FAIL: Could not parse date");
-      return null;
-  }
-  
-  if (!isTargetYear(isoDate)) {
-      console.log(`FAIL: Date ${isoDate} is not in target year ${TARGET_YEAR}`);
-      return null;
-  }
-
-  const time = raw.detailPageTime || extractTimeFromHtml(raw.rawHtml) || extractTimeFromHtml(raw.description || "") || "TBD";
-  console.log(`Time: ${time}`);
-
-  const description = normalizeWhitespace(raw.description || "") || normalizeWhitespace(cheerio.load(raw.rawHtml || "").text()).slice(0, 240);
-
-  return {
-    title: normalizeWhitespace(raw.title),
-    description,
-    event_date: isoDate,
-    event_time: time || "TBD",
-    image_url: raw.imageUrl || null,
-    venue_name: raw.location || source.name,
-    internal_category: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
-    detail_url: raw.detailUrl,
-  };
-}
-
-// --- Main Debug Script ---
+// --- Main Debug ---
 
 async function runDebug() {
-    console.log("Starting Debug Script...");
-    console.log(`Target Year: ${TARGET_YEAR}`);
+    console.log("Starting Debug Script - Deduplication Check...");
     
-    // 1. Mock Source
-    const source: ScraperSource = {
-        id: "debug-source-123",
-        name: "Debug Source",
-        url: "https://example.com/events",
-        config: {},
-        default_coordinates: { lat: 52.3676, lng: 4.9041 }
+    // Simulate an existing event from Source A
+    const eventA = {
+        title: "Same Event",
+        event_date: "2026-06-01"
+    };
+    const hashA = await createContentHash(eventA.title, eventA.event_date);
+    EXISTING_EVENTS_DB.add(hashA);
+    console.log(`[DB Setup] Added existing event: "${eventA.title}" on ${eventA.event_date} (Hash: ${hashA})`);
+
+    // Simulate New Source B scraping the SAME event
+    const sourceBId = "source-B";
+    const rawEventB = {
+        title: "Same Event",
+        date: "2026-06-01",
+        rawHtml: ""
     };
 
-    // 2. Test Cases
-    const testCases: RawEventCard[] = [
-        {
-            title: "Valid Future Event",
-            date: "2026-05-20",
-            location: "Paradiso",
-            description: "A great concert",
-            rawHtml: "<div>20:00</div>",
-            url: "https://example.com/e/1"
-        },
-        {
-            title: "Event with Dutch Date",
-            date: "20 mei 2026",
-            location: "Melkweg",
-            description: "Another concert",
-            rawHtml: "<div>Starts at 19:30</div>",
-            url: "https://example.com/e/2"
-        },
-        {
-            title: "Event with Relative Date (Tomorrow)", 
-            date: "morgen", // Logic depends on "today", mocked inside dateUtils? No, dateUtils uses new Date()
-            location: "Test Loc",
-            rawHtml: "",
-            url: "https://example.com/e/3"
-        },
-        {
-             title: "Event in 2025 (Should Fail)",
-             date: "2025-12-31",
-             location: "Oude Kerk",
-             rawHtml: "",
-             url: "https://example.com/e/4"
-        }
-    ];
+    console.log(`\nProcessing Source B event: "${rawEventB.title}" on ${rawEventB.date}`);
+    
+    // Normalize
+    const title = normalizeWhitespace(rawEventB.title);
+    const date = "2026-06-01"; // simplified for test
 
-    for (const raw of testCases) {
-        const normalized = cheapNormalizeEvent(raw, source);
-        if (normalized) {
-            console.log("✅ Normalized Successfully:");
-            console.log(normalized);
-            
-            // Check Fingerprint
-            const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, source.id);
-            console.log(`Fingerprint: ${fingerprint}`);
-            
-        } else {
-            console.log("❌ Failed Normalization");
-        }
+    // 1. Check Content Hash (Global Dedupe) - Used by scrape-worker
+    const contentHash = await createContentHash(title, date);
+    console.log(`Generated Content Hash: ${contentHash}`);
+    
+    if (EXISTING_EVENTS_DB.has(contentHash)) {
+        console.log("❌ BLOCKED by Content Hash (Global Deduplication)");
+        console.log("   Reason: This event already exists in the DB, possibly from another source.");
+    } else {
+        console.log("✅ Passed Content Hash check");
     }
+
+    // 2. Check Fingerprint (Source Specific) - Used by run-scraper
+    const fingerprint = await createEventFingerprint(title, date, sourceBId);
+    console.log(`Generated Fingerprint: ${fingerprint}`);
+    // Assume we check against DB for (sourceId, fingerprint)
+    // Since sourceB is new, this would pass.
+    console.log("✅ Would pass Fingerprint check (since Source ID is new)");
+
 }
 
 runDebug();
