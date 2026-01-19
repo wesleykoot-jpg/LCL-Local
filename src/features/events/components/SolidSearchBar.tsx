@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { hapticImpact } from '@/shared/lib/haptics';
 
-interface GlassSearchBarProps {
+interface SolidSearchBarProps {
   value: string;
   onChange: (value: string) => void;
   onFocus?: () => void;
@@ -13,9 +13,9 @@ interface GlassSearchBarProps {
 }
 
 /**
- * GlassSearchBar - Smart search bar for Discovery page
+ * SolidSearchBar - Smart search bar for Discovery page
  * 
- * LCL v5.0 "Social Air" Design System:
+ * LCL v6.0 "Liquid Solid" Design System:
  * - Height: h-14 (56px)
  * - Shape: rounded-pill
  * - Shadow: shadow-card
@@ -24,7 +24,7 @@ interface GlassSearchBarProps {
  * - Browsing: Solid muted background
  * - Searching: Solid white background + "Cancel" text button
  */
-export const GlassSearchBar = memo(function GlassSearchBar({
+export const SolidSearchBar = memo(function SolidSearchBar({
   value,
   onChange,
   onFocus,

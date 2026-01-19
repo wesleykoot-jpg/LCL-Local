@@ -10,7 +10,7 @@ import { FeaturedEventHero } from './components/FeaturedEventHero';
 import { HorizontalEventCarousel } from './components/HorizontalEventCarousel';
 import { FriendsPulseRail } from './components/FriendsPulseRail';
 import { DiscoveryRail } from './components/DiscoveryRail';
-import { GlassSearchBar } from './components/GlassSearchBar';
+import { SolidSearchBar } from './components/SolidSearchBar';
 import { DeepDiveView } from './components/DeepDiveView';
 import { CategoryPills } from './components/CategoryPills';
 import { PullToRefresh } from './components/PullToRefresh';
@@ -339,7 +339,7 @@ const Discovery = () => {
 
           {/* Search Bar */}
           <div className="px-6 pb-4">
-            <GlassSearchBar
+            <SolidSearchBar
               value={searchQuery}
               onChange={setSearchQuery}
               onFocus={handleSearchFocus}
