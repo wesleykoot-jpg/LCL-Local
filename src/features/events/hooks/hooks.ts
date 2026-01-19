@@ -121,7 +121,6 @@ export function useEvents(options?: {
   radiusKm?: number;
   page?: number;
   pageSize?: number;
-  pageSize?: number;
   currentUserProfileId?: string;
   parentEventId?: string;
 }) {
@@ -129,8 +128,6 @@ export function useEvents(options?: {
   const [loading, setLoading] = useState(true);
 
   // Stabilize dependency keys to prevent re-renders from reference changes
-  const categoryKey = options?.category?.join(',') ?? '';
-  const eventTypeKey = options?.eventType?.join(',') ?? '';
   const categoryKey = options?.category?.join(',') ?? '';
   const eventTypeKey = options?.eventType?.join(',') ?? '';
   const currentUserProfileId = options?.currentUserProfileId ?? '';
