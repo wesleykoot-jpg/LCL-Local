@@ -29,8 +29,7 @@ BEGIN
   updated AS (
     UPDATE public.scrape_jobs
     SET status = 'pending',
-        started_at = NULL,
-        worker_id = NULL
+        started_at = NULL
     WHERE id IN (SELECT id FROM stuck)
     RETURNING id
   )
@@ -83,8 +82,7 @@ BEGIN
   updated AS (
     UPDATE public.discovery_jobs
     SET status = 'pending',
-        started_at = NULL,
-        worker_id = NULL
+        started_at = NULL
     WHERE id IN (SELECT id FROM stuck)
     RETURNING id
   )
