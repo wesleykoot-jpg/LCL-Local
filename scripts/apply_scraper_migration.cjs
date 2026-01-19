@@ -15,12 +15,12 @@ async function run() {
         await client.connect();
         console.log("Connected successfully.");
 
-        // Path to migration file relative to this script
+        // Path to migration file from command line arg or default
         const migrationFile = process.argv[2];
         if (!migrationFile) {
-            throw new Error("Please provide a migration filename as an argument.");
+            throw new Error("Please provide a migration file path as an argument");
         }
-        const sqlPath = path.join(__dirname, '../supabase/migrations', migrationFile);
+        const sqlPath = path.resolve(__dirname, migrationFile);
 
         if (!fs.existsSync(sqlPath)) {
             throw new Error(`Migration file not found at: ${sqlPath}`);
