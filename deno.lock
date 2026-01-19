@@ -58,6 +58,7 @@
     "npm:@types/react@^18.3.1": "18.3.27",
     "npm:@vitejs/plugin-react-swc@^4.2.2": "4.2.2_vite@5.4.21__@types+node@20.19.30__terser@5.46.0_@types+node@20.19.30_terser@5.46.0",
     "npm:@vitejs/plugin-react@^4.2.1": "4.7.0_vite@5.4.21__@types+node@20.19.30__terser@5.46.0_@babel+core@7.28.6_@types+node@20.19.30_terser@5.46.0",
+    "npm:adm-zip@0.5.10": "0.5.10",
     "npm:autoprefixer@latest": "10.4.23_postcss@8.5.6",
     "npm:cheerio@1.0.0-rc.12": "1.0.0-rc.12",
     "npm:class-variance-authority@~0.7.1": "0.7.1",
@@ -2808,6 +2809,9 @@
     "acorn@8.15.0": {
       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
       "bin": true
+    },
+    "adm-zip@0.5.10": {
+      "integrity": "sha512-x0HvcHqVJNTPk/Bw8JbLWlWoo6Wwnsug0fnYYro1HBrjxZ3G7/AZk7Ahv8JwDe1uIcz8eBqvu86FuF1POiG7vQ=="
     },
     "agent-base@7.1.4": {
       "integrity": "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="
@@ -5623,7 +5627,9 @@
     "https://deno.land/std@0.168.0/async/pool.ts": "6854d8cd675a74c73391c82005cbbe4cc58183bddcd1fbbd7c2bcda42b61cf69",
     "https://deno.land/std@0.168.0/async/retry.ts": "e8e5173623915bbc0ddc537698fa418cf875456c347eda1ed453528645b42e67",
     "https://deno.land/std@0.168.0/async/tee.ts": "3a47cc4e9a940904fd4341f0224907e199121c80b831faa5ec2b054c6d2eff5e",
-    "https://deno.land/std@0.168.0/http/server.ts": "e99c1bee8a3f6571ee4cdeb2966efad465b8f6fe62bec1bdb59c1f007cc4d155"
+    "https://deno.land/std@0.168.0/http/server.ts": "e99c1bee8a3f6571ee4cdeb2966efad465b8f6fe62bec1bdb59c1f007cc4d155",
+    "https://deno.land/std@0.182.0/_util/asserts.ts": "178dfc49a464aee693a7e285567b3d0b555dc805ff490505a8aae34f9cfb1462",
+    "https://deno.land/std@0.182.0/flags/mod.ts": "4d829c5bd1d657799cdeb487c6e418960efc6f4d8ce6cadc38a54b9ce266160a"
   },
   "workspace": {
     "dependencies": [

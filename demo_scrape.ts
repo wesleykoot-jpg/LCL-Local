@@ -34,6 +34,7 @@ type NormalizedEvent = {
   extracted_at: string;
   confidence: number;
   outdated?: boolean;
+  geo?: { lat: number; lng: number };
 };
 
 type AttemptLog = { timestamp: string; url: string; event: string; status?: number };
@@ -481,9 +482,10 @@ async function upsertToSupabase(client: SupabaseClient | null, event: Normalized
           event_time: event.start_date ? event.start_date.split('T')[1]?.slice(0, 5) || '12:00' : '12:00', // Extract time
           venue_name: event.location_name || 'Unknown Venue', // Map location_name -> venue_name
 
-          // Geometry: Default to generic point if unknown (Zwolle area: 6.09, 52.51)
-          // Ideally parseLLMEvent provides coords, but for demo we default
-          location: 'SRID=4326;POINT(6.0944 52.5168)',
+          // Geometry: Use RSS lat/lng if available, else default
+          location: event.geo
+            ? `SRID=4326;POINT(${event.geo.lng} ${event.geo.lat})`
+            : 'SRID=4326;POINT(6.0944 52.5168)',
 
           category: (event.categories && event.categories.length > 0) ? event.categories[0] : 'entertainment',
           event_type: 'signal', // Default to 'signal' (scraped event)
@@ -526,6 +528,75 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
     }
   })();
 
+  function parseRSS($: cheerio.CheerioAPI, sourceUrl: string): NormalizedEvent[] {
+    const events: NormalizedEvent[] = [];
+    const host = new URL(sourceUrl).hostname;
+
+    $('item').each((_, el) => {
+      const $el = $(el);
+      const title = $el.find('title').text();
+      const link = $el.find('link').text();
+
+      // VisitZwolle specific: <data:calendar>
+      // e.g. 2026-01-22 20:00 - 21:45 OR 2026-01-22
+      // Cheerio in xmlMode handles namespaced tags often just by name or escaped name
+      // We try both data\\:calendar and calendar
+      const calendar = $el.find('data\\:calendar').text() || $el.find('calendar').text();
+      let startDate = '';
+
+      if (calendar) {
+        const parts = calendar.split(' - ');
+        startDate = parts[0].trim().replace(' ', 'T');
+      } else {
+        const pubDate = $el.find('pubDate').text();
+        if (pubDate) {
+          try { startDate = new Date(pubDate).toISOString().split('T')[0]; } catch { }
+        }
+      }
+
+      const latStr = $el.find('data\\:lat').text() || $el.find('lat').text();
+      const lngStr = $el.find('data\\:lng').text() || $el.find('lng').text();
+      const locName = $el.find('data\\:location').text() || $el.find('location').text() || 'Zwolle';
+      const address = $el.find('data\\:address').text() || $el.find('address').text() || '';
+
+      const img = $el.find('enclosure').attr('url');
+      const desc = $el.find('description').text();
+
+      if (title && startDate) {
+        const lat = parseFloat(latStr);
+        const lng = parseFloat(lngStr);
+        const geo = (!isNaN(lat) && !isNaN(lng)) ? { lat, lng } : undefined;
+
+        // Ensure ISO partial for strict DB check if needed, but our insert allows string
+        // We'll normalize to T format if it contains space e.g. "2026-01-22 20:00" -> "2026-01-22T20:00"
+        // Already did replace above.
+
+        events.push({
+          source: host,
+          source_url: link,
+          title,
+          description: desc || '',
+          start_date: startDate,
+          end_date: null,
+          location_name: locName,
+          location_address: address,
+          price: null,
+          currency: null,
+          categories: [],
+          image: img || null,
+          raw_html: '',
+          json_ld: null,
+          dedup_hash: "",
+          extracted_at: new Date().toISOString(),
+          confidence: 1.0,
+          outdated: false,
+          geo
+        });
+      }
+    });
+    return events;
+  }
+
   let html: string | null = null;
   let http_status: number | null = null;
   let html_preview: string[] | undefined;
@@ -548,7 +619,8 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
     }
     if (!resp.ok) continue;
     const contentType = resp.headers.get("content-type") || "";
-    if (!contentType.includes("text/html")) continue;
+    // Allow HTML or XML (RSS)
+    if (!contentType.includes("text/html") && !contentType.includes("xml") && !contentType.includes("rss")) continue;
     html = await resp.text();
     html_preview = firstLines(html);
     break;
@@ -598,51 +670,50 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
     };
   }
 
-  const jsonBlocks = extractJsonLdBlocks(html);
-  if (jsonBlocks.length > 0) {
-    json_ld_preview = jsonBlocks[0];
-  }
-
   const normalizedEvents: NormalizedEvent[] = [];
 
-  // JSON-LD first
-  for (const block of jsonBlocks) {
-    const nodes = Array.isArray(block) ? block : [block];
-    for (const node of nodes) {
-      if (node && typeof node === "object" && !Array.isArray(node)) {
-        const mapped = mapJsonLdEvent(node as Record<string, JsonValue>, url);
-        if (mapped) {
-          mapped.raw.dedup_hash = await computeDedupHash(
-            mapped.raw.title,
-            mapped.raw.start_date,
-            mapped.raw.location_name,
-          );
-          normalizedEvents.push(mapped.raw);
+  // Check for RSS/XML first
+  if (html.trim().startsWith("<?xml") || html.includes("<rss") || url.endsWith(".xml") || url.endsWith(".rss")) {
+    const $ = cheerio.load(html, { xmlMode: true });
+    const rssEvents = parseRSS($, url);
+    normalizedEvents.push(...rssEvents);
+  } else {
+    // Standard HTML scraping
+    const $ = cheerio.load(html);
+
+    // 1. JSON-LD
+    const jsonBlocks = extractJsonLdBlocks(html);
+    if (jsonBlocks.length > 0) {
+      json_ld_preview = jsonBlocks[0];
+    }
+    for (const block of jsonBlocks) {
+      const nodes = Array.isArray(block) ? block : [block];
+      for (const node of nodes) {
+        if (node && typeof node === "object" && !Array.isArray(node)) {
+          const mapped = mapJsonLdEvent(node as Record<string, JsonValue>, url);
+          if (mapped) normalizedEvents.push(mapped.raw);
         }
       }
     }
-  }
 
-  // Cheerio fallback
-  if (normalizedEvents.length === 0) {
+    // 2. Cheerio (Generic or Configured)
+    // Note: parseWithCheerio expects HTML string or CheerioAPI depending on implementation. 
+    // Based on previous usage: parseWithCheerio(html, url) or ($, url). 
+    // Step 229 showed it using $.
     const cheerioResult = await parseWithCheerio(html, url);
-    selectors_used = cheerioResult.selectorsUsed;
     normalizedEvents.push(...cheerioResult.events);
-  }
+    selectors_used = cheerioResult.selectorsUsed;
 
-  // LLM fallback
-  if (normalizedEvents.length === 0) {
-    const $ = cheerio.load(html);
-    const candidateCard = $('[class*="event"], [class*="agenda"], article, li').first();
-    if (candidateCard.length > 0) {
-      const snippet = candidateCard.html() || "";
-      const llmResult = await parseLLMEvent(snippet, url);
-      llm_prompt = llmResult.prompt;
-      llm_response_excerpt = llmResult.response ? llmResult.response.slice(0, 400) : undefined;
-      if (llmResult.event) {
-        normalizedEvents.push(llmResult.event);
-      } else {
-        errors.push("LLM parsing returned no event");
+    // 3. LLM Fallback (if no events found)
+    if (normalizedEvents.length === 0) {
+      const candidateCard = $('[class*="event"], [class*="agenda"], article, li').first();
+      if (candidateCard.length > 0) {
+        const snippet = candidateCard.html() || "";
+        const llmResult = await parseLLMEvent(snippet, url);
+        llm_prompt = llmResult.prompt;
+        llm_response_excerpt = llmResult.response ? llmResult.response.slice(0, 400) : undefined;
+        if (llmResult.event) normalizedEvents.push(llmResult.event);
+        else errors.push("LLM parsing returned no event");
       }
     }
   }
@@ -670,7 +741,7 @@ async function processSource(url: string, supabase: SupabaseClient | null): Prom
     return a.start_date.localeCompare(b.start_date);
   });
 
-  const extracted_examples: NormalizedEvent[] = finalEvents.slice(0, 3);
+  const extracted_examples: NormalizedEvent[] = finalEvents;
   const extracted_count_total = finalEvents.length;
 
   for (const evt of extracted_examples) {
