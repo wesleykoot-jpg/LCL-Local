@@ -143,7 +143,7 @@ ${rawEvent.rawHtml}`;
     internal_category: category,
     detail_url: rawEvent.detailUrl,
   };
-
+}
 
 export async function healSelectors(
   apiKey: string,
