@@ -4,7 +4,7 @@ const path = require('path');
 
 // Configuration via connection string (safest for special characters)
 const client = new Client({
-    connectionString: 'postgresql://postgres.mlpefjsbriqgxcaqxhic:Meppelwaro7%26@aws-1-eu-west-1.pooler.supabase.com:6543/postgres',
+    connectionString: 'postgresql://postgres.mlpefjsbriqgxcaqxhic:haznuq-jusmu2-fogvAb@aws-1-eu-west-1.pooler.supabase.com:6543/postgres',
     ssl: { rejectUnauthorized: false }
 });
 
