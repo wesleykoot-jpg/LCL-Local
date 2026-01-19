@@ -97,7 +97,7 @@ export const LiveEventCard = memo(function LiveEventCard({
     <motion.button
       onClick={handleClick}
       className="w-full flex items-center gap-3 p-3 bg-card/80  rounded-xl border border-border/50 shadow-sm transition-all active:scale-[0.98]"
-      whileTap={{ scale: 0.98 }}
+      whileTap={{ scale: 0.96 }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}

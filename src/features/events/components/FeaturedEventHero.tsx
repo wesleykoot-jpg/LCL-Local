@@ -89,7 +89,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
       className="relative w-full overflow-hidden rounded-card cursor-pointer group bg-white shadow-card"
       onClick={() => onEventClick?.(event.id)}
       whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.98 }}
+      whileTap={{ scale: 0.96 }}
     >
       {/* Image Section */}
       <div className="relative aspect-[4/3] overflow-hidden">

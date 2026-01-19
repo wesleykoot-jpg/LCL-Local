@@ -86,7 +86,7 @@ export const WhosOutRail = memo(function WhosOutRail({
                 key={activity.user.id}
                 onClick={() => handleAvatarClick(activity.user.id, activity.event?.id)}
                 className="flex flex-col items-center gap-1.5 flex-shrink-0"
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.96 }}
               >
                 {/* Avatar with status ring */}
                 <div className="relative">

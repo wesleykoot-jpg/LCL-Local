@@ -157,7 +157,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
     return (
       <motion.div
         className="relative rounded-2xl overflow-hidden bg-card border-2 border-border hover:border-primary/30 transition-all hover:shadow-lg shadow-sm"
-        whileTap={{ scale: 0.98 }}
+        whileTap={{ scale: 0.96 }}
       >
         {/* Share Button - Floating top-right */}
         <div className="absolute right-3 top-3 z-30">
@@ -291,7 +291,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
           ? 'border-border/50 opacity-60' 
           : 'border-border hover:border-primary/30 hover:shadow-sm'
       }`}
-      whileTap={{ scale: 0.98 }}
+      whileTap={{ scale: 0.96 }}
     >
       {/* Share Button - Floating top-right for all variants */}
       <div className="absolute right-3 top-3 z-20">

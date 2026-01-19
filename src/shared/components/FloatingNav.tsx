@@ -1,7 +1,8 @@
 import { Compass, Map, User, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { hapticImpact } from '@/shared/lib/haptics';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useScrollDirection } from '@/hooks/useScrollDirection';
 
 type NavView = 'feed' | 'planning' | 'profile' | 'now';
 
@@ -22,6 +23,7 @@ const ICON_ANIMATION_CONFIG = {
 export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const scrollDirection = useScrollDirection();
   
   // Derive active view from route if not provided
   const currentPath = location.pathname;
@@ -31,6 +33,7 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
      currentPath.includes('profile') ? 'profile' : 'feed');
   
   const isNowActive = derivedActiveView === 'now';
+  const isHidden = scrollDirection === 'down';
 
   const handleNav = async (view: NavView, path: string) => {
     await hapticImpact('light');
@@ -47,8 +50,11 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
   };
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 pb-safe shadow-bottom-nav"
+    <motion.nav 
+      initial={{ y: 0 }}
+      animate={{ y: isHidden ? 100 : 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border pb-safe shadow-bottom-nav"
     >
       <div className="flex items-center justify-around h-[56px] max-w-lg mx-auto px-2">
         {/* Planning button */}
@@ -187,6 +193,6 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
           </motion.div>
         </button>
       </div>
-    </nav>
+    </motion.nav>
   );
 }
