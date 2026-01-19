@@ -433,7 +433,7 @@ interface ScrapeJobRecord {
   max_attempts: number;
 }
 
-async function claimScrapeJobs(
+export async function claimScrapeJobs(
   supabase: SupabaseClient,
   batchSize: number
 ): Promise<ScrapeJobRecord[]> {
@@ -446,7 +446,14 @@ async function claimScrapeJobs(
     return [];
   }
 
-  return (data ?? []) as ScrapeJobRecord[];
+  // Map RPC output (out_*) to ScrapeJobRecord interface
+  return (data ?? []).map((row: any) => ({
+    id: row.out_id,
+    source_id: row.out_source_id,
+    payload: row.out_payload,
+    attempts: row.out_attempts,
+    max_attempts: row.out_max_attempts,
+  }));
 }
 
 async function completeJob(
@@ -604,7 +611,7 @@ async function processSingleSource(
   return stats;
 }
 
-async function processJob(
+export async function processJob(
   supabase: SupabaseClient,
   job: ScrapeJobRecord,
   geminiApiKey: string | undefined,
