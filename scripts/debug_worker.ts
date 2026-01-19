@@ -3,7 +3,16 @@ import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { config } from "https://deno.land/std@0.168.0/dotenv/mod.ts";
 import { processJob, claimScrapeJobs } from "../supabase/functions/scrape-worker/index.ts";
 
-config({ export: true, safe: false, allowEmptyValues: true });
+// Try loading .env from CWD or parent
+try {
+  config({ export: true, safe: false, allowEmptyValues: true, path: ".env" });
+} catch {
+  try {
+     config({ export: true, safe: false, allowEmptyValues: true, path: "../.env" });
+  } catch (e) {
+    console.error("Could not load .env", e);
+  }
+}
 
 console.log("Current working directory:", Deno.cwd());
 const env = Deno.env.toObject();
