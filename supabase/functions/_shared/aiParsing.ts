@@ -13,6 +13,44 @@ async function exponentialBackoff(attempt: number, baseMs: number = 1000): Promi
   await new Promise((resolve) => setTimeout(resolve, delay + jitter));
 }
 
+export async function callOpenAI(
+  apiKey: string,
+  payload: any,
+  fetcher: typeof fetch,
+  maxRetries: number = 3
+): Promise<string | null> {
+  const _model = payload.model || "gpt-4o-mini";
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetcher("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || null;
+    }
+
+    const text = await response.text();
+    if (response.status === 429) {
+      console.warn(`OpenAI 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`);
+      if (attempt < maxRetries) {
+        await exponentialBackoff(attempt);
+        continue;
+      }
+    }
+
+    console.error("OpenAI error", response.status, text);
+    return null;
+  }
+  return null;
+}
+
 export async function callGemini(
   apiKey: string,
   body: unknown,
@@ -107,7 +145,24 @@ ${rawEvent.rawHtml}`;
     generationConfig: { temperature: 0.1, maxOutputTokens: 768 },
   };
 
-  const text = await callGemini(apiKey, payload, fetcher);
+  const openAiPayload = {
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ],
+    temperature: 0.1,
+    max_tokens: 768,
+    response_format: { type: "json_object" }
+  };
+
+  let text: string | null = null;
+  if (apiKey.startsWith("sk-")) {
+      text = await callOpenAI(apiKey, openAiPayload, fetcher);
+  } else {
+      text = await callGemini(apiKey, payload, fetcher);
+  }
+  
   if (!text) return null;
 
   let cleaned = text.trim();
@@ -172,7 +227,24 @@ export async function healSelectors(
       generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
   };
 
-  const text = await callGemini(apiKey, payload, fetcher);
+  const openAiPayload = {
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ],
+    temperature: 0.2,
+    max_tokens: 256,
+    response_format: { type: "json_object" }
+  };
+
+  let text: string | null = null;
+  if (apiKey.startsWith("sk-")) {
+      text = await callOpenAI(apiKey, openAiPayload, fetcher);
+  } else {
+      text = await callGemini(apiKey, payload, fetcher);
+  }
+  
   if (!text) return null;
 
   try {
@@ -199,6 +271,34 @@ export async function generateEmbedding(
   fetcher: typeof fetch
 ): Promise<EmbeddingResponse | null> {
     try {
+        if (apiKey.startsWith("sk-")) {
+            // OpenAI Embedding
+            const response = await fetcher("https://api.openai.com/v1/embeddings", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                model: "text-embedding-3-small",
+                input: text,
+                dimensions: 1536,
+              }),
+            });
+
+            if (!response.ok) {
+                console.error("OpenAI Embedding error:", response.status, await response.text());
+                return null;
+            }
+
+            const data = await response.json();
+            return {
+                embedding: data.data[0].embedding,
+                model: "openai-text-embedding-3-small"
+            };
+        }
+
+        // Gemini Embedding
         const response = await fetcher(
         `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`,
         {
@@ -234,7 +334,7 @@ export async function generateEmbedding(
         model: "gemini-text-embedding-004",
         };
     } catch (error) {
-        console.error("Error generating Gemini embedding:", error);
+        console.error("Error generating AI embedding:", error);
         return null;
     }
 }
