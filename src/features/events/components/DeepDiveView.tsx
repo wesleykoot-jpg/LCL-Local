@@ -274,7 +274,7 @@ export const DeepDiveView = memo(function DeepDiveView({
   return (
     <div className="min-h-screen pb-24">
       {/* Sticky Header - Solid Background */}
-      <div className="sticky top-0 z-50 bg-surface-card border-b border-border pb-4 pt-safe">
+      <div className="sticky top-0 z-50 bg-white border-b border-border pb-4 pt-safe">
         <div className="px-6 pt-4">
           {/* Filter Row: Pills + Filter Button */}
           <div className="flex items-center gap-3">
@@ -313,7 +313,7 @@ export const DeepDiveView = memo(function DeepDiveView({
             >
               <EventMap
                 events={filteredEvents}
-                onEventClick={onEventClick}
+                onEventClick={(event) => onEventClick?.(event.id)}
                 // Mock Amsterdam location for now if no user location provided
                 userLocation={{ lat: 52.3676, lng: 4.9041 }}
               />

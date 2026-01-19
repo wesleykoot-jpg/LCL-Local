@@ -31,7 +31,7 @@ export const SolidSearchBar = memo(function SolidSearchBar({
   onCancel,
   mode,
   placeholder = 'Search events...',
-}: GlassSearchBarProps) {
+}: SolidSearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFocus = useCallback(async () => {

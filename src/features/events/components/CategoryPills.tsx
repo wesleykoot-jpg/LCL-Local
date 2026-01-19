@@ -53,7 +53,7 @@ export const CategoryPills = ({ selectedCategory, onSelectCategory }: CategoryPi
               flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap snap-start border
               ${isSelected
                                 ? 'bg-brand-primary text-white border-brand-primary shadow-apple-sm'
-                                : 'bg-surface-card text-text-secondary border-border hover:border-brand-primary/30 hover:bg-surface-base'
+                                : 'bg-white text-text-secondary border-border hover:border-brand-primary/30 hover:bg-surface-base'
                             }
             `}
                         whileTap={{ scale: 0.96 }}
