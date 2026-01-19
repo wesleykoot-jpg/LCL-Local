@@ -267,6 +267,47 @@ async function processSingleSource(
   const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug: false, fetcher });
   stats.scraped = rawEvents.length;
 
+  // Auto-Healing Logic
+  if (stats.scraped === 0 && listingHtml.length > 2000 && geminiApiKey) {
+      console.log(`Zero events found for ${source.name}. Attempting to heal...`);
+      
+      // 1. Check if we need to switch fetcher
+      const { healed } = await checkAndHealFetcher(supabase, source.id, 0, 200);
+      if (healed) {
+          console.log("Fetcher switched. Stopping current run to allow retry with new fetcher.");
+          return stats; 
+      }
+
+      // 2. If fetcher is fine, check selectors
+      console.log("Fetcher seems fine. Attempting to heal selectors...");
+      const suggestedSelectors = await healSelectors(geminiApiKey, listingHtml, fetch);
+      
+      if (suggestedSelectors && suggestedSelectors.length > 0) {
+        console.log(`Healed selectors for ${source.name}:`, suggestedSelectors);
+        
+        // Update DB
+        const newConfig = { ...(source.config || {}), selectors: suggestedSelectors };
+        const { error } = await supabase
+            .from("scraper_sources")
+            .update({ config: newConfig })
+            .eq("id", source.id);
+            
+        if (!error) {
+            console.log("Source config updated with new selectors.");
+            await sendSlackNotification(`🩹 Auto-healed selectors for ${source.name}: \`${JSON.stringify(suggestedSelectors)}\``, false);
+            
+            // Re-parse with new selectors
+            source.config = newConfig; 
+            const healedEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug: false, fetcher });
+            if (healedEvents.length > 0) {
+                console.log(`Re-scraped ${healedEvents.length} events with new selectors!`);
+                rawEvents.push(...healedEvents);
+                stats.scraped = rawEvents.length;
+            }
+        }
+      }
+  }
+
   // Deep scraping for detail page times
   if (enableDeepScraping) {
     for (const raw of rawEvents) {
@@ -422,21 +463,7 @@ export async function processJob(
 
     await updateSourceStats(supabase, source.id, stats.scraped, stats.scraped > 0);
 
-    if (stats.scraped === 0) {
-      const { healed } = await checkAndHealFetcher(supabase, source.id, stats.scraped, 200);
-      
-      // If fetcher wasn't the issue (or didn't heal), try healing selectors
-      // Only if we have HTML and it's substantial (indicating success fetch but fail parse)
-      if (!healed && geminiApiKey) {
-         // We need the HTML from the fetch. 
-         // Current flow abstracts it away in strategy.fetchListing / parseListing.
-         // Effectively we need to 'peek' at the bad result or re-fetch for healing?
-         // Re-fetching is safer/cleaner than plumbing 'listingHtml' all the way out of processSingleSource return.
-         // But processSingleSource HAS the listingHtml locally.
-         // Refactor processSingleSource to return listingHtml or handle healing INSIDE it?
-         // Handling INSIDE processSingleSource is better as we have the HTML context.
-      }
-    }
+    // checkAndHealFetcher moved to processSingleSource
 
     await completeJob(supabase, job.id, stats.scraped, stats.inserted);
 
