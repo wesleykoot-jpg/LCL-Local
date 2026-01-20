@@ -136,25 +136,33 @@ async function processRow(
         
         if (aiParsed) {
           // Merge AI result over cheap normalized result
-          // But ensure we keep valid fallbacks
           normalized = {
-             ...normalized,
+             ...(normalized || {}),
              ...aiParsed,
-             // Prefer AI title if available, otherwise raw
-             title: aiParsed.title || normalized.title,
-             // Prefer AI date
-             event_date: aiParsed.event_date || normalized.event_date,
-             // Prefer raw description if AI description is empty, or vice versa
-             description: aiParsed.description || normalized.description,
-             // Prefer high res image
-             image_url: aiParsed.image_url || normalized.image_url
+             title: aiParsed.title || normalized?.title || raw.title,
+             event_date: aiParsed.event_date || normalized?.event_date,
+             description: aiParsed.description || normalized?.description || raw.description,
+             image_url: aiParsed.image_url || normalized?.image_url || raw.imageUrl
           };
         }
     } catch (e) {
        console.warn(`AI parsing failed for row ${row.id}`, e);
     }
 
-    if (!normalized.title || !normalized.event_date) {
+    // Use raw fallback if normalized is still null
+    if (!normalized && raw.title) {
+      normalized = {
+        title: raw.title,
+        description: raw.description || '',
+        event_date: raw.date || '',
+        event_time: 'TBD',
+        image_url: raw.imageUrl || null,
+        venue_name: raw.location || '',
+        internal_category: 'community' as any
+      };
+    }
+
+    if (!normalized?.title || !normalized?.event_date) {
       return { success: false, error: "Validation Failed: Missing Title or Date" };
     }
 
@@ -184,25 +192,21 @@ async function processRow(
       normalized.event_time === "TBD" ? "12:00" : normalized.event_time
     );
 
-    const eventInsert: any = {
+    const eventInsert: Record<string, unknown> = {
       title: normalized.title,
       description: normalized.description || "",
       category: normalized.internal_category || "community",
-      event_type: "anchor", // Default
+      event_type: "anchor",
       venue_name: normalized.venue_name || "",
-      location: "POINT(0 0)", // Default point
+      location: "POINT(0 0)",
       event_date: normalizedDate.timestamp,
-      event_time: normalized.event_time,
+      event_time: normalized.event_time || "TBD",
       image_url: normalized.image_url,
-      created_by: "process-worker",
+      created_by: null,
       status: "published",
       source_id: sourceId,
       content_hash: contentHash,
-      event_fingerprint: fingerprint,
-      // Rich fields
-      organizer: aiParsed?.organizer,
-      price: aiParsed?.price,
-      ticket_url: aiParsed?.tickets_url
+      event_fingerprint: fingerprint
     };
 
     if (embedding) {
