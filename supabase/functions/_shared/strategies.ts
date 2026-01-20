@@ -549,6 +549,28 @@ export class DefaultStrategy implements ScraperStrategy {
     listingUrl: string,
     _options?: { enableDebug?: boolean; fetcher?: PageFetcher }
   ): Promise<RawEventCard[]> {
+    // Use the Data-First Waterfall
+    try {
+        // Dynamic import to avoid circular dependencies if any
+        const { runExtractionWaterfall } = await import("./extraction/index.ts");
+        
+        const result = await runExtractionWaterfall(html, {
+            url: listingUrl,
+            preferredMethod: this.source.preferred_method,
+            detectedCms: this.source.detected_cms
+        });
+
+        if (result.success && result.events.length > 0) {
+            if (_options?.enableDebug) {
+                console.log(`[Data-First] Source ${this.source.name} won with strategy: ${result.winningStrategy}`);
+            }
+            return result.events;
+        }
+    } catch (e) {
+        console.warn(`[Data-First] Waterfall failed for ${this.source.name}, falling back to legacy selector loop. Error:`, e);
+    }
+
+    // LEGACY FALLBACK (Keep original logic as safety net)
     const $ = cheerio.load(html);
     const results: RawEventCard[] = [];
     const selectors = this.source.config.selectors || SELECTORS;

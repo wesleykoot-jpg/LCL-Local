@@ -16,7 +16,7 @@ export function detectCMS(html: string): DetectedCMS {
 
   // 2. Script patterns
   if (html.includes("/wp-content/") || html.includes("/wp-includes/")) return "wordpress";
-  if (html.includes("_next/static")) return "nextjs";
+  if (html.includes("_next/static") || html.includes("__NEXT_DATA__")) return "nextjs";
   if (html.includes("_nuxt/")) return "nuxt";
 
   // 3. Headers/Body classes (optional, but body classes are available in $)

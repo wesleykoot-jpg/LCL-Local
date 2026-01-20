@@ -111,6 +111,10 @@ export interface ScraperSource {
   volatility_score?: number;
   last_scraped_at?: string | null;
   next_scrape_at?: string | null;
+  preferred_method?: string;
+  detected_cms?: string;
+  tier?: 'standard' | 'premium' | 'discovery';
+  deep_scrape_enabled?: boolean;
   config: {
     selectors?: string[];
     headers?: Record<string, string>;
