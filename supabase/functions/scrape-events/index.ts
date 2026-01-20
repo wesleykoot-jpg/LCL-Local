@@ -11,7 +11,7 @@ export const handler = async (req: Request): Promise<Response> => {
     // Fetch enabled sources
     const { data: sources, error: srcErr } = await supabase
       .from("scraper_sources")
-      .select("id, source_url")
+      .select("id, url")
       .eq("enabled", true);
     if (srcErr) throw srcErr;
     if (!sources || sources.length === 0) {
@@ -20,15 +20,18 @@ export const handler = async (req: Request): Promise<Response> => {
 
     // Process each source
     for (const src of sources) {
-      const url = src.source_url as string;
+      const url = src.url as string;
+      const sourceId = src.id as string;
       try {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const html = await resp.text();
-        // Upsert into staging table (source_url is UNIQUE)
+        
+        // Upsert into staging table
         const { error: insErr } = await supabase.from("raw_event_staging").upsert({
           source_url: url,
           raw_html: html,
+          source_id: sourceId,
           status: "pending" as any,
         }, { onConflict: "source_url" });
         if (insErr) console.warn(`Staging insert error for ${url}:`, insErr);
