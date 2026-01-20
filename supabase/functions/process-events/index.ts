@@ -70,7 +70,7 @@ export const handler = async (req: Request): Promise<Response> => {
             date: "", 
             location: "",
             detailUrl: "" 
-          } as any, "nl", fetch);
+          } as any, fetch, { language: "nl" });
           
           if (aiResult) {
             normalized = aiResult;
