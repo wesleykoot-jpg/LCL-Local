@@ -17,7 +17,6 @@ console.log("Verifying ELT Pipeline...\n");
 // 1. Check if staging table exists by querying it
 console.log("1. Checking staging table...");
 const { data: stagingData, error: stagingError } = await supabase
-  .schema('scraper')
   .from("raw_event_staging")
   .select("id")
   .limit(1);
@@ -32,7 +31,6 @@ console.log("✅ Staging table exists!");
 console.log(`   Current pending rows: checking...`);
 
 const { count: pendingCount } = await supabase
-  .schema('scraper')
   .from("raw_event_staging")
   .select("*", { count: "exact", head: true })
   .eq("status", "pending");
@@ -60,7 +58,6 @@ if (!scrapeRes.ok) {
 // 3. Check staging again
 console.log("\n3. Checking staging after scrape...");
 const { count: newPendingCount } = await supabase
-  .schema('scraper')
   .from("raw_event_staging")
   .select("*", { count: "exact", head: true })
   .eq("status", "pending");
