@@ -195,17 +195,18 @@ npx cap open ios
 
 ## Documentation
 
-| Document                                                       | Purpose                                                       |
-| -------------------------------------------------------------- | ------------------------------------------------------------- |
-| [AI_CONTEXT.md](./AI_CONTEXT.md)                               | Concise context for AI assistants                             |
-| [docs/AI_KNOWLEDGE.md](docs/AI_KNOWLEDGE.md)                   | **Deep-Dive Knowledge Base** (Architecture, Tools, Workflows) |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)                           | System architecture and diagrams                              |
-| [docs/core/STRATEGIES.md](docs/core/STRATEGIES.md)             | **Important**: Strategy Pattern (Production vs Test)          |
-| [docs/core/FEED_ALGORITHM.md](docs/core/FEED_ALGORITHM.md)     | Feed ranking algorithm details                                |
-| [docs/core/BACKEND_SETUP.md](docs/core/BACKEND_SETUP.md)       | Database configuration                                        |
-| [docs/core/DEPLOYMENT_GUIDE.md](docs/core/DEPLOYMENT_GUIDE.md) | iOS App Store deployment                                      |
-| [docs/design_system/README.md](docs/design_system/README.md)   | **Design System v4.0**                                        |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                             | Documentation & Contribution Guidelines                       |
+| Document                                                               | Purpose                                                       |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [AI_CONTEXT.md](./AI_CONTEXT.md)                                       | Concise context for AI assistants                             |
+| [docs/AI_KNOWLEDGE.md](docs/AI_KNOWLEDGE.md)                           | **Deep-Dive Knowledge Base** (Architecture, Tools, Workflows) |
+| [docs/AI_SUPABASE_MIGRATIONS_GUIDE.md](docs/AI_SUPABASE_MIGRATIONS_GUIDE.md) | **For AI Assistants**: How to use automated migrations workflow |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                                   | System architecture and diagrams                              |
+| [docs/core/STRATEGIES.md](docs/core/STRATEGIES.md)                     | **Important**: Strategy Pattern (Production vs Test)          |
+| [docs/core/FEED_ALGORITHM.md](docs/core/FEED_ALGORITHM.md)             | Feed ranking algorithm details                                |
+| [docs/core/BACKEND_SETUP.md](docs/core/BACKEND_SETUP.md)               | Database configuration                                        |
+| [docs/core/DEPLOYMENT_GUIDE.md](docs/core/DEPLOYMENT_GUIDE.md)         | iOS App Store deployment                                      |
+| [docs/design_system/README.md](docs/design_system/README.md)           | **Design System v4.0**                                        |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                                     | Documentation & Contribution Guidelines                       |
 
 ## Current Status
 
