@@ -62,10 +62,13 @@ export const handler = async (req: Request): Promise<Response> => {
         const cards = await strategy.parseListing(rawHtml, source.url, { enableDebug: true });
         addLog(`Discovered ${cards.length} cards`);
 
+        if (cards.length === 0) {
+          const jsonLdEvents = extractJsonLdEvents(rawHtml);
           if (jsonLdEvents?.length) {
             addLog("Whole page contains JSON-LD event(s)");
             cards.push(...jsonLdEvents.map(e => ({ title: (e as any).name || "Unknown", rawHtml } as any)));
           }
+        }
 
         for (const card of cards) {
           let normalized: any = null;
