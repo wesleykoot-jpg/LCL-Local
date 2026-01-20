@@ -18,10 +18,12 @@ import { claimScrapeJobs, processJob } from "../supabase/functions/scrape-worker
 
 const SUPABASE_URL = Deno.env.get("VITE_SUPABASE_URL") || Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
+const AI_API_KEY = OPENAI_API_KEY || GEMINI_API_KEY;
 
 // Configuration with sensible defaults for calm operation
-const SCRAPE_INTERVAL_MS = parseInt(Deno.env.get("SCRAPE_INTERVAL_MS") || "5000", 10);
+const SCRAPE_INTERVAL_MS = parseInt(Deno.env.get("SCRAPE_INTERVAL_MS") || "20000", 10);
 const BATCH_SIZE = parseInt(Deno.env.get("BATCH_SIZE") || "1", 10);
 const MAX_CONSECUTIVE_ERRORS = parseInt(Deno.env.get("MAX_CONSECUTIVE_ERRORS") || "10", 10);
 const BACKOFF_MULTIPLIER = 2;
@@ -84,7 +86,7 @@ async function runDaemon() {
             // Process each job sequentially with calmness
             for (const job of jobs) {
                 try {
-                    const result = await processJob(supabase, job, GEMINI_API_KEY, true); // Enable AI and Deep Scraping
+                    const result = await processJob(supabase, job, AI_API_KEY, true); // Enable AI and Deep Scraping
                     const jobStats = (result as { stats?: { inserted?: number } }).stats;
                     
                     stats.totalProcessed++;

@@ -2,8 +2,10 @@
 
 ## Intelligent, Non-Breaking, Resilient Event Pipeline
 
-> **Design Goal**: Zero-stoppage architecture from source discovery to event card display.
-> Every stage can fail gracefully without bringing down the pipeline.
+> **Design Goal**: Zero-stoppage architecture from source discovery to event
+> card display. Uses a **Waterfall Strategy** for fetching and extracting data,
+> ensuring maximum yield even from difficult sources. Every stage can fail
+> gracefully without bringing down the pipeline.
 
 ---
 
@@ -31,15 +33,16 @@
 
 ### The Problem
 
-The current scraper has these failure modes that cause **full pipeline stoppages**:
+The current scraper has these failure modes that cause **full pipeline
+stoppages**:
 
-| Failure Mode | Current Behavior | Impact |
-|--------------|------------------|--------|
-| Source returns 403 | Entire scrape run slows down | 🔴 Full slowdown |
-| Gemini API rate limit | AI enrichment fails, events discarded | 🔴 Data loss |
-| Database connection drops | Job marked failed, no retry | 🔴 Data loss |
-| Edge function timeout | Partial work lost | 🔴 Inconsistent state |
-| Malformed HTML | Parse exception stops source | 🟡 Source skipped |
+| Failure Mode              | Current Behavior                      | Impact                |
+| ------------------------- | ------------------------------------- | --------------------- |
+| Source returns 403        | Entire scrape run slows down          | 🔴 Full slowdown      |
+| Gemini API rate limit     | AI enrichment fails, events discarded | 🔴 Data loss          |
+| Database connection drops | Job marked failed, no retry           | 🔴 Data loss          |
+| Edge function timeout     | Partial work lost                     | 🔴 Inconsistent state |
+| Malformed HTML            | Parse exception stops source          | 🟡 Source skipped     |
 
 ### The Solution: Intelligent Non-Breaking Architecture
 
@@ -136,6 +139,7 @@ scraper_sources → pipeline_jobs → raw_pages → raw_events → staged_events
 ```
 
 Each arrow represents a **checkpoint**. If any stage fails:
+
 - Previous stage's output is preserved
 - Failed item goes to DLQ
 - Pipeline continues with remaining items
@@ -146,9 +150,12 @@ Each arrow represents a **checkpoint**. If any stage fails:
 ## Stage 1: Source Discovery
 
 ### Purpose
-Automatically find new event sources across Dutch municipalities without manual research.
+
+Automatically find new event sources across Dutch municipalities without manual
+research.
 
 ### Trigger
+
 - **Weekly** cron job (Sunday 3 AM)
 - Manual trigger for new regions
 
@@ -164,8 +171,8 @@ interface DiscoveryJob {
   municipality: string;
   population: number;
   coordinates: { lat: number; lng: number };
-  search_queries: string[];  // Pre-generated queries
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  search_queries: string[]; // Pre-generated queries
+  status: "pending" | "processing" | "completed" | "failed";
 }
 ```
 
@@ -186,21 +193,24 @@ interface DiscoveryJob {
 
 ### Resilience: Discovery
 
-| Failure | Fallback | Recovery |
-|---------|----------|----------|
-| Serper.dev down | Use cached results from last successful run | Auto-retry next week |
-| Serper rate limit | Exponential backoff, continue with remaining queries | Resume from checkpoint |
-| LLM validation fails | Heuristic validation (check for date patterns, event keywords) | Flag for manual review |
-| Candidate URL unreachable | Skip, don't add to sources | Log for analysis |
+| Failure                   | Fallback                                                       | Recovery               |
+| ------------------------- | -------------------------------------------------------------- | ---------------------- |
+| Serper.dev down           | Use cached results from last successful run                    | Auto-retry next week   |
+| Serper rate limit         | Exponential backoff, continue with remaining queries           | Resume from checkpoint |
+| LLM validation fails      | Heuristic validation (check for date patterns, event keywords) | Flag for manual review |
+| Candidate URL unreachable | Skip, don't add to sources                                     | Log for analysis       |
 
 ---
 
 ## Stage 2: Orchestration
 
 ### Purpose
-Intelligently select which sources to scrape, respecting health status and rate limits.
+
+Intelligently select which sources to scrape, respecting health status and rate
+limits.
 
 ### Trigger
+
 - **Daily** cron job (6 AM)
 - Manual trigger for immediate scrape
 
@@ -217,17 +227,17 @@ Intelligently select which sources to scrape, respecting health status and rate 
 
 async function selectSourcesForScraping(): Promise<ScraperSource[]> {
   const { data: sources } = await supabase
-    .from('source_health_status')
-    .select('*')
-    .eq('is_available', true)      // Circuit not OPEN
-    .eq('enabled', true)
-    .order('priority_score', { ascending: false });
-  
+    .from("source_health_status")
+    .select("*")
+    .eq("is_available", true) // Circuit not OPEN
+    .eq("enabled", true)
+    .order("priority_score", { ascending: false });
+
   return sources;
 }
 
 // Priority score calculation (in database view):
-// priority_score = 
+// priority_score =
 //   (days_since_last_scrape * 10) +
 //   (historical_event_count / 10) +
 //   (reliability_score * 5) -
@@ -277,67 +287,69 @@ CREATE INDEX idx_pipeline_jobs_pending
 ## Stage 3: Fetch
 
 ### Purpose
-Download HTML from source URLs with intelligent retry and failover.
+
+### Purpose
+
+Download HTML from source URLs with intelligent **Waterfall** retry and
+failover.
+
+### Waterfall Fetching Strategy
+
+The system uses a "Waterfall" approach to fetching pages, prioritizing speed and
+low cost while falling back to more robust (and expensive) methods only when
+necessary.
+
+1. **Tier 1: Static Fetch (Fastest/Free)**:
+   - Standard HTTP request with browser-like headers.
+   - If successful, stops here.
+   - If fails (403/429/Timeout) 3 times -> Escalates to Tier 2.
+
+2. **Tier 2: Validated Proxy / Dynamic Fetch (Robust)**:
+   - Switches to `ScrapingBee` or Headless Browser (Puppeteer/Playwright).
+   - Handles JS rendering and anti-bot challenges.
+   - If this succeeds, the source is temporarily "healed" to use this fetcher
+     for the session.
+
+3. **Tier 3: Discovery Waterfall**:
+   - If the main URL yields no events, the system automatically tries
+     alternative paths:
+     - `/agenda`
+     - `/evenementen`
+     - `/programma`
+     - `/events`
+   - This ensures we find the content even if the main URL was slightly off.
 
 ### Edge Function: `fetch-worker`
 
 ```typescript
 // Responsibilities:
-// 1. Claim a job from pipeline_jobs where current_stage = 'fetch'
-// 2. Check proactive rate limit (can we make a request now?)
-// 3. Fetch HTML using appropriate PageFetcher (static/dynamic)
-// 4. Save HTML to raw_pages table
-// 5. Advance job to parse stage or move to DLQ
+// 1. Claim a job from pipeline_jobs
+// 2. Fetch HTML using Waterfall Strategy (FailoverPageFetcher)
+// 3. Save HTML to raw_pages table
+// 4. Advance job to parse stage or move to DLQ
 
 interface FetchResult {
   success: boolean;
   html?: string;
   finalUrl?: string;
-  statusCode?: number;
-  fetchDurationMs?: number;
-  fetcherUsed: 'static' | 'scrapingbee';
-  error?: string;
+  fetcherUsed: "static" | "dynamic" | "scrapingbee";
+  isFallover: boolean; // True if we had to escalation
 }
 
-async function fetchWithResilience(source: ScraperSource): Promise<FetchResult> {
-  // 1. Check proactive rate limit
-  const canRequest = await canMakeRequest(source.id);
-  if (!canRequest.allowed) {
-    return { 
-      success: false, 
-      error: `Rate limited, wait ${canRequest.waitMs}ms` 
-    };
-  }
-  
-  // 2. Try primary fetcher
-  const fetcher = createFetcherForSource(source);
+async function fetchWithWaterfall(source: ScraperSource): Promise<FetchResult> {
+  // Uses FailoverPageFetcher internally
+  const fetcher = createFetcherForSource(source); // Returns FailoverFetcher if configured
+
   try {
+    // This automatically retries Static -> fails 3x -> switch to Dynamic
     const result = await fetcher.fetchPage(source.url);
-    
-    // 3. Record success for circuit breaker
-    await recordSuccess(source.id);
-    
-    return { success: true, ...result, fetcherUsed: 'static' };
-  } catch (primaryError) {
-    // 4. Try fallback fetcher (ScrapingBee)
-    if (source.fetcher_type !== 'scrapingbee') {
-      try {
-        const fallback = new ScrapingBeeFetcher();
-        const result = await fallback.fetchPage(source.url);
-        
-        // Recommend fetcher upgrade
-        await suggestFetcherUpgrade(source.id, 'scrapingbee');
-        
-        return { success: true, ...result, fetcherUsed: 'scrapingbee' };
-      } catch (fallbackError) {
-        // Both failed
-        await recordFailure(source.id, fallbackError.message);
-        return { success: false, error: fallbackError.message };
-      }
+    return { success: true, ...result };
+  } catch (error) {
+    if (shouldRetryWithProxy(error)) {
+      // Explicit Proxy Escalation
+      return await fetchWithProxy(source.url);
     }
-    
-    await recordFailure(source.id, primaryError.message);
-    return { success: false, error: primaryError.message };
+    throw error;
   }
 }
 ```
@@ -365,63 +377,80 @@ CREATE INDEX idx_raw_pages_content_hash ON raw_pages(source_id, content_hash);
 
 ### Resilience: Fetch
 
-| Failure | Fallback | Recovery |
-|---------|----------|----------|
-| HTTP 403/429 | Try ScrapingBee | Record in circuit breaker, extend cooldown |
-| Timeout | Retry with 2x timeout | After 3 retries, move to DLQ |
-| DNS failure | Skip source | Alert, check if domain changed |
-| SSL error | Skip source | Alert for manual investigation |
-| ScrapingBee quota exceeded | Use cached page if < 24h old | Alert for quota increase |
+| Failure                    | Fallback                     | Recovery                                   |
+| -------------------------- | ---------------------------- | ------------------------------------------ |
+| HTTP 403/429               | Try ScrapingBee              | Record in circuit breaker, extend cooldown |
+| Timeout                    | Retry with 2x timeout        | After 3 retries, move to DLQ               |
+| DNS failure                | Skip source                  | Alert, check if domain changed             |
+| SSL error                  | Skip source                  | Alert for manual investigation             |
+| ScrapingBee quota exceeded | Use cached page if < 24h old | Alert for quota increase                   |
 
 ---
 
 ## Stage 4: Parse
 
 ### Purpose
-Extract structured event cards from raw HTML.
+
+Extract structured event cards from raw HTML using a **Data-First Waterfall**
+strategy that prioritizes structured data over fragile DOM scraping.
+
+### Smart Extraction Engine
+
+The scraper uses a priority waterfall (`Hydration -> JSON-LD -> Feeds -> DOM`) that
+stops on the first success. This "Visual-Last" approach ensures higher stability.
+
+1.  **P1: Hydration Extraction** (Highest Priority):
+    - Extracts state directly from frameworks like Next.js (`__NEXT_DATA__`),
+      Nuxt (`__NUXT__`), and Redux (`__INITIAL_STATE__`).
+    - Recursively discovers event objects within large state trees.
+    - **Pros**: 100% data fidelity, includes hidden fields (IDs, full dates).
+
+2.  **P2: JSON-LD Injection**:
+    - Parses `application/ld+json` script tags.
+    - Includes **Soft Repair** for malformed JSON (trailing commas, unquoted keys).
+    - **Pros**: Standardized schema, easier to map.
+
+3.  **P3: Feed Discovery**:
+    - Scans HTML for hidden RSS/Atom/ICS links.
+    - Deferrs async fetching of these feeds to the next run (or handles immediately).
+    - **Pros**: High stability, standard formats.
+
+4.  **P4: DOM Fallback (Cheerio)** (Lowest Priority):
+    - Uses semantic selectors (`.event`, `.card`) with multi-locale date patterns.
+    - **CMS Fingerprinter**: Detects CMS (WordPress, Wix, Drupal) to apply
+      pre-optimized selector strategies.
+    - **Pros**:  Works on almost any site.
+    - **Cons**: Most fragile to design changes.
+
+### Auto-Optimization
+
+The system tracks which strategy wins for each source. After 3 consecutive
+successes with a specific method (e.g., "json_ld"), the `preferred_method` for
+that source is updated in the database. Future runs try one "preferred" method
+first, saving CPU/Time.
 
 ### Edge Function: `parse-worker`
 
 ```typescript
 // Responsibilities:
-// 1. Claim jobs where current_stage = 'parse'
-// 2. Load HTML from raw_pages
-// 3. Try multiple extraction strategies in order
-// 4. Save parsed events to raw_events
-// 5. Advance job or move to DLQ
+// 1. Detect CMS (WordPress, Next.js, etc.)
+// 2. Run Extraction Waterfall
+// 3. Log diagnostics to scraper_insights
+// 4. Update source preferred_method if applicable
 
-interface ParseStrategy {
-  name: string;
-  priority: number;
-  canHandle(html: string): boolean;
-  parse(html: string, source: ScraperSource): RawEventCard[];
-}
+async function parse(html: string, source: ScraperSource) {
+  const result = runExtractionWaterfall(html, {
+    baseUrl: source.url,
+    preferredMethod: source.preferred_method,
+    feedDiscovery: source.tier_config?.feedGuessing,
+  });
 
-const PARSE_STRATEGIES: ParseStrategy[] = [
-  { name: 'json-ld', priority: 1, ... },      // Best: structured data
-  { name: 'microdata', priority: 2, ... },    // Good: schema.org markup
-  { name: 'selectors', priority: 3, ... },    // Fallback: CSS selectors
-  { name: 'heuristic', priority: 4, ... },    // Last resort: pattern matching
-];
-
-async function parseWithFallback(html: string, source: ScraperSource): Promise<RawEventCard[]> {
-  for (const strategy of PARSE_STRATEGIES) {
-    if (strategy.canHandle(html)) {
-      try {
-        const events = strategy.parse(html, source);
-        if (events.length > 0) {
-          console.log(`Parsed ${events.length} events using ${strategy.name}`);
-          return events;
-        }
-      } catch (error) {
-        console.warn(`Strategy ${strategy.name} failed:`, error);
-        // Continue to next strategy
-      }
-    }
-  }
+  // result.winningStrategy: 'hydration' | 'json_ld' | 'feed' | 'dom'
   
-  // No events found - this might be okay (empty agenda) or broken selectors
-  return [];
+  if (result.success) {
+    await logScraperInsight(source.id, result);
+    // Auto-optimize after N successes...
+  }
 }
 ```
 
@@ -445,7 +474,7 @@ CREATE TABLE raw_events (
   raw_html TEXT,  -- The specific HTML block for this event
   
   -- Extraction metadata
-  parse_strategy TEXT,  -- Which strategy extracted this
+  parse_strategy TEXT,  -- 'hydration', 'json_ld', 'feed', 'dom'
   confidence_score FLOAT,
   
   -- Processing status
@@ -458,18 +487,19 @@ CREATE TABLE raw_events (
 
 ### Resilience: Parse
 
-| Failure | Fallback | Recovery |
-|---------|----------|----------|
-| Primary selectors fail | Try JSON-LD, then microdata, then heuristics | Log selector drift, suggest update |
-| 0 events parsed | Check if page structure changed | Compare with last successful HTML |
-| Malformed HTML | Use lenient parser (cheerio handles this) | Log for analysis |
-| Memory limit (huge page) | Truncate to first 500KB | Log, consider pagination |
+| Failure                  | Fallback                                     | Recovery                           |
+| ------------------------ | -------------------------------------------- | ---------------------------------- |
+| Hydration missing        | Fall back to JSON-LD, then DOM               | Auto-optimize preference to fallback|
+| Malformed JSON-LD        | Attempt Soft Repair (fix commas/quotes)      | Log error if unfixable             |
+| 0 events (DOM)           | Check for "No Events" text (calendar empty)  | If no text found, Flag broken      |
+| Selector drift           | Try AI-healing or historical selector sets   | Alert for manual selector update   |
 
 ---
 
 ## Stage 5: Normalize & Enrich
 
 ### Purpose
+
 Transform raw event data into structured, consistent format.
 
 ### Edge Function: `normalize-worker`
@@ -486,46 +516,52 @@ Transform raw event data into structured, consistent format.
 interface NormalizeResult {
   title: string;
   description: string;
-  event_date: string;  // ISO 8601
-  event_time: string;  // HH:MM or 'TBD'
+  event_date: string; // ISO 8601
+  event_time: string; // HH:MM or 'TBD'
   structured_date: StructuredDate;
   structured_location: StructuredLocation;
   category: InternalCategory;
   venue_name: string;
   image_url: string | null;
   confidence_score: number;
-  normalization_method: 'rules' | 'ai' | 'hybrid';
+  normalization_method: "rules" | "ai" | "hybrid";
 }
 
-async function normalizeEvent(raw: RawEventCard, source: ScraperSource): Promise<NormalizeResult | null> {
+async function normalizeEvent(
+  raw: RawEventCard,
+  source: ScraperSource,
+): Promise<NormalizeResult | null> {
   // 1. Parse date (required)
   const parsedDate = parseToISODate(raw.raw_date);
   if (!parsedDate) {
     // Try AI extraction as fallback
     if (GEMINI_AVAILABLE) {
       const aiDate = await extractDateWithAI(raw.raw_html);
-      if (!aiDate) return null;  // Can't determine date, skip event
+      if (!aiDate) return null; // Can't determine date, skip event
     }
     return null;
   }
-  
+
   // 2. Geocode location (with graceful degradation)
   let location: StructuredLocation;
   try {
-    location = await geocodeLocation(raw.raw_location, source.default_coordinates);
+    location = await geocodeLocation(
+      raw.raw_location,
+      source.default_coordinates,
+    );
   } catch {
     // Geocoding failed, use source default
     location = {
       name: raw.raw_location || source.name,
-      coordinates: source.default_coordinates
+      coordinates: source.default_coordinates,
     };
   }
-  
+
   // 3. Classify category (never fails, has default)
   const category = classifyTextToCategory(
-    `${raw.raw_title} ${raw.raw_description}`
+    `${raw.raw_title} ${raw.raw_description}`,
   );
-  
+
   // 4. AI enrichment (optional, batched for efficiency)
   let enriched = null;
   if (shouldEnrichWithAI(raw)) {
@@ -533,16 +569,16 @@ async function normalizeEvent(raw: RawEventCard, source: ScraperSource): Promise
       enriched = await batchEnrichWithAI([raw]);
     } catch {
       // AI unavailable, continue without enrichment
-      console.warn('AI enrichment skipped, continuing with rules-based');
+      console.warn("AI enrichment skipped, continuing with rules-based");
     }
   }
-  
+
   return {
     title: normalizeWhitespace(enriched?.title || raw.raw_title),
-    description: enriched?.description || raw.raw_description || '',
+    description: enriched?.description || raw.raw_description || "",
     event_date: parsedDate,
     // ... rest of normalization
-    normalization_method: enriched ? 'ai' : 'rules'
+    normalization_method: enriched ? "ai" : "rules",
   };
 }
 ```
@@ -591,20 +627,36 @@ CREATE UNIQUE INDEX idx_staged_events_fingerprint
 
 ### Resilience: Normalize
 
-| Failure | Fallback | Recovery |
-|---------|----------|----------|
-| Date parsing fails | Try AI extraction | If both fail, skip event (can't display without date) |
-| Geocoding API down | Use source default coordinates | Flag for re-geocoding later |
-| Gemini rate limit | Use rules-based normalization | Enrich in next batch |
-| Gemini returns garbage | Discard AI result, use rules-based | Log for prompt tuning |
-| Category unknown | Default to 'community' | Works for display |
+| Failure                | Fallback                           | Recovery                                              |
+| ---------------------- | ---------------------------------- | ----------------------------------------------------- |
+| Date parsing fails     | Try AI extraction                  | If both fail, skip event (can't display without date) |
+| Geocoding API down     | Use source default coordinates     | Flag for re-geocoding later                           |
+| Gemini rate limit      | Use rules-based normalization      | Enrich in next batch                                  |
+| Gemini returns garbage | Discard AI result, use rules-based | Log for prompt tuning                                 |
+| Category unknown       | Default to 'community'             | Works for display                                     |
 
 ---
 
 ## Stage 6: Persist
 
 ### Purpose
-Write validated events to the final `events` table with deduplication.
+
+Write validated events to the final `events` table with **Semantic
+Deduplication**.
+
+### Semantic Deduplication
+
+To prevent duplicate events across different sources (e.g., "Jazz in the Park"
+vs "Jazz @ Park"), we use vector embeddings.
+
+1. **Embedding Generation**: Validated events text is converted to a vector
+   embedding (Gemini/OpenAI).
+2. **Similarity Search**: We query the `events` table for items with high cosine
+   similarity (>0.95).
+3. **Time Window Check**: Matches must be within 24 hours of the new event's
+   start time to be considered a duplicate.
+4. **Fingerprint Match**: Traditional exact matching on
+   `(title, date, source_id)` is used as a primary filter.
 
 ### Edge Function: `persist-worker`
 
@@ -619,34 +671,34 @@ Write validated events to the final `events` table with deduplication.
 async function persistEvent(staged: StagedEvent): Promise<PersistResult> {
   // 1. Check for existing event with same fingerprint
   const { data: existing } = await supabase
-    .from('events')
-    .select('id, updated_at')
-    .eq('event_fingerprint', staged.event_fingerprint)
-    .eq('source_id', staged.source_id)
+    .from("events")
+    .select("id, updated_at")
+    .eq("event_fingerprint", staged.event_fingerprint)
+    .eq("source_id", staged.source_id)
     .single();
-  
+
   if (existing) {
     // Event exists - check if update needed
     if (eventHasChanges(existing, staged)) {
       await supabase
-        .from('events')
+        .from("events")
         .update({
           title: staged.title,
           description: staged.description,
           // ... other fields
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', existing.id);
-      
-      return { action: 'updated', eventId: existing.id };
+        .eq("id", existing.id);
+
+      return { action: "updated", eventId: existing.id };
     }
-    
-    return { action: 'skipped', reason: 'no_changes' };
+
+    return { action: "skipped", reason: "no_changes" };
   }
-  
+
   // 2. Insert new event
   const { data: inserted, error } = await supabase
-    .from('events')
+    .from("events")
     .insert({
       title: staged.title,
       description: staged.description,
@@ -655,42 +707,43 @@ async function persistEvent(staged: StagedEvent): Promise<PersistResult> {
       venue_name: staged.venue_name,
       location: staged.location,
       category: staged.category,
-      event_type: 'anchor',
+      event_type: "anchor",
       source_id: staged.source_id,
       event_fingerprint: staged.event_fingerprint,
       structured_date: staged.structured_date,
       structured_location: staged.structured_location,
-      status: 'published'
+      status: "published",
     })
-    .select('id')
+    .select("id")
     .single();
-  
+
   if (error) {
     // Handle constraint violations gracefully
-    if (error.code === '23505') {  // Unique violation
-      return { action: 'skipped', reason: 'duplicate' };
+    if (error.code === "23505") { // Unique violation
+      return { action: "skipped", reason: "duplicate" };
     }
     throw error;
   }
-  
-  return { action: 'inserted', eventId: inserted.id };
+
+  return { action: "inserted", eventId: inserted.id };
 }
 ```
 
 ### Resilience: Persist
 
-| Failure | Fallback | Recovery |
-|---------|----------|----------|
-| Database connection lost | Retry with exponential backoff | After 3 retries, move to DLQ |
-| Unique constraint violation | Skip (already exists) | Normal behavior |
-| Foreign key violation | Log error, skip event | Source may have been deleted |
-| Disk full | Alert immediately | Critical - needs intervention |
+| Failure                     | Fallback                       | Recovery                      |
+| --------------------------- | ------------------------------ | ----------------------------- |
+| Database connection lost    | Retry with exponential backoff | After 3 retries, move to DLQ  |
+| Unique constraint violation | Skip (already exists)          | Normal behavior               |
+| Foreign key violation       | Log error, skip event          | Source may have been deleted  |
+| Disk full                   | Alert immediately              | Critical - needs intervention |
 
 ---
 
 ## Stage 7: Notify
 
 ### Purpose
+
 Send batched notifications and alerts.
 
 ### Edge Function: `notify-worker`
@@ -711,7 +764,7 @@ interface RunSummary {
   events_updated: number;
   events_skipped: number;
   errors: number;
-  circuit_breakers_tripped: string[];  // Source names
+  circuit_breakers_tripped: string[]; // Source names
   dlq_items_added: number;
 }
 
@@ -719,7 +772,7 @@ async function sendRunSummary(summary: RunSummary): Promise<void> {
   const blocks = [
     {
       type: "header",
-      text: { type: "plain_text", text: "📊 Daily Scrape Complete" }
+      text: { type: "plain_text", text: "📊 Daily Scrape Complete" },
     },
     {
       type: "section",
@@ -728,21 +781,23 @@ async function sendRunSummary(summary: RunSummary): Promise<void> {
         { type: "mrkdwn", text: `*Inserted:* ${summary.events_inserted}` },
         { type: "mrkdwn", text: `*Updated:* ${summary.events_updated}` },
         { type: "mrkdwn", text: `*Errors:* ${summary.errors}` },
-      ]
-    }
+      ],
+    },
   ];
-  
+
   // Add circuit breaker alerts if any
   if (summary.circuit_breakers_tripped.length > 0) {
     blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `⚠️ *Circuit Breakers Tripped:*\n${summary.circuit_breakers_tripped.join(', ')}`
-      }
+        text: `⚠️ *Circuit Breakers Tripped:*\n${
+          summary.circuit_breakers_tripped.join(", ")
+        }`,
+      },
     });
   }
-  
+
   await sendSlackNotification({ blocks }, summary.errors > 0);
 }
 ```
@@ -823,14 +878,14 @@ $$ LANGUAGE plpgsql;
 
 ### 3. Graceful Degradation Matrix
 
-| Service | Degradation Strategy | User Impact |
-|---------|---------------------|-------------|
-| Gemini API | Use rules-based parsing | Slightly lower quality descriptions |
-| Serper.dev | Use cached search results | No new sources discovered this week |
-| Geocoding API | Use source default coordinates | Events shown at city center |
-| ScrapingBee | Mark source for manual review | Some JS-heavy sites may fail |
-| Slack | Log locally, retry later | No notifications (monitoring gap) |
-| Database | Retry with backoff, then DLQ | Delayed event availability |
+| Service       | Degradation Strategy           | User Impact                         |
+| ------------- | ------------------------------ | ----------------------------------- |
+| Gemini API    | Use rules-based parsing        | Slightly lower quality descriptions |
+| Serper.dev    | Use cached search results      | No new sources discovered this week |
+| Geocoding API | Use source default coordinates | Events shown at city center         |
+| ScrapingBee   | Mark source for manual review  | Some JS-heavy sites may fail        |
+| Slack         | Log locally, retry later       | No notifications (monitoring gap)   |
+| Database      | Retry with backoff, then DLQ   | Delayed event availability          |
 
 ### 4. Idempotency
 
@@ -842,10 +897,10 @@ const fingerprint = sha256(`${title}|${eventDate}|${sourceId}`);
 
 // Upsert pattern
 await supabase
-  .from('events')
+  .from("events")
   .upsert(
     { ...event, event_fingerprint: fingerprint },
-    { onConflict: 'source_id,event_fingerprint' }
+    { onConflict: "source_id,event_fingerprint" },
   );
 ```
 
@@ -938,7 +993,26 @@ CREATE TABLE dead_letter_queue (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Source health view
+-- 7. Scraper Insights (Extraction telemetry)
+CREATE TABLE scraper_insights (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_id UUID REFERENCES scraper_sources(id),
+  run_id UUID REFERENCES pipeline_jobs(id),
+  winning_strategy TEXT, -- 'hydration', 'json_ld', 'dom', etc.
+  strategy_trace JSONB, -- Recursive log of what was tried
+  events_found INTEGER,
+  execution_time_ms INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Updates to scraper_sources
+ALTER TABLE scraper_sources 
+ADD COLUMN tier TEXT DEFAULT 'standard',
+ADD COLUMN preferred_method TEXT, -- 'hydration', 'json_ld', etc.
+ADD COLUMN deep_scrape_enabled BOOLEAN DEFAULT false,
+ADD COLUMN detected_cms TEXT; -- 'wordpress', 'nextjs', 'wix'
+
+-- 8. Source health view
 CREATE VIEW source_health_status AS
 SELECT 
   s.*,
@@ -980,9 +1054,13 @@ supabase/functions/_shared/
 
 ```typescript
 // ALL edge functions use this pattern
-import type { ScraperSource, RawEventCard } from "../_shared/types.ts";
+import type { RawEventCard, ScraperSource } from "../_shared/types.ts";
 import { createFetcherForSource } from "../_shared/pageFetcher.ts";
-import { isCircuitClosed, recordSuccess, recordFailure } from "../_shared/circuitBreaker.ts";
+import {
+  isCircuitClosed,
+  recordFailure,
+  recordSuccess,
+} from "../_shared/circuitBreaker.ts";
 import { canMakeRequest, recordRequest } from "../_shared/rateLimiting.ts";
 import { parseToISODate } from "../_shared/dateUtils.ts";
 import { classifyTextToCategory } from "../_shared/categoryMapping.ts";
@@ -1002,15 +1080,15 @@ The pipeline produces events that are immediately consumable by the iOS app:
 // In iOS app: src/components/EventStackCard.tsx
 const EventStackCard = ({ event }: { event: Event }) => {
   // All these fields are guaranteed by the persist stage:
-  const { 
-    title,           // Always present, normalized
-    description,     // May be empty string, never null
-    event_date,      // ISO 8601, always valid
-    venue_name,      // Always present
-    category,        // One of 10 valid categories
-    structured_location  // Always has coordinates (at least city-level)
+  const {
+    title, // Always present, normalized
+    description, // May be empty string, never null
+    event_date, // ISO 8601, always valid
+    venue_name, // Always present
+    category, // One of 10 valid categories
+    structured_location, // Always has coordinates (at least city-level)
   } = event;
-  
+
   return (
     <Card>
       <Title>{title}</Title>
@@ -1123,15 +1201,15 @@ GROUP BY stage, error_type;
 
 ### Responding to Alerts
 
-| Alert | Action |
-|-------|--------|
-| Circuit breaker tripped | Check source URL manually, may need selector update |
-| DLQ threshold exceeded | Review errors, bulk retry or discard |
-| Gemini quota exceeded | Reduce AI enrichment batch size |
-| ScrapingBee quota exceeded | Prioritize sources, delay low-priority |
+| Alert                      | Action                                              |
+| -------------------------- | --------------------------------------------------- |
+| Circuit breaker tripped    | Check source URL manually, may need selector update |
+| DLQ threshold exceeded     | Review errors, bulk retry or discard                |
+| Gemini quota exceeded      | Reduce AI enrichment batch size                     |
+| ScrapingBee quota exceeded | Prioritize sources, delay low-priority              |
 
 ---
 
-*Document Version: 2.0.0*  
-*Last Updated: January 2026*  
-*Architecture Status: Ready for Implementation*
+_Document Version: 2.0.0_\
+_Last Updated: January 2026_\
+_Architecture Status: Ready for Implementation_

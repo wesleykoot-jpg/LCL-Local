@@ -241,7 +241,7 @@ async function failJob(
 async function processSingleSource(
   supabase: SupabaseClient,
   source: ScraperSource,
-  geminiApiKey: string | undefined,
+  aiApiKey: string | undefined, // Generic AI key
   enableDeepScraping: boolean,
   useProxy: boolean = false
 ): Promise<{ scraped: number; inserted: number; duplicates: number; failed: number }> {
@@ -365,7 +365,7 @@ async function processSingleSource(
 
       // 2. If fetcher is fine, check selectors
       console.log("Fetcher seems fine. Attempting to heal selectors...");
-      const suggestedSelectors = await healSelectors(geminiApiKey, listingHtml, fetch);
+      const suggestedSelectors = await healSelectors(aiApiKey, listingHtml, fetch);
       
       if (suggestedSelectors && suggestedSelectors.length > 0) {
         console.log(`Healed selectors for ${source.name}:`, suggestedSelectors);
@@ -417,12 +417,16 @@ async function processSingleSource(
     let normalized = cheapNormalizeEvent(raw, source);
 
     // Use AI if needed (this is Wall Clock time, not CPU time!)
-    if ((!normalized || normalized.event_time === "TBD" || !normalized.description) && geminiApiKey) {
-      const aiResult = await parseEventWithAI(geminiApiKey, raw, fetch, { 
-        targetYear: TARGET_YEAR, 
-        language: source.language || "nl" 
-      });
-      if (aiResult) normalized = aiResult as NormalizedEvent; // Type cast as NormalizedEvent to match local interface
+    if ((!normalized || normalized.event_time === "TBD" || !normalized.description) && aiApiKey) {
+      try {
+        const aiResult = await parseEventWithAI(aiApiKey, raw, fetch, { 
+          targetYear: TARGET_YEAR, 
+          language: source.language || "nl" 
+        });
+        if (aiResult) normalized = aiResult as NormalizedEvent;
+      } catch (aiError) {
+        console.warn(`AI parsing failed for ${raw.title}:`, aiError);
+      }
     }
 
     if (!normalized) {
@@ -455,36 +459,55 @@ async function processSingleSource(
     let semanticDuplicate = false;
     let embedding: number[] | null = null;
     
-    if (geminiApiKey) {
-        const textToEmbed = eventToText(normalized);
-        const embedResult = await generateEmbedding(geminiApiKey, textToEmbed, fetch);
-        if (embedResult) {
-            embedding = embedResult.embedding;
-            // Check for existing similar events
-            if (embedding) {
-               const { data: matches } = await supabase.rpc("match_events", {
-                   query_embedding: embedding,
-                   match_threshold: 0.95, // Very strict
-                   match_count: 1
-               });
-               
-               if (matches && matches.length > 0) {
-                   const match = matches[0];
-                   // Check date proximity (within 24h)
-                   const matchDate = new Date(match.event_date).getTime();
-                   const currentDate = new Date(normalizedDate.timestamp).getTime();
-                   const diffHours = Math.abs(matchDate - currentDate) / (1000 * 60 * 60);
-                   
-                   if (diffHours < 24) {
-                       console.log(`Semantic duplicate found: "${normalized.title}" ~= "${match.title}" (${match.similarity.toFixed(4)})`);
-                       semanticDuplicate = true;
-                   }
-               }
+    if (aiApiKey) {
+        try {
+            const textToEmbed = eventToText(normalized);
+            const embedResult = await generateEmbedding(aiApiKey, textToEmbed, fetch);
+            if (embedResult && embedResult.embedding) {
+                embedding = embedResult.embedding;
+                // Check for existing similar events
+                const { data: matches, error: matchError } = await supabase.rpc("match_events", {
+                    query_embedding: embedding,
+                    match_threshold: 0.95, // Very strict
+                    match_count: 1
+                });
+                
+                if (matchError) {
+                    // This often happens if schema cache is old
+                    console.warn(`Semantic match RPC failed (schema cache?): ${matchError.message}`);
+                } else if (matches && matches.length > 0) {
+                    const match = matches[0];
+                    // Check date proximity (within 24h)
+                    const matchDate = new Date(match.event_date).getTime();
+                    const currentDate = new Date(normalizedDate.timestamp).getTime();
+                    const diffHours = Math.abs(matchDate - currentDate) / (1000 * 60 * 60);
+                    
+                    if (diffHours < 24) {
+                        console.log(`Semantic duplicate found: "${normalized.title}" ~= "${match.title}" (${match.similarity.toFixed(4)})`);
+                        semanticDuplicate = true;
+                    }
+                }
             }
+        } catch (aiError) {
+            console.warn(`Semantic check failed for ${normalized.title}:`, aiError);
         }
     }
 
     if (semanticDuplicate) {
+        stats.duplicates++;
+        continue;
+    }
+
+    // --- NEW: Title/Date Exact Match Fallback ---
+    // This is a safety net in case AI de-duplication is skipped or fails
+    const exactExists = await supabase.from("events")
+        .select("id")
+        .eq("title", normalized.title)
+        .eq("event_date", normalizedDate.timestamp)
+        .limit(1);
+    
+    if (exactExists.data && exactExists.data.length > 0) {
+        console.log(`Exact title/date duplicate found: "${normalized.title}" on ${normalized.event_date}`);
         stats.duplicates++;
         continue;
     }
@@ -497,7 +520,7 @@ async function processSingleSource(
       console.warn(`No coordinates found for source: ${source.name} (${source.id}). Using fallback POINT(0 0)`);
     }
 
-    const eventInsert = {
+    const eventInsert: Record<string, any> = {
       title: normalized.title,
       description: normalized.description || "",
       category: normalized.internal_category,
@@ -510,12 +533,16 @@ async function processSingleSource(
       created_by: null,
       status: "published",
       source_id: source.id,
-      event_fingerprint: fingerprint,
       content_hash: contentHash,
-      embedding: embedding, // Store the embedding we generated!
-      embedding_generated_at: embedding ? new Date().toISOString() : null,
-      embedding_model: embedding ? 'gemini-text-embedding-004' : null,
+      event_fingerprint: fingerprint,
     };
+
+    // Only add embedding if it was successfully generated
+    if (embedding) {
+      eventInsert.embedding = embedding;
+      eventInsert.embedding_generated_at = new Date().toISOString();
+      eventInsert.embedding_model = 'gemini-text-embedding-004';
+    }
 
     const inserted = await insertEvent(supabase, eventInsert, source.id);
     if (inserted) {
@@ -533,7 +560,7 @@ async function processSingleSource(
 export async function processJob(
   supabase: SupabaseClient,
   job: ScrapeJobRecord,
-  geminiApiKey: string | undefined,
+  aiApiKey: string | undefined,
   enableDeepScraping: boolean
 ): Promise<{
   jobId: string;
@@ -570,7 +597,7 @@ export async function processJob(
     const stats = await processSingleSource(
       supabase, 
       source, 
-      geminiApiKey, 
+      aiApiKey, 
       enableDeepScraping,
       !!payload.proxyRetry // Pass the proxy flag from the specific job payload
     );
@@ -675,7 +702,9 @@ if (import.meta.main) {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
       const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
+      const aiApiKey = openaiApiKey || geminiApiKey;
 
       if (!supabaseUrl || !supabaseKey) {
         throw new Error("Missing Supabase env vars");
@@ -709,7 +738,7 @@ if (import.meta.main) {
       console.log(`Worker: Processing ${jobs.length} jobs`);
 
       const results = await Promise.allSettled(
-        jobs.map((job) => processJob(supabase, job, geminiApiKey, enableDeepScraping))
+        jobs.map((job) => processJob(supabase, job, aiApiKey, enableDeepScraping))
       );
 
       const summary = results.reduce(
