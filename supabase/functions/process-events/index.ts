@@ -42,6 +42,14 @@ export const handler = async (req: Request): Promise<Response> => {
       const rawHtml = row.raw_html as string;
       let parsingMethod: string | null = null;
       let normalized: any = null;
+      const log: any[] = [];
+
+      // Helper to log
+      const addLog = (msg: string, data?: any) => {
+        const entry = { time: new Date().toISOString(), msg, ...data };
+        log.push(entry);
+        console.log(`Processor [${rowId}]: ${msg}`);
+      };
 
       // 1. Try deterministic JSON-LD parsing
       try {
@@ -51,18 +59,21 @@ export const handler = async (req: Request): Promise<Response> => {
           if (complete) {
             normalized = jsonLdToNormalized(complete);
             parsingMethod = "deterministic";
-            console.log(`Row ${rowId}: JSON-LD successful`);
+            addLog("JSON-LD extraction successful");
+          } else {
+            addLog("JSON-LD found but incomplete", { count: jsonLdEvents.length });
           }
+        } else {
+          addLog("No JSON-LD found");
         }
       } catch (e) {
-        console.warn(`JSON-LD extraction failed for row ${rowId}:`, e);
+        addLog("JSON-LD extraction error", { error: String(e) });
       }
 
       // 2. Fallback to AI if needed
       if (!normalized) {
-        // AI parsing needs some context, we'll try to extract what we can
         try {
-          // parseEventWithAI needs a fetcher (dummy fetch for now as it's not fetching anything external)
+          addLog("Attempting AI extraction...");
           const aiResult = await parseEventWithAI(openAiApiKey, { 
             rawHtml, 
             title: "", 
@@ -72,42 +83,56 @@ export const handler = async (req: Request): Promise<Response> => {
             detailUrl: "" 
           } as any, fetch, { language: "nl" });
           
-          if (aiResult) {
+          if (aiResult && aiResult.title && aiResult.event_date) {
             normalized = aiResult;
             parsingMethod = "ai";
-            console.log(`Row ${rowId}: AI parsing successful`);
+            addLog("AI extraction successful");
+          } else {
+            addLog("AI extraction returned incomplete data", { result: aiResult });
           }
         } catch (e) {
-          console.warn(`AI parsing failed for row ${rowId}:`, e);
+          addLog("AI extraction error", { error: String(e) });
         }
       }
 
-      // 3. Last fallback: Cheap normalize (DOM-based)
+      // 3. Last fallback: Heuristic normalize (DOM-based)
       if (!normalized) {
         try {
-          // Fetch source info for coordinates/name
+          addLog("Attempting Heuristic (DOM) fallback...");
           const { data: source } = await supabase.from("scraper_sources").select("*").eq("id", sourceId).single();
           if (source) {
+            // For DOM-based, we need a better guess than "Unknown/TBD" if possible
+            // But if it's a raw page, we'll try to find a title in the HTML
+            const $ = cheerio.load(rawHtml);
+            const pageTitle = $("title").text() || "Unknown";
+            
             normalized = cheapNormalizeEvent({ 
               rawHtml, 
-              title: "Unknown", 
+              title: pageTitle, 
               description: "", 
-              date: "TBD", 
+              date: "TBD", // scraperUtils handles date extraction if we pass TBD? No.
               location: source.name,
-              detailUrl: "" 
+              detailUrl: source.url 
             } as any, source as any);
-            parsingMethod = "cheap";
-            console.log(`Row ${rowId}: Cheap normalize fallback`);
+            
+            if (normalized && normalized.title && normalized.event_date) {
+              parsingMethod = "dom_heuristic";
+              addLog("Heuristic fallback successful");
+            } else {
+              addLog("Heuristic fallback failed to produce title/date");
+            }
           }
         } catch (e) {
-          console.warn(`Cheap normalize failed for row ${rowId}:`, e);
+          addLog("Heuristic fallback error", { error: String(e) });
         }
       }
 
-      // Validate required fields
+      // Update staging with log and outcome
+      const updateData: any = { processing_log: log, parsing_method: parsingMethod };
+
       if (!normalized || !normalized.title || !normalized.event_date) {
-        console.warn(`Row ${rowId}: Missing title or date, marking as failed`);
-        await supabase.from("raw_event_staging").update({ status: "failed", parsing_method: parsingMethod }).eq("id", rowId);
+        addLog("Marking as failed: Missing title or date");
+        await supabase.from("raw_event_staging").update({ ...updateData, status: "failed" }).eq("id", rowId);
         continue;
       }
 
@@ -115,17 +140,17 @@ export const handler = async (req: Request): Promise<Response> => {
       const contentHash = await createContentHash(normalized.title, normalized.event_date);
       const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, sourceId);
       const isDup = await checkDuplicate(supabase, contentHash, fingerprint, sourceId);
+      
       if (isDup) {
-        console.log(`Row ${rowId}: Duplicate found, marking as completed`);
-        await supabase.from("raw_event_staging").update({ status: "completed", parsing_method: parsingMethod }).eq("id", rowId);
+        addLog("Marking as completed: Duplicate found");
+        await supabase.from("raw_event_staging").update({ ...updateData, status: "completed" }).eq("id", rowId);
         continue;
       }
 
       // Final Prep for Insertion
-      // We need to fetch source coordinates again if we haven't already
       const { data: sourceObj } = await supabase.from("scraper_sources").select("*").eq("id", sourceId).single();
       const defaultCoords = sourceObj?.default_coordinates || sourceObj?.config?.default_coordinates;
-      const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(5.3265 53.2104)"; // Dummy Harlingen fallback
+      const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(5.3265 53.2104)";
 
       const eventInsert = {
         title: normalized.title,
@@ -143,14 +168,13 @@ export const handler = async (req: Request): Promise<Response> => {
         content_hash: contentHash,
       };
 
-      // Insert into events table
       const inserted = await insertEvent(supabase, eventInsert);
       if (inserted) {
-        console.log(`Row ${rowId}: Successfully inserted event`);
-        await supabase.from("raw_event_staging").update({ status: "completed", parsing_method: parsingMethod }).eq("id", rowId);
+        addLog("Successfully inserted event");
+        await supabase.from("raw_event_staging").update({ ...updateData, status: "completed" }).eq("id", rowId);
       } else {
-        console.warn(`Row ${rowId}: Insertion failed`);
-        await supabase.from("raw_event_staging").update({ status: "failed", parsing_method: parsingMethod }).eq("id", rowId);
+        addLog("Insertion failed");
+        await supabase.from("raw_event_staging").update({ ...updateData, status: "failed" }).eq("id", rowId);
       }
     }
 
