@@ -26,6 +26,22 @@ export function parseToISODate(dateStr: string, today?: Date): string | null {
     return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
   }
 
+  // RFC 2822 format (from RSS feeds): "Mon, 13 Oct 2025 14:04:25 +0000"
+  const rfc2822Match = dateStr.match(/^\w{3},?\s+(\d{1,2})\s+(\w{3})\s+(\d{4})/i);
+  if (rfc2822Match) {
+    const day = parseInt(rfc2822Match[1], 10);
+    const monthName = rfc2822Match[2].toLowerCase();
+    const year = parseInt(rfc2822Match[3], 10);
+    const MONTHS_SHORT: Record<string, number> = {
+      jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+      jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+    };
+    const month = MONTHS_SHORT[monthName];
+    if (month && safeYear(year) && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+
   const MONTHS: Record<string, number> = {
     januari: 1, jan: 1, january: 1, februari: 2, feb: 2, february: 2, februar: 2,
     maart: 3, mrt: 3, march: 3, märz: 3, maerz: 3, april: 4, apr: 4,
