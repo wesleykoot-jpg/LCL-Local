@@ -10,7 +10,8 @@ import { jitteredDelay } from "../_shared/rateLimiting.ts";
 
 // Data-First Pipeline imports
 import { fingerprintCMS, getTierConfig } from "../_shared/cmsFingerprinter.ts";
-import { runExtractionWaterfall, type ExtractionStrategy, type RawEventCard } from "../_shared/dataExtractors.ts";
+import { runExtractionWaterfall, type ExtractionStrategy } from "../_shared/dataExtractors.ts";
+import { type RawEventCard } from "../_shared/types.ts";
 import { logScraperInsight } from "../_shared/scraperInsights.ts";
 
 const corsHeaders = {
