@@ -82,7 +82,7 @@ export async function logScraperInsight(
       p_winning_strategy: waterfallResult.winningStrategy,
       p_strategy_trace: strategyTrace,
       p_detected_cms: cmsFingerprint?.cms || null,
-      p_detected_framework: cmsFingerprint?.cms || null,
+      p_detected_framework: cmsFingerprint?.version || cmsFingerprint?.cms || null,
       p_execution_time_ms: params.executionTimeMs,
       p_fetch_time_ms: params.fetchTimeMs || null,
       p_parse_time_ms: params.parseTimeMs || null,

@@ -244,7 +244,7 @@ async function processSingleSource(
   geminiApiKey: string | undefined,
   enableDeepScraping: boolean,
   useProxy: boolean = false
-): Promise<{ scraped: number; inserted: number; duplicates: number; failed: number; waterfallTrace?: Record<string, unknown> }> {
+): Promise<{ scraped: number; inserted: number; duplicates: number; failed: number }> {
   const stats = { scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
   const startTime = Date.now();
 
@@ -299,18 +299,20 @@ async function processSingleSource(
   }
   
   // Step 2: Determine preferred extraction method
+  // Both ExtractionMethod and ExtractionStrategy share the same string literal values
+  // except 'auto' which is handled separately
   const preferredMethod = source.preferred_method || 'auto';
-  const mapPreferredMethod = (method: ExtractionMethod | undefined): ExtractionStrategy | 'auto' => {
-    if (!method || method === 'auto') return 'auto';
-    return method as ExtractionStrategy;
-  };
+  const validStrategies: ExtractionStrategy[] = ['hydration', 'json_ld', 'feed', 'dom'];
+  const mappedMethod: ExtractionStrategy | 'auto' = 
+    preferredMethod === 'auto' ? 'auto' : 
+    validStrategies.includes(preferredMethod as ExtractionStrategy) ? preferredMethod as ExtractionStrategy : 'auto';
   
   // Step 3: Run the Smart Extraction Waterfall
   const parseStart = Date.now();
   const waterfallResult = runExtractionWaterfall(listingHtml, {
     baseUrl: listingUrl,
     sourceName: source.name,
-    preferredMethod: mapPreferredMethod(preferredMethod),
+    preferredMethod: mappedMethod,
     feedDiscovery: tierConfig.feedGuessing,
     domSelectors: source.config.selectors,
   });

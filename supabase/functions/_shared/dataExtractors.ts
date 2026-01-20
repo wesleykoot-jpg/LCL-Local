@@ -548,15 +548,23 @@ export function extractFromFeeds(html: string, ctx: FeedExtractionContext): Extr
       }
     }
     
-    // Note: Actual feed fetching and parsing would happen asynchronously
-    // For now, we just return the discovered feed URLs as potential sources
-    // The actual implementation would need the fetchFn to retrieve and parse feeds
+    // Note: Feed extraction in the synchronous waterfall only discovers feed URLs
+    // embedded in the HTML. Actual fetching and parsing of external feeds would
+    // require async operations and should be handled at a higher level (e.g., in 
+    // the scrape-worker after waterfall completes with 0 events).
+    // The parseRssFeed and parseIcsFeed functions are exported for use when 
+    // feed content is fetched separately.
+    
+    // If we have discovered feed links in the HTML, report them as "found but not fetched"
+    const feedCount = feedUrls.length;
     
     return {
       strategy: 'feed',
       tried: true,
-      found: events.length,
-      error: feedUrls.length > 0 ? null : 'No feeds discovered',
+      found: events.length, // Currently 0 as we don't fetch feeds synchronously
+      error: feedCount > 0 
+        ? `Discovered ${feedCount} feed URL(s) but async fetching not implemented in waterfall`
+        : 'No feeds discovered in HTML',
       events,
       timeMs: Date.now() - startTime,
     };
@@ -712,10 +720,14 @@ export function extractFromDom(html: string, ctx: ExtractionContext): Extraction
         let dateText = $el.find("time, .date, [class*='date'], [class*='datum'], [class*='tijd'], [datetime]").first().text().trim() ||
           $el.attr("datetime") || "";
         
-        // Fallback: look for date pattern in text
+        // Fallback: look for date pattern in text (supports English, Dutch, German month names)
         if (!dateText) {
           const allText = $el.text().trim();
-          const datePattern = /(?:\d{1,2}\s+(?:jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)[a-z]*|\d{1,2}-\d{1,2}-\d{2,4})/i;
+          // Multi-locale date patterns:
+          // - English: jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+          // - Dutch: jan, feb, mrt, apr, mei, jun, jul, aug, sep, okt, nov, dec
+          // - German: jan, feb, mär, apr, mai, jun, jul, aug, sep, okt, nov, dez
+          const datePattern = /(?:\d{1,2}\s+(?:jan|feb|mar|mrt|apr|may|mei|mai|mär|jun|jul|aug|sep|oct|okt|nov|dec|dez)[a-z]*|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})/i;
           const match = allText.match(datePattern);
           if (match) dateText = match[0];
         }
