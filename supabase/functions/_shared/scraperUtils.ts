@@ -1,7 +1,8 @@
 import { parseToISODate } from "./dateUtils.ts";
 import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "./categoryMapping.ts";
-import { RawEventCard, ScraperSource, NormalizedEvent } from "./types.ts";
+import { RawEventCard, ScraperSource, NormalizedEvent, InternalCategory } from "./types.ts";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 export function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
