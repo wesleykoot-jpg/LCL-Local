@@ -200,6 +200,116 @@ ${rawEvent.rawHtml}`;
   };
 }
 
+export interface ParsedDetailedEventAI extends ParsedEventAI {
+    price?: string;
+    organizer?: string;
+    tickets_url?: string;
+    image_user_prompt?: string; // Debug info
+}
+
+export async function parseDetailedEventWithAI(
+  apiKey: string,
+  rawEvent: RawEventCard,
+  detailHtml: string | null,
+  fetcher: typeof fetch,
+  options: ParseEventOptions = {}
+): Promise<ParsedDetailedEventAI | null> {
+  const { targetYear = new Date().getFullYear(), language = "nl" } = options;
+  const today = new Date().toISOString().split("T")[0];
+  
+  const systemPrompt = `Je bent een event data expert. Haal rijke evenementen-informatie uit de HTML Context.
+- Retourneer uitsluitend geldige JSON.
+- Weiger evenementen die niet in ${targetYear} plaatsvinden.
+- Houd tekst in originele taal (${language}).
+- Velden:
+  - title: string
+  - description: string (gebruik de volledige beschrijving van de detail pagina indien beschikbaar)
+  - event_date: YYYY-MM-DD
+  - event_time: HH:MM of "TBD"
+  - venue_name: string
+  - venue_address: string
+  - image_url: string (URL van de hoogste resolutie afbeelding)
+  - price: string (bijv. "€15,00", "Gratis")
+  - organizer: string
+  - tickets_url: string
+- category: Kies uit [active, gaming, entertainment, social, family, outdoors, music, workshops, foodie, community].`;
+
+  const userPrompt = `Vandaag is ${today}.
+Context:
+Titel: ${rawEvent.title}
+Datum: ${rawEvent.date}
+Listing URL: ${rawEvent.detailUrl}
+
+HTML Content (Listing + Detail):
+${rawEvent.rawHtml || ''}
+${detailHtml || ''}
+`;
+
+   // Truncate user prompt to safe limit (~60k chars for 128k context models, but keeping it efficient)
+   const truncatedPrompt = userPrompt.slice(0, 40000);
+
+  const openAiPayload = {
+    model: "gpt-4o-mini", // Efficient model for batch processing
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: truncatedPrompt }
+    ],
+    temperature: 0.1,
+    // max_tokens: 1000, // Let model decide, JSON object enforcement handles structure
+    response_format: { type: "json_object" }
+  };
+
+  let text: string | null = null;
+  // Support both wrappers
+  if (apiKey.startsWith("sk-")) {
+      text = await callOpenAI(apiKey, openAiPayload, fetcher);
+  } else {
+      // Gemini fallback if needed, though structure logic implies OpenAI preferred per plan
+      const geminiPayload = {
+        contents: [
+            { role: "user", parts: [{ text: systemPrompt }] },
+            { role: "user", parts: [{ text: truncatedPrompt }] }
+        ],
+        generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+      };
+      text = await callGemini(apiKey, geminiPayload, fetcher);
+  }
+  
+  if (!text) return null;
+
+  try {
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (!parsed.title || !parsed.event_date) return null;
+    
+    // Validate year
+    const isoDate = parseToISODate(parsed.event_date);
+    if (!isoDate || !isoDate.startsWith(`${targetYear}-`)) return null;
+
+    const category = mapToInternalCategory(parsed.category || parsed.description || rawEvent.title);
+
+    return {
+        title: normalizeWhitespace(parsed.title),
+        description: parsed.description ? normalizeWhitespace(parsed.description) : "",
+        event_date: isoDate,
+        event_time: parsed.event_time || "TBD",
+        venue_name: parsed.venue_name || rawEvent.location || "",
+        venue_address: parsed.venue_address,
+        image_url: parsed.image_url || rawEvent.imageUrl || null,
+        internal_category: category,
+        detail_url: rawEvent.detailUrl,
+        price: parsed.price,
+        organizer: parsed.organizer,
+        tickets_url: parsed.tickets_url
+    };
+  } catch (e) {
+    console.warn("Detailed AI parsing failed:", e);
+    return null;
+  }
+}
+
 export async function healSelectors(
   apiKey: string,
   html: string,

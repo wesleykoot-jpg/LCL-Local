@@ -146,6 +146,7 @@ export interface ScraperSource {
     headless?: boolean;
     wait_for_selector?: string;
     wait_for_timeout?: number;
+    feed_discovery?: boolean;
   };
 }
 
