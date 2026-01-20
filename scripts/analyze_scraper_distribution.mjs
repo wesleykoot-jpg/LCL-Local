@@ -4,27 +4,10 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { loadEnv } from './_shared/loadEnv.mjs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const envContent = readFileSync(join(__dirname, '../.env'), 'utf8');
-const env = {};
-envContent.split('\n').forEach(line => {
-  const match = line.match(/^([^=]+)=(.*)$/);
-  if (match) {
-    let value = match[2].trim();
-    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-    env[match[1]] = value;
-  }
-});
-
-const SUPABASE_URL = env['VITE_SUPABASE_URL'];
-const SUPABASE_SERVICE_ROLE_KEY = env['SUPABASE_SERVICE_ROLE_KEY'];
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const env = loadEnv(import.meta.url);
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function main() {
   console.log("╔══════════════════════════════════════════════════════════════════════════╗");
