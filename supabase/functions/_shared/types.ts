@@ -94,6 +94,12 @@ export interface EnrichedEvent {
 /** Fetcher type determines how pages are retrieved */
 export type FetcherType = 'static' | 'puppeteer' | 'playwright' | 'scrapingbee';
 
+/** Source tier for configuration purposes */
+export type SourceTier = 'aggregator' | 'venue' | 'general';
+
+/** Preferred extraction method for Data-First pipeline */
+export type ExtractionMethod = 'hydration' | 'json_ld' | 'feed' | 'dom' | 'auto';
+
 export interface ScraperSource {
   id: string;
   name: string;
@@ -111,10 +117,16 @@ export interface ScraperSource {
   volatility_score?: number;
   last_scraped_at?: string | null;
   next_scrape_at?: string | null;
-  preferred_method?: string;
-  detected_cms?: string;
-  tier?: 'standard' | 'premium' | 'discovery';
+  /** Source tier: aggregator (Tier 1), venue (Tier 2), general (Tier 3) */
+  tier?: SourceTier;
+  /** Preferred extraction method: auto runs waterfall, specific values skip lower-priority methods */
+  preferred_method?: ExtractionMethod;
+  /** Whether to fetch detail pages for additional data */
   deep_scrape_enabled?: boolean;
+  /** Auto-detected CMS platform */
+  detected_cms?: string;
+  /** Version of detected framework if available */
+  detected_framework_version?: string;
   config: {
     selectors?: string[];
     headers?: Record<string, string>;
