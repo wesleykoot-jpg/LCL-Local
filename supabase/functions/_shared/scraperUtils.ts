@@ -65,6 +65,21 @@ export function createContentHash(title: string, eventDate: string): Promise<str
 }
 
 /**
+ * Creates a SHA-256 hash of a raw event payload for delta detection.
+ */
+export async function hashPayload(payload: RawEventCard): Promise<string> {
+  // Hash key fields that would indicate content change
+  const keyContent = JSON.stringify({
+    title: payload.title,
+    date: payload.date,
+    location: payload.location,
+    description: payload.description?.slice(0, 500), // Limit description for stability
+    detailUrl: payload.detailUrl,
+  });
+  return sha256Hex(keyContent);
+}
+
+/**
  * Extract time from a raw HTML string using regex patterns
  */
 export function extractTimeFromHtml(html: string): string | null {
