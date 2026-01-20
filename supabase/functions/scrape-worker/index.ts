@@ -307,14 +307,20 @@ async function processSingleSource(
     preferredMethod === 'auto' ? 'auto' : 
     validStrategies.includes(preferredMethod as ExtractionStrategy) ? preferredMethod as ExtractionStrategy : 'auto';
   
-  // Step 3: Run the Smart Extraction Waterfall
+  /* Step 3: Run the Smart Extraction Waterfall */
   const parseStart = Date.now();
-  const waterfallResult = runExtractionWaterfall(listingHtml, {
+  const waterfallResult = await runExtractionWaterfall(listingHtml, {
     baseUrl: listingUrl,
     sourceName: source.name,
     preferredMethod: mappedMethod,
     feedDiscovery: tierConfig.feedGuessing,
     domSelectors: source.config.selectors,
+    fetcher: {
+      fetch: async (url: string) => {
+        const res = await fetcher.fetchPage(url);
+        return { html: res.html, status: res.statusCode };
+      }
+    }
   });
   const parseTimeMs = Date.now() - parseStart;
   

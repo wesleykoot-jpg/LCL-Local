@@ -510,19 +510,19 @@ const FEED_PATHS = [
 
 export interface FeedExtractionContext extends ExtractionContext {
   /** Function to fetch external URLs */
-  fetchFn?: (url: string) => Promise<string>;
+  fetcher?: { fetch: (url: string) => Promise<{ html: string, status: number }> };
 }
 
 /**
- * Extracts events from RSS/Atom/ICS feeds discovered in HTML.
+ * Extracts events from RSS/Atom/ICS feeds discovered in HTML or via auto-discovery.
  */
-export function extractFromFeeds(html: string, ctx: FeedExtractionContext): ExtractionResult {
+export async function extractFromFeeds(html: string, ctx: FeedExtractionContext): Promise<ExtractionResult> {
   const startTime = Date.now();
   const events: RawEventCard[] = [];
   
   try {
     const $ = cheerio.load(html);
-    const feedUrls: string[] = [];
+    let feedUrls: string[] = [];
     
     // Find RSS/Atom links in head
     $('link[type="application/rss+xml"], link[type="application/atom+xml"]').each((_, el) => {
@@ -537,7 +537,7 @@ export function extractFromFeeds(html: string, ctx: FeedExtractionContext): Extr
     });
     
     // If no feeds found and discovery is enabled, try common paths
-    if (feedUrls.length === 0 && ctx.feedDiscovery) {
+    if (feedUrls.length === 0 && (ctx.feedDiscovery || ctx.preferredMethod === 'feed')) {
       try {
         const base = new URL(ctx.baseUrl);
         for (const path of FEED_PATHS) {
@@ -547,24 +547,45 @@ export function extractFromFeeds(html: string, ctx: FeedExtractionContext): Extr
         // Invalid baseUrl, skip discovery
       }
     }
+
+    // Deduplicate URLs
+    feedUrls = [...new Set(feedUrls)];
     
-    // Note: Feed extraction in the synchronous waterfall only discovers feed URLs
-    // embedded in the HTML. Actual fetching and parsing of external feeds would
-    // require async operations and should be handled at a higher level (e.g., in 
-    // the scrape-worker after waterfall completes with 0 events).
-    // The parseRssFeed and parseIcsFeed functions are exported for use when 
-    // feed content is fetched separately.
-    
-    // If we have discovered feed links in the HTML, report them as "found but not fetched"
-    const feedCount = feedUrls.length;
+    // ACTIVE FETCHING: Pick the best looking feed and fetch it
+    // We limit to 3 attempts to save time
+    let fetchCount = 0;
+    for (const url of feedUrls.slice(0, 3)) {
+      if (!ctx.fetcher) break; // Cannot fetch without fetcher
+      
+      try {
+        const { html: content, status } = await ctx.fetcher.fetch(url);
+        if (status !== 200 || !content) continue;
+        fetchCount++;
+
+        let parsedEvents: RawEventCard[] = [];
+        
+        if (content.includes('<rss') || content.includes('<feed')) {
+           parsedEvents = parseRssFeed(content, url);
+        } else if (content.includes('BEGIN:VEVENT')) {
+           parsedEvents = parseIcsFeed(content, url);
+        }
+
+        if (parsedEvents.length > 0) {
+            events.push(...parsedEvents);
+            break; // Stop after finding a working feed
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch feed ${url}:`, err);
+      }
+    }
     
     return {
       strategy: 'feed',
       tried: true,
-      found: events.length, // Currently 0 as we don't fetch feeds synchronously
-      error: feedCount > 0 
-        ? `Discovered ${feedCount} feed URL(s) but async fetching not implemented in waterfall`
-        : 'No feeds discovered in HTML',
+      found: events.length,
+      error: events.length === 0 && feedUrls.length > 0
+        ? `Discovered ${feedUrls.length} feeds, fetched ${fetchCount}, found 0 events.`
+        : null,
       events,
       timeMs: Date.now() - startTime,
     };
@@ -789,7 +810,7 @@ export function extractFromDom(html: string, ctx: ExtractionContext): Extraction
  * Runs the extraction waterfall: tries each strategy in priority order
  * and stops when events are found.
  */
-export function runExtractionWaterfall(html: string, ctx: ExtractionContext): WaterfallResult {
+export async function runExtractionWaterfall(html: string, ctx: FeedExtractionContext): Promise<WaterfallResult> {
   const startTime = Date.now();
   const trace: Record<ExtractionStrategy, Omit<ExtractionResult, 'events'>> = {} as Record<ExtractionStrategy, Omit<ExtractionResult, 'events'>>;
   
@@ -813,11 +834,14 @@ export function runExtractionWaterfall(html: string, ctx: ExtractionContext): Wa
         result = extractFromJsonLd(html, ctx);
         break;
       case 'feed':
-        result = extractFromFeeds(html, { ...ctx, feedDiscovery: ctx.feedDiscovery ?? false });
+        result = await extractFromFeeds(html, ctx);
         break;
       case 'dom':
         result = extractFromDom(html, ctx);
         break;
+      default:
+        // Should not happen, but safe fallback
+        continue;
     }
     
     // Store trace without events (to save memory)
