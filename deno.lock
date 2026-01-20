@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@std/dotenv@*": "0.225.6",
     "npm:@capacitor/app@8": "8.0.0_@capacitor+core@8.0.1",
     "npm:@capacitor/cli@8": "8.0.1",
     "npm:@capacitor/core@8": "8.0.1",
@@ -98,6 +99,11 @@
     "npm:vite@^5.2.0": "5.4.21_@types+node@20.19.30_terser@5.46.0",
     "npm:vitest@^2.1.4": "2.1.9_@types+node@20.19.30_jsdom@26.1.0_vite@5.4.21__@types+node@20.19.30__terser@5.46.0_terser@5.46.0",
     "npm:zod@^4.3.5": "4.3.5"
+  },
+  "jsr": {
+    "@std/dotenv@0.225.6": {
+      "integrity": "1d6f9db72f565bd26790fa034c26e45ecb260b5245417be76c2279e5734c421b"
+    }
   },
   "npm": {
     "@adobe/css-tools@4.4.4": {
