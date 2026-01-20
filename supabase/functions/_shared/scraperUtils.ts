@@ -176,6 +176,55 @@ export function cheapNormalizeEvent(
     image_url: raw.imageUrl,
     venue_name: raw.location || source.name,
     internal_category: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
-    detail_url: raw.detailUrl,
   };
+}
+
+/**
+ * Checks if an event already exists in the database based on content hash or fingerprint.
+ */
+export async function checkDuplicate(
+  supabase: SupabaseClient, 
+  contentHash: string, 
+  fingerprint: string, 
+  sourceId: string
+): Promise<boolean> {
+  // Check content hash first (title | date)
+  const { data: hashData } = await supabase
+    .from("events")
+    .select("id")
+    .eq("source_id", sourceId)
+    .eq("content_hash", contentHash)
+    .limit(1);
+  if (hashData && hashData.length > 0) return true;
+
+  // Check event fingerprint (title | date | sourceId)
+  const { data: fpData } = await supabase
+    .from("events")
+    .select("id")
+    .eq("source_id", sourceId)
+    .eq("event_fingerprint", fingerprint)
+    .limit(1);
+  if (fpData && fpData.length > 0) return true;
+
+  return false;
+}
+
+/**
+ * Inserts a normalized event into the database.
+ */
+export async function insertEvent(
+  supabase: SupabaseClient, 
+  event: Record<string, any>
+): Promise<boolean> {
+  // Final defensive validation: ensure category is valid before insert
+  if (!event.category) {
+    event.category = "community";
+  }
+
+  const { error } = await supabase.from("events").insert(event);
+  if (error) {
+    console.error("Insert failed:", error.message);
+    return false;
+  }
+  return true;
 }
