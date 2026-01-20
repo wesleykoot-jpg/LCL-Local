@@ -48,6 +48,7 @@ geocode_cache     - Nominatim API result caching for coordinates
 | [`src/contexts/AuthContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/AuthContext.tsx)             | Authentication state management                                                                           |
 | [`src/contexts/LocationContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/LocationContext.tsx)     | User geolocation tracking                                                                                 |
 | [`DOCS/DESIGN_SYSTEM_CORE.md`](./DOCS/DESIGN_SYSTEM_CORE.md)                                                                                                         | **Design System v4.0** - Solid surfaces, colors, shadows, spacing, component patterns                     |
+| [`docs/AI_SUPABASE_MIGRATIONS_GUIDE.md`](./docs/AI_SUPABASE_MIGRATIONS_GUIDE.md)                                                                                     | **For AI Assistants** - How to use the automated Supabase migrations workflow                            |
 
 ## Important Patterns
 
