@@ -76,7 +76,7 @@ export async function hashPayload(payload: RawEventCard): Promise<string> {
     description: payload.description?.slice(0, 500), // Limit description for stability
     detailUrl: payload.detailUrl,
   });
-  return sha256Hex(keyContent);
+  return await sha256Hex(keyContent);
 }
 
 /**

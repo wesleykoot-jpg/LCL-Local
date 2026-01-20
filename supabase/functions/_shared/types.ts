@@ -127,6 +127,10 @@ export interface ScraperSource {
   detected_cms?: string;
   /** Version of detected framework if available */
   detected_framework_version?: string;
+  /** Delta-detection: hash of last payload */
+  last_payload_hash?: string;
+  /** Delta-detection: count of skipped runs */
+  total_savings_prevented_runs?: number;
   config: {
     selectors?: string[];
     headers?: Record<string, string>;

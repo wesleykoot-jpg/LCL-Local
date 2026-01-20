@@ -13,6 +13,7 @@ import { fingerprintCMS, getTierConfig } from "../_shared/cmsFingerprinter.ts";
 import { runExtractionWaterfall, type ExtractionStrategy } from "../_shared/dataExtractors.ts";
 import { type RawEventCard } from "../_shared/types.ts";
 import { logScraperInsight } from "../_shared/scraperInsights.ts";
+import { hashPayload } from "../_shared/scraperUtils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -200,16 +201,23 @@ async function processSingleSource(
       }
     }
 
+    // Delta Detection: Compute hash and check against source's last hash
+    const payloadHash = await hashPayload(raw);
+    const isUnchanged = source.last_payload_hash === payloadHash;
+
     stagingBatch.push({
       source_id: source.id,
-      url: raw.detailUrl || listingUrl, // Key for this event
+      url: raw.detailUrl || listingUrl,
       raw_payload: raw,
       detail_html: detailHtml,
-      status: 'pending',
+      status: isUnchanged ? 'skipped_no_change' : 'pending',
+      parsing_method: null, // Will be set by processor
       fetch_metadata: {
         fetched_at: new Date().toISOString(),
         strategy: waterfallResult.winningStrategy,
-        listing_url: listingUrl
+        listing_url: listingUrl,
+        payload_hash: payloadHash,
+        delta_skipped: isUnchanged
       }
     });
 
