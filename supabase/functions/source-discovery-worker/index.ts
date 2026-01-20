@@ -13,6 +13,7 @@ import {
   withErrorLogging,
   logHttpError 
 } from "../_shared/errorLogging.ts";
+import { detectRenderingRequirements, type JSDetectionResult } from "../_shared/jsDetectionHeuristics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,6 +68,9 @@ interface DiscoveredSource {
   confidence: number;
   coordinates: { lat: number; lng: number };
   enabled?: boolean;
+  requires_render?: boolean;
+  fetcher_type?: 'static' | 'puppeteer' | 'playwright';
+  rendering_detection?: JSDetectionResult;
 }
 
 function isNoiseDomain(url: string): boolean {
@@ -174,7 +178,12 @@ async function validateSourceWithLLM(
   url: string,
   municipality: string,
   geminiApiKey: string
-): Promise<{ isValid: boolean; confidence: number; suggestedName: string }> {
+): Promise<{ 
+  isValid: boolean; 
+  confidence: number; 
+  suggestedName: string;
+  renderingRequirements: JSDetectionResult;
+}> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -185,16 +194,38 @@ async function validateSourceWithLLM(
     });
 
     if (!response.ok) {
-      return { isValid: false, confidence: 0, suggestedName: "" };
+      return { 
+        isValid: false, 
+        confidence: 0, 
+        suggestedName: "",
+        renderingRequirements: {
+          requiresRender: false,
+          fetcherType: 'static',
+          detectedFrameworks: [],
+          hasEmptyBody: false,
+          hasEventKeywords: false,
+          confidence: 0,
+          signals: ['HTTP request failed'],
+        },
+      };
     }
 
     const html = await response.text();
+    
+    // Detect JavaScript rendering requirements using heuristics
+    const renderingRequirements = detectRenderingRequirements(html);
+    
     const hasAgendaContent = /agenda|evenement|activiteit|programma|kalender/i.test(html);
     const dutchMonthsPattern = DUTCH_MONTHS.join("|");
     const hasDateContent = new RegExp(`\\d{1,2}[-/]\\d{1,2}[-/]\\d{2,4}|${dutchMonthsPattern}`, "i").test(html);
 
     if (!hasAgendaContent || !hasDateContent) {
-      return { isValid: false, confidence: 0, suggestedName: "" };
+      return { 
+        isValid: false, 
+        confidence: 0, 
+        suggestedName: "",
+        renderingRequirements,
+      };
     }
 
     const geminiResponse = await fetch(
@@ -233,7 +264,12 @@ ${html.slice(0, CONFIG.MAX_HTML_CHARS_FOR_LLM)}`
         undefined,
         { municipality, url }
       );
-      return { isValid: hasAgendaContent && hasDateContent, confidence: 50, suggestedName: `Agenda ${municipality}` };
+      return { 
+        isValid: hasAgendaContent && hasDateContent, 
+        confidence: 50, 
+        suggestedName: `Agenda ${municipality}`,
+        renderingRequirements,
+      };
     }
 
     const geminiData = await geminiResponse.json();
@@ -246,10 +282,16 @@ ${html.slice(0, CONFIG.MAX_HTML_CHARS_FOR_LLM)}`
         isValid: parsed.isEventAgenda === true,
         confidence: parsed.confidence || 50,
         suggestedName: parsed.suggestedName || `Agenda ${municipality}`,
+        renderingRequirements,
       };
     }
 
-    return { isValid: false, confidence: 0, suggestedName: "" };
+    return { 
+      isValid: false, 
+      confidence: 0, 
+      suggestedName: "",
+      renderingRequirements,
+    };
   } catch (error) {
     console.warn(`Validation failed for ${url}:`, error);
     await logError({
@@ -261,7 +303,20 @@ ${html.slice(0, CONFIG.MAX_HTML_CHARS_FOR_LLM)}`
       stack_trace: error instanceof Error ? error.stack : undefined,
       context: { municipality, url },
     });
-    return { isValid: false, confidence: 0, suggestedName: "" };
+    return { 
+      isValid: false, 
+      confidence: 0, 
+      suggestedName: "",
+      renderingRequirements: {
+        requiresRender: false,
+        fetcherType: 'static',
+        detectedFrameworks: [],
+        hasEmptyBody: false,
+        hasEventKeywords: false,
+        confidence: 0,
+        signals: [`Error: ${error instanceof Error ? error.message : String(error)}`],
+      },
+    };
   }
 }
 
@@ -291,7 +346,8 @@ async function insertDiscoveredSource(
           },
           rate_limit_ms: 200,
         },
-        requires_render: false,
+        requires_render: source.requires_render ?? false,
+        fetcher_type: source.fetcher_type ?? 'static',
         language: "nl-NL",
         country: "NL",
         default_coordinates: source.coordinates,
@@ -386,13 +442,20 @@ async function processMunicipalityJob(
           municipality: job.municipality,
           confidence: validation.confidence,
           coordinates: job.coordinates,
+          // Set rendering requirements from detection
+          requires_render: validation.renderingRequirements.requiresRender,
+          fetcher_type: validation.renderingRequirements.fetcherType,
+          rendering_detection: validation.renderingRequirements,
         };
 
         const inserted = await insertDiscoveredSource(supabase, source);
         if (inserted) {
           sourcesAdded++;
           const enabledLabel = source.enabled ? " [AUTO-ENABLED]" : "";
-          console.log(`[Worker] Discovered: ${source.name} (${canonicalUrl}) - confidence: ${validation.confidence}%${enabledLabel}`);
+          console.log(`[Worker] Discovered: ${source.name} (${canonicalUrl}) - confidence: ${validation.confidence}%${enabledLabel} [${source.fetcher_type}]`);
+          if (validation.renderingRequirements.detectedFrameworks.length > 0) {
+            console.log(`[Worker] Detected frameworks: ${validation.renderingRequirements.detectedFrameworks.join(', ')}`);
+          }
         }
       }
 

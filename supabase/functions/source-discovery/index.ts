@@ -9,6 +9,7 @@ import {
   classifyTextToCategory 
 } from "../_shared/categoryMapping.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
+import { detectRenderingRequirements, type JSDetectionResult } from "../_shared/jsDetectionHeuristics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,6 +99,9 @@ interface DiscoveredSource {
   confidence: number;
   coordinates: { lat: number; lng: number };
   enabled?: boolean;
+  requires_render?: boolean;
+  fetcher_type?: 'static' | 'puppeteer' | 'playwright';
+  rendering_detection?: JSDetectionResult;
 }
 
 interface DiscoveryStats {
@@ -452,12 +456,18 @@ async function searchForEventSources(
 
 /**
  * Validate a URL using LLM to check if it's a valid event source
+ * Also detects JavaScript rendering requirements
  */
 async function validateSourceWithLLM(
   url: string,
   municipality: string,
   geminiApiKey: string
-): Promise<{ isValid: boolean; confidence: number; suggestedName: string }> {
+): Promise<{ 
+  isValid: boolean; 
+  confidence: number; 
+  suggestedName: string;
+  renderingRequirements: JSDetectionResult;
+}> {
   try {
     // Fetch the page
     const response = await fetch(url, {
@@ -469,10 +479,26 @@ async function validateSourceWithLLM(
     });
 
     if (!response.ok) {
-      return { isValid: false, confidence: 0, suggestedName: "" };
+      return { 
+        isValid: false, 
+        confidence: 0, 
+        suggestedName: "",
+        renderingRequirements: {
+          requiresRender: false,
+          fetcherType: 'static',
+          detectedFrameworks: [],
+          hasEmptyBody: false,
+          hasEventKeywords: false,
+          confidence: 0,
+          signals: ['HTTP request failed'],
+        },
+      };
     }
 
     const html = await response.text();
+    
+    // Detect JavaScript rendering requirements using heuristics
+    const renderingRequirements = detectRenderingRequirements(html);
     
     // Check for basic event-related content
     const hasAgendaContent = /agenda|evenement|activiteit|programma|kalender/i.test(html);
@@ -480,7 +506,12 @@ async function validateSourceWithLLM(
     const hasDateContent = new RegExp(`\\d{1,2}[-/]\\d{1,2}[-/]\\d{2,4}|${dutchMonthsPattern}`, "i").test(html);
     
     if (!hasAgendaContent || !hasDateContent) {
-      return { isValid: false, confidence: 0, suggestedName: "" };
+      return { 
+        isValid: false, 
+        confidence: 0, 
+        suggestedName: "",
+        renderingRequirements,
+      };
     }
 
     // Use Gemini to validate more thoroughly
@@ -512,7 +543,8 @@ async function validateSourceWithLLM(
       return { 
         isValid: hasAgendaContent && hasDateContent, 
         confidence: 50, 
-        suggestedName: `Agenda ${municipality}` 
+        suggestedName: `Agenda ${municipality}`,
+        renderingRequirements,
       };
     }
 
@@ -527,13 +559,32 @@ async function validateSourceWithLLM(
         isValid: parsed.isEventAgenda === true,
         confidence: parsed.confidence || 50,
         suggestedName: parsed.suggestedName || `Agenda ${municipality}`,
+        renderingRequirements,
       };
     }
 
-    return { isValid: false, confidence: 0, suggestedName: "" };
+    return { 
+      isValid: false, 
+      confidence: 0, 
+      suggestedName: "",
+      renderingRequirements,
+    };
   } catch (error) {
     console.warn(`Validation failed for ${url}:`, error);
-    return { isValid: false, confidence: 0, suggestedName: "" };
+    return { 
+      isValid: false, 
+      confidence: 0, 
+      suggestedName: "",
+      renderingRequirements: {
+        requiresRender: false,
+        fetcherType: 'static',
+        detectedFrameworks: [],
+        hasEmptyBody: false,
+        hasEventKeywords: false,
+        confidence: 0,
+        signals: [`Error: ${error.message}`],
+      },
+    };
   }
 }
 
@@ -578,7 +629,8 @@ async function insertDiscoveredSource(
           },
           rate_limit_ms: 200,
         },
-        requires_render: false,
+        requires_render: source.requires_render ?? false,
+        fetcher_type: source.fetcher_type ?? 'static',
         language: "nl-NL",
         country: "NL",
         default_coordinates: source.coordinates,
@@ -660,11 +712,19 @@ async function processMunicipality(
             categoryHint: categoryHint,
             confidence: validation.confidence,
             coordinates: { lat: municipality.lat, lng: municipality.lng },
+            // Set rendering requirements from detection
+            requires_render: validation.renderingRequirements.requiresRender,
+            fetcher_type: validation.renderingRequirements.fetcherType,
+            rendering_detection: validation.renderingRequirements,
           };
 
           // Skip DB write in dry run mode
           if (dryRun) {
             console.log(`[DRY RUN] Would insert source: ${source.name} (${source.url}) - confidence: ${source.confidence}%`);
+            console.log(`[DRY RUN] Rendering: requires_render=${source.requires_render}, fetcher_type=${source.fetcher_type}`);
+            if (validation.renderingRequirements.detectedFrameworks.length > 0) {
+              console.log(`[DRY RUN] Detected frameworks: ${validation.renderingRequirements.detectedFrameworks.join(', ')}`);
+            }
             const wouldAutoEnable = source.confidence > CONFIG.AUTO_ENABLE_CONFIDENCE_THRESHOLD;
             console.log(`[DRY RUN] Auto-enable: ${wouldAutoEnable ? `YES (>${CONFIG.AUTO_ENABLE_CONFIDENCE_THRESHOLD}%)` : `NO (≤${CONFIG.AUTO_ENABLE_CONFIDENCE_THRESHOLD}%)`}`);
             discovered.push(source);
@@ -676,7 +736,7 @@ async function processMunicipality(
           if (inserted) {
             stats.sourcesInserted++;
             discovered.push(source);
-            console.log(`Discovered source: ${source.name} (${source.url}) - confidence: ${source.confidence}%${source.enabled ? " [AUTO-ENABLED]" : ""}`);
+            console.log(`Discovered source: ${source.name} (${source.url}) - confidence: ${source.confidence}%${source.enabled ? " [AUTO-ENABLED]" : ""} [${source.fetcher_type}]`);
             
             // Send Slack alert for high-value "Anchor Source" discoveries
             // Criteria: Major municipality (population > 100k) AND high confidence (>= 80)
