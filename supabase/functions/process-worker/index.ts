@@ -16,8 +16,8 @@ import {
   eventToText
 } from "../_shared/scraperUtils.ts";
 
-import { logError } from "../_shared/errorLogging.ts";
-import type { RawEventCard } from "../_shared/types.ts";
+import { logError as _logError } from "../_shared/errorLogging.ts";
+import type { RawEventCard, NormalizedEvent } from "../_shared/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,23 +110,51 @@ async function processRow(
   supabase: SupabaseClient, 
   row: StagingRow, 
   aiApiKey: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; parsingMethod?: string }> {
   try {
     const raw = row.raw_payload;
     const sourceId = row.source_id;
+    let parsingMethod: string = 'ai'; // Default
 
-    // 1. Cheap Normalization (Rules based)
-    // We pass a dummy source object because `cheapNormalizeEvent` only needs basic fields
-    const dummySource = { id: sourceId, name: "Staging", country: "NL", language: "nl" };
-    let normalized = cheapNormalizeEvent(raw, dummySource as any);
+    // 0. Check if delta-skipped
+    if (row.status === 'skipped_no_change') {
+      await completeRow(supabase, row.id);
+      // Increment savings counter on source
+      try {
+        await supabase.rpc('increment_savings_counter', { p_source_id: sourceId });
+      } catch { /* ignore if RPC doesn't exist */ }
+      return { success: true, parsingMethod: 'skipped_no_change' };
+    }
+
+    // 1. HYBRID PARSING: Try JSON-LD first (deterministic)
+    let normalized: NormalizedEvent | null = null;
     
-    let aiParsed: ParsedDetailedEventAI | null = null;
+    // Import dynamically to avoid circular deps
+    const { extractJsonLdEvents, isJsonLdComplete, jsonLdToNormalized } = await import("../_shared/jsonLdParser.ts");
     
-    // 2. High-Fidelity Parsing (AI)
-    // We ALWAYS run AI for detailed extraction if detail_html exists or if basic parsing is thin
-    // But per requirements ("Data-First"), we should probably run AI to get rich fields like image_url, price, organizer
-    try {
-        aiParsed = await parseDetailedEventWithAI(
+    // Try extracting from raw HTML first
+    const htmlToSearch = raw.rawHtml || '';
+    const jsonLdEvents = extractJsonLdEvents(htmlToSearch);
+    
+    if (jsonLdEvents && jsonLdEvents.length > 0) {
+      // Find first complete event
+      const completeEvent = jsonLdEvents.find(isJsonLdComplete);
+      if (completeEvent) {
+        normalized = jsonLdToNormalized(completeEvent);
+        parsingMethod = 'deterministic';
+        console.log(`[${row.id}] Using deterministic JSON-LD parsing`);
+      }
+    }
+    
+    // 2. FALLBACK: AI Parsing if JSON-LD incomplete/missing
+    if (!normalized || !normalized.title || !normalized.event_date) {
+      // Try cheap normalization first
+      const dummySource = { id: sourceId, name: "Staging", country: "NL", language: "nl" };
+      normalized = cheapNormalizeEvent(raw, dummySource as any);
+      
+      // Then try AI for rich extraction
+      try {
+        const aiParsed = await parseDetailedEventWithAI(
           aiApiKey, 
           raw, 
           row.detail_html, 
@@ -135,21 +163,22 @@ async function processRow(
         );
         
         if (aiParsed) {
-          // Merge AI result over cheap normalized result
           normalized = {
-             ...(normalized || {}),
-             ...aiParsed,
-             title: aiParsed.title || normalized?.title || raw.title,
-             event_date: aiParsed.event_date || normalized?.event_date,
-             description: aiParsed.description || normalized?.description || raw.description,
-             image_url: aiParsed.image_url || normalized?.image_url || raw.imageUrl
+            ...(normalized || {}),
+            ...aiParsed,
+            title: aiParsed.title || normalized?.title || raw.title,
+            event_date: aiParsed.event_date || normalized?.event_date,
+            description: aiParsed.description || normalized?.description || raw.description,
+            image_url: aiParsed.image_url || normalized?.image_url || raw.imageUrl
           };
+          parsingMethod = 'ai';
         }
-    } catch (e) {
-       console.warn(`AI parsing failed for row ${row.id}`, e);
+      } catch (e) {
+        console.warn(`AI parsing failed for row ${row.id}`, e);
+      }
     }
 
-    // Use raw fallback if normalized is still null
+    // 3. Raw fallback if still null
     if (!normalized && raw.title) {
       normalized = {
         title: raw.title,
@@ -160,11 +189,15 @@ async function processRow(
         venue_name: raw.location || '',
         internal_category: 'community' as any
       };
+      parsingMethod = 'ai'; // Still counts as non-deterministic
     }
 
     if (!normalized?.title || !normalized?.event_date) {
-      return { success: false, error: "Validation Failed: Missing Title or Date" };
+      return { success: false, error: "Validation Failed: Missing Title or Date", parsingMethod };
     }
+
+    // Update staging row with parsing method
+    await supabase.from("raw_event_staging").update({ parsing_method: parsingMethod }).eq("id", row.id);
 
     // 3. Deduplication
     const contentHash = await createContentHash(normalized.title, normalized.event_date);
