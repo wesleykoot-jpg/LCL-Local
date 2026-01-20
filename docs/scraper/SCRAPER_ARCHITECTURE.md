@@ -391,76 +391,66 @@ CREATE INDEX idx_raw_pages_content_hash ON raw_pages(source_id, content_hash);
 
 ### Purpose
 
-Extract structured event cards from raw HTML using a **Multi-Strategy
-Extraction** pipeline.
+Extract structured event cards from raw HTML using a **Data-First Waterfall**
+strategy that prioritizes structured data over fragile DOM scraping.
 
-### New Extraction Method
+### Smart Extraction Engine
 
-The scraper now employs a robust extraction hierarchy to ensure maximum data
-quality and quantity.
+The scraper uses a priority waterfall (`Hydration -> JSON-LD -> Feeds -> DOM`) that
+stops on the first success. This "Visual-Last" approach ensures higher stability.
 
-1. **RSS/XML Feed Parsing**: Checks if the source is an RSS/XML feed and parses
-   items directly.
-2. **JSON-LD Injection**: Extracts structured event data from
-   `application/ld+json` script tags.
-3. **Semantic Selectors**: Tries standard CSS selectors (`.event`,
-   `.agenda-item`) to identify event cards.
-4. **Heuristic Date Parsing**: If date elements are missing, regex-based
-   analysis scans card text for Dutch date patterns (e.g., "12 februari",
-   "zondag 7 mrt").
-5. **AI Extraction Fallback**:
-   - If "Cheap Normalization" (rules-based) fails to find a valid date or
-     description, the specific event card HTML is sent to an LLM
-     (Gemini/OpenAI).
-   - The LLM reconstructs the event data structually.
-6. **Auto-Healing**:
-   - If 0 events are found on a page that _looks_ like a calendar (large HTML
-     size), the system attempts to **Heal Selectors** using AI to propose new
-     CSS selectors for the source.
+1.  **P1: Hydration Extraction** (Highest Priority):
+    - Extracts state directly from frameworks like Next.js (`__NEXT_DATA__`),
+      Nuxt (`__NUXT__`), and Redux (`__INITIAL_STATE__`).
+    - Recursively discovers event objects within large state trees.
+    - **Pros**: 100% data fidelity, includes hidden fields (IDs, full dates).
+
+2.  **P2: JSON-LD Injection**:
+    - Parses `application/ld+json` script tags.
+    - Includes **Soft Repair** for malformed JSON (trailing commas, unquoted keys).
+    - **Pros**: Standardized schema, easier to map.
+
+3.  **P3: Feed Discovery**:
+    - Scans HTML for hidden RSS/Atom/ICS links.
+    - Deferrs async fetching of these feeds to the next run (or handles immediately).
+    - **Pros**: High stability, standard formats.
+
+4.  **P4: DOM Fallback (Cheerio)** (Lowest Priority):
+    - Uses semantic selectors (`.event`, `.card`) with multi-locale date patterns.
+    - **CMS Fingerprinter**: Detects CMS (WordPress, Wix, Drupal) to apply
+      pre-optimized selector strategies.
+    - **Pros**:  Works on almost any site.
+    - **Cons**: Most fragile to design changes.
+
+### Auto-Optimization
+
+The system tracks which strategy wins for each source. After 3 consecutive
+successes with a specific method (e.g., "json_ld"), the `preferred_method` for
+that source is updated in the database. Future runs try one "preferred" method
+first, saving CPU/Time.
 
 ### Edge Function: `parse-worker`
 
 ```typescript
 // Responsibilities:
-// 1. Claim jobs where current_stage = 'parse'
-// 2. Load HTML from raw_pages
-// 3. Try multiple extraction strategies in order
-// 4. Save parsed events to raw_events
-// 5. Advance job or move to DLQ
+// 1. Detect CMS (WordPress, Next.js, etc.)
+// 2. Run Extraction Waterfall
+// 3. Log diagnostics to scraper_insights
+// 4. Update source preferred_method if applicable
 
-interface ParseStrategy {
-  name: string;
-  priority: number;
-  canHandle(html: string): boolean;
-  parse(html: string, source: ScraperSource): RawEventCard[];
-}
+async function parse(html: string, source: ScraperSource) {
+  const result = runExtractionWaterfall(html, {
+    baseUrl: source.url,
+    preferredMethod: source.preferred_method,
+    feedDiscovery: source.tier_config?.feedGuessing,
+  });
 
-const PARSE_STRATEGIES: ParseStrategy[] = [
-  { name: 'rss-xml', priority: 1, ... },      // Best: native feed
-  { name: 'json-ld', priority: 2, ... },      // Great: structured data
-  { name: 'selectors', priority: 3, ... },    // Standard: CSS selectors
-  { name: 'heuristic', priority: 4, ... },    // Fallback: Regex/Pattern matching
-  { name: 'ai-fallback', priority: 5, ... },  // Deep: LLM parsing of raw HTML fragments
-];
-
-async function parseWithFallback(html: string, source: ScraperSource): Promise<RawEventCard[]> {
-  for (const strategy of PARSE_STRATEGIES) {
-    if (strategy.canHandle(html)) {
-      try {
-        const events = strategy.parse(html, source);
-        if (events.length > 0) {
-          console.log(`Parsed ${events.length} events using ${strategy.name}`);
-          return events;
-        }
-      } catch (error) {
-        console.warn(`Strategy ${strategy.name} failed:`, error);
-        // Continue to next strategy
-      }
-    }
-  }
+  // result.winningStrategy: 'hydration' | 'json_ld' | 'feed' | 'dom'
   
-  // No events found - this might be okay (empty agenda) or broken selectors
-  return [];
+  if (result.success) {
+    await logScraperInsight(source.id, result);
+    // Auto-optimize after N successes...
+  }
 }
 ```
 
@@ -484,7 +474,7 @@ CREATE TABLE raw_events (
   raw_html TEXT,  -- The specific HTML block for this event
   
   -- Extraction metadata
-  parse_strategy TEXT,  -- Which strategy extracted this
+  parse_strategy TEXT,  -- 'hydration', 'json_ld', 'feed', 'dom'
   confidence_score FLOAT,
   
   -- Processing status
@@ -499,10 +489,10 @@ CREATE TABLE raw_events (
 
 | Failure                  | Fallback                                     | Recovery                           |
 | ------------------------ | -------------------------------------------- | ---------------------------------- |
-| Primary selectors fail   | Try JSON-LD, then microdata, then heuristics | Log selector drift, suggest update |
-| 0 events parsed          | Check if page structure changed              | Compare with last successful HTML  |
-| Malformed HTML           | Use lenient parser (cheerio handles this)    | Log for analysis                   |
-| Memory limit (huge page) | Truncate to first 500KB                      | Log, consider pagination           |
+| Hydration missing        | Fall back to JSON-LD, then DOM               | Auto-optimize preference to fallback|
+| Malformed JSON-LD        | Attempt Soft Repair (fix commas/quotes)      | Log error if unfixable             |
+| 0 events (DOM)           | Check for "No Events" text (calendar empty)  | If no text found, Flag broken      |
+| Selector drift           | Try AI-healing or historical selector sets   | Alert for manual selector update   |
 
 ---
 
