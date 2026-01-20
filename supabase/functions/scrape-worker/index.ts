@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 
-import type { ScrapeJobPayload, ScraperSource, NormalizedEvent } from "../_shared/types.ts";
+import type { ScrapeJobPayload, ScraperSource, NormalizedEvent, ExtractionMethod } from "../_shared/types.ts";
 import { createFetcherForSource, resolveStrategy } from "../_shared/strategies.ts";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { logError, logWarning, logSupabaseError } from "../_shared/errorLogging.ts";
@@ -17,6 +17,11 @@ import {
 
 import { jitteredDelay } from "../_shared/rateLimiting.ts";
 import { parseEventWithAI, healSelectors, generateEmbedding } from "../_shared/aiParsing.ts";
+
+// Data-First Pipeline imports
+import { fingerprintCMS, getTierConfig } from "../_shared/cmsFingerprinter.ts";
+import { runExtractionWaterfall, type ExtractionStrategy } from "../_shared/dataExtractors.ts";
+import { logScraperInsight } from "../_shared/scraperInsights.ts";
 
 
 const corsHeaders = {
@@ -239,18 +244,26 @@ async function processSingleSource(
   geminiApiKey: string | undefined,
   enableDeepScraping: boolean,
   useProxy: boolean = false
-): Promise<{ scraped: number; inserted: number; duplicates: number; failed: number }> {
+): Promise<{ scraped: number; inserted: number; duplicates: number; failed: number; waterfallTrace?: Record<string, unknown> }> {
   const stats = { scraped: 0, inserted: 0, duplicates: 0, failed: 0 };
+  const startTime = Date.now();
 
   const strategy = resolveStrategy((source as { strategy?: string }).strategy, source);
   const fetcher = createFetcherForSource(source, { useProxy });
   const rateLimit = source.config.rate_limit_ms ?? 200;
+  
+  // Get tier-specific configuration
+  const tier = source.tier || 'general';
+  const tierConfig = getTierConfig(tier);
+  const shouldDeepScrape = source.deep_scrape_enabled ?? tierConfig.deepScrapeEnabled ?? enableDeepScraping;
 
   // Discover and fetch listing
   const candidates = await strategy.discoverListingUrls(fetcher);
   let listingHtml = "";
   let listingUrl = source.url;
+  let fetchTimeMs = 0;
 
+  const fetchStart = Date.now();
   for (const candidate of candidates) {
     const resp = await strategy.fetchListing(candidate, fetcher);
     if (resp.status === 403 || resp.status === 429) {
@@ -268,15 +281,76 @@ async function processSingleSource(
     listingUrl = resp.finalUrl || candidate;
     break;
   }
+  fetchTimeMs = Date.now() - fetchStart;
 
   if (!listingHtml) {
     throw new Error("No valid listing found");
   }
 
-  const rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug: false, fetcher });
+  // ============================================================================
+  // DATA-FIRST EXTRACTION PIPELINE
+  // ============================================================================
+  
+  // Step 1: Fingerprint the CMS/framework
+  const cmsFingerprint = fingerprintCMS(listingHtml);
+  console.log(`[${source.name}] CMS Detection: ${cmsFingerprint.cms} (confidence: ${cmsFingerprint.confidence}%)`);
+  if (cmsFingerprint.signals.length > 0) {
+    console.log(`[${source.name}] Signals: ${cmsFingerprint.signals.slice(0, 3).join(', ')}`);
+  }
+  
+  // Step 2: Determine preferred extraction method
+  const preferredMethod = source.preferred_method || 'auto';
+  const mapPreferredMethod = (method: ExtractionMethod | undefined): ExtractionStrategy | 'auto' => {
+    if (!method || method === 'auto') return 'auto';
+    return method as ExtractionStrategy;
+  };
+  
+  // Step 3: Run the Smart Extraction Waterfall
+  const parseStart = Date.now();
+  const waterfallResult = runExtractionWaterfall(listingHtml, {
+    baseUrl: listingUrl,
+    sourceName: source.name,
+    preferredMethod: mapPreferredMethod(preferredMethod),
+    feedDiscovery: tierConfig.feedGuessing,
+    domSelectors: source.config.selectors,
+  });
+  const parseTimeMs = Date.now() - parseStart;
+  
+  console.log(`[${source.name}] Waterfall result: ${waterfallResult.winningStrategy} found ${waterfallResult.totalEvents} events in ${waterfallResult.totalTimeMs}ms`);
+  
+  // Convert waterfall events to the expected RawEventCard format
+  // The waterfall already returns RawEventCard[] so we can use them directly
+  let rawEvents = waterfallResult.events;
   stats.scraped = rawEvents.length;
+  
+  // Step 4: Log insights for debugging and auto-optimization
+  try {
+    await logScraperInsight(supabase, {
+      sourceId: source.id,
+      waterfallResult,
+      cmsFingerprint,
+      executionTimeMs: Date.now() - startTime,
+      fetchTimeMs,
+      parseTimeMs,
+      htmlSizeBytes: listingHtml.length,
+    });
+  } catch (insightError) {
+    console.warn(`Failed to log insight for ${source.name}:`, insightError);
+  }
+  
+  // Step 5: Fallback to legacy DOM parsing if waterfall found nothing
+  // This preserves backward compatibility with existing selector-based parsing
+  if (stats.scraped === 0) {
+    console.log(`[${source.name}] Waterfall found no events, trying legacy DOM parsing...`);
+    rawEvents = await strategy.parseListing(listingHtml, listingUrl, { enableDebug: false, fetcher });
+    stats.scraped = rawEvents.length;
+    
+    if (stats.scraped > 0) {
+      console.log(`[${source.name}] Legacy DOM found ${stats.scraped} events`);
+    }
+  }
 
-  // Auto-Healing Logic
+  // Auto-Healing Logic (only if still no events)
   if (stats.scraped === 0 && listingHtml.length > 2000 && geminiApiKey) {
       console.log(`Zero events found for ${source.name}. Attempting to heal...`);
       
@@ -317,29 +391,15 @@ async function processSingleSource(
       }
   }
 
-  // Deep scraping for detail page times
-  if (enableDeepScraping) {
+  // Deep scraping for detail page times (respects tier configuration)
+  if (shouldDeepScrape) {
     for (const raw of rawEvents) {
       if (!raw.detailUrl || raw.detailPageTime) continue;
-      // Re-use fetchEventDetailTime from shared utils if we move it, or keep using the one in scrape-events/shared.ts import
-      // But we are in scrape-worker. We need to import it properly.
-      // Since we haven't promoted fetchEventDetailTime to _shared/scraperUtils fully (it needs cheerio),
-      // we will use the one we imported or duplicated.
-      // Ideally, we should have moved fetchEventDetailTime to _shared/scraperUtils but it depends on cheerio and fetcher.
-      // For now, we utilize the local helper loop which we should have replaced.
-      // Wait, we removed the local helper in the 'Remove डुplication' step? No, we need to import it.
-      // Actually, let's use the one we defined in _shared or define a simple one here using the updated fetcher.
-      // Since checking detail time is complex, let's skip re-implementing it inline if possible or keep strict logic.
-      
-      // We will assume for this Refactor that we want to use the ROBUST fetcher.
-      // Let's implement a simplified robust version here or call a shared one.
-      // We'll skip deep scraping logic optimization for this specific chunk to focus on structure,
-      // but we MUST use the 'fetcher' we created with proxy support.
       
       try {
-          // Temporary inline logic - ideally this moves to a shared 'ScraperService' class
+          // Fetch detail page to extract more accurate time
           const { html } = await fetcher.fetchPage(raw.detailUrl.startsWith('http') ? raw.detailUrl : new URL(raw.detailUrl, listingUrl).href);
-          const extractedTime = extractTimeFromHtml(html); // from _shared/scraperUtils
+          const extractedTime = extractTimeFromHtml(html);
           if (extractedTime) raw.detailPageTime = extractedTime;
       } catch (e) {
           console.warn(`Failed to deep scrape ${raw.detailUrl}:`, e);
