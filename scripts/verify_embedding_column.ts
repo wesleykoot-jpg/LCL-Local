@@ -12,16 +12,16 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function main() {
-    const { data, error } = await supabase.from("scrape_jobs").select("status");
+    console.log("Checking columns for 'events' table...");
+    // We can't use exec_sql easily if it's not confirmed working for this.
+    // We'll just try to select one row with 'embedding' and see if it fails.
+    const { data, error } = await supabase.from("events").select("embedding").limit(1);
+    
     if (error) {
-        console.error(error);
-        return;
+        console.error("Error selecting 'embedding':", error);
+    } else {
+        console.log("Successfully selected 'embedding' column. Data sample:", data);
     }
-    const counts = data.reduce((acc: Record<string, number>, job) => {
-        acc[job.status] = (acc[job.status] || 0) + 1;
-        return acc;
-    }, {});
-    console.log("Job status summary:", counts);
 }
 
 main();
