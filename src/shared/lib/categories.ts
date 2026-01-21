@@ -89,17 +89,39 @@ export const CATEGORIES: CategoryConfig[] = [
     textClass: 'text-slate-600',
     borderClass: 'border-slate-500/20',
   },
+  {
+    id: 'nightlife',
+    label: 'Nightlife',
+    dotClass: 'bg-fuchsia-500',
+    bgClass: 'bg-fuchsia-500/10',
+    textClass: 'text-fuchsia-600',
+    borderClass: 'border-fuchsia-500/20',
+  },
 ];
 
-// Map old/legacy categories to new ones
+// Map refinery (uppercase) and legacy categories to current IDs
 export const CATEGORY_MAP: Record<string, string> = {
-  sports: 'active',
-  cinema: 'entertainment',
-  arts: 'entertainment',
-  market: 'community',
-  crafts: 'workshops',
-  nightlife: 'music',
-  wellness: 'active',
+  // Refinery (Phase 3+)
+  'MUSIC': 'music',
+  'SOCIAL': 'social',
+  'ACTIVE': 'active',
+  'CULTURE': 'culture',
+  'FOOD': 'foodie',
+  'NIGHTLIFE': 'nightlife',
+  'FAMILY': 'family',
+  'CIVIC': 'community',
+  'COMMUNITY': 'community',
+
+  // Legacy/Other
+  'sports': 'active',
+  'cinema': 'entertainment',
+  'arts': 'entertainment',
+  'market': 'community',
+  'crafts': 'workshops',
+  'nightlife': 'nightlife',
+  'wellness': 'active',
+  'outdoors': 'active',
+  'food': 'foodie',
 };
 
 /**

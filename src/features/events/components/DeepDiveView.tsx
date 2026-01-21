@@ -1,13 +1,13 @@
 import { memo, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map, Clock, Users, MapPin, Heart, Loader2, Check, SlidersHorizontal } from 'lucide-react';
-import { LoadingSkeleton } from '@/shared/components';
-import { TimeFilterPills, type TimeFilter } from './TimeFilterPills';
-import EventMap from './EventMap';
-import { hapticImpact } from '@/shared/lib/haptics';
-import { getEventImage } from '../hooks/useImageFallback';
-import type { EventWithAttendees } from '../hooks/hooks';
-import { Button } from '@/shared/components/ui/button';
+import { LoadingSkeleton } from '@/shared/components/index.ts';
+import { TimeFilterPills, type TimeFilter } from './TimeFilterPills.tsx';
+import EventMap from './EventMap.tsx';
+import { hapticImpact } from '@/shared/lib/haptics.ts';
+import { useImageFallback } from '../hooks/useImageFallback.ts';
+import type { EventWithAttendees } from '../hooks/hooks.ts';
+import { Button } from '@/shared/components/ui/button.tsx';
 
 interface DeepDiveViewProps {
   events: EventWithAttendees[];
@@ -114,7 +114,10 @@ const MasonryEventCard = memo(function MasonryEventCard({
   tall?: boolean;
 }) {
   const [isSaved, setIsSaved] = useState(false);
-  const imageUrl = getEventImage(event.image_url, event.category);
+  const { src: imageUrl, onError: handleImageError } = useImageFallback(
+    event.image_url || '',
+    event.category
+  );
 
   const handleSave = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -141,6 +144,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
       <div className={`relative overflow-hidden bg-muted ${tall ? 'aspect-[3/4]' : 'aspect-square'}`}>
         <img
           src={imageUrl}
+          onError={handleImageError}
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
@@ -148,6 +152,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
 
         {/* Heart button */}
         <button
+          type="button"
           onClick={handleSave}
           className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
         >
@@ -189,6 +194,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
 
         {/* Quick join button */}
         <button
+          type="button"
           onClick={handleJoinClick}
           disabled={isJoining || hasJoined}
           className={`

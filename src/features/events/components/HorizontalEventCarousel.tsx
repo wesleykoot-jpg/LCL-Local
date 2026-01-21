@@ -2,9 +2,9 @@ import { memo, useRef, useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, Users, Clock, MapPin, Heart } from 'lucide-react';
 import { hapticImpact } from '@/shared/lib/haptics';
-import { formatEventDate, formatEventTime } from '@/shared/lib/formatters';
-import { getEventImage } from '../hooks/useImageFallback';
-import type { EventWithAttendees } from '../hooks/hooks';
+import { formatEventDate, formatEventTime } from '@/shared/lib/formatters.ts';
+import { useImageFallback } from '../hooks/useImageFallback.ts';
+import type { EventWithAttendees } from '../hooks/hooks.ts';
 
 interface HorizontalEventCarouselProps {
   title: string;
@@ -28,7 +28,10 @@ const CarouselEventCard = memo(function CarouselEventCard({
   hasJoined?: boolean;
 }) {
   const [isSaved, setIsSaved] = useState(false);
-  const imageUrl = getEventImage(event.image_url, event.category);
+  const { src: imageUrl, onError: handleImageError } = useImageFallback(
+    event.image_url || '',
+    event.category
+  );
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,6 +49,7 @@ const CarouselEventCard = memo(function CarouselEventCard({
       <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-2">
         <img 
           src={imageUrl} 
+          onError={handleImageError}
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
@@ -53,6 +57,7 @@ const CarouselEventCard = memo(function CarouselEventCard({
         
         {/* Heart button - Airbnb style */}
         <button
+          type="button"
           onClick={handleSave}
           className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
         >
@@ -124,6 +129,7 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
         </h2>
         {onSeeAll && events.length > 3 && (
           <button
+            type="button"
             onClick={handleSeeAll}
             className="flex items-center gap-0.5 text-[14px] font-medium text-foreground hover:underline min-h-[44px] px-2 active:opacity-70"
           >

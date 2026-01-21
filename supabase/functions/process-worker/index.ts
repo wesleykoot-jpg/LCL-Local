@@ -312,13 +312,47 @@ async function processRow(
 
     const existing = existingEvents?.[0];
 
+    // 7. Categorize and Tag
+    const { mapToCategoryKey, extractTags, isProbableEvent } = await import("../_shared/categorizer.ts");
+    const { CATEGORY_KEYS } = await import("../_shared/types.ts");
+    
+    // Attempt to get source category key if available
+    const { data: source } = await supabase
+        .from("scraper_sources")
+        .select("category_key")
+        .eq("id", sourceId)
+        .single();
+
+    const categoryKey = mapToCategoryKey(
+      `${normalized.title} ${normalized.description}`,
+      source?.category_key as any,
+      row.url
+    );
+    
+    // Performance: Only extract tags if we have content
+    const tags = extractTags(
+      `${normalized.title} ${normalized.description}`,
+      categoryKey as any
+    );
+
+    // 8. Quality Check: Filter out noise (comments, etc.)
+    if (!isProbableEvent(normalized.title, normalized.description)) {
+      console.log(`Skipping non-event row ${row.id}: "${normalized.title}"`);
+      await supabase
+        .from('raw_event_staging')
+        .update({ 
+          status: 'completed',
+          processing_log: [...(rowAny.processing_log || []), `Skipped as non-event noise: ${normalized.title}`]
+        })
+        .eq('id', row.id);
+      return { success: true, parsingMethod }; // Return success as it's "processed" by being skipped
+    }
+
+    normalized.category = categoryKey as any;
+    normalized.tags = tags;
+
     // Final Enrichment & Post-Processing
     if (normalized) {
-      // 1. Tagging Logic (Expand Granular Tags)
-      const { extractTags } = await import("../_shared/categorizer.ts");
-      const combinedText = `${normalized.title} ${normalized.description}`;
-      normalized.tags = extractTags(combinedText, normalized.category);
-
       // 2. Final normalization (lowercase category for DB if needed, but we use Enum now)
       // The migration 20260121170000 ensures 'category' is the Enum.
     }

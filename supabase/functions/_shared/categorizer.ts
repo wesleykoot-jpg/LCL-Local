@@ -165,6 +165,39 @@ export function mapToCategoryKey(
 }
 
 /**
+ * Filter out non-event noise (comments, blog posts, etc.)
+ */
+export function isProbableEvent(title: string, description?: string): boolean {
+  const lowerTitle = (title || '').toLowerCase();
+  const _lowerDesc = (description || '').toLowerCase();
+
+  // 1. Check for comment/blog patterns in title
+  const noisePatterns = [
+    /^reactie op/i,
+    /^comment on/i,
+    /^re:/i,
+    /antwoorden$/i,
+    /reply$/i,
+    /leestijd/i, // Reading time (blog post)
+    /geschreven door/i,
+    /posted by/i
+  ];
+
+  if (noisePatterns.some(pattern => pattern.test(lowerTitle))) {
+    return false;
+  }
+
+  // 2. Minimum length requirements
+  if (lowerTitle.length < 5) return false;
+
+  // 3. Reject if title is just a username or very generic
+  const genericTitles = ['admin', 'geen titel', 'no title', 'anonymous'];
+  if (genericTitles.includes(lowerTitle)) return false;
+
+  return true;
+}
+
+/**
  * AI-based classification for ambiguous cases
  * Uses OpenAI to select one of the 9 CategoryKey values
  * 
