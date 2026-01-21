@@ -1,11 +1,10 @@
-
+// @ts-ignore: Deno import
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 import { 
   parseDetailedEventWithAI, 
-  generateEmbedding,
-  type ParsedDetailedEventAI 
+  generateEmbedding 
 } from "../_shared/aiParsing.ts";
 
 import {
@@ -25,7 +24,6 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 10;
-const PROCESSING_TIMEOUT_MS = 60000;
 
 interface StagingRow {
   id: string;
@@ -57,8 +55,8 @@ async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]>
   const { data: locked, error: lockError } = await supabase
     .from("raw_event_staging")
     .update({ 
-       status: "processing",
-       updated_at: new Date().toISOString()
+      status: "processing",
+      updated_at: new Date().toISOString()
     })
     .in("id", ids)
     .eq("status", "pending") // Ensure they are still pending
@@ -77,7 +75,7 @@ async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]>
 }
 
 // Helper: Complete row
-async function completeRow(supabase: SupabaseClient, id: string, eventId?: string) {
+async function completeRow(supabase: SupabaseClient, id: string, _eventId?: string) {
   await supabase.from("raw_event_staging").update({
     status: "completed",
     updated_at: new Date().toISOString() // Trigger will handle this too but good practice
@@ -93,8 +91,9 @@ async function failRow(supabase: SupabaseClient, id: string, errorMsg: string) {
   }).eq("id", id);
 }
 
-// Helper: Check existence (Deduplication)
-async function checkDuplicate(supabase: SupabaseClient, contentHash: string, fingerprint: string, sourceId: string): Promise<boolean> {
+// Helper: Check existence (Deduplication) - Used for pre-check if needed, but we do merge now.
+// Keeping for reference or fallback if needed, but marking unused in linter if we drop usage.
+async function _checkDuplicate(supabase: SupabaseClient, contentHash: string, fingerprint: string, sourceId: string): Promise<boolean> {
   // Check content hash
   const { data: hashData } = await supabase.from("events").select("id").eq("content_hash", contentHash).limit(1);
   if (hashData && hashData.length > 0) return true;
@@ -274,7 +273,6 @@ async function processRow(
     }
 
     // Embedding
-    let embedding: number[] | null = null;
     try {
       const textToEmbed = eventToText(normalized);
       const embedRes = await generateEmbedding(aiApiKey, textToEmbed, fetch);
