@@ -167,33 +167,44 @@ async function processRow(
   try {
     const raw = row.raw_payload;
     const sourceId = row.source_id;
-    let parsingMethod: string = 'ai'; // Default
-
-    // 0. Check if delta-skipped
-    if (row.status === 'skipped_no_change') {
-      await completeRow(supabase, row.id);
-      try {
-        await supabase.rpc('increment_savings_counter', { p_source_id: sourceId });
-      } catch { /* ignore */ }
-      return { success: true, parsingMethod: 'skipped_no_change' };
-    }
-
     // 1. HYBRID PARSING (The Sorting Arm)
     let normalized: NormalizedEvent | null = null;
-    
-    // Import dynamically
-    const { extractJsonLdEvents, isJsonLdComplete, jsonLdToNormalized } = await import("../_shared/jsonLdParser.ts");
-    
-    // Fast Path: JSON-LD
-    const htmlToSearch = raw.rawHtml || '';
-    const jsonLdEvents = extractJsonLdEvents(htmlToSearch);
-    
-    if (jsonLdEvents && jsonLdEvents.length > 0) {
-      const completeEvent = jsonLdEvents.find(isJsonLdComplete);
-      if (completeEvent) {
-        normalized = jsonLdToNormalized(completeEvent);
-        parsingMethod = 'deterministic';
-        console.log(`[${row.id}] Fast Path: JSON-LD`);
+    let parsingMethod: string = 'ai'; // Default
+
+    // Check if we have a trusted method from the scraper
+    // TRUSTED METHODS: If we already have high-fidelity data, skip expensive AI extraction
+    const trustedMethods = ['hydration', 'json_ld', 'microdata', 'feed'];
+    // Cast to check properties that might exist on row (if we updated the StagingRow interface) or in raw_payload
+    const rowAny = row as any;
+    const existingMethod = rowAny.parsing_method || (row.raw_payload as any).parsingMethod;
+
+    if (existingMethod && trustedMethods.includes(existingMethod)) {
+       console.log(`[${row.id}] Trusted Method: ${existingMethod} (Skipping AI)`);
+       parsingMethod = existingMethod;
+       
+       const dummySource = { id: sourceId, name: "Staging", country: "NL", language: "nl" };
+       const norm = cheapNormalizeEvent(raw, dummySource as any);
+       
+       if (norm && norm.title && norm.event_date) {
+           normalized = norm;
+       } 
+    }
+
+    // Fast Path: JSON-LD (Only if not already normalized by trusted path)
+    if (!normalized) {
+      // Import dynamically
+      const { extractJsonLdEvents, isJsonLdComplete, jsonLdToNormalized } = await import("../_shared/jsonLdParser.ts");
+      
+      const htmlToSearch = raw.rawHtml || '';
+      const jsonLdEvents = extractJsonLdEvents(htmlToSearch);
+      
+      if (jsonLdEvents && jsonLdEvents.length > 0) {
+        const completeEvent = jsonLdEvents.find(isJsonLdComplete);
+        if (completeEvent) {
+          normalized = jsonLdToNormalized(completeEvent);
+          parsingMethod = 'deterministic';
+          console.log(`[${row.id}] Fast Path: JSON-LD`);
+        }
       }
     }
     
@@ -301,6 +312,17 @@ async function processRow(
 
     const existing = existingEvents?.[0];
 
+    // Final Enrichment & Post-Processing
+    if (normalized) {
+      // 1. Tagging Logic (Expand Granular Tags)
+      const { extractTags } = await import("../_shared/categorizer.ts");
+      const combinedText = `${normalized.title} ${normalized.description}`;
+      normalized.tags = extractTags(combinedText, normalized.category);
+
+      // 2. Final normalization (lowercase category for DB if needed, but we use Enum now)
+      // The migration 20260121170000 ensures 'category' is the Enum.
+    }
+
     const normalizedDate = normalizeEventDateForStorage(
       normalized.event_date,
       normalized.event_time === "TBD" ? "12:00" : normalized.event_time
@@ -309,6 +331,7 @@ async function processRow(
     // Construct common payload
     const eventPayload: any = {
       title: normalized.title,
+      description: normalized.description || "",
       category: normalized.category || 'COMMUNITY',
       event_type: "anchor",
       event_date: normalizedDate.timestamp,
@@ -317,7 +340,11 @@ async function processRow(
       source_id: sourceId,
       content_hash: contentHash,
       event_fingerprint: fingerprint,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      image_url: normalized.image_url,
+      venue_name: normalized.venue_name || "",
+      detail_url: normalized.detail_url || raw.detailUrl,
+      tags: normalized.tags || [],
     };
     
     // Handle Location (PostGIS)

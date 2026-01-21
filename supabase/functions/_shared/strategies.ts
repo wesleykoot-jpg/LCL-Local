@@ -549,72 +549,46 @@ export class DefaultStrategy implements ScraperStrategy {
     listingUrl: string,
     _options?: { enableDebug?: boolean; fetcher?: PageFetcher }
   ): Promise<RawEventCard[]> {
-    const $ = cheerio.load(html);
-    const results: RawEventCard[] = [];
-    const selectors = this.source.config.selectors || SELECTORS;
-
-    for (const selector of selectors) {
-      const elements = $(selector);
-      if (elements.length === 0) continue;
-
-      elements.each((_, el) => {
-        const $el = $(el);
-        const rawHtml = $.html(el);
-
-        // Extract title
-        const title = $el.find("h1, h2, h3, h4, .title, [class*='title']").first().text().trim() ||
-          $el.find("a").first().text().trim();
-
-        if (!title || title.length < 3) return;
-
-        // Extract date
-        let dateText = $el.find("time, .date, [class*='date'], [class*='datum'], [class*='tijd'], [datetime]").first().text().trim() ||
-          $el.attr("datetime") || "";
-
-        // Fallback: If no date element, look at first few lines of text
-        if (!dateText) {
-            const allText = $el.text().trim();
-            // Match strings like "21 jan", "12 februari", "vrijdag 7 mrt"
-            const datePattern = /(?:\d{1,2}\s+(?:jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)[a-z]*|\d{1,2}-\d{1,2}-\d{2,4})/i;
-            const match = allText.match(datePattern);
-            if (match) dateText = match[0];
-        }
-
-        // Extract location
-        const location = $el.find(".location, .venue, [class*='location'], [class*='venue']").first().text().trim() ||
-          this.source.name;
-
-        // Extract description
-        const description = $el.find("p, .description, .excerpt, [class*='description']").first().text().trim();
-
-        // Extract detail URL
-        const detailUrl = $el.find("a").first().attr("href") || $el.attr("href") || "";
-        const fullDetailUrl = detailUrl.startsWith("http")
-          ? detailUrl
-          : detailUrl.startsWith("/")
-            ? `${new URL(listingUrl).origin}${detailUrl}`
-            : "";
-
-        // Extract image
-        const imageUrl = $el.find("img").first().attr("src") ||
-          $el.find("[style*='background']").first().attr("style")?.match(/url\(['"]?([^'"]+)['"]?\)/)?.[1] ||
-          null;
-
-        results.push({
-          title,
-          date: dateText,
-          location,
-          description,
-          detailUrl: fullDetailUrl,
-          imageUrl,
-          rawHtml,
-        });
-      });
-
-      if (results.length > 0) break;
+    // Dynamic import to avoid circular dependencies
+    const { runExtractionWaterfall } = await import("./dataExtractors.ts");
+    const { fingerprintCMS } = await import("./cmsFingerprinter.ts");
+    
+    // 1. Light Check (Fingerprinting)
+    // This understands which method to try first based on the HTML content
+    const fingerprint = fingerprintCMS(html);
+    
+    // 2. Determine preferred method
+    // If user set a specific method, use it. Otherwise, use the fingerprint's top recommendation.
+    const method = this.source.preferred_method || 'auto';
+    let preferredMethod = method as any;
+    
+    if (method === 'auto' && fingerprint.recommendedStrategies.length > 0) {
+      preferredMethod = fingerprint.recommendedStrategies[0];
+      if (_options?.enableDebug) {
+        console.log(`[Fingerprint] Detected ${fingerprint.cms} for ${this.source.name}. Optimization: Trying ${preferredMethod} first.`);
+      }
     }
 
-    return results;
+    // 3. Run all in optimized order
+    const result = await runExtractionWaterfall(html, {
+      baseUrl: listingUrl,
+      sourceName: this.source.name,
+      preferredMethod: preferredMethod,
+      feedDiscovery: this.source.config?.feed_discovery ?? false,
+      domSelectors: this.source.config?.selectors,
+      fetcher: {
+        fetch: async (url: string) => {
+           const f = new StaticPageFetcher();
+           const res = await f.fetchPage(url);
+           return { html: res.html, status: res.statusCode };
+        }
+      }
+    });
+
+    console.log(`[Waterfall] Source: ${this.source.name} | CMS: ${fingerprint.cms} | Strategy: ${result.winningStrategy || 'NONE'} | Found: ${result.totalEvents}`);
+    
+    // events already tagged with parsingMethod by dataExtractors.ts update
+    return result.events;
   }
 }
 

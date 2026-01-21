@@ -24,56 +24,91 @@ interface KeywordMap {
   urlPatterns?: RegExp[];  // URL pattern hints
 }
 
+// Re-order to check specific categories first
 const KEYWORD_MAPS: KeywordMap[] = [
   {
-    key: 'MUSIC',
-    nl: ['muziek', 'optreden', 'concert', 'festival', 'band', 'dj', 'jazz', 'klassiek', 'pop', 'rock', 'live'],
-    en: ['music', 'concert', 'gig', 'festival', 'band', 'performance', 'live music', 'jazz', 'classical', 'pop', 'rock'],
-    urlPatterns: [/\/concert/i, /\/muziek/i, /\/music/i, /\/live/i]
-  },
-  {
-    key: 'ACTIVE',
-    nl: ['sport', 'yoga', 'wandeling', 'hardlopen', 'fietsen', 'fitness', 'gym', 'marathon', 'voetbal', 'tennis', 'zwemmen'],
-    en: ['sports', 'yoga', 'hiking', 'running', 'cycling', 'workout', 'fitness', 'gym', 'marathon', 'football', 'soccer', 'tennis', 'swimming'],
-    urlPatterns: [/\/sport/i, /\/fitness/i, /\/yoga/i]
-  },
-  {
-    key: 'CULTURE',
-    nl: ['theater', 'museum', 'tentoonstelling', 'kunst', 'film', 'bioscoop', 'voorstelling', 'cabaret', 'comedy', 'workshop', 'cursus', 'gaming'],
-    en: ['theater', 'theatre', 'museum', 'exhibition', 'art', 'cinema', 'film', 'show', 'cabaret', 'comedy', 'workshop', 'course', 'gaming'],
-    urlPatterns: [/\/theater/i, /\/museum/i, /\/art/i, /\/workshop/i]
-  },
-  {
-    key: 'FOOD',
-    nl: ['eten', 'proeverij', 'culinair', 'restaurant', 'markt', 'foodtruck', 'wijn', 'bier', 'diner', 'lunch', 'koken'],
-    en: ['food', 'tasting', 'culinary', 'restaurant', 'market', 'food truck', 'wine', 'beer', 'dining', 'dinner', 'lunch', 'cooking'],
-    urlPatterns: [/\/food/i, /\/restaurant/i, /\/markt/i, /\/market/i]
-  },
-  {
     key: 'NIGHTLIFE',
-    nl: ['club', 'disco', 'uitgaan', 'feest', 'dansen', 'nachtleven', 'party'],
-    en: ['club', 'nightclub', 'party', 'dance', 'nightlife', 'clubbing'],
+    nl: ['club', 'disco', 'uitgaan', 'feest', 'dansen', 'nachtleven', 'party', 'rave', 'techno', 'house', 'nachtclub', 'nachtmarkt'],
+    en: ['club', 'nightclub', 'party', 'dance', 'nightlife', 'clubbing', 'rave', 'techno', 'house'],
     urlPatterns: [/\/club/i, /\/party/i, /\/nightlife/i]
   },
   {
-    key: 'SOCIAL',
-    nl: ['borrel', 'netwerken', 'meetup', 'vrijmibo', 'vrijdagmiddag', 'networking', 'drink', 'sociaal', 'afterwork'],
-    en: ['drinks', 'networking', 'meetup', 'social', 'happy hour', 'afterwork', 'gathering'],
-    urlPatterns: [/\/networking/i, /\/meetup/i, /\/social/i]
+    key: 'FOOD',
+    nl: ['proeverij', 'culinair', 'restaurant', 'foodtruck', 'wijn', 'bier', 'lunch', 'streekmarkt', 'gastronomie'],
+    en: ['tasting', 'culinary', 'restaurant', 'food truck', 'wine', 'beer', 'lunch', 'gastronomy'],
+    urlPatterns: [/\/food/i, /\/restaurant/i, /\/markt/i, /\/market/i]
   },
   {
     key: 'FAMILY',
-    nl: ['kinderen', 'familie', 'gezin', 'kids', 'jeugd', 'basisschool', 'speeltuin', 'kinderfestival'],
-    en: ['children', 'family', 'kids', 'youth', 'playground', 'family-friendly'],
+    nl: ['kinderen', 'familie', 'gezin', 'kids', 'jeugd', 'basisschool', 'speeltuin', 'kinderfestival', 'kinderboerderij', 'kermis'],
+    en: ['children', 'family', 'kids', 'youth', 'playground', 'family-friendly', 'petting zoo', 'fair'],
     urlPatterns: [/\/kids/i, /\/family/i, /\/kinderen/i]
   },
   {
+    key: 'MUSIC',
+    nl: ['muziek', 'optreden', 'concert', 'band', 'dj', 'jazz', 'klassiek', 'pop', 'rock', 'live', 'zanger', 'zangeres', 'orkest', 'koor', 'jam-sessie', 'recital'],
+    en: ['music', 'concert', 'gig', 'festival', 'band', 'performance', 'live music', 'jazz', 'classical', 'pop', 'rock', 'singer', 'orchestra', 'choir', 'jam session', 'recital'],
+    urlPatterns: [/\/concert/i, /\/muziek/i, /\/music/i, /\/live/i]
+  },
+  {
+    key: 'CULTURE',
+    nl: ['theater', 'museum', 'tentoonstelling', 'kunst', 'film', 'bioscoop', 'voorstelling', 'cabaret', 'comedy', 'workshop', 'cursus', 'gaming', 'expositie', 'poëzie', 'literatuur', 'lezing', 'bibliotheek'],
+    en: ['theater', 'theatre', 'museum', 'exhibition', 'art', 'cinema', 'film', 'show', 'cabaret', 'comedy', 'workshop', 'course', 'gaming', 'poetry', 'literature', 'lecture', 'library'],
+    urlPatterns: [/\/theater/i, /\/museum/i, /\/art/i, /\/workshop/i, /\/expositie/i, /\/lezing/i]
+  },
+  {
+    key: 'ACTIVE',
+    nl: ['sport', 'yoga', 'wandeling', 'hardlopen', 'fietsen', 'fitness', 'gym', 'marathon', 'voetbal', 'tennis', 'zwemmen', 'dansles', 'bootcamp', 'surfen', 'zeilen', 'stadsommetje'],
+    en: ['sports', 'yoga', 'hiking', 'running', 'cycling', 'workout', 'fitness', 'gym', 'marathon', 'football', 'soccer', 'tennis', 'swimming', 'dance class', 'bootcamp', 'surfing', 'sailing'],
+    urlPatterns: [/\/sport/i, /\/fitness/i, /\/yoga/i]
+  },
+  {
+    key: 'SOCIAL',
+    nl: ['borrel', 'netwerken', 'meetup', 'vrijmibo', 'vrijdagmiddag', 'networking', 'drink', 'sociaal', 'afterwork', 'ontmoeting', 'bijeenkomst', 'gezelligheid', 'speeddate', 'vereniging'],
+    en: ['drinks', 'networking', 'meetup', 'social', 'happy hour', 'afterwork', 'gathering', 'networking event', 'speed dating', 'club meeting'],
+    urlPatterns: [/\/networking/i, /\/meetup/i, /\/social/i]
+  },
+  {
     key: 'CIVIC',
-    nl: ['politiek', 'gemeente', 'inspraak', 'vergadering', 'gemeenteraad', 'overheid'],
-    en: ['politics', 'municipality', 'civic', 'meeting', 'government', 'council'],
+    nl: ['politiek', 'gemeente', 'inspraak', 'vergadering', 'gemeenteraad', 'overheid', 'vrijwilliger', 'buurt', 'wijkreünie', 'town hall'],
+    en: ['politics', 'municipality', 'civic', 'meeting', 'government', 'council', 'volunteer', 'neighborhood', 'service'],
     urlPatterns: [/\/gemeente/i, /\/civic/i, /\/politics/i]
   }
 ];
+
+// ============================================================================
+// TAGGING LOGIC (Granular Classification)
+// ============================================================================
+
+const TAG_DEFINITIONS: Record<CategoryKey, string[]> = {
+  MUSIC: ['concert', 'live', 'jazz', 'band', 'dj', 'klassiek', 'pop', 'rock', 'orkest', 'koor', 'jam-sessie', 'recital'],
+  SOCIAL: ['networking', 'drink', 'meetup', 'borrel', 'vrijmibo', 'speeddate', 'ontmoeting', 'netwerk', 'netwerken'],
+  ACTIVE: ['yoga', 'hiking', 'run', 'sport', 'fitness', 'dansles', 'bootcamp', 'surfen', 'zeilen', 'wandeling'],
+  CULTURE: ['film', 'art', 'theater', 'museum', 'expositie', 'kunst', 'cabaret', 'comedy', 'workshop', 'cursus', 'poëzie', 'lezing'],
+  FOOD: ['market', 'wine', 'beer', 'proeverij', 'brunch', 'diner', 'lunch', 'streekmarkt'],
+  NIGHTLIFE: ['rave', 'techno', 'house', 'club', 'party', 'festival', 'dj'],
+  FAMILY: ['kids', 'family', 'fair', 'speeltuin', 'kinderboerderij', 'jeugd'],
+  CIVIC: ['buurt', 'service', 'vrijwilliger', 'gemeente', 'politiek', 'inspraak'],
+  COMMUNITY: ['buurt', 'vrijwilliger']
+};
+
+/**
+ * Extracts granular tags from text based on the assigned category.
+ */
+export function extractTags(text: string, category: CategoryKey): string[] {
+  const lowerText = (text || '').toLowerCase();
+  const possibleTags = TAG_DEFINITIONS[category] || [];
+  
+  // Find all matching tags from the definition
+  const foundTags = possibleTags.filter(tag => {
+    // For tags, we allow it to be at start/end or surrounded by non-alpha characters
+    // This handles "sporten" matching "sport" but we should be careful.
+    // Let's use a simpler "includes" or a more flexible regex.
+    return lowerText.includes(tag);
+  });
+
+  return [...new Set(foundTags)];
+}
 
 // ============================================================================
 // PRIORITY-BASED CATEGORIZATION
@@ -111,7 +146,11 @@ export function mapToCategoryKey(
   // Priority 2: Keyword matching (Dutch + English)
   for (const map of KEYWORD_MAPS) {
     const allKeywords = [...map.nl, ...map.en];
-    if (allKeywords.some(keyword => lowerText.includes(keyword))) {
+    if (allKeywords.some(keyword => {
+      // Use regex for word boundaries to improve accuracy
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      return regex.test(lowerText);
+    })) {
       return map.key;
     }
   }

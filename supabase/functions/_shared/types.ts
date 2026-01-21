@@ -21,6 +21,8 @@ export interface RawEventCard {
   rawHtml: string;
   categoryHint?: string;
   detailPageTime?: string;
+  parsingMethod?: 'hydration' | 'json_ld' | 'feed' | 'dom' | 'ai' | 'auto';
+  debugInfo?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -98,7 +100,7 @@ export type FetcherType = 'static' | 'puppeteer' | 'playwright' | 'scrapingbee';
 export type SourceTier = 'aggregator' | 'venue' | 'general';
 
 /** Preferred extraction method for Data-First pipeline */
-export type ExtractionMethod = 'hydration' | 'json_ld' | 'feed' | 'dom' | 'auto';
+export type ExtractionMethod = 'hydration' | 'json_ld' | 'microdata' | 'feed' | 'dom' | 'auto';
 
 export interface ScraperSource {
   id: string;
@@ -263,6 +265,7 @@ export interface NormalizedEvent {
   category: CategoryKey;  // Uppercase keys like 'MUSIC', 'ACTIVE'
   detail_url?: string | null;
   persona_tags?: string[];
+  tags?: string[];
 }
 
 // ============================================================================

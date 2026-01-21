@@ -33,7 +33,7 @@ import type { RawEventCard } from "./types.ts";
 // TYPES
 // ============================================================================
 
-export type ExtractionStrategy = 'hydration' | 'json_ld' | 'feed' | 'dom';
+export type ExtractionStrategy = 'hydration' | 'json_ld' | 'microdata' | 'feed' | 'dom';
 
 export interface ExtractionResult {
   /** Strategy that was used */
@@ -136,6 +136,8 @@ export function extractFromHydration(html: string, ctx: ExtractionContext): Extr
       events.push(...extractedEvents);
       
       if (events.length > 0) {
+        // Tag events with strategy
+        events.forEach(e => e.parsingMethod = 'hydration');
         break; // Found events, stop searching
       }
     }
@@ -340,7 +342,10 @@ export function extractFromJsonLd(html: string, ctx: ExtractionContext): Extract
         if (!isValidEventSchema(item)) continue;
         
         const event = schemaToRawEventCard(item as Record<string, unknown>, ctx.baseUrl);
-        if (event) events.push(event);
+        if (event) {
+          event.parsingMethod = 'json_ld';
+          events.push(event);
+        }
       }
     });
     
@@ -489,6 +494,79 @@ function inferCategoryFromSchema(schema: Record<string, unknown>): string | unde
 }
 
 // ============================================================================
+// PRIORITY 2.5: MICRODATA EXTRACTION
+// ============================================================================
+
+/**
+ * Extracts events from HTML Microdata (itemtype=".../Event").
+ */
+export function extractFromMicrodata(html: string, ctx: ExtractionContext): ExtractionResult {
+  const startTime = Date.now();
+  const events: RawEventCard[] = [];
+  
+  try {
+    const $ = cheerio.load(html);
+    
+    $('[itemtype*="schema.org/Event"], [itemtype*="schema.org"][itemtype*="Event"]').each((_, el) => {
+      const $el = $(el);
+      
+      const getValue = (prop: string): string => {
+        const itemProp = $el.find(`[itemprop="${prop}"]`).first();
+        if (itemProp.length === 0) return '';
+        
+        if (itemProp.attr('content')) return itemProp.attr('content')!;
+        if (itemProp.attr('datetime')) return itemProp.attr('datetime')!;
+        if (itemProp.attr('src')) return itemProp.attr('src')!;
+        if (itemProp.attr('href')) return itemProp.attr('href')!;
+        
+        return itemProp.text().trim();
+      };
+      
+      const title = getValue('name') || getValue('headline');
+      if (!title) return;
+      
+      const date = getValue('startDate') || getValue('date');
+      const location = getValue('location') || getValue('venue');
+      const description = getValue('description');
+      const detailUrl = getValue('url');
+      const imageUrl = getValue('image');
+      
+      events.push({
+        title,
+        date,
+        location,
+        description,
+        detailUrl: resolveUrl(detailUrl, ctx.baseUrl),
+        imageUrl: imageUrl ? resolveUrl(imageUrl, ctx.baseUrl) : null,
+        rawHtml: $.html(el).slice(0, 5000),
+        parsingMethod: 'json_ld', // We'll group Microdata with json_ld or use its own if we update types
+      });
+    });
+    
+    // Tag specifically if we have the type
+    events.forEach(e => (e as any).parsingMethod = 'microdata');
+    
+    return {
+      strategy: 'dom', // Fallback name for type compatibility if needed, but we'll use microdata in trace
+      tried: true,
+      found: events.length,
+      error: null,
+      events,
+      timeMs: Date.now() - startTime,
+    } as any;
+  } catch (error) {
+    return {
+      strategy: 'dom',
+      tried: true,
+      found: 0,
+      error: String(error),
+      events: [],
+      timeMs: Date.now() - startTime,
+    } as any;
+  }
+}
+
+// ============================================================================
 // PRIORITY 3: FEED EXTRACTION (RSS/Atom/ICS)
 // ============================================================================
 
@@ -578,6 +656,9 @@ export async function extractFromFeeds(html: string, ctx: FeedExtractionContext)
         console.warn(`Failed to fetch feed ${url}:`, err);
       }
     }
+    
+    // Tag events
+    events.forEach(e => e.parsingMethod = 'feed');
     
     return {
       strategy: 'feed',
@@ -782,6 +863,9 @@ export function extractFromDom(html: string, ctx: ExtractionContext): Extraction
       if (events.length > 0) break; // Found events with this selector
     }
     
+    // Tag events
+    events.forEach(e => e.parsingMethod = 'dom');
+    
     return {
       strategy: 'dom',
       tried: true,
@@ -815,12 +899,12 @@ export async function runExtractionWaterfall(html: string, ctx: FeedExtractionCo
   const trace: Record<ExtractionStrategy, Omit<ExtractionResult, 'events'>> = {} as Record<ExtractionStrategy, Omit<ExtractionResult, 'events'>>;
   
   // Define strategy order based on preferred method
-  const strategies: ExtractionStrategy[] = 
+  const strategies: (ExtractionStrategy | 'microdata')[] = 
     ctx.preferredMethod && ctx.preferredMethod !== 'auto'
-      ? [ctx.preferredMethod, ...(['hydration', 'json_ld', 'feed', 'dom'] as ExtractionStrategy[]).filter(s => s !== ctx.preferredMethod)]
-      : ['hydration', 'json_ld', 'feed', 'dom'];
+      ? [ctx.preferredMethod, ...(['hydration', 'json_ld', 'microdata', 'feed', 'dom'] as (ExtractionStrategy | 'microdata')[]).filter(s => s !== ctx.preferredMethod)]
+      : ['hydration', 'json_ld', 'microdata', 'feed', 'dom'];
   
-  let winningStrategy: ExtractionStrategy | null = null;
+  let winningStrategy: ExtractionStrategy | 'microdata' | null = null;
   let allEvents: RawEventCard[] = [];
   
   for (const strategy of strategies) {
@@ -833,6 +917,9 @@ export async function runExtractionWaterfall(html: string, ctx: FeedExtractionCo
       case 'json_ld':
         result = extractFromJsonLd(html, ctx);
         break;
+      case 'microdata':
+        result = extractFromMicrodata(html, ctx);
+        break;
       case 'feed':
         result = await extractFromFeeds(html, ctx);
         break;
@@ -840,7 +927,6 @@ export async function runExtractionWaterfall(html: string, ctx: FeedExtractionCo
         result = extractFromDom(html, ctx);
         break;
       default:
-        // Should not happen, but safe fallback
         continue;
     }
     

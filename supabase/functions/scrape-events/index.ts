@@ -66,7 +66,7 @@ export const handler = async (req: Request): Promise<Response> => {
             raw_html: card.rawHtml || JSON.stringify(card), // Store card HTML or JSON if HTML missing
             source_id: sourceId,
             status: "pending" as any,
-            parsing_method: null
+            parsing_method: card.parsingMethod || null
           }, { onConflict: "source_url" });
 
           if (insErr) {
