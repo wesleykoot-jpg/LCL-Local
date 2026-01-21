@@ -1,6 +1,6 @@
-// @ts-ignore: Deno import
+// @ts-expect-error: Deno import
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 import { 
   parseDetailedEventWithAI, 
@@ -67,20 +67,38 @@ async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]>
     return [];
   }
 
-  // Type assertion since `raw_payload` is JSONB
+  // Type assertion and schema compatibility layer
+  // Handle both old schema (raw_payload JSONB) and new schema (raw_html TEXT)
   return (locked || []).map((row: any) => {
       let payload: RawEventCard;
-      if (row.raw_html && row.raw_html.trim().startsWith('{')) {
-          try {
-              payload = JSON.parse(row.raw_html);
-              // Ensure it has rawHtml property if missing, though typically JSON contains structured data
-              if (!payload.rawHtml) payload.rawHtml = row.raw_html; 
-          } catch {
+      
+      // Check if we have the old schema (raw_payload as JSONB object)
+      if (row.raw_payload && typeof row.raw_payload === 'object') {
+          payload = row.raw_payload as RawEventCard;
+      }
+      // New schema: raw_html as TEXT column
+      else if (row.raw_html) {
+          // Try to parse as JSON first (in case it's structured data)
+          if (row.raw_html.trim().startsWith('{') || row.raw_html.trim().startsWith('[')) {
+              try {
+                  const parsed = JSON.parse(row.raw_html);
+                  // If it's an object with event data, use it
+                  payload = parsed.rawHtml ? parsed : { rawHtml: row.raw_html, ...parsed } as any;
+              } catch {
+                  // Not valid JSON, treat as raw HTML
+                  payload = { rawHtml: row.raw_html } as any;
+              }
+          } else {
+              // Plain HTML string
               payload = { rawHtml: row.raw_html } as any;
           }
-      } else {
-          payload = { rawHtml: row.raw_html } as any;
       }
+      // Fallback: empty payload
+      else {
+          console.warn(`Row ${row.id} has no raw_payload or raw_html`);
+          payload = { rawHtml: '' } as any;
+      }
+      
       return {
           ...row,
           raw_payload: payload
