@@ -185,3 +185,99 @@ export function createScraperBlockNotification(params: {
 
   return { blocks };
 }
+
+/**
+ * Send a rich alert notification to Slack with color-coding and structured data
+ * 
+ * @param alert - Alert configuration
+ * @param alert.type - Alert type: "error" (red), "warning" (orange), or "info" (blue)
+ * @param alert.message - Main alert message (supports markdown)
+ * @param alert.details - Optional key-value pairs to display
+ */
+export async function sendSlackAlert(alert: {
+  type: "error" | "warning" | "info";
+  message: string;
+  details?: Record<string, string | number>;
+}): Promise<void> {
+  try {
+    const webhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+    
+    if (!webhookUrl) {
+      console.warn("SLACK_WEBHOOK_URL not configured, skipping alert");
+      return;
+    }
+    
+    const colorMap = {
+      error: "#ff0000",   // Red
+      warning: "#ffa500", // Orange
+      info: "#0099ff"     // Blue
+    };
+    
+    const iconMap = {
+      error: "🚨",
+      warning: "⚠️",
+      info: "ℹ️"
+    };
+    
+    const blocks: SlackBlock[] = [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: `${iconMap[alert.type]} Pipeline Alert`,
+          emoji: true
+        }
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: alert.message
+        }
+      }
+    ];
+    
+    // Add details if provided
+    if (alert.details && Object.keys(alert.details).length > 0) {
+      blocks.push({ type: "divider" });
+      blocks.push({
+        type: "section",
+        fields: Object.entries(alert.details).map(([key, value]) => ({
+          type: "mrkdwn",
+          text: `*${key}:*\n${value}`
+        }))
+      });
+    }
+    
+    // Add timestamp
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `_<!date^${Math.floor(Date.now() / 1000)}^{date_short_pretty} at {time}|${new Date().toISOString()}>`
+      }
+    });
+    
+    const payload = {
+      blocks,
+      attachments: [{
+        color: colorMap[alert.type],
+        fallback: alert.message
+      }]
+    };
+    
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      console.error(`Slack alert failed: ${response.status}`);
+    } else {
+      console.log(`✓ Slack alert sent: ${alert.type}`);
+    }
+  } catch (error) {
+    console.error("Failed to send Slack alert:", error);
+  }
+}
