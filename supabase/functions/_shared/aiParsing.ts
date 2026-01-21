@@ -1,5 +1,5 @@
 import { jitteredDelay } from "./rateLimiting.ts";
-import { RawEventCard } from "./types.ts";
+import type { RawEventCard, CategoryKey } from "./types.ts";
 import { parseToISODate } from "./dateUtils.ts";
 import { normalizeWhitespace, mapToInternalCategory } from "./scraperUtils.ts";
 
@@ -110,7 +110,7 @@ export interface ParsedEventAI {
     venue_name: string;
     venue_address?: string;
     image_url: string | null;
-    internal_category: string; // We return string, caller should cast/validate
+    category_key: CategoryKey;  // Changed from internal_category
     detail_url?: string;
     persona_tags?: string[];
 }
@@ -129,7 +129,7 @@ export async function parseEventWithAI(
 - Weiger evenementen die niet in ${targetYear} plaatsvinden.
 - Houd tekst in originele taal (${language}).
 - velden: title, description (max 200 chars), event_date (YYYY-MM-DD), event_time (HH:MM), venue_name, venue_address, image_url
-- category: Kies de BEST PASSENDE uit: [active, gaming, entertainment, social, family, outdoors, music, workshops, foodie, community]. Indien onzeker of geen match, kies 'community'.`;
+- category_key: Kies EXACT EEN uit [MUSIC, SOCIAL, ACTIVE, CULTURE, FOOD, NIGHTLIFE, FAMILY, CIVIC, COMMUNITY]. Retourneer in HOOFDLETTERS.`;
 
   const userPrompt = `Vandaag is ${today}.
 Bron hint titel: ${rawEvent.title}
@@ -185,7 +185,10 @@ ${rawEvent.rawHtml}`;
   if (!isoDate || !isoDate.startsWith(`${targetYear}-`)) return null;
 
   const category = mapToInternalCategory(
-      ((parsed as unknown as { category: string }).category) || parsed.description || rawEvent.title
+      ((parsed as unknown as { category_key: string }).category_key) || 
+      ((parsed as unknown as { category: string }).category)  || 
+      parsed.description || 
+      rawEvent.title
   );
 
   return {
@@ -196,7 +199,7 @@ ${rawEvent.rawHtml}`;
     venue_name: parsed.venue_name || rawEvent.location || "",
     venue_address: parsed.venue_address,
     image_url: rawEvent.imageUrl ?? parsed.image_url ?? null,
-    internal_category: category,
+    category_key: category,  // Now uppercase CategoryKey
     detail_url: rawEvent.detailUrl,
   };
 }
@@ -234,7 +237,7 @@ export async function parseDetailedEventWithAI(
   - organizer: string
   - tickets_url: string
   - persona_tags: string[] (e.g. ['#Culture', '#Social', '#Nightlife', '#Family', '#Active'])
-- category: Kies uit [active, gaming, entertainment, social, family, outdoors, music, workshops, foodie, community].`;
+- category_key: Kies uit [MUSIC, SOCIAL, ACTIVE, CULTURE, FOOD, NIGHTLIFE, FAMILY, CIVIC, COMMUNITY]. Retourneer in HOOFDLETTERS.`;
 
   const userPrompt = `Vandaag is ${today}.
 Context:
@@ -290,17 +293,22 @@ ${detailHtml || ''}
     const isoDate = parseToISODate(parsed.event_date);
     if (!isoDate || !isoDate.startsWith(`${targetYear}-`)) return null;
 
-    const category = mapToInternalCategory(parsed.category || parsed.description || rawEvent.title);
+    const category = mapToInternalCategory(
+        ((parsed as unknown as { category_key: string }).category_key) || 
+        ((parsed as unknown as { category: string }).category) || 
+        parsed.description || 
+        rawEvent.title
+    );
 
     return {
-        title: normalizeWhitespace(parsed.title),
+        title: normalizeWhitespace(parsed.title || ""),
         description: parsed.description ? normalizeWhitespace(parsed.description) : "",
         event_date: isoDate,
         event_time: parsed.event_time || "TBD",
         venue_name: parsed.venue_name || rawEvent.location || "",
         venue_address: parsed.venue_address,
         image_url: parsed.image_url || rawEvent.imageUrl || null,
-        internal_category: category,
+        category_key: category,  // Now uppercase CategoryKey
         detail_url: rawEvent.detailUrl,
         price: parsed.price,
         organizer: parsed.organizer,

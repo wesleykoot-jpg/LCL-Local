@@ -5,11 +5,15 @@
  * Used by source-discovery and scrape-events functions
  */
 
+import type { CategoryKey } from './types.ts';
+import { CATEGORY_KEYS } from './types.ts';
+
 /**
  * Modern category IDs used across the application
+ * @deprecated Use CategoryKey from types.ts instead
  */
-export const INTERNAL_CATEGORIES = ["active", "gaming", "entertainment", "social", "family", "outdoors", "music", "workshops", "foodie", "community"] as const;
-export type InternalCategory = (typeof INTERNAL_CATEGORIES)[number];
+export const INTERNAL_CATEGORIES = CATEGORY_KEYS;
+export type InternalCategory = CategoryKey;
 
 export interface CategoryDefinition {
   /** Category ID matching src/lib/categories.ts */
@@ -164,13 +168,12 @@ export function getCategoryById(id: string): CategoryDefinition | undefined {
  * Classify text to category using keyword matching
  * Implements "Hybrid Life" logic for Dutch-specific keywords
  * 
- * Note: Returns category IDs from src/lib/categories.ts.
- * The scrape functions have their own INTERNAL_CATEGORIES mapping.
+ * @returns Uppercase CategoryKey (e.g., 'MUSIC', 'ACTIVE')
  */
-export function classifyTextToCategory(text: string): string {
+export function classifyTextToCategory(text: string): CategoryKey {
   // Handle null/undefined input defensively
   if (!text) {
-    return "community";
+    return 'COMMUNITY';
   }
   
   const lowerText = text.toLowerCase();
@@ -178,7 +181,7 @@ export function classifyTextToCategory(text: string): string {
   // Hybrid Life: Force family if Dutch parenting keywords detected
   for (const keyword of DUTCH_FAMILY_KEYWORDS) {
     if (lowerText.includes(keyword)) {
-      return "family";
+      return 'FAMILY';
     }
   }
 
@@ -186,29 +189,78 @@ export function classifyTextToCategory(text: string): string {
   for (const keyword of DUTCH_SOCIAL_KEYWORDS) {
     if (lowerText.includes(keyword)) {
       // Check if it's more food-related
-      if (lowerText.includes("proeverij") || lowerText.includes("wijn") || lowerText.includes("bier") || lowerText.includes("eten")) {
-        return "foodie";
+      if (lowerText.includes('proeverij') || lowerText.includes('wijn') || lowerText.includes('bier') || lowerText.includes('eten')) {
+        return 'FOOD';
       }
-      return "social";
+      return 'SOCIAL';
     }
   }
 
-  // Standard keyword matching using category definitions
+  // Direct keyword mapping (uppercase returns)
+  const keywordToCategoryMap: Record<string, CategoryKey> = {
+    // Music
+    'muziek': 'MUSIC', 'concert': 'MUSIC', 'optreden': 'MUSIC', 'festival': 'MUSIC', 'band': 'MUSIC', 'dj': 'MUSIC',
+    // Active
+    'sport': 'ACTIVE', 'yoga': 'ACTIVE', 'wandeling': 'ACTIVE', 'hardlopen': 'ACTIVE', 'fietsen': 'ACTIVE', 'fitness': 'ACTIVE',
+    // Culture
+    'theater': 'CULTURE', 'theatre': 'CULTURE', 'museum': 'CULTURE', 'film': 'CULTURE', 'bioscoop': 'CULTURE', 
+    'tentoonstelling': 'CULTURE', 'kunst': 'CULTURE', 'workshop': 'CULTURE', 'cursus': 'CULTURE', 'gaming': 'CULTURE',
+    // Food
+    'eten': 'FOOD', 'restaurant': 'FOOD', 'culinair': 'FOOD', 'markt': 'FOOD', 'market': 'FOOD',
+    // Nightlife
+    'club': 'NIGHTLIFE', 'feest': 'NIGHTLIFE', 'uitgaan': 'NIGHTLIFE', 'disco': 'NIGHTLIFE', 'party': 'NIGHTLIFE',
+    // Social
+    'netwerken': 'SOCIAL', 'networking': 'SOCIAL', 'meetup': 'SOCIAL',
+    // Family
+    'kinderen': 'FAMILY', 'familie': 'FAMILY', 'kids': 'FAMILY', 'gezin': 'FAMILY',
+    // Civic
+    'politiek': 'CIVIC', 'gemeente': 'CIVIC', 'gemeenteraad': 'CIVIC'
+  };
+
+  // Check for keyword matches
+  for (const [keyword, category] of Object.entries(keywordToCategoryMap)) {
+    if (lowerText.includes(keyword)) {
+      return category;
+    }
+  }
+
+  // Standard category keyword matching using category definitions
   for (const category of CATEGORIES) {
     for (const keyword of category.keywordsNL) {
       if (lowerText.includes(keyword)) {
-        return category.id;
+        // Map old IDs to new CategoryKeys
+        return mapLegacyIdToKey(category.id);
       }
     }
     for (const keyword of category.keywordsEN) {
       if (lowerText.includes(keyword)) {
-        return category.id;
+        return mapLegacyIdToKey(category.id);
       }
     }
   }
 
-  // Default to community for general events
-  return "community";
+  // Default to COMMUNITY for general events
+  return 'COMMUNITY';
+}
+
+/**
+ * Maps legacy lowercase category IDs to uppercase CategoryKeys
+ */
+function mapLegacyIdToKey(legacyId: string): CategoryKey {
+  const mapping: Record<string, CategoryKey> = {
+    'active': 'ACTIVE',
+    'gaming': 'CULTURE',
+    'entertainment': 'CULTURE',
+    'social': 'SOCIAL',
+    'family': 'FAMILY',
+    'outdoors': 'ACTIVE',
+    'music': 'MUSIC',
+    'workshops': 'CULTURE',
+    'foodie': 'FOOD',
+    'community': 'COMMUNITY'
+  };
+  
+  return mapping[legacyId] || 'COMMUNITY';
 }
 
 /**

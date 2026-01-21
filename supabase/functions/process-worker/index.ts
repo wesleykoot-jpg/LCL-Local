@@ -222,7 +222,7 @@ async function processRow(
         event_time: 'TBD',
         image_url: raw.imageUrl || null,
         venue_name: raw.location || '',
-        internal_category: 'community' as any
+        category_key: 'COMMUNITY' as any
       };
       parsingMethod = 'ai_fallback';
     }
@@ -291,7 +291,7 @@ async function processRow(
     // Construct common payload
     const eventPayload: any = {
       title: normalized.title,
-      category: normalized.internal_category || "community",
+      category_key: normalized.category_key || 'COMMUNITY',
       event_type: "anchor",
       event_date: normalizedDate.timestamp,
       event_time: normalized.event_time || "TBD",

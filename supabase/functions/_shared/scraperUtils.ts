@@ -1,6 +1,6 @@
 import { parseToISODate } from "./dateUtils.ts";
-import { classifyTextToCategory, INTERNAL_CATEGORIES, type InternalCategory } from "./categoryMapping.ts";
-import { RawEventCard, ScraperSource, NormalizedEvent } from "./types.ts";
+import { classifyTextToCategory } from "./categoryMapping.ts";
+import type { RawEventCard, ScraperSource, NormalizedEvent, CategoryKey } from "./types.ts";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
@@ -115,19 +115,14 @@ export function extractTimeFromHtml(html: string): string | null {
   return null;
 }
 
-export function mapToInternalCategory(input?: string): InternalCategory {
+export function mapToInternalCategory(input?: string): CategoryKey {
   const value = (input || "").toLowerCase();
 
   // Use the modern category classification system
   const category = classifyTextToCategory(value);
 
-  // Validate that the result is one of our internal categories
-  if (INTERNAL_CATEGORIES.includes(category as InternalCategory)) {
-    return category as InternalCategory;
-  }
-
-  // Default fallback to community (most general category)
-  return "community";
+  // The classifyTextToCategory now returns CategoryKey (uppercase)
+  return category;
 }
 
 
@@ -175,7 +170,7 @@ export function cheapNormalizeEvent(
     event_time: time || "TBD",
     image_url: raw.imageUrl,
     venue_name: raw.location || source.name,
-    internal_category: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
+    category_key: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
   };
 }
 
