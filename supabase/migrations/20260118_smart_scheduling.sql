@@ -48,7 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_proposals_event_status ON proposals(event_id, sta
 
 -- Index on time_mode for filtering (if not already exists)
 -- Already created in previous migration, but ensure it exists
-CREATE INDEX IF NOT EXISTS idx_events_time_mode ON events(time_mode);
+-- COMMENTED OUT: Column time_mode doesn't exist yet in events table
+-- CREATE INDEX IF NOT EXISTS idx_events_time_mode ON events(time_mode);
 
 -- ============================================================================
 -- PHASE 4: Row-Level Security for proposals
