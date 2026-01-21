@@ -82,13 +82,35 @@ async function completeRow(supabase: SupabaseClient, id: string, _eventId?: stri
   }).eq("id", id);
 }
 
-// Helper: Fail row
+// Helper: Fail row with retry logic
 async function failRow(supabase: SupabaseClient, id: string, errorMsg: string) {
+  // 1. Get current retry count
+  const { data: row } = await supabase
+    .from("raw_event_staging")
+    .select("retry_count")
+    .eq("id", id)
+    .single();
+
+  const currentRetries = row?.retry_count || 0;
+  const newRetries = currentRetries + 1;
+  const maxRetries = 3;
+
+  // 2. Decide status
+  // If we hit max retries, we stay 'failed'. 
+  // If less, we set back to 'pending' to retry, OR keep 'failed' but allow a mechanic to pick it up?
+  // Requirements say "failed" usually implies intervention. But "Do not retry indefinitely" implies we DO retry.
+  // Standard pattern: Set to 'pending' for immediate retry, or 'pending' with a delay (updated_at future?).
+  // For simplicity, we set to 'pending' to try again next batch.
+  const newStatus = newRetries >= maxRetries ? 'failed' : 'pending';
+
   await supabase.from("raw_event_staging").update({
-    status: "failed",
+    status: newStatus,
+    retry_count: newRetries,
     error_message: errorMsg,
     updated_at: new Date().toISOString()
   }).eq("id", id);
+  
+  console.log(`[${id}] Failed. Retry ${newRetries}/${maxRetries}. Status: ${newStatus}. Error: ${errorMsg}`);
 }
 
 // Helper: Check existence (Deduplication) - Used for pre-check if needed, but we do merge now.

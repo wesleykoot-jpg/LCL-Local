@@ -45,7 +45,8 @@
     "npm:@storybook/addon-docs@^10.1.11": "10.1.11_storybook@10.1.11__react@18.3.1__react-dom@18.3.1___react@18.3.1_@types+react@18.3.27_react@18.3.1_vite@5.4.21__@types+node@20.19.30__terser@5.46.0_react-dom@18.3.1__react@18.3.1_@types+node@20.19.30_terser@5.46.0",
     "npm:@storybook/addon-onboarding@^10.1.11": "10.1.11_storybook@10.1.11__react@18.3.1__react-dom@18.3.1___react@18.3.1_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:@storybook/react-vite@^10.1.11": "10.1.11_react@18.3.1_react-dom@18.3.1__react@18.3.1_storybook@10.1.11__react@18.3.1__react-dom@18.3.1___react@18.3.1_vite@5.4.21__@types+node@20.19.30__terser@5.46.0_typescript@5.9.3_@types+node@20.19.30_terser@5.46.0",
-    "npm:@supabase/supabase-js@*": "2.49.1",
+    "npm:@supabase/supabase-js@*": "2.90.1",
+    "npm:@supabase/supabase-js@2.39.3": "2.39.3",
     "npm:@supabase/supabase-js@2.49.1": "2.49.1",
     "npm:@supabase/supabase-js@^2.90.1": "2.90.1",
     "npm:@tanstack/query-sync-storage-persister@^5.90.19": "5.90.21",
@@ -2237,6 +2238,12 @@
         "tslib"
       ]
     },
+    "@supabase/gotrue-js@2.91.0": {
+      "integrity": "sha512-OgcFSSEAlM05nI5J34ADIcOvJ18Iwk5mC2NPpnH0ZZa8vA/FR7IjfjAwKM5eTkLDkopKUF4CdBv2otSPMvhqrQ==",
+      "dependencies": [
+        "tslib"
+      ]
+    },
     "@supabase/node-fetch@2.6.15": {
       "integrity": "sha512-1ibVeYUacxWYi9i0cf5efil6adJ9WRyZBLivgjs+AUpewx1F3xPi7gLgaASI2SmIQxPoCEjAsLAzKPgMJVgOUQ==",
       "dependencies": [
@@ -2284,6 +2291,17 @@
       "dependencies": [
         "iceberg-js",
         "tslib"
+      ]
+    },
+    "@supabase/supabase-js@2.39.3": {
+      "integrity": "sha512-NoltJSaJNKDJNutO5sJPAAi5RIWrn1z2XH+ig1+cHDojT6BTN7TvZPNa3Kq3gFQWfO5H1N9El/bCTZJ3iFW2kQ==",
+      "dependencies": [
+        "@supabase/functions-js@2.90.1",
+        "@supabase/gotrue-js",
+        "@supabase/node-fetch",
+        "@supabase/postgrest-js@1.19.2",
+        "@supabase/realtime-js@2.90.1",
+        "@supabase/storage-js@2.90.1"
       ]
     },
     "@supabase/supabase-js@2.49.1": {
