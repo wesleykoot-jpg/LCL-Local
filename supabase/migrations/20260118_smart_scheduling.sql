@@ -43,7 +43,8 @@ CREATE INDEX IF NOT EXISTS idx_proposals_event_status ON proposals(event_id, sta
 -- ============================================================================
 
 -- GIN index on opening_hours for JSONB queries
-CREATE INDEX IF NOT EXISTS idx_events_opening_hours ON events USING gin (opening_hours jsonb_path_ops);
+-- COMMENTED OUT: Column opening_hours doesn't exist yet in events table
+-- CREATE INDEX IF NOT EXISTS idx_events_opening_hours ON events USING gin (opening_hours jsonb_path_ops);
 
 -- Index on time_mode for filtering (if not already exists)
 -- Already created in previous migration, but ensure it exists
