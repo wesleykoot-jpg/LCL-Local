@@ -161,6 +161,19 @@ export const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Check if we should trigger another run (Recursive Pattern to clear backlog)
+    if (rows.length === 10) {
+      console.log("Processor: Triggering next batch...");
+      // Self-trigger to continue processing
+      fetch(req.url, {
+        method: "POST",
+        headers: { 
+            "Authorization": req.headers.get("Authorization") || "", 
+            "Content-Type": "application/json" 
+        }
+      }).catch(e => console.error("Recursive trigger failed:", e));
+    }
+
     return new Response(JSON.stringify({ message: "Processed batch" }), { status: 200 });
   } catch (err) {
     console.error("Processor error:", err);
