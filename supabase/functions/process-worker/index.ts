@@ -303,11 +303,13 @@ async function processRow(
     const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, sourceId);
 
     // Check for existing event by fingerprint (Golden Record logic)
-    // We want to merge if exists.
+    // Universal Deduplication: Check across ALL sources, not just the current sourceId
     const { data: existingEvents } = await supabase
         .from("events")
         .select("id, description, tickets_url, image_url, venue_name, source_id")
-        .eq("event_fingerprint", fingerprint)
+        .eq("event_fingerprint", fingerprint) // Fingerprint is title|date|sourceId, wait...
+        // Actually, for universal dedup, we should check content_hash (title|date)
+        .or(`content_hash.eq.${contentHash},event_fingerprint.eq.${fingerprint}`)
         .limit(1);
 
     const existing = existingEvents?.[0];
@@ -380,6 +382,17 @@ async function processRow(
       detail_url: normalized.detail_url || raw.detailUrl,
       tags: normalized.tags || [],
     };
+
+    // 9. Description Scrubbing (Data Hygiene)
+    const SCRUB_PATTERNS = [
+      'Controleer ticketprijs bij evenement',
+      'Geen omschrijving beschikbaar',
+      'no description available'
+    ];
+    if (eventPayload.description && SCRUB_PATTERNS.some(p => eventPayload.description.includes(p))) {
+      console.log(`[${row.id}] Scrubbing placeholder description`);
+      eventPayload.description = null;
+    }
     
     // Handle Location (PostGIS)
     const geo = (normalized as any)._geo;

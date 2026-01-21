@@ -180,7 +180,11 @@ export function isProbableEvent(title: string, description?: string): boolean {
     /reply$/i,
     /leestijd/i, // Reading time (blog post)
     /geschreven door/i,
-    /posted by/i
+    /posted by/i,
+    /ticketprijs bij evenement/i, // Placeholder junk
+    /^geen evenement/i,
+    /^foto/i, // Often just a photo credit
+    /door een bezoeker/i // Common for comment sections
   ];
 
   if (noisePatterns.some(pattern => pattern.test(lowerTitle))) {
