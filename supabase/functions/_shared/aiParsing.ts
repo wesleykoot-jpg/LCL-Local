@@ -112,6 +112,7 @@ export interface ParsedEventAI {
     image_url: string | null;
     internal_category: string; // We return string, caller should cast/validate
     detail_url?: string;
+    persona_tags?: string[];
 }
 
 export async function parseEventWithAI(
@@ -232,6 +233,7 @@ export async function parseDetailedEventWithAI(
   - price: string (bijv. "€15,00", "Gratis")
   - organizer: string
   - tickets_url: string
+  - persona_tags: string[] (e.g. ['#Culture', '#Social', '#Nightlife', '#Family', '#Active'])
 - category: Kies uit [active, gaming, entertainment, social, family, outdoors, music, workshops, foodie, community].`;
 
   const userPrompt = `Vandaag is ${today}.
@@ -302,7 +304,8 @@ ${detailHtml || ''}
         detail_url: rawEvent.detailUrl,
         price: parsed.price,
         organizer: parsed.organizer,
-        tickets_url: parsed.tickets_url
+        tickets_url: parsed.tickets_url,
+        persona_tags: parsed.persona_tags
     };
   } catch (e) {
     console.warn("Detailed AI parsing failed:", e);

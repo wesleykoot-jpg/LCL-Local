@@ -262,6 +262,7 @@ export interface NormalizedEvent {
   venue_address?: string;
   internal_category: InternalCategory;
   detail_url?: string | null;
+  persona_tags?: string[];
 }
 
 // ============================================================================

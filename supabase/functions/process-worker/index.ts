@@ -119,40 +119,38 @@ async function processRow(
     // 0. Check if delta-skipped
     if (row.status === 'skipped_no_change') {
       await completeRow(supabase, row.id);
-      // Increment savings counter on source
       try {
         await supabase.rpc('increment_savings_counter', { p_source_id: sourceId });
-      } catch { /* ignore if RPC doesn't exist */ }
+      } catch { /* ignore */ }
       return { success: true, parsingMethod: 'skipped_no_change' };
     }
 
-    // 1. HYBRID PARSING: Try JSON-LD first (deterministic)
+    // 1. HYBRID PARSING (The Sorting Arm)
     let normalized: NormalizedEvent | null = null;
     
-    // Import dynamically to avoid circular deps
+    // Import dynamically
     const { extractJsonLdEvents, isJsonLdComplete, jsonLdToNormalized } = await import("../_shared/jsonLdParser.ts");
     
-    // Try extracting from raw HTML first
+    // Fast Path: JSON-LD
     const htmlToSearch = raw.rawHtml || '';
     const jsonLdEvents = extractJsonLdEvents(htmlToSearch);
     
     if (jsonLdEvents && jsonLdEvents.length > 0) {
-      // Find first complete event
       const completeEvent = jsonLdEvents.find(isJsonLdComplete);
       if (completeEvent) {
         normalized = jsonLdToNormalized(completeEvent);
         parsingMethod = 'deterministic';
-        console.log(`[${row.id}] Using deterministic JSON-LD parsing`);
+        console.log(`[${row.id}] Fast Path: JSON-LD`);
       }
     }
     
-    // 2. FALLBACK: AI Parsing if JSON-LD incomplete/missing
+    // Slow Path: AI
     if (!normalized || !normalized.title || !normalized.event_date) {
-      // Try cheap normalization first
+      // Cheap fallback
       const dummySource = { id: sourceId, name: "Staging", country: "NL", language: "nl" };
       normalized = cheapNormalizeEvent(raw, dummySource as any);
       
-      // Then try AI for rich extraction
+      // AI Extraction
       try {
         const aiParsed = await parseDetailedEventWithAI(
           aiApiKey, 
@@ -169,16 +167,18 @@ async function processRow(
             title: aiParsed.title || normalized?.title || raw.title,
             event_date: aiParsed.event_date || normalized?.event_date,
             description: aiParsed.description || normalized?.description || raw.description,
-            image_url: aiParsed.image_url || normalized?.image_url || raw.imageUrl
+            image_url: aiParsed.image_url || normalized?.image_url || raw.imageUrl,
+            persona_tags: aiParsed.persona_tags
           };
           parsingMethod = 'ai';
+          console.log(`[${row.id}] Slow Path: AI Extraction`);
         }
       } catch (e) {
         console.warn(`AI parsing failed for row ${row.id}`, e);
       }
     }
 
-    // 3. Raw fallback if still null
+    // Fallback
     if (!normalized && raw.title) {
       normalized = {
         title: raw.title,
@@ -189,72 +189,146 @@ async function processRow(
         venue_name: raw.location || '',
         internal_category: 'community' as any
       };
-      parsingMethod = 'ai'; // Still counts as non-deterministic
+      parsingMethod = 'ai_fallback';
     }
 
     if (!normalized?.title || !normalized?.event_date) {
       return { success: false, error: "Validation Failed: Missing Title or Date", parsingMethod };
     }
 
-    // Update staging row with parsing method
     await supabase.from("raw_event_staging").update({ parsing_method: parsingMethod }).eq("id", row.id);
 
-    // 3. Deduplication
+    // 2. THE POLISHER (Enrichment)
+    
+    // Geocoding
+    const { geocodeLocation, optimizeImage } = await import("../_shared/enrichment.ts");
+    // Get Mapbox token from env or somewhere. Ideally strictly managed.
+    // For now assuming it might be in env or we skip if missing.
+    const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN"); 
+    
+    if (mapboxToken && normalized.venue_name && (!normalized.venue_address || normalized.venue_address.length < 5)) {
+        // If we have a venue name but no good address, OR we just want to geocode the string we have
+        const query = normalized.venue_address || normalized.venue_name; 
+        if (query) {
+             const geo = await geocodeLocation(query, mapboxToken);
+             if (geo) {
+                 // Store geo somewhere? normalized.location is string "POINT(..)" legacy.
+                 // We construct it below.
+                 // We can attach it to normalized to be used in construction.
+                 (normalized as any)._geo = geo;
+             }
+        }
+    }
+
+    // Image Optimization
+    // Download and upload to storage to prevent link rot
+    // Only if image is remote and not already ours
+    if (normalized.image_url && normalized.image_url.startsWith('http') && !normalized.image_url.includes('supabase.co')) {
+        const optimizedUrl = await optimizeImage(supabase, normalized.image_url, row.id);
+        if (optimizedUrl) {
+            normalized.image_url = optimizedUrl;
+        }
+    }
+
+    // 3. THE VAULT (Merge/Upsert)
     const contentHash = await createContentHash(normalized.title, normalized.event_date);
     const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, sourceId);
 
-    const isDuplicate = await checkDuplicate(supabase, contentHash, fingerprint, sourceId);
-    if (isDuplicate) {
-      await failRow(supabase, row.id, "Duplicate Detected");
-      return { success: false, error: "Duplicate" }; // Not really a failure, but we mark row as failed/skipped
-    }
+    // Check for existing event by fingerprint (Golden Record logic)
+    // We want to merge if exists.
+    const { data: existingEvents } = await supabase
+        .from("events")
+        .select("id, description, tickets_url, image_url, venue_name, source_id")
+        .eq("event_fingerprint", fingerprint)
+        .limit(1);
 
-    // 4. Embedding
-    let embedding: number[] | null = null;
-    try {
-      const textToEmbed = eventToText(normalized);
-      const embedRes = await generateEmbedding(aiApiKey, textToEmbed, fetch);
-      if (embedRes) embedding = embedRes.embedding;
-    } catch (e) {
-      console.warn(`Embedding failed for ${row.id}`, e);
-    }
+    const existing = existingEvents?.[0];
 
-    // 5. Insert to Production
     const normalizedDate = normalizeEventDateForStorage(
       normalized.event_date,
       normalized.event_time === "TBD" ? "12:00" : normalized.event_time
     );
 
-    const eventInsert: Record<string, unknown> = {
+    // Construct common payload
+    const eventPayload: any = {
       title: normalized.title,
-      description: normalized.description || "",
       category: normalized.internal_category || "community",
       event_type: "anchor",
-      venue_name: normalized.venue_name || "",
-      location: "POINT(0 0)",
       event_date: normalizedDate.timestamp,
       event_time: normalized.event_time || "TBD",
-      image_url: normalized.image_url,
-      created_by: null,
       status: "published",
       source_id: sourceId,
       content_hash: contentHash,
-      event_fingerprint: fingerprint
+      event_fingerprint: fingerprint,
+      updated_at: new Date().toISOString()
     };
-
-    if (embedding) {
-      eventInsert.embedding = embedding;
-      eventInsert.embedding_generated_at = new Date().toISOString();
-      eventInsert.embedding_model = 'text-embedding-3-small'; // or whatever model used
+    
+    // Handle Location (PostGIS)
+    const geo = (normalized as any)._geo;
+    if (geo) {
+        eventPayload.location = `POINT(${geo.lng} ${geo.lat})`;
+    } else {
+        // Default 0,0 or keep existing if merge? 
+        // If new, 0,0.
+        if (!existing) eventPayload.location = "POINT(0 0)";
     }
 
-    const { error: insertError } = await supabase.from("events").insert(eventInsert);
-    if (insertError) {
-      if (insertError.code === '23505') { // Unique violation
-         await failRow(supabase, row.id, "Duplicate (Constraint)");
-         return { success: false, error: "Duplicate" };
+    // Embedding
+    let embedding: number[] | null = null;
+    try {
+      const textToEmbed = eventToText(normalized);
+      const embedRes = await generateEmbedding(aiApiKey, textToEmbed, fetch);
+      if (embedRes) {
+          eventPayload.embedding = embedRes.embedding;
+          eventPayload.embedding_generated_at = new Date().toISOString();
+          eventPayload.embedding_model = 'text-embedding-3-small';
       }
-      throw new Error(`Insert failed: ${insertError.message}`);
+    } catch (e) { console.warn("Embedding failed", e); }
+
+    if (existing) {
+        // MERGE LOGIC
+        // 1. Description: Prefer existing if existing source is "Venue" (we need to know tier, simple heuristic: longer description wins?)
+        // Let's say we prefer the NEW description if it's significantly longer, otherwise keep existing.
+        // OR: just append/overwrite based on simple rule.
+        // Plan says: "Keep description from Venue (better quality) but add ticket link from Facebook".
+        // Implementation: We don't know source tiers here easily without DB lookup on source.
+        // Simple merge: 
+        if (!existing.description || (normalized.description && normalized.description.length > existing.description.length)) {
+             eventPayload.description = normalized.description;
+        }
+        
+        if (normalized.image_url) eventPayload.image_url = normalized.image_url;
+        if (normalized.venue_name) eventPayload.venue_name = normalized.venue_name;
+        
+        // Persona Tags - currently storing in separate table or array?
+        // Plan says "Add persona_tags column to events".
+        if (normalized.persona_tags) eventPayload.persona_tags = normalized.persona_tags;
+
+        // Perform Update
+        const { error: updateError } = await supabase
+            .from("events")
+            .update(eventPayload)
+            .eq("id", existing.id);
+            
+        if (updateError) throw new Error(`Merge failed: ${updateError.message}`);
+        console.log(`[${row.id}] Merged into existing event ${existing.id}`);
+
+    } else {
+        // INSERT NEW
+        eventPayload.description = normalized.description || "";
+        eventPayload.venue_name = normalized.venue_name || "";
+        eventPayload.image_url = normalized.image_url;
+        if (normalized.persona_tags) eventPayload.persona_tags = normalized.persona_tags;
+        
+        const { error: insertError } = await supabase.from("events").insert(eventPayload);
+        if (insertError) {
+             // Handle race condition where it was created in between
+             if (insertError.code === '23505') {
+                 console.log(`[${row.id}] Duplicate detected during insert (race condition), marking done.`);
+             } else {
+                 throw new Error(`Insert failed: ${insertError.message}`);
+             }
+        }
     }
 
     // 6. Complete
