@@ -372,6 +372,10 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
+          embedding_version: number | null
           event_date: string
           event_fingerprint: string | null
           event_time: string
@@ -384,13 +388,14 @@ export type Database = {
           match_percentage: number | null
           max_attendees: number | null
           parent_event_id: string | null
+          persona_tags: string[] | null
           source_id: string | null
           source_url: string | null
           status: string | null
+          tags: string[] | null
           title: string
           updated_at: string | null
           venue_name: string
-          website_url: string | null
         }
         Insert: {
           category: string
@@ -398,6 +403,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
+          embedding_version?: number | null
           event_date: string
           event_fingerprint?: string | null
           event_time: string
@@ -410,13 +419,14 @@ export type Database = {
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
+          persona_tags?: string[] | null
           source_id?: string | null
           source_url?: string | null
           status?: string | null
+          tags?: string[] | null
           title: string
           updated_at?: string | null
           venue_name: string
-          website_url?: string | null
         }
         Update: {
           category?: string
@@ -424,6 +434,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
+          embedding_version?: number | null
           event_date?: string
           event_fingerprint?: string | null
           event_time?: string
@@ -436,13 +450,14 @@ export type Database = {
           match_percentage?: number | null
           max_attendees?: number | null
           parent_event_id?: string | null
+          persona_tags?: string[] | null
           source_id?: string | null
           source_url?: string | null
           status?: string | null
+          tags?: string[] | null
           title?: string
           updated_at?: string | null
           venue_name?: string
-          website_url?: string | null
         }
         Relationships: [
           {
@@ -464,6 +479,13 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "scraper_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "source_health_with_insights"
             referencedColumns: ["id"]
           },
         ]
@@ -492,6 +514,48 @@ export type Database = {
           lat?: number
           lng?: number
           venue_key?: string
+        }
+        Relationships: []
+      }
+      net_http_responses_audit: {
+        Row: {
+          body: Json | null
+          completed_at: string | null
+          created_at: string | null
+          duration_ms: number | null
+          headers: Json | null
+          id: number
+          method: string | null
+          request_id: string | null
+          started_at: string | null
+          status: number | null
+          url: string | null
+        }
+        Insert: {
+          body?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          headers?: Json | null
+          id?: number
+          method?: string | null
+          request_id?: string | null
+          started_at?: string | null
+          status?: number | null
+          url?: string | null
+        }
+        Update: {
+          body?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          headers?: Json | null
+          id?: number
+          method?: string | null
+          request_id?: string | null
+          started_at?: string | null
+          status?: number | null
+          url?: string | null
         }
         Relationships: []
       }
@@ -628,100 +692,197 @@ export type Database = {
         }
         Relationships: []
       }
-      scrape_jobs: {
+      proposals: {
         Row: {
-          attempts: number | null
-          completed_at: string | null
+          created_at: string
+          creator_id: string
+          event_id: string
+          id: string
+          proposed_times: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          event_id: string
+          id?: string
+          proposed_times: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          event_id?: string
+          id?: string
+          proposed_times?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raw_event_staging: {
+        Row: {
           created_at: string | null
           error_message: string | null
-          events_inserted: number | null
-          events_scraped: number | null
           id: string
-          max_attempts: number | null
-          payload: Json | null
-          priority: number | null
-          source_id: string
-          started_at: string | null
-          status: string
+          last_health_check: string | null
+          parsing_method: string | null
+          processing_log: Json | null
+          processing_started_at: string | null
+          raw_html: string
+          retry_count: number | null
+          source_id: string | null
+          source_url: string
+          status: Database["public"]["Enums"]["raw_event_status"] | null
           updated_at: string | null
         }
         Insert: {
-          attempts?: number | null
-          completed_at?: string | null
           created_at?: string | null
           error_message?: string | null
-          events_inserted?: number | null
-          events_scraped?: number | null
           id?: string
-          max_attempts?: number | null
-          payload?: Json | null
-          priority?: number | null
-          source_id: string
-          started_at?: string | null
-          status?: string
+          last_health_check?: string | null
+          parsing_method?: string | null
+          processing_log?: Json | null
+          processing_started_at?: string | null
+          raw_html: string
+          retry_count?: number | null
+          source_id?: string | null
+          source_url: string
+          status?: Database["public"]["Enums"]["raw_event_status"] | null
           updated_at?: string | null
         }
         Update: {
-          attempts?: number | null
-          completed_at?: string | null
           created_at?: string | null
           error_message?: string | null
-          events_inserted?: number | null
-          events_scraped?: number | null
           id?: string
-          max_attempts?: number | null
-          payload?: Json | null
-          priority?: number | null
-          source_id?: string
-          started_at?: string | null
-          status?: string
+          last_health_check?: string | null
+          parsing_method?: string | null
+          processing_log?: Json | null
+          processing_started_at?: string | null
+          raw_html?: string
+          retry_count?: number | null
+          source_id?: string | null
+          source_url?: string
+          status?: Database["public"]["Enums"]["raw_event_status"] | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "scrape_jobs_source_id_fkey"
+            foreignKeyName: "raw_event_staging_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "scraper_sources"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "raw_event_staging_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "source_health_with_insights"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      scraper_runs: {
+      scraper_insights: {
         Row: {
-          completed_at: string | null
           created_at: string | null
+          detected_cms: string | null
+          detected_framework: string | null
           error_message: string | null
-          events_failed: number | null
-          events_scraped: number | null
-          events_skipped: number | null
+          error_stack: string | null
+          execution_time_ms: number | null
+          fetch_time_ms: number | null
+          has_hydration_data: boolean | null
+          has_ics_feed: boolean | null
+          has_json_ld: boolean | null
+          has_rss_feed: boolean | null
+          html_size_bytes: number | null
           id: string
-          status: string
-          strategy: string
+          parse_time_ms: number | null
+          run_id: string | null
+          source_id: string | null
+          status: string | null
+          strategy_trace: Json | null
+          total_events_found: number | null
+          winning_strategy: string | null
         }
         Insert: {
-          completed_at?: string | null
           created_at?: string | null
+          detected_cms?: string | null
+          detected_framework?: string | null
           error_message?: string | null
-          events_failed?: number | null
-          events_scraped?: number | null
-          events_skipped?: number | null
+          error_stack?: string | null
+          execution_time_ms?: number | null
+          fetch_time_ms?: number | null
+          has_hydration_data?: boolean | null
+          has_ics_feed?: boolean | null
+          has_json_ld?: boolean | null
+          has_rss_feed?: boolean | null
+          html_size_bytes?: number | null
           id?: string
-          status: string
-          strategy: string
+          parse_time_ms?: number | null
+          run_id?: string | null
+          source_id?: string | null
+          status?: string | null
+          strategy_trace?: Json | null
+          total_events_found?: number | null
+          winning_strategy?: string | null
         }
         Update: {
-          completed_at?: string | null
           created_at?: string | null
+          detected_cms?: string | null
+          detected_framework?: string | null
           error_message?: string | null
-          events_failed?: number | null
-          events_scraped?: number | null
-          events_skipped?: number | null
+          error_stack?: string | null
+          execution_time_ms?: number | null
+          fetch_time_ms?: number | null
+          has_hydration_data?: boolean | null
+          has_ics_feed?: boolean | null
+          has_json_ld?: boolean | null
+          has_rss_feed?: boolean | null
+          html_size_bytes?: number | null
           id?: string
-          status?: string
-          strategy?: string
+          parse_time_ms?: number | null
+          run_id?: string | null
+          source_id?: string | null
+          status?: string | null
+          strategy_trace?: Json | null
+          total_events_found?: number | null
+          winning_strategy?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "scraper_insights_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "scraper_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scraper_insights_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "source_health_with_insights"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scraper_sources: {
         Row: {
@@ -730,16 +891,23 @@ export type Database = {
           config: Json
           consecutive_errors: number | null
           consecutive_failures: number | null
+          consecutive_zero_events: number | null
           country: string | null
           created_at: string
+          deep_scrape_enabled: boolean | null
           default_coordinates: Json | null
           description: string | null
+          detected_cms: string | null
+          detected_framework_version: string | null
           disabled_reason: string | null
           enabled: boolean
+          fetcher_type: Database["public"]["Enums"]["fetcher_type_enum"] | null
           id: string
           language: string | null
           last_discovery_at: string | null
           last_error: string | null
+          last_non_zero_scrape: string | null
+          last_payload_hash: string | null
           last_rate_limit_remaining: number | null
           last_rate_limit_reset_ts: string | null
           last_rate_limit_retry_after_seconds: number | null
@@ -748,8 +916,11 @@ export type Database = {
           location_name: string | null
           name: string
           next_scrape_at: string | null
+          preferred_method: string | null
           requires_render: boolean | null
+          tier: string | null
           total_events_scraped: number | null
+          total_savings_prevented_runs: number | null
           updated_at: string
           url: string
           volatility_score: number | null
@@ -760,16 +931,23 @@ export type Database = {
           config?: Json
           consecutive_errors?: number | null
           consecutive_failures?: number | null
+          consecutive_zero_events?: number | null
           country?: string | null
           created_at?: string
+          deep_scrape_enabled?: boolean | null
           default_coordinates?: Json | null
           description?: string | null
+          detected_cms?: string | null
+          detected_framework_version?: string | null
           disabled_reason?: string | null
           enabled?: boolean
+          fetcher_type?: Database["public"]["Enums"]["fetcher_type_enum"] | null
           id?: string
           language?: string | null
           last_discovery_at?: string | null
           last_error?: string | null
+          last_non_zero_scrape?: string | null
+          last_payload_hash?: string | null
           last_rate_limit_remaining?: number | null
           last_rate_limit_reset_ts?: string | null
           last_rate_limit_retry_after_seconds?: number | null
@@ -778,8 +956,11 @@ export type Database = {
           location_name?: string | null
           name: string
           next_scrape_at?: string | null
+          preferred_method?: string | null
           requires_render?: boolean | null
+          tier?: string | null
           total_events_scraped?: number | null
+          total_savings_prevented_runs?: number | null
           updated_at?: string
           url: string
           volatility_score?: number | null
@@ -790,16 +971,23 @@ export type Database = {
           config?: Json
           consecutive_errors?: number | null
           consecutive_failures?: number | null
+          consecutive_zero_events?: number | null
           country?: string | null
           created_at?: string
+          deep_scrape_enabled?: boolean | null
           default_coordinates?: Json | null
           description?: string | null
+          detected_cms?: string | null
+          detected_framework_version?: string | null
           disabled_reason?: string | null
           enabled?: boolean
+          fetcher_type?: Database["public"]["Enums"]["fetcher_type_enum"] | null
           id?: string
           language?: string | null
           last_discovery_at?: string | null
           last_error?: string | null
+          last_non_zero_scrape?: string | null
+          last_payload_hash?: string | null
           last_rate_limit_remaining?: number | null
           last_rate_limit_reset_ts?: string | null
           last_rate_limit_retry_after_seconds?: number | null
@@ -808,8 +996,11 @@ export type Database = {
           location_name?: string | null
           name?: string
           next_scrape_at?: string | null
+          preferred_method?: string | null
           requires_render?: boolean | null
+          tier?: string | null
           total_events_scraped?: number | null
+          total_savings_prevented_runs?: number | null
           updated_at?: string
           url?: string
           volatility_score?: number | null
@@ -1028,6 +1219,56 @@ export type Database = {
         }
         Relationships: []
       }
+      source_health_with_insights: {
+        Row: {
+          auto_disabled: boolean | null
+          auto_discovered: boolean | null
+          avg_events_per_run: number | null
+          config: Json | null
+          consecutive_errors: number | null
+          consecutive_failures: number | null
+          consecutive_zero_events: number | null
+          country: string | null
+          created_at: string | null
+          deep_scrape_enabled: boolean | null
+          default_coordinates: Json | null
+          description: string | null
+          detected_cms: string | null
+          detected_framework: string | null
+          detected_framework_version: string | null
+          disabled_reason: string | null
+          enabled: boolean | null
+          failure_count: number | null
+          fetcher_type: Database["public"]["Enums"]["fetcher_type_enum"] | null
+          id: string | null
+          language: string | null
+          last_discovery_at: string | null
+          last_error: string | null
+          last_events_found: number | null
+          last_execution_time_ms: number | null
+          last_insight_status: string | null
+          last_non_zero_scrape: string | null
+          last_rate_limit_remaining: number | null
+          last_rate_limit_reset_ts: string | null
+          last_rate_limit_retry_after_seconds: number | null
+          last_scraped_at: string | null
+          last_success: boolean | null
+          last_winning_strategy: string | null
+          location_name: string | null
+          most_common_strategy: string | null
+          name: string | null
+          next_scrape_at: string | null
+          preferred_method: string | null
+          requires_render: boolean | null
+          success_count: number | null
+          tier: string | null
+          total_events_scraped: number | null
+          updated_at: string | null
+          url: string | null
+          volatility_score: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _postgis_deprecate: {
@@ -1157,6 +1398,14 @@ export type Database = {
             }
             Returns: string
           }
+      check_and_heal_fetcher: {
+        Args: {
+          p_events_found: number
+          p_http_status: number
+          p_source_id: string
+        }
+        Returns: Json
+      }
       claim_scrape_jobs: {
         Args: { p_batch_size?: number }
         Returns: {
@@ -1315,6 +1564,17 @@ export type Database = {
         }[]
       }
       get_friends_pulse: { Args: { current_user_id: string }; Returns: Json }
+      get_pipeline_health: {
+        Args: never
+        Returns: {
+          avg_processing_seconds: number
+          completed_count: number
+          failed_count: number
+          pending_count: number
+          processing_count: number
+          stuck_count: number
+        }[]
+      }
       get_recent_scraper_runs: {
         Args: { p_limit?: number; p_strategy?: string }
         Returns: {
@@ -1352,7 +1612,70 @@ export type Database = {
         }
         Returns: undefined
       }
+      increment_savings_counter: {
+        Args: { p_source_id: string }
+        Returns: undefined
+      }
+      invoke_edge_function:
+        | {
+            Args: { p_function_name: string; p_payload?: Json }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_function_name: string
+              p_payload?: Json
+              p_timeout_seconds?: number
+            }
+            Returns: undefined
+          }
+      log_scraper_insight: {
+        Args: {
+          p_detected_cms?: string
+          p_detected_framework?: string
+          p_error_message?: string
+          p_execution_time_ms?: number
+          p_fetch_time_ms?: number
+          p_has_hydration_data?: boolean
+          p_has_ics_feed?: boolean
+          p_has_json_ld?: boolean
+          p_has_rss_feed?: boolean
+          p_html_size_bytes?: number
+          p_parse_time_ms?: number
+          p_run_id?: string
+          p_source_id: string
+          p_status: string
+          p_strategy_trace: Json
+          p_total_events_found: number
+          p_winning_strategy: string
+        }
+        Returns: string
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      match_events: {
+        Args: {
+          filter_category?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          category: string
+          description: string
+          event_date: string
+          event_id: string
+          event_time: string
+          event_type: string
+          image_url: string
+          similarity: number
+          title: string
+          venue_name: string
+        }[]
+      }
+      poll_net_http_responses_audit: {
+        Args: { p_since?: unknown }
+        Returns: number
+      }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -1393,6 +1716,15 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      reset_stale_processing_rows: {
+        Args: never
+        Returns: {
+          reset_count: number
+          row_ids: string[]
+        }[]
+      }
+      reset_stuck_discovery_jobs: { Args: never; Returns: undefined }
+      reset_stuck_scrape_jobs: { Args: never; Returns: undefined }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -1994,6 +2326,10 @@ export type Database = {
             }
             Returns: undefined
           }
+      update_source_preferred_method: {
+        Args: { p_preferred_method: string; p_source_id: string }
+        Returns: boolean
+      }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
@@ -2006,7 +2342,8 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      fetcher_type_enum: "static" | "puppeteer" | "playwright" | "scrapingbee"
+      raw_event_status: "pending" | "processing" | "completed" | "failed"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -2141,6 +2478,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      fetcher_type_enum: ["static", "puppeteer", "playwright", "scrapingbee"],
+      raw_event_status: ["pending", "processing", "completed", "failed"],
+    },
   },
 } as const
