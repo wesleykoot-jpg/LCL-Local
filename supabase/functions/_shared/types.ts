@@ -71,7 +71,7 @@ export interface StructuredLocation {
 export interface EnrichedEvent {
   title: string;
   description: string;
-  category: string;
+  category_key: CategoryKey;  // Changed from category (string)
   event_type: string;
   venue_name: string;
   location: string; // Legacy: POINT(lng lat) format
@@ -260,7 +260,7 @@ export interface NormalizedEvent {
   image_url: string | null;
   venue_name: string;
   venue_address?: string;
-  internal_category: InternalCategory;
+  category_key: CategoryKey;  // Changed from internal_category
   detail_url?: string | null;
   persona_tags?: string[];
 }
@@ -370,27 +370,34 @@ export interface SourceHealthStatus extends ScraperSource {
 // INTERNAL CATEGORY TYPES
 // ============================================================================
 
-export type InternalCategory = 
-  | 'active' 
-  | 'gaming' 
-  | 'entertainment' 
-  | 'social' 
-  | 'family' 
-  | 'outdoors' 
-  | 'music' 
-  | 'workshops' 
-  | 'foodie' 
-  | 'community';
+/**
+ * Language-agnostic category keys (uppercase)
+ * These map to the database enum scraper.event_category_key
+ * Display labels are handled in the frontend localization layer
+ */
+export type CategoryKey = 
+  | 'MUSIC' 
+  | 'SOCIAL' 
+  | 'ACTIVE' 
+  | 'CULTURE' 
+  | 'FOOD'
+  | 'NIGHTLIFE' 
+  | 'FAMILY' 
+  | 'CIVIC' 
+  | 'COMMUNITY';
 
-export const INTERNAL_CATEGORIES: InternalCategory[] = [
-  'active',
-  'gaming',
-  'entertainment',
-  'social',
-  'family',
-  'outdoors',
-  'music',
-  'workshops',
-  'foodie',
-  'community'
+export const CATEGORY_KEYS: CategoryKey[] = [
+  'MUSIC',
+  'SOCIAL',
+  'ACTIVE',
+  'CULTURE',
+  'FOOD',
+  'NIGHTLIFE',
+  'FAMILY',
+  'CIVIC',
+  'COMMUNITY'
 ];
+
+// Legacy type for backward compatibility during migration
+/** @deprecated Use CategoryKey instead */
+export type InternalCategory = CategoryKey | 'active' | 'gaming' | 'entertainment' | 'social' | 'family' | 'outdoors' | 'music' | 'workshops' | 'foodie' | 'community';
