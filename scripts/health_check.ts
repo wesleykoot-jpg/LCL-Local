@@ -1,10 +1,10 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
 
 import { createClient } from "npm:@supabase/supabase-js";
-import { config } from "https://deno.land/std@0.208.0/dotenv/mod.ts";
+import { load } from "https://deno.land/std@0.208.0/dotenv/mod.ts";
 
 // Load environment variables
-const env = await config({ export: true });
+const env = await load();
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || env.SUPABASE_URL;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || env.SUPABASE_SERVICE_ROLE_KEY;
 
