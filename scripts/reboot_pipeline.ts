@@ -33,6 +33,7 @@ async function main() {
     await supabase.from('raw_event_staging').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('scraper_insights').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('scraper_runs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('scrape_jobs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     
     // Reset Sources
     await supabase.from('scraper_sources').update({
@@ -61,15 +62,19 @@ async function main() {
             console.error("Error enqueuing jobs:", jobError);
         } else {
             console.log(`✅ Enqueued ${jobs.length} jobs.`);
+            
+            // Invoke scrape-worker to process these jobs immediately
+            console.log("🕷️  Invoking scrape-worker for immediate processing...");
+            // We can invoke it once and it might pick up a batch? 
+            // Or we check logic. Usually workers process a batch.
+            // Let's invoke it a few times to be safe or parallel.
+            const invocations = Math.min(jobs.length, 5); // Max 5 parallel workers
+            const promises = Array.from({ length: invocations }).map(() => 
+                supabase.functions.invoke('scrape-worker', { body: {} })
+            );
+            await Promise.all(promises);
+            console.log(`✅ Invoked scrape-worker ${invocations} times.`);
         }
-        
-        // NOW we need to actually RUN them. 
-        // If there is no auto-worker, we might need to manually trigger the 'scraper-worker' function for each job?
-        // Let's try to assume there is a 'scraper-worker' function we can invoke.
-        // I will attempt to invoke 'scraper-v2-worker' or similar if I saw it in file list, otherwise generic 'scraper'.
-        // Based on previous context, user has 'scraper-scheduler'.
-        // I'll try invoking 'process-worker' later, but for fetching HTML:
-        // I will try to call 'scraper-worker' (guess) or just hope the scheduler does it.
     }
 
     // Since we don't have an actual "scraper worker" running constantly in the background locally unless the user started it,
@@ -111,7 +116,7 @@ async function main() {
     console.log(`Total Events: ${events?.length || 0}`);
     
     // Group by Category
-    const byCategory = {};
+    const byCategory: Record<string, number> = {};
     events?.forEach(e => {
         byCategory[e.category] = (byCategory[e.category] || 0) + 1;
     });
@@ -119,9 +124,10 @@ async function main() {
 
     // Group by Parsing Method (need to join validation or check staging)
     const { data: staged } = await supabase.from('raw_event_staging').select('parsing_method, status');
-    const byMethod = {};
+    const byMethod: Record<string, number> = {};
     staged?.forEach(s => {
-        byMethod[s.parsing_method || 'unknown'] = (byMethod[s.parsing_method || 'unknown'] || 0) + 1;
+        const key = s.parsing_method || 'unknown';
+        byMethod[key] = (byMethod[key] || 0) + 1;
     });
     console.log("Parsing Methods:");
     console.table(byMethod);
