@@ -5,8 +5,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.39.3"; // Use fixed ve
 // For local execution, we need the keys. I'll ask the user to provide them or try to read from a file if I could, but strictly I should rely on Deno.env if I run with `supabase functions`.
 // BUT, to run this as a standalone script, I need the URL/KEY.
 // I will assume local supabase defaults:
-const SUPABASE_URL = "http://127.0.0.1:54321";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "SERVICE_ROLE_KEY_PLACEHOLDER"; 
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; 
 
 // !! USER MUST PROVIDE KEY IF RUNNING STANDALONE OR WE RELY ON IT BEING IN ENV
 
