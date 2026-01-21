@@ -7,8 +7,18 @@ import { supabaseUrl, supabaseServiceRoleKey, openAiApiKey } from "./supabase/fu
 import { handler as fetcherHandler } from "./supabase/functions/scrape-events/index.ts";
 import { handler as processorHandler } from "./supabase/functions/process-events/index.ts";
 
-// Load env (Deno automatically loads .env if --allow-env is set)
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+const loadEnv = async () => {
+  const envText = await Deno.readTextFile(".env");
+  envText.split("\n").forEach((line) => {
+    const [key, ...val] = line.split("=");
+    if (key && val.length > 0) {
+      const v = val.join("=").trim().replace(/^["']|["']$/g, "");
+      Deno.env.set(key.trim(), v);
+    }
+  });
+};
+
+let supabase: any;
 
 async function invokeFetcher() {
   const req = new Request("http://localhost/fetcher", { method: "POST" });
@@ -47,6 +57,10 @@ async function reportCounts() {
 }
 
 async function main() {
+  await loadEnv();
+  const { supabaseUrl, supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
+  supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
   console.log("--- Running Data‑First fetcher ---");
   await invokeFetcher();
   console.log("--- Running Data‑First processor ---");
