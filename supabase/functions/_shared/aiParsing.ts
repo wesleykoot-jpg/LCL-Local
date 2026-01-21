@@ -110,7 +110,7 @@ export interface ParsedEventAI {
     venue_name: string;
     venue_address?: string;
     image_url: string | null;
-    category_key: CategoryKey;  // Changed from internal_category
+    category: CategoryKey;  // Uppercase keys
     detail_url?: string;
     persona_tags?: string[];
 }
@@ -199,7 +199,7 @@ ${rawEvent.rawHtml}`;
     venue_name: parsed.venue_name || rawEvent.location || "",
     venue_address: parsed.venue_address,
     image_url: rawEvent.imageUrl ?? parsed.image_url ?? null,
-    category_key: category,  // Now uppercase CategoryKey
+    category: category,  // Uppercase CategoryKey
     detail_url: rawEvent.detailUrl,
   };
 }
@@ -308,7 +308,7 @@ ${detailHtml || ''}
         venue_name: parsed.venue_name || rawEvent.location || "",
         venue_address: parsed.venue_address,
         image_url: parsed.image_url || rawEvent.imageUrl || null,
-        category_key: category,  // Now uppercase CategoryKey
+        category: category,  // Uppercase CategoryKey
         detail_url: rawEvent.detailUrl,
         price: parsed.price,
         organizer: parsed.organizer,

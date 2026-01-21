@@ -170,7 +170,7 @@ export function cheapNormalizeEvent(
     event_time: time || "TBD",
     image_url: raw.imageUrl,
     venue_name: raw.location || source.name,
-    category_key: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
+    category: mapToInternalCategory(raw.categoryHint || raw.description || raw.title),
   };
 }
 
