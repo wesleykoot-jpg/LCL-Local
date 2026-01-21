@@ -1,24 +1,29 @@
 // run_pipeline.ts
-// Simple script to invoke the Data‑First fetcher and processor Edge Functions locally
-// and then report the number of rows in staging and events tables.
+// Simple script to invoke the Data-First fetcher and processor Edge Functions locally
 
 import { createClient } from "@supabase/supabase-js";
-import { supabaseUrl, supabaseServiceRoleKey, openAiApiKey } from "./supabase/functions/_shared/env.ts";
-import { handler as fetcherHandler } from "./supabase/functions/scrape-events/index.ts";
-import { handler as processorHandler } from "./supabase/functions/process-events/index.ts";
 
-const loadEnv = async () => {
-  const envText = await Deno.readTextFile(".env");
-  envText.split("\n").forEach((line) => {
-    const [key, ...val] = line.split("=");
-    if (key && val.length > 0) {
-      const v = val.join("=").trim().replace(/^["']|["']$/g, "");
-      Deno.env.set(key.trim(), v);
-    }
-  });
-};
-
+// Global variables for handlers and client
 let supabase: any;
+let fetcherHandler: any;
+let processorHandler: any;
+
+// 1. Load env internally to avoid hoisting issues
+const loadEnv = async () => {
+    try {
+        const envText = await Deno.readTextFile(".env");
+        envText.split("\n").forEach((line) => {
+            const [key, ...val] = line.split("=");
+            if (key && val.length > 0) {
+                const v = val.join("=").trim().replace(/^["']|["']$/g, "");
+                Deno.env.set(key.trim(), v);
+            }
+        });
+        console.log("Environment variables loaded from .env");
+    } catch (e) {
+        console.warn(".env file not found, relying on system env", e.message);
+    }
+};
 
 async function invokeFetcher() {
   const req = new Request("http://localhost/fetcher", { method: "POST" });
@@ -35,14 +40,6 @@ async function invokeProcessor() {
 }
 
 async function reportCounts() {
-  const { data: staging, error: err1 } = await supabase
-    .from("raw_event_staging")
-    .select("id, status, parsing_method")
-    .order("created_at", { ascending: false })
-    .limit(10);
-  if (err1) console.error("Staging fetch error", err1);
-  else console.log("Recent staging rows (up to 10):", staging);
-
   const { count: stagingCount, error: err2 } = await supabase
     .from("raw_event_staging")
     .select("id", { count: "exact", head: true });
@@ -58,13 +55,22 @@ async function reportCounts() {
 
 async function main() {
   await loadEnv();
-  const { supabaseUrl, supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
-  supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-  console.log("--- Running Data‑First fetcher ---");
+  // 2. Dynamically import modules AFTER env is loaded
+  const { supabaseUrl, supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
+  const { handler: fHandler } = await import("./supabase/functions/scrape-events/index.ts");
+  const { handler: pHandler } = await import("./supabase/functions/process-worker/index.ts");
+
+  supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+  fetcherHandler = fHandler;
+  processorHandler = pHandler;
+
+  console.log("--- Running Data-First fetcher ---");
   await invokeFetcher();
-  console.log("--- Running Data‑First processor ---");
+  
+  console.log("--- Running Process Worker ---");
   await invokeProcessor();
+  
   console.log("--- Reporting DB counts ---");
   await reportCounts();
 }

@@ -140,21 +140,7 @@ serve(async (req: Request): Promise<Response> => {
       false
     );
 
-    // Trigger worker if requested (Legacy)
-    if (triggerWorker && jobsCreated > 0) {
-      console.log("Coordinator: Triggering legacy worker...");
-      fetch(`${supabaseUrl}/functions/v1/scrape-worker`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ enableDeepScraping: true }),
-      }).catch((err) => console.error("Failed to trigger legacy worker:", err));
-    }
-
     // Trigger Data-First Pipeline
-    // We trigger this regardless of job queue to ensure new fetcher runs
     console.log("Coordinator: Triggering Data-First Fetcher (scrape-events)...");
     fetch(`${supabaseUrl}/functions/v1/scrape-events`, {
         method: "POST",
@@ -164,8 +150,8 @@ serve(async (req: Request): Promise<Response> => {
         }
     }).catch(err => console.error("Failed to trigger fetcher:", err));
 
-    console.log("Coordinator: Triggering Data-First Processor (process-events)...");
-    fetch(`${supabaseUrl}/functions/v1/process-events`, {
+    console.log("Coordinator: Triggering Data-First Processor (process-worker)...");
+    fetch(`${supabaseUrl}/functions/v1/process-worker`, {
         method: "POST",
         headers: { 
             "Authorization": `Bearer ${supabaseKey}`,

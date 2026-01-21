@@ -26,7 +26,12 @@ export const handler = async (req: Request): Promise<Response> => {
       const lastHash = src.last_payload_hash as string | null;
 
       try {
-        const resp = await fetch(url);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s for quality over speed
+        
+        const resp = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const html = await resp.text();
         
@@ -79,9 +84,10 @@ export const handler = async (req: Request): Promise<Response> => {
         }).eq("id", sourceId);
         
         results.push({ sourceId, status: "completed", found: cards.length, staged: stagedCount, errors: errorCount });
-      } catch (e) {
-        console.warn(`Failed to fetch ${url}:`, e);
-        results.push({ sourceId, status: "fetch_error", error: String(e) });
+      } catch (e: any) {
+        const isTimeout = e.name === 'AbortError';
+        console.warn(`Failed to fetch ${url} (${isTimeout ? 'TIMEOUT' : e.message})`);
+        results.push({ sourceId, status: isTimeout ? "timeout" : "fetch_error", error: String(e) });
       }
     }
 

@@ -51,7 +51,7 @@ async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]>
 
   const ids = candidates.map(c => c.id);
   
-  // Lock them
+  // Lock them (trigger will set processing_started_at automatically)
   const { data: locked, error: lockError } = await supabase
     .from("raw_event_staging")
     .update({ 
@@ -68,10 +68,24 @@ async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]>
   }
 
   // Type assertion since `raw_payload` is JSONB
-  return (locked || []).map((row: any) => ({
-      ...row,
-      raw_payload: row.raw_payload as RawEventCard 
-  }));
+  return (locked || []).map((row: any) => {
+      let payload: RawEventCard;
+      if (row.raw_html && row.raw_html.trim().startsWith('{')) {
+          try {
+              payload = JSON.parse(row.raw_html);
+              // Ensure it has rawHtml property if missing, though typically JSON contains structured data
+              if (!payload.rawHtml) payload.rawHtml = row.raw_html; 
+          } catch {
+              payload = { rawHtml: row.raw_html } as any;
+          }
+      } else {
+          payload = { rawHtml: row.raw_html } as any;
+      }
+      return {
+          ...row,
+          raw_payload: payload
+      };
+  });
 }
 
 // Helper: Complete row
@@ -220,34 +234,38 @@ async function processRow(
     await supabase.from("raw_event_staging").update({ parsing_method: parsingMethod }).eq("id", row.id);
 
     // 2. THE POLISHER (Enrichment)
-    
-    // Geocoding
     const { geocodeLocation, optimizeImage } = await import("../_shared/enrichment.ts");
-    // Get Mapbox token from env or somewhere. Ideally strictly managed.
-    // For now assuming it might be in env or we skip if missing.
+    
+    // Geocoding (non-blocking - quality over speed)
     const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN"); 
     
     if (mapboxToken && normalized.venue_name && (!normalized.venue_address || normalized.venue_address.length < 5)) {
-        // If we have a venue name but no good address, OR we just want to geocode the string we have
-        const query = normalized.venue_address || normalized.venue_name; 
-        if (query) {
-             const geo = await geocodeLocation(query, mapboxToken);
-             if (geo) {
-                 // Store geo somewhere? normalized.location is string "POINT(..)" legacy.
-                 // We construct it below.
-                 // We can attach it to normalized to be used in construction.
-                 (normalized as any)._geo = geo;
-             }
+        try {
+            const query = normalized.venue_address || normalized.venue_name; 
+            if (query) {
+                 const geo = await geocodeLocation(query, mapboxToken);
+                 if (geo) {
+                     (normalized as any)._geo = geo;
+                 }
+            }
+        } catch (geoError) {
+            // Non-blocking: Continue with default location if geocoding fails
+            console.warn(`[${row.id}] Geocoding failed (non-blocking):`, geoError);
         }
     }
 
-    // Image Optimization
+    // Image Optimization (non-blocking - quality over speed)
     // Download and upload to storage to prevent link rot
     // Only if image is remote and not already ours
     if (normalized.image_url && normalized.image_url.startsWith('http') && !normalized.image_url.includes('supabase.co')) {
-        const optimizedUrl = await optimizeImage(supabase, normalized.image_url, row.id);
-        if (optimizedUrl) {
-            normalized.image_url = optimizedUrl;
+        try {
+            const optimizedUrl = await optimizeImage(supabase, normalized.image_url, row.id);
+            if (optimizedUrl) {
+                normalized.image_url = optimizedUrl;
+            }
+        } catch (imgError) {
+            // Non-blocking: Continue with original URL if optimization fails
+            console.warn(`[${row.id}] Image optimization failed (non-blocking):`, imgError);
         }
     }
 
@@ -294,7 +312,7 @@ async function processRow(
         if (!existing) eventPayload.location = "POINT(0 0)";
     }
 
-    // Embedding
+    // Embedding (non-blocking - quality over speed, allow up to 60s)
     try {
       const textToEmbed = eventToText(normalized);
       const embedRes = await generateEmbedding(aiApiKey, textToEmbed, fetch);
@@ -303,7 +321,10 @@ async function processRow(
           eventPayload.embedding_generated_at = new Date().toISOString();
           eventPayload.embedding_model = 'text-embedding-3-small';
       }
-    } catch (e) { console.warn("Embedding failed", e); }
+    } catch (embedError) {
+      // Non-blocking: Event will be created without embedding, can be generated async later
+      console.warn(`[${row.id}] Embedding generation failed (non-blocking):`, embedError);
+    }
 
     if (existing) {
         // MERGE LOGIC
@@ -362,7 +383,7 @@ async function processRow(
   }
 }
 
-serve(async (req: Request) => {
+export const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -416,4 +437,10 @@ serve(async (req: Request) => {
     console.error("Processor Critical Failure:", err);
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
   }
-});
+};
+
+if (import.meta.main) {
+  serve(handler);
+} else {
+  console.log("Process Worker imported as module");
+}

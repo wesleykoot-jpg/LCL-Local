@@ -26,7 +26,7 @@ async function main() {
   await loadEnv();
 
   // Dynamic import to ensure env is set BEFORE the handler is imported
-  const { handler: processorHandler } = await import("./supabase/functions/process-events/index.ts");
+  const { handler: processorHandler } = await import("./supabase/functions/process-worker/index.ts");
   const { supabaseUrl, supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
 
   // Check results
