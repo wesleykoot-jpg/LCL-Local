@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import type { DiscoveryLayout, MissionIntent, MissionModeResponse } from '../types/discoveryTypes';
 
 type EventAttendee = Database['public']['Tables']['event_attendees']['Insert'];
 type JoinEventRpcResult = {
@@ -66,6 +67,70 @@ const buildUtcTimestamp = (date: string, time: string) => {
   const utc = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
   return utc.toISOString();
 };
+
+/**
+ * Fetches discovery rails with traditional, AI-driven, and social sections
+ * @param userId - User's profile ID
+ * @param userLocation - User's current location
+ * @param radiusKm - Search radius in kilometers
+ * @returns Discovery layout with multiple rail sections
+ */
+export async function fetchDiscoveryRails(
+  userId: string,
+  userLocation: { lat: number; lng: number },
+  radiusKm: number = 25
+): Promise<DiscoveryLayout> {
+  try {
+    const { data, error } = await supabase.rpc('get_discovery_rails', {
+      p_user_id: userId,
+      p_user_lat: userLocation.lat,
+      p_user_long: userLocation.lng,
+      p_radius_km: radiusKm,
+      p_limit_per_rail: 10,
+    });
+
+    if (error) throw error;
+    if (!data) throw new Error('No discovery rails data returned');
+
+    return data as DiscoveryLayout;
+  } catch (error) {
+    console.error('Error fetching discovery rails:', error);
+    // Return empty layout on error
+    return { sections: [] };
+  }
+}
+
+/**
+ * Fetches events for mission mode (immediate intent queries)
+ * @param intent - Mission intent (lunch, coffee, drinks, explore)
+ * @param userLocation - User's current location
+ * @param maxDistanceKm - Maximum walking distance in kilometers
+ * @returns Mission mode response with filtered events
+ */
+export async function fetchMissionModeEvents(
+  intent: MissionIntent,
+  userLocation: { lat: number; lng: number },
+  maxDistanceKm: number = 1.0
+): Promise<MissionModeResponse> {
+  try {
+    const { data, error } = await supabase.rpc('get_mission_mode_events', {
+      p_intent: intent,
+      p_user_lat: userLocation.lat,
+      p_user_long: userLocation.lng,
+      p_max_distance_km: maxDistanceKm,
+      p_limit: 10,
+    });
+
+    if (error) throw error;
+    if (!data) throw new Error('No mission mode data returned');
+
+    return data as MissionModeResponse;
+  } catch (error) {
+    console.error('Error fetching mission mode events:', error);
+    // Return empty response on error
+    return { intent, events: [] };
+  }
+}
 
 /**
  * Adds a user to an event as an attendee, with automatic waitlist handling
@@ -374,4 +439,6 @@ export const eventService = {
   checkEventAttendance,
   createEvent,
   fetchUserEvents,
+  fetchDiscoveryRails,
+  fetchMissionModeEvents,
 };
