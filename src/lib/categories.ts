@@ -1,108 +1,100 @@
+/**
+ * Category Configuration
+ * 
+ * Re-exports from the localization layer for backward compatibility.
+ * All new code should import from @/shared/lib/localization directly.
+ */
+
+import { 
+  getCategoryConfig as getConfig,
+  getCategoryLabel,
+  getCategoryIcon,
+  getCategoryColor,
+  legacyIdToKey,
+  CATEGORY_DISPLAY_MAP,
+  type CategoryKey 
+} from '@/shared/lib/localization';
+
+// Re-export for backward compatibility
+export { getCategoryLabel, getCategoryIcon, getCategoryColor, legacyIdToKey };
+export type { CategoryKey };
+
+/**
+ * Category configuration interface (backward compatible)
+ */
 export interface CategoryConfig {
   id: string;
   label: string;
-  // Color classes using Tailwind 500 scale
-  dotClass: string;      // The color dot
-  bgClass: string;       // Badge background (10% opacity)
-  textClass: string;     // Badge text
-  borderClass: string;   // Badge border (20% opacity)
+  dotClass: string;
+  bgClass: string;
+  textClass: string;
+  borderClass: string;
 }
 
-export const CATEGORIES: CategoryConfig[] = [
-  {
-    id: 'active',
-    label: 'Active',
-    dotClass: 'bg-orange-500',
-    bgClass: 'bg-orange-500/10',
-    textClass: 'text-orange-600',
-    borderClass: 'border-orange-500/20',
-  },
-  {
-    id: 'gaming',
-    label: 'Gaming',
-    dotClass: 'bg-violet-500',
-    bgClass: 'bg-violet-500/10',
-    textClass: 'text-violet-600',
-    borderClass: 'border-violet-500/20',
-  },
-  {
-    id: 'entertainment',
-    label: 'Entertainment',
-    dotClass: 'bg-rose-500',
-    bgClass: 'bg-rose-500/10',
-    textClass: 'text-rose-600',
-    borderClass: 'border-rose-500/20',
-  },
-  {
-    id: 'social',
-    label: 'Social',
-    dotClass: 'bg-blue-500',
-    bgClass: 'bg-blue-500/10',
-    textClass: 'text-blue-600',
-    borderClass: 'border-blue-500/20',
-  },
-  {
-    id: 'family',
-    label: 'Family',
-    dotClass: 'bg-teal-500',
-    bgClass: 'bg-teal-500/10',
-    textClass: 'text-teal-600',
-    borderClass: 'border-teal-500/20',
-  },
-  {
-    id: 'outdoors',
-    label: 'Outdoors',
-    dotClass: 'bg-emerald-500',
-    bgClass: 'bg-emerald-500/10',
-    textClass: 'text-emerald-600',
-    borderClass: 'border-emerald-500/20',
-  },
-  {
-    id: 'music',
-    label: 'Music',
-    dotClass: 'bg-indigo-500',
-    bgClass: 'bg-indigo-500/10',
-    textClass: 'text-indigo-600',
-    borderClass: 'border-indigo-500/20',
-  },
-  {
-    id: 'workshops',
-    label: 'Workshops',
-    dotClass: 'bg-amber-500',
-    bgClass: 'bg-amber-500/10',
-    textClass: 'text-amber-600',
-    borderClass: 'border-amber-500/20',
-  },
-  {
-    id: 'foodie',
-    label: 'Foodie',
-    dotClass: 'bg-pink-500',
-    bgClass: 'bg-pink-500/10',
-    textClass: 'text-pink-600',
-    borderClass: 'border-pink-500/20',
-  },
-  {
-    id: 'community',
-    label: 'Community',
-    dotClass: 'bg-slate-500',
-    bgClass: 'bg-slate-500/10',
-    textClass: 'text-slate-600',
-    borderClass: 'border-slate-500/20',
-  },
-];
+/**
+ * Get category configuration by key or legacy ID
+ * Supports both uppercase keys ('MUSIC') and lowercase legacy IDs ('music')
+ * 
+ * @param categoryId - CategoryKey or legacy lowercase ID
+ * @returns Category configuration for UI rendering
+ */
+export function getCategoryConfig(categoryId: string): CategoryConfig {
+  // Handle legacy lowercase IDs
+  let key: CategoryKey;
+  if (categoryId === categoryId.toUpperCase() && categoryId in CATEGORY_DISPLAY_MAP) {
+    key = categoryId as CategoryKey;
+  } else {
+    key = legacyIdToKey(categoryId);
+  }
+  
+  const config = getConfig(key, 'nl'); // Default to Dutch
+  
+  return {
+    id: key,
+    label: config.label,
+    dotClass: config.dotClass,
+    bgClass: config.bgClass,
+    textClass: config.textClass,
+    borderClass: config.borderClass
+  };
+}
 
-// Map old/legacy categories to new ones
+/**
+ * All categories as CategoryConfig array (for UI lists)
+ */
+export const CATEGORIES: CategoryConfig[] = [
+  'ACTIVE',
+  'MUSIC',
+  'CULTURE',
+  'SOCIAL',
+  'FAMILY',
+  'FOOD',
+  'NIGHTLIFE',
+  'CIVIC',
+  'COMMUNITY'
+].map(key => getCategoryConfig(key));
+
+/**
+ * Legacy mapping for old category IDs to new keys
+ * @deprecated Use legacyIdToKey from localization instead
+ */
 export const CATEGORY_MAP: Record<string, string> = {
-  sports: 'active',
-  cinema: 'entertainment',
-  arts: 'entertainment',
-  market: 'community',
-  crafts: 'workshops',
-  nightlife: 'music',
-  wellness: 'active',
+  'sports': 'ACTIVE',
+  'cinema': 'CULTURE',
+  'arts': 'CULTURE',
+  'market': 'FOOD',
+  'crafts': 'CULTURE',
+  'nightlife': 'NIGHTLIFE',
+  'wellness': 'ACTIVE',
+  'music': 'MUSIC',
+  'active': 'ACTIVE',
+  'entertainment': 'CULTURE',
+  'social': 'SOCIAL',
+  'family': 'FAMILY',
+  'outdoors': 'ACTIVE',
+  'workshops': 'CULTURE',
+  'foodie': 'FOOD',
+  'gaming': 'CULTURE',
+  'community': 'COMMUNITY'
 };
 
-export function getCategoryConfig(categoryId: string): CategoryConfig {
-  const mapped = CATEGORY_MAP[categoryId] || categoryId;
-  return CATEGORIES.find(c => c.id === mapped) || CATEGORIES[0];
-}

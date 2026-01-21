@@ -1,8 +1,7 @@
 -- ============================================================================
--- Migration: Language-Agnostic Category System
+-- Migration: Language-Agnostic Category System (Simplified)
 -- Created: 2026-01-21
--- Purpose: Transform category system from lowercase language-specific strings
---          to uppercase language-agnostic keys with separate localization layer
+-- Purpose: Keep 'category' column name, just change values to uppercase
 -- ============================================================================
 
 -- ============================================================================
@@ -26,93 +25,87 @@ COMMENT ON TYPE scraper.event_category_key IS
   'See src/shared/lib/localization.ts for translations.';
 
 -- ============================================================================
--- STEP 2: Add new category_key column to events table
+-- STEP 2: Update existing category column to use enum and uppercase values
 -- ============================================================================
-ALTER TABLE public.events 
-  ADD COLUMN category_key scraper.event_category_key;
 
-COMMENT ON COLUMN public.events.category_key IS 
-  'Uppercase language-agnostic category key. Localized at display layer.';
-
--- ============================================================================
--- STEP 3: Migrate existing lowercase category data to uppercase keys
--- ============================================================================
-UPDATE public.events SET category_key = 
+-- First, update all category values to uppercase equivalents
+UPDATE public.events SET category = 
   CASE 
     -- Direct mappings
-    WHEN LOWER(category) = 'music' THEN 'MUSIC'::scraper.event_category_key
-    WHEN LOWER(category) = 'active' THEN 'ACTIVE'::scraper.event_category_key
-    WHEN LOWER(category) = 'social' THEN 'SOCIAL'::scraper.event_category_key
-    WHEN LOWER(category) = 'family' THEN 'FAMILY'::scraper.event_category_key
-    WHEN LOWER(category) = 'foodie' THEN 'FOOD'::scraper.event_category_key
+    WHEN LOWER(category) = 'music' THEN 'MUSIC'
+    WHEN LOWER(category) = 'active' THEN 'ACTIVE'
+    WHEN LOWER(category) = 'social' THEN 'SOCIAL'
+    WHEN LOWER(category) = 'family' THEN 'FAMILY'
+    WHEN LOWER(category) = 'foodie' THEN 'FOOD'
     
     -- Consolidations into CULTURE
     WHEN LOWER(category) IN ('entertainment', 'gaming', 'workshops', 'arts', 'cinema', 'theater', 'theatre') 
-      THEN 'CULTURE'::scraper.event_category_key
+      THEN 'CULTURE'
     
     -- Consolidations into ACTIVE
     WHEN LOWER(category) IN ('outdoors', 'sports', 'wellness', 'fitness') 
-      THEN 'ACTIVE'::scraper.event_category_key
+      THEN 'ACTIVE'
     
     -- Legacy mappings
     WHEN LOWER(category) IN ('nightlife', 'club', 'party') 
-      THEN 'NIGHTLIFE'::scraper.event_category_key
-    WHEN LOWER(category) IN ('market', 'crafts') 
-      THEN 'FOOD'::scraper.event_category_key
+      THEN 'NIGHTLIFE'
+    WHEN LOWER(category) IN ('market', 'crafts', 'food') 
+      THEN 'FOOD'
     
     -- Fallback to COMMUNITY for unknown/null values
-    ELSE 'COMMUNITY'::scraper.event_category_key
+    ELSE 'COMMUNITY'
   END
-WHERE category_key IS NULL;
+WHERE category IS NOT NULL;
 
--- ============================================================================
--- STEP 4: Make category_key required with default fallback
--- ============================================================================
+-- Set NULL categories to COMMUNITY
+UPDATE public.events SET category = 'COMMUNITY' WHERE category IS NULL;
+
+-- Now change the column type to the enum (PostgreSQL will validate all values)
 ALTER TABLE public.events 
-  ALTER COLUMN category_key SET NOT NULL,
-  ALTER COLUMN category_key SET DEFAULT 'COMMUNITY'::scraper.event_category_key;
+  ALTER COLUMN category TYPE scraper.event_category_key 
+  USING category::scraper.event_category_key;
+
+-- Make sure it's NOT NULL with default
+ALTER TABLE public.events 
+  ALTER COLUMN category SET NOT NULL,
+  ALTER COLUMN category SET DEFAULT 'COMMUNITY'::scraper.event_category_key;
 
 -- ============================================================================
--- STEP 5: Add index for query performance
+-- STEP 3: Add index for query performance
 -- ============================================================================
-CREATE INDEX IF NOT EXISTS idx_events_category_key 
-  ON public.events(category_key);
+CREATE INDEX IF NOT EXISTS idx_events_category 
+  ON public.events(category);
 
-COMMENT ON INDEX idx_events_category_key IS 
+COMMENT ON INDEX idx_events_category IS 
   'Supports fast filtering by category in event queries and feeds';
 
 -- ============================================================================
--- STEP 6: Update scraper.sources table with default category support
+-- STEP 4: Update scraper.sources table with default category support
 -- ============================================================================
 ALTER TABLE scraper.sources 
-  ADD COLUMN IF NOT EXISTS default_category_key scraper.event_category_key DEFAULT 'COMMUNITY';
+  ADD COLUMN IF NOT EXISTS default_category scraper.event_category_key DEFAULT 'COMMUNITY';
 
-COMMENT ON COLUMN scraper.sources.default_category_key IS 
+COMMENT ON COLUMN scraper.sources.default_category IS 
   'Default category key for events from this source. ' ||
   'Used as fallback when automatic categorization is uncertain. ' ||
   'Example: A jazz venue would use MUSIC as default.';
 
 -- ============================================================================
--- STEP 7: Verification query (run manually after migration)
+-- STEP 5: Update comment on category column
 -- ============================================================================
--- Uncomment to verify migration results:
+COMMENT ON COLUMN public.events.category IS 
+  'Event category using language-agnostic uppercase keys (e.g., MUSIC, ACTIVE). ' ||
+  'Display labels are localized in the frontend (Muziek/Music). ' ||
+  'See scraper.event_category_key enum for valid values.';
+
+-- ============================================================================
+-- Verification query (run manually after migration)
+-- ============================================================================
 -- 
 -- SELECT 
---   category_key, 
+--   category, 
 --   COUNT(*) as event_count,
 --   ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage
 -- FROM public.events
--- GROUP BY category_key
+-- GROUP BY category
 -- ORDER BY event_count DESC;
-
--- ============================================================================
--- STEP 8: Prepare for cleanup (run after 7 days of validation)
--- ============================================================================
--- After validating the migration in production, drop the old category column:
---
--- ALTER TABLE public.events DROP COLUMN IF EXISTS category;
--- 
--- IMPORTANT: Only execute this after:
--- 1. All Edge Functions are updated to use category_key
--- 2. Frontend is deployed with new localization layer
--- 3. 7+ days of successful operation with new system

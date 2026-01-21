@@ -71,7 +71,7 @@ export interface StructuredLocation {
 export interface EnrichedEvent {
   title: string;
   description: string;
-  category_key: CategoryKey;  // Changed from category (string)
+  category: CategoryKey;  // Uppercase keys like 'MUSIC', 'ACTIVE'
   event_type: string;
   venue_name: string;
   location: string; // Legacy: POINT(lng lat) format
@@ -260,7 +260,7 @@ export interface NormalizedEvent {
   image_url: string | null;
   venue_name: string;
   venue_address?: string;
-  category_key: CategoryKey;  // Changed from internal_category
+  category: CategoryKey;  // Uppercase keys like 'MUSIC', 'ACTIVE'
   detail_url?: string | null;
   persona_tags?: string[];
 }
