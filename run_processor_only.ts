@@ -29,19 +29,40 @@ async function main() {
   const { handler: processorHandler } = await import("./supabase/functions/process-events/index.ts");
   const { supabaseUrl, supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
 
-  console.log("--- Running Data‑First processor only ---");
-  const req = new Request("http://localhost/processor", { method: "POST" });
-  const res = await processorHandler(req);
-  const txt = await res.text();
-  console.log("Processor response:", txt);
-
   // Check results
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-  const { data: staging } = await supabase.from("raw_event_staging").select("id, status, parsing_method, source_url").limit(5).order("updated_at", { ascending: false });
-  console.log("Recent Stage Rows:", staging);
+
+  let totalProcessed = 0;
+  let hasPending = true;
+
+  while (hasPending) {
+    console.log(`--- Running Batch (Total so far: ${totalProcessed}) ---`);
+    const req = new Request("http://localhost/processor", { method: "POST" });
+    const res = await processorHandler(req);
+    const txt = await res.text();
+    console.log("Processor response:", txt);
+
+    try {
+      const json = JSON.parse(txt);
+      if (json.message === "No pending rows") {
+        console.log("No more pending rows. Finishing.");
+        hasPending = false;
+      } else if (json.message === "Processed batch") {
+        totalProcessed += 10; // Approx batch size
+        // Add a small delay to be nice to CPUs/Rate limits
+        await new Promise(r => setTimeout(r, 1000));
+      } else {
+        console.warn("Unexpected response, stopping loop:", txt);
+        hasPending = false;
+      }
+    } catch (e) {
+      console.error("Failed to parse response, stopping:", e);
+      hasPending = false;
+    }
+  }
   
   const { count } = await supabase.from("events").select("*", { count: "exact", head: true });
-  console.log("Total Events:", count);
+  console.log("Final Total Events in DB:", count);
 }
 
 main().catch((e) => console.error("Processor error", e));
