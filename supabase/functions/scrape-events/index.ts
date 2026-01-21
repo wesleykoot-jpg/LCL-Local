@@ -1,10 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { supabaseUrl, supabaseServiceRoleKey } from "../_shared/env.ts";
 import { sha256Hex } from "../_shared/scraperUtils.ts";
-
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+import { resolveStrategy } from "../_shared/strategies.ts";
 
 export const handler = async (req: Request): Promise<Response> => {
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   try {
     // Fetch enabled sources with their last payload hash
     const { data: sources, error: srcErr } = await supabase
@@ -30,42 +30,55 @@ export const handler = async (req: Request): Promise<Response> => {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const html = await resp.text();
         
-        // 1. Delta Detection: Hash the raw HTML
+        // 1. Delta Detection: Hash the raw HTML of the listing page
         const currentHash = await sha256Hex(html);
         
         if (lastHash === currentHash) {
-          console.log(`Source ${sourceId}: HTML unchanged (Delta Skip)`);
-          
-          // Increment savings counter via RPC (if exists) or just update last_scraped_at
+          console.log(`Source ${sourceId}: Listing HTML unchanged (Delta Skip)`);
           await supabase.from("scraper_sources").update({ 
             last_scraped_at: new Date().toISOString() 
           }).eq("id", sourceId);
-          
           results.push({ sourceId, status: "skipped_unchanged" });
           continue;
         }
 
-        // 2. Upsert into staging table for processing
-        const { error: insErr } = await supabase.from("raw_event_staging").upsert({
-          source_url: url,
-          raw_html: html,
-          source_id: sourceId,
-          status: "pending" as any,
-          parsing_method: null // Reset for new processing
-        }, { onConflict: "source_url" });
+        // 2. Discover individual cards
+        console.log(`Source ${sourceId}: Discovering cards...`);
+        const { data: sourceFull } = await supabase.from("scraper_sources").select("*").eq("id", sourceId).single();
+        const strategy = resolveStrategy(sourceFull?.config?.strategy, sourceFull as any);
+        const cards = await strategy.parseListing(html, url);
+        console.log(`Source ${sourceId}: Found ${cards.length} cards`);
 
-        if (insErr) {
-          console.warn(`Staging insert error for ${url}:`, insErr);
-          results.push({ sourceId, status: "error", error: insErr.message });
-        } else {
-          // Update last_payload_hash on the source
-          await supabase.from("scraper_sources").update({ 
-            last_payload_hash: currentHash,
-            last_scraped_at: new Date().toISOString()
-          }).eq("id", sourceId);
+        let stagedCount = 0;
+        let errorCount = 0;
+
+        // 3. Stage each card
+        for (const card of cards) {
+          const cardUrl = card.detailUrl || `${url}#card-${await sha256Hex(card.title + card.date)}`;
           
-          results.push({ sourceId, status: "staged" });
+          const { error: insErr } = await supabase.from("raw_event_staging").upsert({
+            source_url: cardUrl,
+            raw_html: card.rawHtml || JSON.stringify(card), // Store card HTML or JSON if HTML missing
+            source_id: sourceId,
+            status: "pending" as any,
+            parsing_method: null
+          }, { onConflict: "source_url" });
+
+          if (insErr) {
+            console.warn(`Staging error for card ${card.title}:`, insErr);
+            errorCount++;
+          } else {
+            stagedCount++;
+          }
         }
+
+        // Update last_payload_hash on the source listing
+        await supabase.from("scraper_sources").update({ 
+          last_payload_hash: currentHash,
+          last_scraped_at: new Date().toISOString()
+        }).eq("id", sourceId);
+        
+        results.push({ sourceId, status: "completed", found: cards.length, staged: stagedCount, errors: errorCount });
       } catch (e) {
         console.warn(`Failed to fetch ${url}:`, e);
         results.push({ sourceId, status: "fetch_error", error: String(e) });

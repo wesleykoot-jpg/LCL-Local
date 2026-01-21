@@ -3,7 +3,7 @@
 // attempts deterministic JSON-LD parsing first, falls back to AI parsing,
 // inserts into events table, and updates staging status and parsing_method.
 
-import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { supabaseUrl, supabaseServiceRoleKey, openAiApiKey } from "../_shared/env.ts";
 import { 
   cheapNormalizeEvent, 
@@ -18,18 +18,14 @@ import {
   isJsonLdComplete, 
   jsonLdToNormalized 
 } from "../_shared/jsonLdParser.ts";
-import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import { resolveStrategy } from "../_shared/strategies.ts";
-import { RawEventCard } from "../_shared/types.ts";
-
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 export const handler = async (req: Request): Promise<Response> => {
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   try {
     // Fetch pending rows
     const { data: rows, error: fetchErr } = await supabase
       .from("raw_event_staging")
-      .select("id, source_id, raw_html, status, parsing_method")
+      .select("id, source_id, raw_html, status, parsing_method, source_url")
       .eq("status", "pending")
       .limit(10); // Batch size
     if (fetchErr) throw fetchErr;
@@ -56,104 +52,108 @@ export const handler = async (req: Request): Promise<Response> => {
         const { data: source } = await supabase.from("scraper_sources").select("*").eq("id", sourceId).single();
         if (!source) throw new Error("Source not found");
 
-        // 1. Discovery Phase: Use Strategy to find cards in the raw HTML
-        addLog("Starting discovery phase...");
-        const strategy = resolveStrategy(source.config?.strategy, source as any);
-        const cards = await strategy.parseListing(rawHtml, source.url, { enableDebug: true });
-        addLog(`Discovered ${cards.length} cards`);
+        let normalized: any = null;
+        let parsingMethod: string | null = null;
 
-        if (cards.length === 0) {
-          const jsonLdEvents = extractJsonLdEvents(rawHtml);
-          if (jsonLdEvents?.length) {
-            addLog("Whole page contains JSON-LD event(s)");
-            cards.push(...jsonLdEvents.map(e => ({ title: (e as any).name || "Unknown", rawHtml } as any)));
+        // 1. JSON-LD for this specific card HTML
+        try {
+          const cardJsonLd = extractJsonLdEvents(rawHtml);
+          if (cardJsonLd?.length) {
+            const complete = cardJsonLd.find(isJsonLdComplete);
+            if (complete) {
+              normalized = jsonLdToNormalized(complete);
+              parsingMethod = "deterministic";
+              addLog("- JSON-LD success");
+            }
+          }
+        } catch (e) { addLog(`- JSON-LD card error: ${e}`); }
+
+        // 2. AI Fallback
+        if (!normalized) {
+          try {
+            addLog("- Attempting AI extraction...");
+            const aiResult = await parseEventWithAI(openAiApiKey, { 
+              rawHtml, 
+              title: "", // It's just a card, let AI find the title
+              description: "", 
+              date: "", 
+              location: source.name,
+              detailUrl: row.source_url || "" 
+            } as any, fetch, { language: source.language || "nl" });
+            
+            if (aiResult?.title && aiResult?.event_date) {
+              normalized = aiResult;
+              parsingMethod = "ai";
+              addLog("  - AI success");
+            }
+          } catch (e) { addLog(`  - AI error: ${e}`); }
+        }
+
+        // 3. DOM Heuristic
+        if (!normalized) {
+          addLog("- Attempting DOM Heuristic fallback...");
+          normalized = cheapNormalizeEvent({ rawHtml, title: "Unknown", detailUrl: row.source_url } as any, source as any);
+          if (normalized?.title && normalized?.event_date) {
+            parsingMethod = "dom_heuristic";
+            addLog("- Heuristic success");
           }
         }
 
-        for (const card of cards) {
-          let normalized: any = null;
-          let parsingMethod: string | null = null;
-          addLog(`Processing card: ${card.title}`);
-
-          // A. JSON-LD for this specific card HTML
-          try {
-            const cardJsonLd = extractJsonLdEvents(card.rawHtml || rawHtml);
-            if (cardJsonLd?.length) {
-              const complete = cardJsonLd.find(isJsonLdComplete);
-              if (complete) {
-                normalized = jsonLdToNormalized(complete);
-                parsingMethod = "deterministic";
-                addLog(`- JSON-LD success for ${card.title}`);
-              }
-            }
-          } catch (e) { addLog(`- JSON-LD card error: ${e}`); }
-
-          // B. AI Fallback
-          if (!normalized) {
-            try {
-              addLog(`- Attempting AI for ${card.title}`);
-              const aiResult = await parseEventWithAI(openAiApiKey, { 
-                rawHtml: card.rawHtml || rawHtml, 
-                title: card.title, 
-                description: card.description || "", 
-                date: card.date || "", 
-                location: card.location || source.name,
-                detailUrl: card.detailUrl || "" 
-              } as any, fetch, { language: source.language || "nl" });
-              
-              if (aiResult?.title && aiResult?.event_date) {
-                normalized = aiResult;
-                parsingMethod = "ai";
-                addLog(`  - AI success for ${card.title}`);
-              }
-            } catch (e) { addLog(`  - AI error for ${card.title}: ${e}`); }
-          }
-
-          // C. DOM Heuristic
-          if (!normalized) {
-            normalized = cheapNormalizeEvent(card, source as any);
-            if (normalized?.title && normalized?.event_date) {
-              parsingMethod = "dom_heuristic";
-              addLog(`- Heuristic success for ${card.title}`);
-            }
-          }
-
-          // D. Validation & Insertion
-          if (normalized?.title && normalized?.event_date) {
-            const contentHash = await createContentHash(normalized.title, normalized.event_date);
-            const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, sourceId);
-            const isDup = await checkDuplicate(supabase, contentHash, fingerprint, sourceId);
+        // 4. Validation & Insertion
+        if (normalized?.title && normalized?.event_date) {
+          const contentHash = await createContentHash(normalized.title, normalized.event_date);
+          const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, sourceId);
+          const isDup = await checkDuplicate(supabase, contentHash, fingerprint, sourceId);
+          
+          if (!isDup) {
+            const defaultCoords = source.default_coordinates || source.config?.default_coordinates;
+            const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(6.5665 53.2192)";
             
-            if (!isDup) {
-              const defaultCoords = source.default_coordinates || source.config?.default_coordinates;
-              const point = defaultCoords ? `POINT(${defaultCoords.lng} ${defaultCoords.lat})` : "POINT(6.5665 53.2192)";
-              
-              const success = await insertEvent(supabase, {
-                ...normalized,
-                venue_name: normalized.venue_name || source.name,
-                location: point,
-                source_id: sourceId,
-                event_fingerprint: fingerprint,
-                content_hash: contentHash,
-                status: "published"
-              });
-              if (success) totalSuccess++;
+            // Sanitize payload: explicitly select known fields to avoid schema errors
+            const eventPayload = {
+              title: normalized.title,
+              description: normalized.description,
+              event_type: "anchor", // Must be 'anchor', 'fork', or 'signal'
+              event_date: normalized.event_date,
+              event_time: normalized.start_time || "00:00:00",
+              location: point,
+              venue_name: normalized.venue_name || source.name,
+              source_url: row.source_url,
+              image_url: normalized.image_url,
+              price: normalized.price,
+              ticket_url: normalized.ticket_url,
+              category: normalized.category,
+              tags: normalized.tags,
+              start_time: normalized.start_time,
+              end_time: normalized.end_time,
+              source_id: sourceId,
+              event_fingerprint: fingerprint,
+              content_hash: contentHash,
+              status: "published"
+            };
+
+            const success = await insertEvent(supabase, eventPayload);
+            
+            if (success) {
+              addLog("Successfully inserted event");
+              totalSuccess++;
+              await supabase.from("raw_event_staging").update({
+                status: "completed",
+                processing_log: log,
+                parsing_method: parsingMethod
+              }).eq("id", rowId);
             } else {
-              addLog(`- Skipped ${card.title} (Duplicate)`);
+              addLog("Insertion failed");
+              await supabase.from("raw_event_staging").update({ status: "failed", processing_log: log }).eq("id", rowId);
             }
           } else {
-            addLog(`- Failed ${card.title} (Missing title/date)`);
+            addLog("Skipped (Duplicate)");
+            await supabase.from("raw_event_staging").update({ status: "completed", processing_log: log, parsing_method: "duplicate" }).eq("id", rowId);
           }
+        } else {
+          addLog("Failed (Missing title/date)");
+          await supabase.from("raw_event_staging").update({ status: "failed", processing_log: log }).eq("id", rowId);
         }
-
-        // Finalize Row
-        const status = (cards.length > 0 && totalSuccess > 0) ? "completed" : (cards.length > 0 ? "failed" : "failed");
-        // Actually, if we found cards but none were new/valid, maybe "completed" if duplicates, or "failed" if all invalid.
-        await supabase.from("raw_event_staging").update({
-          status: totalSuccess > 0 ? "completed" : (cards.length > 0 ? "completed" : "failed"),
-          processing_log: log,
-          parsing_method: "multi_hybrid"
-        }).eq("id", rowId);
 
       } catch (err) {
         addLog(`Top-level row error: ${err}`);
