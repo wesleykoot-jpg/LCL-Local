@@ -42,8 +42,7 @@ async function main() {
   const { data: sources, error } = await supabase
     .from("scraper_sources")
     .select("id, url, name, config")
-    .eq("enabled", true)
-    .limit(50);
+    .eq("enabled", true);
 
   if (error) {
     console.error(error);
@@ -58,52 +57,52 @@ async function main() {
 
   let totalStaged = 0;
 
-  for (const src of sources) {
-    console.log(`\n🕷️ Force Fetching: ${src.name} (${src.url})`);
-    try {
-      const resp = await fetch(src.url);
-      if (!resp.ok) {
-        console.warn(`  ❌ Status ${resp.status}`);
-        continue;
-      }
-      const html = await resp.text();
+  // Concurrency limit
+  const CONCURRENCY = 20;
+  const active = 0;
+  const results = [];
 
-      // Basic extraction simulation (since we don't have all shared libs locally easily)
-      // Actually, we just want to stage the HTML for the processor to handle.
-      // The processor does the heavy lifting (AI/JSON-LD).
-      // We just need to create "cards" or just one big payload?
-      // The `scrape-events` logic splits into cards.
-      // FOR UAT: If we can't easily replicate strategies locally,
-      // let's try to just create ONE staging row per source with the FULL HTML
-      // and let the processor's "Fast Path / AI" handle it?
-      // Wait, processor usually expects "Cards".
-      // If I verify `process-worker`, it handles `raw_payload`.
-      // If I dump the whole HTML into `rawHtml`, AI might parse it.
+  for (let i = 0; i < sources.length; i += CONCURRENCY) {
+    const chunk = sources.slice(i, i + CONCURRENCY);
+    console.log(
+      `Processing chunk ${i / CONCURRENCY + 1} / ${Math.ceil(sources.length / CONCURRENCY)}`,
+    );
 
-      // Let's do a simple split if possible, or just 1 big item.
-      // Better: Mock a "Single Card" that contains the whole page HTML.
+    await Promise.all(
+      chunk.map(async (src) => {
+        try {
+          const resp = await fetch(src.url);
+          if (!resp.ok) {
+            console.warn(`  ❌ ${src.name}: Status ${resp.status}`);
+            return;
+          }
+          const html = await resp.text();
+          const cardUrl = `${src.url}#full-page-${Date.now()}`;
 
-      const cardUrl = `${src.url}#full-page-${Date.now()}`;
+          const { error: insErr } = await supabase
+            .from("raw_event_staging")
+            .upsert(
+              {
+                source_url: cardUrl,
+                raw_html: html,
+                source_id: src.id,
+                status: "pending",
+                parsing_method: "ai_fallback",
+              },
+              { onConflict: "source_url" },
+            );
 
-      const { error: insErr } = await supabase.from("raw_event_staging").upsert(
-        {
-          source_url: cardUrl,
-          raw_html: html,
-          source_id: src.id,
-          status: "pending",
-          parsing_method: "ai_fallback", // Force AI or fallback
-        },
-        { onConflict: "source_url" },
-      );
-
-      if (insErr) console.error("  ❌ Staging Error:", insErr.message);
-      else {
-        console.log("  ✅ Staged full page for processing");
-        totalStaged++;
-      }
-    } catch (e) {
-      console.error("  ❌ Network Error:", e.message);
-    }
+          if (insErr)
+            console.error(`  ❌ ${src.name}: Staging Error`, insErr.message);
+          else {
+            console.log(`  ✅ ${src.name}: Staged`);
+            totalStaged++;
+          }
+        } catch (e) {
+          console.error(`  ❌ ${src.name}: Network Error`, e.message);
+        }
+      }),
+    );
   }
 
   console.log(`\n🎉 Finished. Staged ${totalStaged} items.`);

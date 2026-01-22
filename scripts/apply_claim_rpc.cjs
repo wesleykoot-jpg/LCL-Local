@@ -23,6 +23,7 @@ async function applyClaimRPC() {
       id UUID,
       source_id UUID,
       source_url TEXT,
+      raw_payload JSONB,
       raw_html TEXT,
       status TEXT,
       parsing_method TEXT
@@ -52,6 +53,7 @@ async function applyClaimRPC() {
         raw_event_staging.id,
         raw_event_staging.source_id,
         raw_event_staging.source_url,
+        raw_event_staging.raw_payload,
         raw_event_staging.raw_html,
         raw_event_staging.status::TEXT,
         raw_event_staging.parsing_method::TEXT;

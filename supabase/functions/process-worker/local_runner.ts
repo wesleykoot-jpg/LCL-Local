@@ -21,6 +21,7 @@ import {
   isJsonLdComplete,
   jsonLdToNormalized,
 } from "../_shared/jsonLdParser.ts";
+import { runExtractionWaterfall } from "../_shared/dataExtractors.ts";
 
 // Helper to load .env manually
 try {
@@ -79,126 +80,157 @@ async function processRow(row: any) {
         raw = { rawHtml: raw };
       }
     } else if (row.raw_html) {
-      // Handle raw_html as text
       raw = { rawHtml: row.raw_html };
     }
 
-    let normalized = null;
+    // WATERFALL EXTRACTION
+    console.log(`  🌊 Running Waterfall...`);
+    const waterfallResult = await runExtractionWaterfall(raw.rawHtml, {
+      baseUrl: row.source_url || row.url,
+      sourceName: "LocalRunner",
+      preferredMethod: "auto",
+      feedDiscovery: false,
+      fetcher: {
+        fetch: async (url) => {
+          console.log(`[Waterfall] Fetching ${url}`);
+          const res = await fetch(url);
+          return { html: await res.text(), status: res.status };
+        },
+      },
+    });
 
-    // 1. JSON-LD Fast Path (since I imported it)
-    if (raw.rawHtml) {
-      const jsonLdEvents = extractJsonLdEvents(raw.rawHtml);
-      if (jsonLdEvents && Array.isArray(jsonLdEvents)) {
-        const complete = jsonLdEvents.find(isJsonLdComplete);
-        if (complete) {
-          normalized = jsonLdToNormalized(complete);
-          console.log(`  ⚡️ JSON-LD found: ${normalized.title}`);
+    console.log(
+      `  🌊 Winner: ${waterfallResult.winningStrategy} | Events: ${waterfallResult.totalEvents}`,
+    );
+
+    if (waterfallResult.events.length === 0) {
+      if (OPENAI_API_KEY) {
+        // Fallback to AI if waterfall failed completely
+        console.log("  🤖 Waterfall failed. Trying AI Fallback...");
+        try {
+          const aiRes = await parseDetailedEventWithAI(
+            OPENAI_API_KEY,
+            raw,
+            row.detail_html,
+            fetch,
+            { targetYear: 2026, language: "nl" },
+          );
+          if (aiRes) {
+            const normalized = { ...aiRes, title: aiRes.title || raw.title };
+            waterfallResult.events.push({
+              title: normalized.title,
+              date: normalized.event_date,
+              location: normalized.venue_name,
+              description: normalized.description,
+              detailUrl: normalized.detail_url,
+              imageUrl: normalized.image_url,
+              rawHtml: "",
+              parsingMethod: "ai_fallback", // Use generic string that fits RawEventCard parsingMethod type if possible, or cast
+            } as any);
+          }
+        } catch (e) {
+          console.error("  ❌ AI Failed as well");
         }
+      }
+
+      if (waterfallResult.events.length === 0) {
+        console.warn("  ⚠️ No events found. Marking failed.");
+        await supabase
+          .from("raw_event_staging")
+          .update({ status: "failed", error_message: "No events extracted" })
+          .eq("id", row.id);
+        return;
       }
     }
 
-    // 2. AI Fallback
-    if (!normalized && OPENAI_API_KEY) {
-      console.log("  🤖 AI Parsing...");
+    for (const evt of waterfallResult.events) {
+      // Validate Date
+      let storageDate;
       try {
-        const aiRes = await parseDetailedEventWithAI(
-          OPENAI_API_KEY,
-          raw,
-          row.detail_html,
-          fetch,
-          { targetYear: 2026, language: "nl" },
-        );
-        if (aiRes) {
-          normalized = { ...aiRes, title: aiRes.title || raw.title };
-          console.log(`  🤖 AI Success: ${normalized.title}`);
-        }
+        const cleanDate = (evt.date || "").trim();
+        // Pass "TBD" as time, assuming date string has date only, or basic handling
+        storageDate = normalizeEventDateForStorage(cleanDate, "TBD");
       } catch (e) {
-        console.error("  ❌ AI Failed:", e.message);
+        console.warn(
+          `  ⚠️ Skipping invalid date: "${evt.date}" for event "${evt.title}"`,
+        );
+        continue;
       }
-    }
 
-    if (!normalized && raw.title) {
-      normalized = {
-        title: raw.title,
-        event_date: raw.date || new Date().toISOString(),
-        description: raw.description,
-        image_url: raw.imageUrl,
-        venue_name: raw.location,
+      // Map to normalized structure
+      const normalized = {
+        title: evt.title,
+        event_date: storageDate.dateOnly || evt.date,
+        description: evt.description,
+        image_url: evt.imageUrl,
+        venue_name: evt.location,
+        detail_url: evt.detailUrl,
+        event_time: "TBD",
       };
-    }
 
-    if (!normalized || !normalized.title) {
-      console.warn("  ⚠️ Could not normalize event. Marking failed.");
-      await supabase
-        .from("raw_event_staging")
-        .update({ status: "failed", error_message: "No title extracted" })
-        .eq("id", row.id);
-      return;
-    }
+      // Categorize
+      const category = mapToCategoryKey(
+        `${normalized.title} ${normalized.description}`,
+        null,
+        evt.detailUrl || row.url,
+      );
 
-    // Categorize
-    const category = mapToCategoryKey(
-      `${normalized.title} ${normalized.description}`,
-      null,
-      row.url,
-    );
-
-    // Final Save
-    const hash = await createContentHash(
-      normalized.title,
-      normalized.event_date,
-    );
-    const fp = await createEventFingerprint(
-      normalized.title,
-      normalized.event_date,
-      row.source_id,
-    );
-
-    const payload = {
-      title: normalized.title,
-      description: normalized.description,
-      category: category,
-      event_type: "anchor",
-      event_date: normalizeEventDateForStorage(
+      // Final Save
+      const hash = await createContentHash(
+        normalized.title,
         normalized.event_date,
-        normalized.event_time,
-      ).timestamp,
-      event_time: normalized.event_time || "TBD",
-      status: "published",
-      source_id: row.source_id,
-      content_hash: hash,
-      event_fingerprint: fp,
-      image_url: normalized.image_url,
-      venue_name: normalized.venue_name,
-      detail_url: normalized.detail_url || row.url,
-      location: "POINT(0 0)", // Default if no geo
-    };
+      );
+      const fp = await createEventFingerprint(
+        normalized.title,
+        normalized.event_date,
+        row.source_id,
+      );
 
-    // Geocode
-    try {
-      if (payload.venue_name) {
-        const geo = await geocodeLocation(payload.venue_name);
-        if (geo) payload.location = `POINT(${geo.lng} ${geo.lat})`;
+      const payload = {
+        title: normalized.title,
+        description: normalized.description,
+        category: category,
+        event_type: "anchor",
+        event_date: storageDate.timestamp,
+        event_time: normalized.event_time || "TBD",
+        status: "published",
+        source_id: row.source_id,
+        content_hash: hash,
+        event_fingerprint: fp,
+        image_url: normalized.image_url,
+        venue_name: normalized.venue_name,
+        source_url: normalized.detail_url || row.url,
+        location: "POINT(0 0)",
+      };
+
+      // Geocode
+      try {
+        if (payload.venue_name) {
+          const geo = await geocodeLocation(payload.venue_name);
+          if (geo) payload.location = `POINT(${geo.lng} ${geo.lat})`;
+        }
+      } catch {}
+
+      // Insert
+      const { error: insErr } = await supabase
+        .from("events")
+        .upsert(payload, { onConflict: "event_fingerprint" });
+
+      if (insErr) {
+        console.error("  ❌ DB Insert Error:", insErr.message);
+      } else {
+        console.log("  ✅ Event Created!");
       }
-    } catch {}
-
-    // Insert
-    const { error: insErr } = await supabase
-      .from("events")
-      .upsert(payload, { onConflict: "event_fingerprint" }); // or content_hash
-    if (insErr) {
-      console.error("  ❌ DB Insert Error:", insErr.message);
-      await supabase
-        .from("raw_event_staging")
-        .update({ status: "failed", error_message: insErr.message })
-        .eq("id", row.id);
-    } else {
-      console.log("  ✅ Event Created!");
-      await supabase
-        .from("raw_event_staging")
-        .update({ status: "completed" })
-        .eq("id", row.id);
     }
+
+    // Success
+    await supabase
+      .from("raw_event_staging")
+      .update({
+        status: "completed",
+        parsing_method: waterfallResult.winningStrategy,
+      })
+      .eq("id", row.id);
   } catch (e) {
     console.error("  ❌ Process Error:", e);
     await supabase
