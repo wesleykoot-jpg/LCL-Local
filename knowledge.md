@@ -5,15 +5,11 @@
 
 ## 🏗️ Core Architecture: Fork Event Model
 
-LCL utilizes a unique hierarchical event model to bridge official listings with
-community interactions.
+LCL utilizes a unique hierarchical event model to bridge official listings with community interactions.
 
-- **Anchors**: Official or scraped events (e.g., festivals, cinema screenings,
-  sports matches). These serve as the parent context.
-- **Forks**: User-generated meetups attached to an **Anchor** (e.g., "Drinks
-  before the movie").
-- **Signals**: Standalone user events with no parent anchor (e.g., "Casual park
-  hangout").
+- **Anchors**: Official or scraped events (e.g., festivals). These are the parents.
+- **Forks**: User-generated meetups attached to an **Anchor**.
+- **Signals**: Standalone user events with no parent.
 
 ---
 
@@ -26,49 +22,46 @@ community interactions.
 | **Geospatial** | PostGIS               | `geography(POINT, 4326)` with local geocode caching.   |
 | **AI**         | OpenAI (GPT-4o/mini)  | Structured event extraction & semantic categorization. |
 | **Mobile**     | Capacitor             | iOS native features (Haptics, Gestures).               |
-| **State**      | TanStack Query        | Server state synchronization & caching.                |
 
 ---
 
-## 🦾 Scraping Intelligence (Phase 3 & 4 Upgrades)
+## 🦾 Scraping Intelligence (The Refinery Pipeline)
 
-LCL employs a high-fidelity, self-healing scraping engine designed for depth and accuracy.
+LCL employs a high-fidelity, self-healing scraping engine.
 
-### 1. Depth & Discovery
+### 1. Data Flow
 
-- **Pagination**: The ingestor performs "Next Page" crawling (default depth 3) to ensure full coverage of event portals.
-- **Iframe Unwrapping**: Logic to detect and extract events from embedded Google Calendars, specialized agenda widgets, and cross-domain iframes.
+1. **Ingestion**: `scraper_sources` → `run_v2_worker_local.ts` → `raw_event_staging`.
+2. **Refinery**: `raw_event_staging` → `run_process_worker_safe.ts` → `PostGIS (events)`.
 
-### 2. Extraction Strategy (The Waterfall)
+### 2. Strategy Persistence
 
-- **JSON-LD/Microdata**: Primary choice for structured data (LD+JSON, Schema.org).
-- **DOM Selectors**: Fallback to high-precision CSS selectors for unstructured HTML.
-- **AI Fallback**: GPT-4o-mini used only when structured/DOM methods fail.
-- **Strategy Persistence**: The `scraper_sources.preferred_method` stores the winning strategy. Future runs skip the trial-and-error waterfall, optimizing for speed and cost.
+The `scraper_sources.preferred_method` stores the winning strategy (JSON-LD, Microdata, or DOM). Future runs skip the trial-and-error waterfall, optimizing for speed and cost.
 
-### 3. Detail-First Strategy
+### 3. Detail-First Strategy & Deduplication
 
-- Every event proactively fetches its `detail_url` to capture long-form descriptions, high-resolution header images, and specific venue details often missing from listing "cards."
-- **HTML Cleaning**: All extracted descriptions are automatically stripped of messy HTML and normalized for a premium UI presentation.
-
-### 4. Semantic Deduplication
-
-- **Logical Merging**: Events are merged across different sources using a **Global Fingerprint** (Title + Date + Venue).
-- **Metadata Promotion**: If multiple sources provide the same event, the refinery promotes the "Best Record" (longest description, highest res image).
-- **Source Preservation**: All booking/info links are preserved in the `all_source_urls` array.
+- **Proactive Enrichment**: The refinery fetches `detail_url` for every event to capture full descriptions and high-res images.
+- **Global Deduplication**: Events are merged across different sources using a **Global Fingerprint** (Title + Date + Venue).
+- **Metadata Promotion**: The source with the longest description and best image resolution is promoted as the "Primary" for that event.
 
 ---
 
-## 📊 Database & Geospatial
+## 📊 Database & Resiliency
 
-LCL is **location-agnostic**, meaning it works globally without hardcoded
-cities.
+### Primary Connection Method
 
-- **PostGIS Implementation**: Coordinates are stored as `longitude, latitude`
-  using `POINT(4326)`.
-- **Verified Venues**: A local database of verified locations (`verified_venues`) maps messy names (e.g., "Muziekgebouw") to exact coordinates, minimizing Nominatim API hits.
-- **Geocode Cache**: Nominatim API results are cached in `geocode_cache` for free, robust geocoding.
-- **Enforced Integrity**: A unique constraint on `event_fingerprint` ensures zero duplication in the production feed.
+LCL uses **Direct PostgreSQL Connections** (via PgBouncer/Supabase Pooler) for administrative/bulk tasks.
+
+- **Session Mode (Port 6543)**: For DDL and migrations.
+- **Transaction Mode (Port 5432)**: For standard operations.
+- **Credentials**: Use `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or DB user/pass from `.env`).
+
+### Resiliency Patterns
+
+- **Error Handling**: Use `handleSupabaseError` from `@/lib/errorHandler`.
+- **Timeouts**: `queryWithTimeout` (Standard: 10s, Complex/RPC: 15s).
+- **Retries**: Use `retrySupabaseQuery` for transient failures.
+- **Verified Venues**: Use the `verified_venues` table to normalize location names and coordinates locally (Free fallback to Nominatim).
 
 ---
 
@@ -76,34 +69,15 @@ cities.
 
 Events are ranked using a multi-factor scoring system:
 
-| Factor       | Weight | Logic                                               |
-| :----------- | :----- | :-------------------------------------------------- |
-| **Category** | 35%    | Matches user preferences via semantic mapping.      |
-| **Time**     | 20%    | Prioritizes upcoming events with exponential decay. |
-| **Distance** | 20%    | Proximity to user's current location.               |
-| **Social**   | 15%    | Logarithmic scaling based on attendee count.        |
-| **Match**    | 10%    | Pre-computed compatibility score.                   |
+- **Category (35%)**: Semantic match.
+- **Time (20%)**: Exponential decay for upcoming events.
+- **Distance (20%)**: Proximity to user.
+- **Social (15%)**: Attendee count logarithmic scaling.
 
 ---
 
-## 🤖 Scraper Daemon & Pipeline
+## 💻 AI Workflow & iOS
 
-- **Daemon**: Runs as a background process (`scripts/scraper-daemon.ts`).
-- **Ingestion**: `run_v2_worker_local.ts` handles source crawling and raw staging.
-- **Refinery**: `run_process_worker_safe.ts` performs enrichment, deduplication, and final insertion into `events`.
-
----
-
-## 💻 AI Workflow & Automation (`.agent/rules/workflow.md`)
-
-- **Implementation Plans**: Required before any complex file modifications.
-- **Task Boundaries**: Mandatory for communicating progress through the task UI.
-- **Artifacts**: Used to document plans, walkthroughs, and technical analysis.
-
----
-
-## 📱 iOS Optimization
-
-- **Native Haptics**: Managed via `src/lib/haptics.ts` using Capacitor.
-- **Gestures**: Framer Motion for desktop-level smoothness on mobile.
-- **Safe Areas**: Tailwind utilities for iOS notch and home indicator handling.
+- **Workflow**: Always generate an `implementation_plan.md` before coding. Use `task_boundary` for all complex work.
+- **iOS**: Framer Motion gestures and Native Haptics via `src/lib/haptics.ts`.
+- **Safe Areas**: Tailwind `pb-safe` and `pt-safe` for iOS home indicators.
