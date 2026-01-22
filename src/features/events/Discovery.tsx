@@ -265,17 +265,7 @@ const Discovery = () => {
         {/* Main Content */}
         <main className="overflow-x-hidden">
         
-          {/* TEMP DEBUG OVERLAY */}
-          <div className="bg-black/80 text-green-400 p-2 text-xs font-mono m-2 rounded overflow-auto max-h-40">
-            <p>DEBUG INFO:</p>
-            <p>Mode: {mode}</p>
-            <p>Loading: {railsLoading ? 'YES' : 'NO'}</p>
-            <p>UserLoc: {userLocation ? `${userLocation.lat.toFixed(2)},${userLocation.lng.toFixed(2)}` : 'NULL'}</p>
-            <p>Sections: {discoveryLayout?.sections?.length ?? 'UNDEFINED'}</p>
-            {discoveryLayout?.sections?.map((s, i) => (
-                <p key={i}>Section {i}: {s.title} ({s.items?.length} items)</p>
-            ))}
-          </div>
+
           <AnimatePresence mode="wait">
             {mode === 'browsing' ? (
               <motion.div
@@ -311,26 +301,16 @@ const Discovery = () => {
                 ) : (
                   <div className="space-y-2">
                     {discoveryLayout?.sections.map((section, index) => (
-                      <motion.div
+                      <div
                          key={`${section.type}-${section.title}`}
-                         custom={index}
-                         initial="hidden"
-                         animate="visible"
-                         variants={{
-                           hidden: { opacity: 0, y: 20 },
-                           visible: (i: number) => ({
-                             opacity: 1,
-                             y: 0,
-                             transition: { delay: i * 0.1 }
-                           })
-                         }}
+                         className="mb-8"
                       >
                         <DynamicRailRenderer
                           section={section}
                           onEventClick={handleEventClick}
                           index={index}
                         />
-                      </motion.div>
+                      </div>
                     ))}
                     
                     {/* Fallback/Backup: If no sections returned and not loading, show message */}
