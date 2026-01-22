@@ -135,7 +135,7 @@ export const EventDetailModal = memo(function EventDetailModal({
   const [imageError, setImageError] = useState(false);
   const { location: userLocation } = useLocation();
 
-  const { events: forks, loading: forksLoading } = useEvents({
+  const { events: forks /*, loading: forksLoading */ } = useEvents({
     parentEventId: event.id,
     currentUserProfileId
   });
@@ -145,10 +145,10 @@ export const EventDetailModal = memo(function EventDetailModal({
     ? (CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default)
     : (event.image_url || CATEGORY_FALLBACK_IMAGES[categoryLabel] || CATEGORY_FALLBACK_IMAGES.default);
 
-  const parsedCoords = getEventCoordinates(event.location, event.structured_location);
+  const parsedCoords = getEventCoordinates(event.location, (event as any).structured_location);
   const hasValidCoords = !!parsedCoords;
   const venueCoords = parsedCoords || null;
-  const locationLabel = formatEventLocation(event.venue_name, event.structured_location);
+  const locationLabel = formatEventLocation(event.venue_name, (event as any).structured_location);
   const staticMapUrl = venueCoords
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${venueCoords.lng - 0.003},${venueCoords.lat - 0.002},${venueCoords.lng + 0.003},${venueCoords.lat + 0.002}&layer=mapnik&marker=${venueCoords.lat},${venueCoords.lng}`
     : '';
@@ -426,11 +426,12 @@ export const EventDetailModal = memo(function EventDetailModal({
           >
             <div className="flex gap-3 items-center">
               {/* Secondary actions - 52pt buttons */}
-              {event.website_url && (
+              {(event as any).website_url && (
                 <button
+                  type="button"
                   onClick={() => {
                     hapticImpact('light');
-                    window.open(event.website_url!, '_blank');
+                    window.open((event as any).website_url!, '_blank');
                   }}
                   className="w-[52px] h-[52px] min-h-[48px] min-w-[48px] rounded-[12px] bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-200 transition-all active:scale-[0.95] border border-gray-200"
                   aria-label="Event Website"

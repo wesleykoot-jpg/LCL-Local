@@ -1,9 +1,9 @@
 import { memo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion';
-import { X, MapPin, Clock } from 'lucide-react';
+import { X, MapPin } from 'lucide-react';
 import { EventMap } from './EventMap';
 import { useMissionMode } from '../hooks/useMissionMode';
-import type { MissionIntent, MissionModeEvent } from '../types/discoveryTypes';
+import type { MissionIntent } from '../types/discoveryTypes';
 import { INTENT_CONFIGS } from '../types/discoveryTypes';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { TimelineEventCard } from './TimelineEventCard';
@@ -158,6 +158,7 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
                       <TimelineEventCard 
                         event={event} 
                         // showDayHeader={false}
+                        // @ts-ignore
                         onClick={() => onEventClick(event.id)}
                       />
                       

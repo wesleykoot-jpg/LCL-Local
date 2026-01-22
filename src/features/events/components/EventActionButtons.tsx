@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo } from 'react';
 import { Loader2, Check, CalendarPlus } from 'lucide-react';
 import type { TimeMode } from '@/lib/openingHours';
 

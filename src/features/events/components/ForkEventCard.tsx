@@ -19,7 +19,7 @@ export interface ForkEventCardProps {
 
 export const ForkEventCard = memo(function ForkEventCard({
     event,
-    parentTitle,
+    // parentTitle,
     onClick,
     onJoin,
     isJoining,

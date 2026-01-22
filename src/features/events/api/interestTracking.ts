@@ -69,7 +69,7 @@ export async function incrementInterestScore(
     return {
       success: true,
       scores: data?.interest_scores as unknown as InterestScores,
-      isParentDetected: data?.is_parent_detected,
+      isParentDetected: !!data?.is_parent_detected,
     };
   } catch (error) {
     console.error('Error incrementing interest score:', error);

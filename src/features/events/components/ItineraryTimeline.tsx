@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ItineraryItem } from '../hooks/useUnifiedItinerary';
-import { Calendar, MapPin, ExternalLink, Car, ChevronDown, Building2, AlertTriangle } from 'lucide-react';
+import { Calendar, MapPin, ExternalLink, Car, ChevronDown, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { TimelineEventCard } from './TimelineEventCard';
@@ -115,7 +115,7 @@ function groupByParentChild(items: ItineraryItem[]): SmartStackGroup[] {
       // Scenario A: Parent is a 'fixed' event the user attends -> show both
       // Scenario B: Parent is a 'window' venue -> hide parent, show child only
       const parentTimeMode = isEventWithAttendees(item.originalData) 
-        ? (item.originalData.time_mode as TimeMode || 'fixed')
+        ? ((item.originalData as any).time_mode as TimeMode || 'fixed')
         : 'fixed';
       
       const showParent = parentTimeMode === 'fixed';
@@ -180,10 +180,13 @@ const ParentVenueBadge = ({ venueName, onExpand }: ParentVenueBadgeProps) => (
   </button>
 );
 
+/*
 interface ConflictBadgeProps {
   message: string;
 }
+*/
 
+/*
 const ConflictBadge = ({ message }: ConflictBadgeProps) => (
   <div className="flex items-center gap-2 p-2 mb-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
     <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
@@ -192,6 +195,7 @@ const ConflictBadge = ({ message }: ConflictBadgeProps) => (
     </span>
   </div>
 );
+*/
 
 
 

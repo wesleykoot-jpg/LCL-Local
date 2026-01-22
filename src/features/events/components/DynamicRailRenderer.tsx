@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Sparkles, Activity, Clock, Users } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { DiscoverySection } from '../types/discoveryTypes';
 import { HorizontalEventCarousel } from './HorizontalEventCarousel';
 
@@ -9,17 +9,19 @@ interface DynamicRailRendererProps {
   index: number;
 }
 
+/*
 const RAIL_ICONS: Record<string, any> = {
   'generative': Sparkles,
   'traditional': Activity,
   'utility': Clock,
   'social': Users,
 };
+*/
 
 export const DynamicRailRenderer = memo(function DynamicRailRenderer({
   section,
   onEventClick,
-  index
+  // index
 }: DynamicRailRendererProps) {
   // Determine icon if not explicitly provided
   // const Icon = RAIL_ICONS[section.type] || Activity; // Icon used in header below if needed (currently using hardcoded Sparkles for generative)

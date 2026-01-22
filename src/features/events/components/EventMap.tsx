@@ -153,7 +153,7 @@ export const EventMap = memo(function EventMap({
   const eventsWithCoords = useMemo((): EventWithCoords[] => {
     const result: EventWithCoords[] = [];
     for (const event of events) {
-      const coords = getEventCoordinates(event.location, event.structured_location);
+      const coords = getEventCoordinates(event.location, (event as any).structured_location);
       if (coords) {
         result.push({ ...event, coords });
       }

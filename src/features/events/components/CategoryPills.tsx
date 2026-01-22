@@ -4,7 +4,7 @@ import { hapticImpact } from '@/shared/lib/haptics';
 import {
     Music, Utensils, Waves, Gamepad2,
     Palette, Users, Tent, Trophy,
-    Sparkles, Coffee
+    Sparkles, // Coffee
 } from 'lucide-react';
 
 interface CategoryPillsProps {

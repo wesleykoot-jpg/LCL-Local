@@ -390,7 +390,7 @@ const Discovery = () => {
               <EventDetailModal
                 event={selectedEvent}
                 onClose={handleCloseEventDetail}
-                onJoinEvent={() => selectedEvent && handleJoinEvent(selectedEvent.id)}
+                // onJoinEvent={() => selectedEvent && handleJoinEvent(selectedEvent.id)}
                 isJoining={isJoining(selectedEvent.id)}
               />
             )}

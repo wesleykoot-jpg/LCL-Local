@@ -1,4 +1,4 @@
-import type { EventWithAttendees } from './hooks';
+import type { EventWithAttendees } from '../hooks/hooks';
 
 export interface EventStack {
   type: 'stack' | 'single';

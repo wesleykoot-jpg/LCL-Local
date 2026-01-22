@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { PersonaType, PersonaPrediction } from '@/lib/personaPredictor';
 
 export type FeedMode = 'family' | 'social' | 'default';
