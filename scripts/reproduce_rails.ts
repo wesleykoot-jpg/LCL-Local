@@ -40,7 +40,7 @@ async function verifyDiscoveryRails() {
   console.log(`Calling RPC with location: ${JSON.stringify(testLocation)}, Radius: ${radiusKm}km`);
   
   try {
-      const { data: dataWithLoc, error: errorWithLoc } = await supabase.rpc('get_discovery_rails', {
+      const { data: dataWithLoc, error: errorWithLoc } = await supabase.rpc('get_discovery_rails_v2', {
         p_user_id: testUserId,
         p_user_lat: testLocation.lat,
         p_user_long: testLocation.lng,
@@ -59,9 +59,13 @@ async function verifyDiscoveryRails() {
             console.log('WARN: No sections returned! (RPC works but no content)');
         } else {
             sections.forEach((s: any) => {
-              console.log(`  - Rail: "${s.title}" (${s.items?.length || 0} items)`);
-              if (s.items?.length > 0) {
-                  console.log(`    First item: ${s.items[0].title}`);
+              if (s) {
+                  console.log(`  - Rail: "${s.title}" (${s.items?.length || 0} items)`);
+                  if (s.items?.length > 0) {
+                      console.log(`    First item: ${s.items[0].title}`);
+                  }
+              } else {
+                  console.log('  - [Null Rail]');
               }
             });
         }

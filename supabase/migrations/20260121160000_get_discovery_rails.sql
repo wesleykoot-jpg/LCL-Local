@@ -31,6 +31,10 @@ DECLARE
   recent_joins_events JSON;
   social_pulse_events JSON;
   contextual_vibe_events JSON;
+  
+  -- Rail 5 variables
+  current_hour INT;
+  vibe_category TEXT;
 BEGIN
   -- Create geography point from user coordinates
   IF p_user_lat IS NOT NULL AND p_user_long IS NOT NULL THEN
@@ -62,14 +66,17 @@ BEGIN
       END
     )
   ) INTO happening_now_events
-  FROM public.events e
-  WHERE 
-    e.event_date >= now_timestamp
-    AND e.event_date <= now_timestamp + INTERVAL '6 hours'
-    AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
-  ORDER BY 
-    CASE WHEN user_point IS NULL THEN 0 ELSE ST_Distance(e.location, user_point) END ASC
-  LIMIT p_limit_per_rail;
+  FROM (
+    SELECT e.*
+    FROM public.events e
+    WHERE 
+      e.event_date >= now_timestamp
+      AND e.event_date <= now_timestamp + INTERVAL '6 hours'
+      AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
+    ORDER BY 
+      CASE WHEN user_point IS NULL THEN 0 ELSE ST_Distance(e.location, user_point) END ASC
+    LIMIT p_limit_per_rail
+  ) e;
 
   -- ============================================================================
   -- RAIL 2: "Trending in [City]" (Traditional - Social Proof)
@@ -121,7 +128,7 @@ BEGIN
       ea.profile_id = p_user_id
       AND ea.status = 'going'
       AND e.embedding IS NOT NULL
-    ORDER BY ea.created_at DESC
+    ORDER BY ea.joined_at DESC
     LIMIT 3
   ),
   similar_events AS (
@@ -140,31 +147,31 @@ BEGIN
     ORDER BY similarity DESC
     LIMIT p_limit_per_rail
   )
-  SELECT json_agg(
-    json_build_object(
-      'id', e.id,
-      'title', e.title,
-      'description', e.description,
-      'category', e.category,
-      'event_type', e.event_type,
-      'venue_name', e.venue_name,
-      'event_date', e.event_date,
-      'event_time', e.event_time,
-      'image_url', e.image_url,
-      'attendee_count', COALESCE(
+  SELECT json_agg(t) INTO recent_joins_events
+  FROM (
+    SELECT 
+      e.id,
+      e.title,
+      e.description,
+      e.category,
+      e.event_type,
+      e.venue_name,
+      e.event_date,
+      e.event_time,
+      e.image_url,
+      COALESCE(
         (SELECT COUNT(*) FROM public.event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going'),
         0
-      ),
-      'distance_km', CASE
+      ) as attendee_count,
+      CASE
         WHEN user_point IS NULL THEN NULL
         ELSE ST_Distance(e.location, user_point) / 1000.0
-      END,
-      'similarity', se.similarity
-    )
-  ) INTO recent_joins_events
-  FROM similar_events se
-  JOIN public.events e ON e.id = se.id
-  ORDER BY se.similarity DESC;
+      END as distance_km,
+      se.similarity
+    FROM similar_events se
+    JOIN public.events e ON e.id = se.id
+    ORDER BY se.similarity DESC
+  ) t;
 
   -- ============================================================================
   -- RAIL 4: "The Social Pulse" (AI - Social Graph)
@@ -187,6 +194,51 @@ BEGIN
     ORDER BY friend_count DESC
     LIMIT p_limit_per_rail
   )
+  SELECT json_agg(t) INTO social_pulse_events
+  FROM (
+    SELECT 
+      e.id,
+      e.title,
+      e.description,
+      e.category,
+      e.event_type,
+      e.venue_name,
+      e.event_date,
+      e.event_time,
+      e.image_url,
+      COALESCE(
+        (SELECT COUNT(*) FROM public.event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going'),
+        0
+      ) as attendee_count,
+      CASE
+        WHEN user_point IS NULL THEN NULL
+        ELSE ST_Distance(e.location, user_point) / 1000.0
+      END as distance_km,
+      fe.friend_count
+    FROM friend_events fe
+    JOIN public.events e ON e.id = fe.id
+    ORDER BY fe.friend_count DESC, e.event_date ASC
+  ) t;
+
+  -- ============================================================================
+  -- RAIL 5: "Contextual Vibe" (AI - Time-based)
+  -- Different vibes based on time of day
+  -- Morning (6-12): "Morning Energy", Afternoon (12-18): "Afternoon Escapes"
+  -- Evening (18-23): "Evening Vibes", Late Night (23-6): "Late Night Adventures"
+  -- ============================================================================
+  current_hour := EXTRACT(HOUR FROM now_timestamp);
+  
+  -- Determine vibe based on time
+  IF current_hour >= 6 AND current_hour < 12 THEN
+    vibe_category := 'wellness,sports,food'; -- Morning activities
+  ELSIF current_hour >= 12 AND current_hour < 18 THEN
+    vibe_category := 'culture,art,education'; -- Afternoon activities
+  ELSIF current_hour >= 18 AND current_hour < 23 THEN
+    vibe_category := 'music,nightlife,dining'; -- Evening activities
+  ELSE
+    vibe_category := 'nightlife,music'; -- Late night
+  END IF;
+
   SELECT json_agg(
     json_build_object(
       'id', e.id,
@@ -205,64 +257,19 @@ BEGIN
       'distance_km', CASE
         WHEN user_point IS NULL THEN NULL
         ELSE ST_Distance(e.location, user_point) / 1000.0
-      END,
-      'friend_count', fe.friend_count
+      END
     )
-  ) INTO social_pulse_events
-  FROM friend_events fe
-  JOIN public.events e ON e.id = fe.id
-  ORDER BY fe.friend_count DESC, e.event_date ASC;
-
-  -- ============================================================================
-  -- RAIL 5: "Contextual Vibe" (AI - Time-based)
-  -- Different vibes based on time of day
-  -- Morning (6-12): "Morning Energy", Afternoon (12-18): "Afternoon Escapes"
-  -- Evening (18-23): "Evening Vibes", Late Night (23-6): "Late Night Adventures"
-  -- ============================================================================
-  DECLARE
-    current_hour INT := EXTRACT(HOUR FROM now_timestamp);
-    vibe_category TEXT;
-  BEGIN
-    -- Determine vibe based on time
-    IF current_hour >= 6 AND current_hour < 12 THEN
-      vibe_category := 'wellness,sports,food'; -- Morning activities
-    ELSIF current_hour >= 12 AND current_hour < 18 THEN
-      vibe_category := 'culture,art,education'; -- Afternoon activities
-    ELSIF current_hour >= 18 AND current_hour < 23 THEN
-      vibe_category := 'music,nightlife,dining'; -- Evening activities
-    ELSE
-      vibe_category := 'nightlife,music'; -- Late night
-    END IF;
-
-    SELECT json_agg(
-      json_build_object(
-        'id', e.id,
-        'title', e.title,
-        'description', e.description,
-        'category', e.category,
-        'event_type', e.event_type,
-        'venue_name', e.venue_name,
-        'event_date', e.event_date,
-        'event_time', e.event_time,
-        'image_url', e.image_url,
-        'attendee_count', COALESCE(
-          (SELECT COUNT(*) FROM public.event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going'),
-          0
-        ),
-        'distance_km', CASE
-          WHEN user_point IS NULL THEN NULL
-          ELSE ST_Distance(e.location, user_point) / 1000.0
-        END
-      )
-    ) INTO contextual_vibe_events
+  ) INTO contextual_vibe_events
+  FROM (
+    SELECT e.*
     FROM public.events e
     WHERE 
       e.event_date >= today_date
       AND e.category = ANY(string_to_array(vibe_category, ','))
       AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
     ORDER BY e.event_date ASC
-    LIMIT p_limit_per_rail;
-  END;
+    LIMIT p_limit_per_rail
+  ) e;
 
   -- ============================================================================
   -- Build final JSON response with all rails
@@ -334,7 +341,7 @@ BEGIN
     'sections', (
       SELECT json_agg(section)
       FROM json_array_elements(result->'sections') section
-      WHERE section IS NOT NULL
+      WHERE section IS NOT NULL AND section::text <> 'null'
     )
   );
 
