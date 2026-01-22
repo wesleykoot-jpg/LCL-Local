@@ -2,9 +2,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
-import { 
-  parseDetailedEventWithAI, 
-  generateEmbedding 
+import {
+  parseDetailedEventWithAI,
+  generateEmbedding,
 } from "../_shared/aiParsing.ts";
 
 import {
@@ -12,7 +12,7 @@ import {
   createEventFingerprint,
   normalizeEventDateForStorage,
   cheapNormalizeEvent,
-  eventToText
+  eventToText,
 } from "../_shared/scraperUtils.ts";
 
 import { logError as _logError } from "../_shared/errorLogging.ts";
@@ -20,7 +20,8 @@ import type { RawEventCard, NormalizedEvent } from "../_shared/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 const BATCH_SIZE = 10;
@@ -35,9 +36,11 @@ interface StagingRow {
 }
 
 // Helper: Claim pending rows atomically using RPC
-async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]> {
-  const { data, error } = await supabase.rpc('claim_staging_rows', {
-    p_batch_size: BATCH_SIZE
+async function claimPendingRows(
+  supabase: SupabaseClient,
+): Promise<StagingRow[]> {
+  const { data, error } = await supabase.rpc("claim_staging_rows", {
+    p_batch_size: BATCH_SIZE,
   });
 
   if (error) {
@@ -50,48 +53,60 @@ async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]>
   // Type assertion and schema compatibility layer
   // Handle both old schema (raw_payload JSONB) and new schema (raw_html TEXT)
   return (data || []).map((row: any) => {
-      let payload: RawEventCard;
-      
-      // Check if we have the old schema (raw_payload as JSONB object)
-      if (row.raw_payload && typeof row.raw_payload === 'object') {
-          payload = row.raw_payload as RawEventCard;
+    let payload: RawEventCard;
+
+    // Check if we have the old schema (raw_payload as JSONB object)
+    if (row.raw_payload && typeof row.raw_payload === "object") {
+      payload = row.raw_payload as RawEventCard;
+    }
+    // New schema: raw_html as TEXT column
+    else if (row.raw_html) {
+      // Try to parse as JSON first (in case it's structured data)
+      if (
+        row.raw_html.trim().startsWith("{") ||
+        row.raw_html.trim().startsWith("[")
+      ) {
+        try {
+          const parsed = JSON.parse(row.raw_html);
+          // If it's an object with event data, use it
+          payload = parsed.rawHtml
+            ? parsed
+            : ({ rawHtml: row.raw_html, ...parsed } as any);
+        } catch {
+          // Not valid JSON, treat as raw HTML
+          payload = { rawHtml: row.raw_html } as any;
+        }
+      } else {
+        // Plain HTML string
+        payload = { rawHtml: row.raw_html } as any;
       }
-      // New schema: raw_html as TEXT column
-      else if (row.raw_html) {
-          // Try to parse as JSON first (in case it's structured data)
-          if (row.raw_html.trim().startsWith('{') || row.raw_html.trim().startsWith('[')) {
-              try {
-                  const parsed = JSON.parse(row.raw_html);
-                  // If it's an object with event data, use it
-                  payload = parsed.rawHtml ? parsed : { rawHtml: row.raw_html, ...parsed } as any;
-              } catch {
-                  // Not valid JSON, treat as raw HTML
-                  payload = { rawHtml: row.raw_html } as any;
-              }
-          } else {
-              // Plain HTML string
-              payload = { rawHtml: row.raw_html } as any;
-          }
-      }
-      // Fallback: empty payload
-      else {
-          console.warn(`Row ${row.id} has no raw_payload or raw_html`);
-          payload = { rawHtml: '' } as any;
-      }
-      
-      return {
-          ...row,
-          raw_payload: payload
-      };
+    }
+    // Fallback: empty payload
+    else {
+      console.warn(`Row ${row.id} has no raw_payload or raw_html`);
+      payload = { rawHtml: "" } as any;
+    }
+
+    return {
+      ...row,
+      raw_payload: payload,
+    };
   });
 }
 
 // Helper: Complete row
-async function completeRow(supabase: SupabaseClient, id: string, _eventId?: string) {
-  await supabase.from("raw_event_staging").update({
-    status: "completed",
-    updated_at: new Date().toISOString() // Trigger will handle this too but good practice
-  }).eq("id", id);
+async function completeRow(
+  supabase: SupabaseClient,
+  id: string,
+  _eventId?: string,
+) {
+  await supabase
+    .from("raw_event_staging")
+    .update({
+      status: "completed",
+      updated_at: new Date().toISOString(), // Trigger will handle this too but good practice
+    })
+    .eq("id", id);
 }
 
 // Helper: Fail row with retry logic
@@ -108,113 +123,150 @@ async function failRow(supabase: SupabaseClient, id: string, errorMsg: string) {
   const maxRetries = 3;
 
   // 2. Decide status
-  // If we hit max retries, we stay 'failed'. 
+  // If we hit max retries, we stay 'failed'.
   // If less, we set back to 'pending' to retry, OR keep 'failed' but allow a mechanic to pick it up?
   // Requirements say "failed" usually implies intervention. But "Do not retry indefinitely" implies we DO retry.
   // Standard pattern: Set to 'pending' for immediate retry, or 'pending' with a delay (updated_at future?).
   // For simplicity, we set to 'pending' to try again next batch.
-  const newStatus = newRetries >= maxRetries ? 'failed' : 'pending';
+  const newStatus = newRetries >= maxRetries ? "failed" : "pending";
 
-  await supabase.from("raw_event_staging").update({
-    status: newStatus,
-    retry_count: newRetries,
-    error_message: errorMsg,
-    updated_at: new Date().toISOString()
-  }).eq("id", id);
-  
-  console.log(`[${id}] Failed. Retry ${newRetries}/${maxRetries}. Status: ${newStatus}. Error: ${errorMsg}`);
+  await supabase
+    .from("raw_event_staging")
+    .update({
+      status: newStatus,
+      retry_count: newRetries,
+      error_message: errorMsg,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  console.log(
+    `[${id}] Failed. Retry ${newRetries}/${maxRetries}. Status: ${newStatus}. Error: ${errorMsg}`,
+  );
 }
 
 // Helper: Check existence (Deduplication) - Used for pre-check if needed, but we do merge now.
 // Keeping for reference or fallback if needed, but marking unused in linter if we drop usage.
-async function _checkDuplicate(supabase: SupabaseClient, contentHash: string, fingerprint: string, sourceId: string): Promise<boolean> {
+async function _checkDuplicate(
+  supabase: SupabaseClient,
+  contentHash: string,
+  fingerprint: string,
+  sourceId: string,
+): Promise<boolean> {
   // Check content hash
-  const { data: hashData } = await supabase.from("events").select("id").eq("content_hash", contentHash).limit(1);
+  const { data: hashData } = await supabase
+    .from("events")
+    .select("id")
+    .eq("content_hash", contentHash)
+    .limit(1);
   if (hashData && hashData.length > 0) return true;
 
   // Check fingerprint
-  const { data: fpData } = await supabase.from("events").select("id").eq("source_id", sourceId).eq("event_fingerprint", fingerprint).limit(1);
+  const { data: fpData } = await supabase
+    .from("events")
+    .select("id")
+    .eq("source_id", sourceId)
+    .eq("event_fingerprint", fingerprint)
+    .limit(1);
   if (fpData && fpData.length > 0) return true;
 
   return false;
 }
 
 async function processRow(
-  supabase: SupabaseClient, 
-  row: StagingRow, 
-  aiApiKey: string
+  supabase: SupabaseClient,
+  row: StagingRow,
+  aiApiKey: string,
 ): Promise<{ success: boolean; error?: string; parsingMethod?: string }> {
   try {
     const raw = row.raw_payload;
     const sourceId = row.source_id;
     // 1. HYBRID PARSING (The Sorting Arm)
     let normalized: NormalizedEvent | null = null;
-    let parsingMethod: string = 'ai'; // Default
+    let parsingMethod: string = "ai"; // Default
 
     // Check if we have a trusted method from the scraper
     // TRUSTED METHODS: If we already have high-fidelity data, skip expensive AI extraction
-    const trustedMethods = ['hydration', 'json_ld', 'microdata', 'feed'];
+    const trustedMethods = ["hydration", "json_ld", "microdata", "feed"];
     // Cast to check properties that might exist on row (if we updated the StagingRow interface) or in raw_payload
     const rowAny = row as any;
-    const existingMethod = rowAny.parsing_method || (row.raw_payload as any).parsingMethod;
+    const existingMethod =
+      rowAny.parsing_method || (row.raw_payload as any).parsingMethod;
 
     if (existingMethod && trustedMethods.includes(existingMethod)) {
-       console.log(`[${row.id}] Trusted Method: ${existingMethod} (Skipping AI)`);
-       parsingMethod = existingMethod;
-       
-       const dummySource = { id: sourceId, name: "Staging", country: "NL", language: "nl" };
-       const norm = cheapNormalizeEvent(raw, dummySource as any);
-       
-       if (norm && norm.title && norm.event_date) {
-           normalized = norm;
-       } 
+      console.log(
+        `[${row.id}] Trusted Method: ${existingMethod} (Skipping AI)`,
+      );
+      parsingMethod = existingMethod;
+
+      const dummySource = {
+        id: sourceId,
+        name: "Staging",
+        country: "NL",
+        language: "nl",
+      };
+      const norm = cheapNormalizeEvent(raw, dummySource as any);
+
+      if (norm && norm.title && norm.event_date) {
+        normalized = norm;
+      }
     }
 
     // Fast Path: JSON-LD (Only if not already normalized by trusted path)
     if (!normalized) {
       // Import dynamically
-      const { extractJsonLdEvents, isJsonLdComplete, jsonLdToNormalized } = await import("../_shared/jsonLdParser.ts");
-      
-      const htmlToSearch = raw.rawHtml || '';
+      const { extractJsonLdEvents, isJsonLdComplete, jsonLdToNormalized } =
+        await import("../_shared/jsonLdParser.ts");
+
+      const htmlToSearch = raw.rawHtml || "";
       const jsonLdEvents = extractJsonLdEvents(htmlToSearch);
-      
+
       if (jsonLdEvents && jsonLdEvents.length > 0) {
         const completeEvent = jsonLdEvents.find(isJsonLdComplete);
         if (completeEvent) {
           normalized = jsonLdToNormalized(completeEvent);
-          parsingMethod = 'deterministic';
+          parsingMethod = "deterministic";
           console.log(`[${row.id}] Fast Path: JSON-LD`);
         }
       }
     }
-    
+
     // Slow Path: AI
     if (!normalized || !normalized.title || !normalized.event_date) {
       // Cheap fallback
-      const dummySource = { id: sourceId, name: "Staging", country: "NL", language: "nl" };
+      const dummySource = {
+        id: sourceId,
+        name: "Staging",
+        country: "NL",
+        language: "nl",
+      };
       normalized = cheapNormalizeEvent(raw, dummySource as any);
-      
+
       // AI Extraction
       try {
         const aiParsed = await parseDetailedEventWithAI(
-          aiApiKey, 
-          raw, 
-          row.detail_html, 
-          fetch, 
-          { targetYear: new Date().getFullYear(), language: "nl" }
+          aiApiKey,
+          raw,
+          row.detail_html,
+          fetch,
+          { targetYear: new Date().getFullYear(), language: "nl" },
         );
-        
+
         if (aiParsed) {
           normalized = {
             ...(normalized || {}),
             ...aiParsed,
             title: aiParsed.title || normalized?.title || raw.title,
             event_date: aiParsed.event_date || normalized?.event_date,
-            description: aiParsed.description || normalized?.description || raw.description,
-            image_url: aiParsed.image_url || normalized?.image_url || raw.imageUrl,
-            persona_tags: aiParsed.persona_tags
+            description:
+              aiParsed.description ||
+              normalized?.description ||
+              raw.description,
+            image_url:
+              aiParsed.image_url || normalized?.image_url || raw.imageUrl,
+            persona_tags: aiParsed.persona_tags,
           };
-          parsingMethod = 'ai';
+          parsingMethod = "ai";
           console.log(`[${row.id}] Slow Path: AI Extraction`);
         }
       } catch (e) {
@@ -226,104 +278,137 @@ async function processRow(
     if (!normalized && raw.title) {
       normalized = {
         title: raw.title,
-        description: raw.description || '',
-        event_date: raw.date || '',
-        event_time: 'TBD',
+        description: raw.description || "",
+        event_date: raw.date || "",
+        event_time: "TBD",
         image_url: raw.imageUrl || null,
-        venue_name: raw.location || '',
-        category: 'COMMUNITY' as any
+        venue_name: raw.location || "",
+        category: "COMMUNITY" as any,
       };
-      parsingMethod = 'ai_fallback';
+      parsingMethod = "ai_fallback";
     }
 
     if (!normalized?.title || !normalized?.event_date) {
-      return { success: false, error: "Validation Failed: Missing Title or Date", parsingMethod };
+      return {
+        success: false,
+        error: "Validation Failed: Missing Title or Date",
+        parsingMethod,
+      };
     }
 
-    await supabase.from("raw_event_staging").update({ parsing_method: parsingMethod }).eq("id", row.id);
+    await supabase
+      .from("raw_event_staging")
+      .update({ parsing_method: parsingMethod })
+      .eq("id", row.id);
 
     // 2. THE POLISHER (Enrichment)
-    const { geocodeLocation, optimizeImage } = await import("../_shared/enrichment.ts");
-    
-    if (normalized.venue_name && (!normalized.venue_address || normalized.venue_address.length < 5)) {
-        try {
-            const query = normalized.venue_address || normalized.venue_name; 
-            if (query) {
-                 const geo = await geocodeLocation(query);
-                 if (geo) {
-                     (normalized as any)._geo = geo;
-                 }
-            }
-        } catch (geoError) {
-            // Non-blocking: Continue with default location if geocoding fails
-            console.warn(`[${row.id}] Geocoding failed (non-blocking):`, geoError);
+    const { geocodeLocation, optimizeImage } =
+      await import("../_shared/enrichment.ts");
+
+    if (
+      normalized.venue_name &&
+      (!normalized.venue_address || normalized.venue_address.length < 5)
+    ) {
+      try {
+        const query = normalized.venue_address || normalized.venue_name;
+        if (query) {
+          const geo = await geocodeLocation(query);
+          if (geo) {
+            (normalized as any)._geo = geo;
+          }
         }
+      } catch (geoError) {
+        // Non-blocking: Continue with default location if geocoding fails
+        console.warn(`[${row.id}] Geocoding failed (non-blocking):`, geoError);
+      }
     }
 
     // Image Optimization (non-blocking - quality over speed)
     // Download and upload to storage to prevent link rot
     // Only if image is remote and not already ours
-    if (normalized.image_url && normalized.image_url.startsWith('http') && !normalized.image_url.includes('supabase.co')) {
-        try {
-            const optimizedUrl = await optimizeImage(supabase, normalized.image_url, row.id);
-            if (optimizedUrl) {
-                normalized.image_url = optimizedUrl;
-            }
-        } catch (imgError) {
-            // Non-blocking: Continue with original URL if optimization fails
-            console.warn(`[${row.id}] Image optimization failed (non-blocking):`, imgError);
+    if (
+      normalized.image_url &&
+      normalized.image_url.startsWith("http") &&
+      !normalized.image_url.includes("supabase.co")
+    ) {
+      try {
+        const optimizedUrl = await optimizeImage(
+          supabase,
+          normalized.image_url,
+          row.id,
+        );
+        if (optimizedUrl) {
+          normalized.image_url = optimizedUrl;
         }
+      } catch (imgError) {
+        // Non-blocking: Continue with original URL if optimization fails
+        console.warn(
+          `[${row.id}] Image optimization failed (non-blocking):`,
+          imgError,
+        );
+      }
     }
 
     // 3. THE VAULT (Merge/Upsert)
-    const contentHash = await createContentHash(normalized.title, normalized.event_date);
-    const fingerprint = await createEventFingerprint(normalized.title, normalized.event_date, sourceId);
+    const contentHash = await createContentHash(
+      normalized.title,
+      normalized.event_date,
+    );
+    const fingerprint = await createEventFingerprint(
+      normalized.title,
+      normalized.event_date,
+      sourceId,
+    );
 
     // Check for existing event by fingerprint (Golden Record logic)
     // Universal Deduplication: Check across ALL sources, not just the current sourceId
     const { data: existingEvents } = await supabase
-        .from("events")
-        .select("id, description, tickets_url, image_url, venue_name, source_id")
-        .eq("event_fingerprint", fingerprint) // Fingerprint is title|date|sourceId, wait...
-        // Actually, for universal dedup, we should check content_hash (title|date)
-        .or(`content_hash.eq.${contentHash},event_fingerprint.eq.${fingerprint}`)
-        .limit(1);
+      .from("events")
+      .select("id, description, tickets_url, image_url, venue_name, source_id")
+      .eq("event_fingerprint", fingerprint) // Fingerprint is title|date|sourceId, wait...
+      // Actually, for universal dedup, we should check content_hash (title|date)
+      .or(`content_hash.eq.${contentHash},event_fingerprint.eq.${fingerprint}`)
+      .limit(1);
 
     const existing = existingEvents?.[0];
 
     // 7. Categorize and Tag
-    const { mapToCategoryKey, extractTags, isProbableEvent } = await import("../_shared/categorizer.ts");
+    const { mapToCategoryKey, extractTags, isProbableEvent } =
+      await import("../_shared/categorizer.ts");
     const { CATEGORY_KEYS } = await import("../_shared/types.ts");
-    
+
     // Attempt to get source category key if available
     const { data: source } = await supabase
-        .from("scraper_sources")
-        .select("category_key")
-        .eq("id", sourceId)
-        .single();
+      .from("scraper_sources")
+      .select("category_key")
+      .eq("id", sourceId)
+      .single();
 
     const categoryKey = mapToCategoryKey(
       `${normalized.title} ${normalized.description}`,
       source?.category_key as any,
-      row.url
+      row.url,
     );
-    
+
     // Performance: Only extract tags if we have content
     const tags = extractTags(
       `${normalized.title} ${normalized.description}`,
-      categoryKey as any
+      categoryKey as any,
     );
 
     // 8. Quality Check: Filter out noise (comments, etc.)
     if (!isProbableEvent(normalized.title, normalized.description)) {
       console.log(`Skipping non-event row ${row.id}: "${normalized.title}"`);
       await supabase
-        .from('raw_event_staging')
-        .update({ 
-          status: 'completed',
-          processing_log: [...(rowAny.processing_log || []), `Skipped as non-event noise: ${normalized.title}`]
+        .from("raw_event_staging")
+        .update({
+          status: "completed",
+          processing_log: [
+            ...(rowAny.processing_log || []),
+            `Skipped as non-event noise: ${normalized.title}`,
+          ],
         })
-        .eq('id', row.id);
+        .eq("id", row.id);
       return { success: true, parsingMethod }; // Return success as it's "processed" by being skipped
     }
 
@@ -338,14 +423,14 @@ async function processRow(
 
     const normalizedDate = normalizeEventDateForStorage(
       normalized.event_date,
-      normalized.event_time === "TBD" ? "12:00" : normalized.event_time
+      normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
     );
 
     // Construct common payload
     const eventPayload: any = {
       title: normalized.title,
       description: normalized.description || "",
-      category: normalized.category || 'COMMUNITY',
+      category: normalized.category || "COMMUNITY",
       event_type: "anchor",
       event_date: normalizedDate.timestamp,
       event_time: normalized.event_time || "TBD",
@@ -356,29 +441,46 @@ async function processRow(
       updated_at: new Date().toISOString(),
       image_url: normalized.image_url,
       venue_name: normalized.venue_name || "",
-      detail_url: normalized.detail_url || raw.detailUrl,
+      source_url: normalized.detail_url || raw.detailUrl, // FIX: Mapped to source_url
       tags: normalized.tags || [],
     };
 
     // 9. Description Scrubbing (Data Hygiene)
     const SCRUB_PATTERNS = [
-      'Controleer ticketprijs bij evenement',
-      'Geen omschrijving beschikbaar',
-      'no description available'
+      "Controleer ticketprijs bij evenement",
+      "Geen omschrijving beschikbaar",
+      "no description available",
     ];
-    if (eventPayload.description && SCRUB_PATTERNS.some(p => eventPayload.description.includes(p))) {
+    if (
+      eventPayload.description &&
+      SCRUB_PATTERNS.some((p) => eventPayload.description.includes(p))
+    ) {
       console.log(`[${row.id}] Scrubbing placeholder description`);
       eventPayload.description = null;
     }
-    
+
     // Handle Location (PostGIS)
     const geo = (normalized as any)._geo;
     if (geo) {
-        eventPayload.location = `POINT(${geo.lng} ${geo.lat})`;
+      eventPayload.location = `POINT(${geo.lng} ${geo.lat})`;
     } else {
-        // Default 0,0 or keep existing if merge? 
-        // If new, 0,0.
-        if (!existing) eventPayload.location = "POINT(0 0)";
+      // Validation for frontend usage:
+      // Attempt to re-geocode if we have a venue name but no coordinates
+      if (eventPayload.venue_name && !existing) {
+        const { geocodeLocation } = await import("../_shared/enrichment.ts");
+        try {
+          const newGeo = await geocodeLocation(eventPayload.venue_name);
+          if (newGeo) {
+            eventPayload.location = `POINT(${newGeo.lng} ${newGeo.lat})`;
+          } else {
+            eventPayload.location = "POINT(0 0)";
+          }
+        } catch {
+          eventPayload.location = "POINT(0 0)";
+        }
+      } else if (!existing) {
+        eventPayload.location = "POINT(0 0)";
+      }
     }
 
     // Embedding (non-blocking - quality over speed, allow up to 60s)
@@ -386,65 +488,77 @@ async function processRow(
       const textToEmbed = eventToText(normalized);
       const embedRes = await generateEmbedding(aiApiKey, textToEmbed, fetch);
       if (embedRes) {
-          eventPayload.embedding = embedRes.embedding;
-          eventPayload.embedding_generated_at = new Date().toISOString();
-          eventPayload.embedding_model = 'text-embedding-3-small';
+        eventPayload.embedding = embedRes.embedding;
+        eventPayload.embedding_generated_at = new Date().toISOString();
+        eventPayload.embedding_model = "text-embedding-3-small";
       }
     } catch (embedError) {
       // Non-blocking: Event will be created without embedding, can be generated async later
-      console.warn(`[${row.id}] Embedding generation failed (non-blocking):`, embedError);
+      console.warn(
+        `[${row.id}] Embedding generation failed (non-blocking):`,
+        embedError,
+      );
     }
 
     if (existing) {
-        // MERGE LOGIC
-        // 1. Description: Prefer existing if existing source is "Venue" (we need to know tier, simple heuristic: longer description wins?)
-        // Let's say we prefer the NEW description if it's significantly longer, otherwise keep existing.
-        // OR: just append/overwrite based on simple rule.
-        // Plan says: "Keep description from Venue (better quality) but add ticket link from Facebook".
-        // Implementation: We don't know source tiers here easily without DB lookup on source.
-        // Simple merge: 
-        if (!existing.description || (normalized.description && normalized.description.length > existing.description.length)) {
-             eventPayload.description = normalized.description;
-        }
-        
-        if (normalized.image_url) eventPayload.image_url = normalized.image_url;
-        if (normalized.venue_name) eventPayload.venue_name = normalized.venue_name;
-        
-        // Persona Tags - currently storing in separate table or array?
-        // Plan says "Add persona_tags column to events".
-        if (normalized.persona_tags) eventPayload.persona_tags = normalized.persona_tags;
+      // MERGE LOGIC
+      // 1. Description: Prefer existing if existing source is "Venue" (we need to know tier, simple heuristic: longer description wins?)
+      // Let's say we prefer the NEW description if it's significantly longer, otherwise keep existing.
+      // OR: just append/overwrite based on simple rule.
+      // Plan says: "Keep description from Venue (better quality) but add ticket link from Facebook".
+      // Implementation: We don't know source tiers here easily without DB lookup on source.
+      // Simple merge:
+      if (
+        !existing.description ||
+        (normalized.description &&
+          normalized.description.length > existing.description.length)
+      ) {
+        eventPayload.description = normalized.description;
+      }
 
-        // Perform Update
-        const { error: updateError } = await supabase
-            .from("events")
-            .update(eventPayload)
-            .eq("id", existing.id);
-            
-        if (updateError) throw new Error(`Merge failed: ${updateError.message}`);
-        console.log(`[${row.id}] Merged into existing event ${existing.id}`);
+      if (normalized.image_url) eventPayload.image_url = normalized.image_url;
+      if (normalized.venue_name)
+        eventPayload.venue_name = normalized.venue_name;
 
+      // Persona Tags - currently storing in separate table or array?
+      // Plan says "Add persona_tags column to events".
+      if (normalized.persona_tags)
+        eventPayload.persona_tags = normalized.persona_tags;
+
+      // Perform Update
+      const { error: updateError } = await supabase
+        .from("events")
+        .update(eventPayload)
+        .eq("id", existing.id);
+
+      if (updateError) throw new Error(`Merge failed: ${updateError.message}`);
+      console.log(`[${row.id}] Merged into existing event ${existing.id}`);
     } else {
-        // INSERT NEW
-        eventPayload.description = normalized.description || "";
-        eventPayload.venue_name = normalized.venue_name || "";
-        eventPayload.image_url = normalized.image_url;
-        if (normalized.persona_tags) eventPayload.persona_tags = normalized.persona_tags;
-        
-        const { error: insertError } = await supabase.from("events").insert(eventPayload);
-        if (insertError) {
-             // Handle race condition where it was created in between
-             if (insertError.code === '23505') {
-                 console.log(`[${row.id}] Duplicate detected during insert (race condition), marking done.`);
-             } else {
-                 throw new Error(`Insert failed: ${insertError.message}`);
-             }
+      // INSERT NEW
+      eventPayload.description = normalized.description || "";
+      eventPayload.venue_name = normalized.venue_name || "";
+      eventPayload.image_url = normalized.image_url;
+      if (normalized.persona_tags)
+        eventPayload.persona_tags = normalized.persona_tags;
+
+      const { error: insertError } = await supabase
+        .from("events")
+        .insert(eventPayload);
+      if (insertError) {
+        // Handle race condition where it was created in between
+        if (insertError.code === "23505") {
+          console.log(
+            `[${row.id}] Duplicate detected during insert (race condition), marking done.`,
+          );
+        } else {
+          throw new Error(`Insert failed: ${insertError.message}`);
         }
+      }
     }
 
     // 6. Complete
     await completeRow(supabase, row.id);
     return { success: true };
-
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     await failRow(supabase, row.id, msg);
@@ -453,13 +567,14 @@ async function processRow(
 }
 
 export const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS")
+    return new Response(null, { headers: corsHeaders });
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY")!;
-    
+
     if (!openaiApiKey) throw new Error("Missing OPENAI_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -468,43 +583,56 @@ export const handler = async (req: Request): Promise<Response> => {
     const rows = await claimPendingRows(supabase);
     if (rows.length === 0) {
       return new Response(JSON.stringify({ message: "No pending rows" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     console.log(`Processor: Picked up ${rows.length} rows`);
 
     // 2. Process Batch
-    const results = await Promise.allSettled(rows.map(row => processRow(supabase, row, openaiApiKey)));
+    const results = await Promise.allSettled(
+      rows.map((row) => processRow(supabase, row, openaiApiKey)),
+    );
 
     // 3. Stats
-    const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-    const failCount = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
+    const successCount = results.filter(
+      (r) => r.status === "fulfilled" && r.value.success,
+    ).length;
+    const failCount = results.filter(
+      (r) =>
+        r.status === "rejected" ||
+        (r.status === "fulfilled" && !r.value.success),
+    ).length;
 
     // 4. Chain Trigger if batch was full (to drain queue)
     if (rows.length === BATCH_SIZE) {
-       // Fire and forget next batch
-       fetch(`${supabaseUrl}/functions/v1/process-worker`, {
-            method: "POST",
-            headers: { 
-              "Authorization": `Bearer ${supabaseKey}`,
-              "Content-Type": "application/json"
-            }
-       }).catch(e => console.error("Chain trigger failed", e));
+      // Fire and forget next batch
+      fetch(`${supabaseUrl}/functions/v1/process-worker`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+      }).catch((e) => console.error("Chain trigger failed", e));
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      processed: rows.length, 
-      succeeded: successCount, 
-      failed: failCount 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        processed: rows.length,
+        succeeded: successCount,
+        failed: failCount,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (err) {
     console.error("Processor Critical Failure:", err);
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 };
 
