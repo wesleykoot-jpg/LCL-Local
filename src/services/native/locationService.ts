@@ -2,7 +2,6 @@ import { Capacitor } from '@capacitor/core';
 import {
   Geolocation,
   type GeolocationOptions,
-  type PermissionState,
   type PermissionStatus,
   type Position,
 } from '@capacitor/geolocation';

@@ -4,7 +4,6 @@
  */
 
 const { Pool } = require('pg');
-require('dotenv').config();
 
 let pool = null;
 

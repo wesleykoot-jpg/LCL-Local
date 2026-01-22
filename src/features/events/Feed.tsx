@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, useMemo, useCallback, useEffect } from 'react';
+import { useState, lazy, Suspense, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FloatingNav, LoadingSkeleton, ErrorBoundary, DevPanel } from '@/shared/components';
@@ -13,7 +13,8 @@ import { useOnboarding } from '@/features/profile';
 import { useAuth } from '@/features/auth';
 import { useLocation } from '@/features/location';
 import { MapPin, Plus, SlidersHorizontal, ChevronDown, Navigation, Sparkles } from 'lucide-react';
-import { useEventsQuery, useJoinEvent, type EventWithAttendees } from './hooks';
+import { useEventsQuery } from './hooks/useEventsQuery';
+import { useJoinEvent, type EventWithAttendees } from './hooks/hooks';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { groupEventsIntoStacks } from './api/feedGrouping';
 import { rankEvents } from './api/feedAlgorithm';
@@ -135,10 +136,10 @@ const Feed = () => {
   }, [allEvents, activeFilter]);
 
   const rankedEvents = useMemo(() => {
-    return rankEvents(filteredEvents, feedPreferences || null, {
+    return rankEvents(filteredEvents as any, feedPreferences || null, {
       ensureDiversity: true,
       debug: false,
-    });
+    }) as EventWithAttendees[];
   }, [filteredEvents, feedPreferences]);
 
   // Featured event (top ranked with image)
@@ -164,13 +165,14 @@ const Feed = () => {
     ].filter(Boolean) as string[]);
 
     const remaining = rankedEvents.filter(e => !excludeIds.has(e.id));
-    return groupEventsIntoStacks(remaining);
+    return groupEventsIntoStacks(remaining as any);
   }, [rankedEvents, featuredEvent, trendingEvents]);
 
-  const handleNavigate = (view: 'feed' | 'profile' | 'my-events') => {
-    if (view === 'feed') navigate('/feed');
+  const handleNavigate = (view: 'feed' | 'planning' | 'profile' | 'now') => {
+    if (view === 'feed') navigate('/');
     else if (view === 'profile') navigate('/profile');
-    else if (view === 'my-events') navigate('/my-events');
+    else if (view === 'planning') navigate('/planning');
+    else if (view === 'now') navigate('/now');
   };
 
   const handleEventClick = useCallback(async (eventId: string) => {

@@ -63,9 +63,6 @@ const Discovery = () => {
   const [missionIntent, setMissionIntent] = useState<MissionIntent | null>(null);
   const [showMissionDrawer, setShowMissionDrawer] = useState(false);
 
-  // Ref for scroll container
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
   // 1. Fetch all events for Search/DeepDive (Client-side filtering for now)
   const { events: allEvents, loading, refetch } = useEventsQuery({
     currentUserProfileId: profile?.id,
@@ -349,7 +346,7 @@ const Discovery = () => {
                     loading={loading}
                     onEventClick={handleEventClick}
                     onJoinEvent={handleJoinEvent}
-                    joiningEventId={null} // TODO: Pass separate joining state
+                    isJoining={isJoining}
                   />
                 </div>
               </motion.div>
@@ -360,8 +357,7 @@ const Discovery = () => {
         {/* Floating Nav */}
         <FloatingNav
           onNavigate={handleNavigate}
-          onCreateClick={() => setShowCreateModal(true)}
-          currentView="feed"
+          activeView="feed"
         />
 
         {/* Floating Action Button - Only show in dev mode */}
@@ -386,7 +382,6 @@ const Discovery = () => {
             <CreateEventModal
               isOpen={showCreateModal}
               onClose={() => setShowCreateModal(false)}
-              currentUserProfileId={profile?.id}
             />
           )}
 
@@ -394,11 +389,9 @@ const Discovery = () => {
             {selectedEvent && (
               <EventDetailModal
                 event={selectedEvent}
-                isOpen={!!selectedEvent}
                 onClose={handleCloseEventDetail}
-                onJoinEvent={() => handleJoinEvent(selectedEvent.id)}
+                onJoinEvent={() => selectedEvent && handleJoinEvent(selectedEvent.id)}
                 isJoining={isJoining(selectedEvent.id)}
-                currentUserProfileId={profile?.id}
               />
             )}
           </AnimatePresence>
@@ -417,7 +410,7 @@ const Discovery = () => {
         
         {/* Error Boundary for critical failures */}
         <ErrorBoundary>
-           {/* Hidden elements or analytics triggers can go here */}
+           <div>{/* Content for error boundary */}</div>
         </ErrorBoundary>
       </motion.div>
     </div>

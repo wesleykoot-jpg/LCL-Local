@@ -102,7 +102,7 @@ export async function fetchDiscoveryRails(
             if (error) throw error;
             if (!data) throw new Error('No discovery rails data returned');
 
-            return data as DiscoveryLayout;
+            return data as unknown as DiscoveryLayout;
           }, QUERY_TIMEOUTS.COMPLEX);
         });
       },
@@ -144,7 +144,7 @@ export async function fetchMissionModeEvents(
     if (error) throw error;
     if (!data) throw new Error('No mission mode data returned');
 
-    return data as MissionModeResponse;
+    return data as unknown as MissionModeResponse;
   } catch (error) {
     console.error('Error fetching mission mode events:', error);
     // Return empty response on error
@@ -162,13 +162,15 @@ export async function fetchMissionModeEvents(
 export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams): Promise<JoinEventResult> {
   try {
     // Use atomic RPC as PRIMARY method to prevent race conditions
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
+    const { data: rawData, error: rpcError } = await supabase.rpc('join_event_atomic', {
       p_event_id: eventId,
       p_profile_id: profileId,
       p_status: status,
     });
 
     if (rpcError) throw rpcError;
+
+    const rpcResult = rawData as JoinEventRpcResult | null;
 
     // Handle RPC responses
     if (rpcResult?.status === 'exists') {
@@ -290,8 +292,8 @@ export async function createEvent(params: CreateEventParams) {
         // Check if notifications table exists and create notification rows
         try {
           // Query to check if notifications table exists
-          const { error: tableCheckError } = await supabase
-            .from('notifications')
+          const { error: tableCheckError } = await (supabase
+            .from('notifications' as any) as any)
             .select('id')
             .limit(1);
 
@@ -308,7 +310,7 @@ export async function createEvent(params: CreateEventParams) {
               },
             }));
 
-            await supabase.from('notifications').insert(notifications);
+            await (supabase.from('notifications' as any) as any).insert(notifications);
           }
         } catch (notificationError) {
           // Silent fail - notifications are best-effort

@@ -1133,6 +1133,174 @@ export type Database = {
           },
         ]
       }
+      google_calendar_events: {
+        Row: {
+          profile_id: string
+          event_id: string
+          google_event_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          profile_id: string
+          event_id: string
+          google_event_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          profile_id?: string
+          event_id?: string
+          google_event_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_calendar_events_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      google_calendar_tokens: {
+        Row: {
+          profile_id: string
+          access_token: string
+          refresh_token: string | null
+          token_expiry: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          profile_id: string
+          access_token: string
+          refresh_token?: string | null
+          token_expiry: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          profile_id?: string
+          access_token?: string
+          refresh_token?: string | null
+          token_expiry?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_tokens_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          data: Json | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          data?: Json | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          data?: Json | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      scrape_jobs: {
+        Row: {
+          id: string
+          source_id: string
+          status: string
+          attempts: number
+          max_attempts: number
+          payload: Json
+          error_message: string | null
+          events_scraped: number | null
+          events_inserted: number | null
+          created_at: string | null
+          completed_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          source_id: string
+          status?: string
+          attempts?: number
+          max_attempts?: number
+          payload: Json
+          error_message?: string | null
+          events_scraped?: number | null
+          events_inserted?: number | null
+          created_at?: string | null
+          completed_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          source_id?: string
+          status?: string
+          attempts?: number
+          max_attempts?: number
+          payload?: Json
+          error_message?: string | null
+          events_scraped?: number | null
+          events_inserted?: number | null
+          created_at?: string | null
+          completed_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scrape_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "scraper_sources"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       user_relationships: {
         Row: {
           created_at: string
@@ -1416,6 +1584,19 @@ export type Database = {
           out_source_id: string
         }[]
       }
+      claim_staging_rows: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          id: string
+          source_id: string | null
+          url: string
+          raw_payload: Json | null
+          raw_html: string
+          detail_html: string | null
+          status: string
+          parsing_method: string | null
+        }[]
+      }
       cleanup_old_error_logs: { Args: never; Returns: number }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
@@ -1555,6 +1736,16 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_discovery_rails: {
+        Args: {
+          p_user_id: string
+          p_user_lat: number
+          p_user_long: number
+          p_radius_km?: number
+          p_limit_per_rail?: number
+        }
+        Returns: Json
+      }
       get_effective_rate_limit: {
         Args: { p_source_id: string }
         Returns: {
@@ -1564,6 +1755,17 @@ export type Database = {
         }[]
       }
       get_friends_pulse: { Args: { current_user_id: string }; Returns: Json }
+      get_mission_mode_events: {
+        Args: {
+          p_user_lat: number
+          p_user_long: number
+          p_intent: string
+          p_max_distance_km?: number
+          p_limit?: number
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       get_pipeline_health: {
         Args: never
         Returns: {
@@ -1629,6 +1831,14 @@ export type Database = {
             }
             Returns: undefined
           }
+      join_event_atomic: {
+        Args: {
+          p_event_id: string
+          p_profile_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
       log_scraper_insight: {
         Args: {
           p_detected_cms?: string

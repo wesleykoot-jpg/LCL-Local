@@ -38,7 +38,6 @@ import {
   MAX_RETRY_ATTEMPTS,
   type ScraperSource,
   type LogEntry,
-  type LogsResult,
 } from './api/scraperService';
 
 // Types
