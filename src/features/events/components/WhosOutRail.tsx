@@ -34,8 +34,8 @@ export const WhosOutRail = memo(function WhosOutRail({
   const filteredActivities = useMemo(() => {
     if (!activities) return [];
     
-    const now = new Date();
-    const endTime = new Date(now.getTime() + timeOffsetMinutes * 60 * 1000);
+    // const now = new Date();
+    // const endTime = new Date(now.getTime() + timeOffsetMinutes * 60 * 1000);
     
     return activities.filter(activity => {
       // Include all "live" friends

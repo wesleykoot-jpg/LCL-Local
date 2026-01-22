@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { EventWithAttendees, EventAttendee } from './hooks';
 import type { Database } from '@/integrations/supabase/types';
 import {
-  parseAttendeeRows,
   parseEventsWithAttendees,
   parsePersonalizedFeedRows,
   parseUserAttendanceRows,
@@ -72,7 +71,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
       // Use personalized feed RPC if enabled and user location is available
       if (usePersonalizedFeed && userLocation && currentUserProfileId) {
-        const { data, error } = await supabase.rpc('get_personalized_feed', {
+        const { data, error } = await (supabase.rpc as any)('get_personalized_feed', {
           user_lat: userLocation.lat,
           user_long: userLocation.lng,
           user_id: currentUserProfileId,
@@ -106,7 +105,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
         // Group attendees by event
         const attendeesByEvent = new Map<string, EventAttendee[]>();
-        (attendeesData || []).forEach((att: { event_id: string; profile: AttendeeProfile | null }) => {
+        (attendeesData || []).forEach((att: any) => {
           if (!attendeesByEvent.has(att.event_id)) {
             attendeesByEvent.set(att.event_id, []);
           }
@@ -158,7 +157,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
             structured_location: null,
             organizer: null,
             parent_event: null,
-          } as EventWithAttendees));
+          } as unknown as EventWithAttendees));
 
         return combinedEvents;
       }
@@ -233,7 +232,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
                     profile: {
                       id: userAttendance.profiles.id,
                       avatar_url: userAttendance.profiles.avatar_url,
-                      full_name: userAttendance.profiles.full_name,
+                      full_name: userAttendance.profiles.full_name as string,
                     }
                   }, ...(event.attendees || [])]
                 };
@@ -244,7 +243,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
         }
       }
 
-      return parseEventsWithAttendees(eventsWithData);
+    return parseEventsWithAttendees(eventsWithData) as EventWithAttendees[];
     },
     staleTime: 1000 * 60 * 2, // Consider data fresh for 2 minutes
     gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes (formerly cacheTime)

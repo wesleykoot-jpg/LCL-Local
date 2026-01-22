@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/features/auth';
 import { useLocation } from '@/features/location';
 import { createEventSchema, sanitizeInput } from '@/shared/lib/validation';
-import { UserPicker } from '@/components/UserPicker';
+import { UserPicker } from '@/shared/components/UserPicker';
 import type { EventWithAttendees } from '../hooks/hooks';
 
 interface CreateEventModalProps {

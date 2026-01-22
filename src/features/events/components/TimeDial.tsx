@@ -1,5 +1,5 @@
 import { memo, useCallback, useRef, useState, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { hapticSelection } from '@/shared/lib/haptics';
 
 interface TimeDialProps {
@@ -47,7 +47,7 @@ export const TimeDial = memo(function TimeDial({
   const lastSnapRef = useRef(value);
   
   // Motion values for smooth animation
-  const x = useMotionValue(0);
+  // const x = useMotionValue(0);
   const progress = useMotionValue(value / 240);
   
   // Calculate progress from value

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { X, Search, User } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -13,7 +13,6 @@ interface UserPickerProps {
 interface Profile {
   id: string;
   full_name: string | null;
-  username: string | null;
   avatar_url: string | null;
 }
 
@@ -40,7 +39,7 @@ export function UserPicker({
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, username, avatar_url')
+        .select('id, full_name, avatar_url')
         .in('id', selectedIds);
 
       if (!error && data) {
@@ -63,9 +62,9 @@ export function UserPicker({
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, username, avatar_url')
+          .select('id, full_name, avatar_url')
           .or(
-            `full_name.ilike.%${debouncedSearch}%,username.ilike.%${debouncedSearch}%`
+            `full_name.ilike.%${debouncedSearch}%`
           )
           .limit(10);
 
@@ -107,7 +106,7 @@ export function UserPicker({
   };
 
   const getDisplayName = (profile: Profile) => {
-    return profile.full_name || profile.username || 'Unknown User';
+    return profile.full_name || 'Unknown User';
   };
 
   return (
@@ -197,11 +196,6 @@ export function UserPicker({
                       <div className="text-sm font-medium text-zinc-900 truncate">
                         {getDisplayName(profile)}
                       </div>
-                      {profile.username && (
-                        <div className="text-xs text-gray-500 truncate">
-                          @{profile.username}
-                        </div>
-                      )}
                     </div>
                   </button>
                 ))}

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { queryKeys } from '@/shared/config/queryKeys';
-import { QUERY_STALE_TIME } from '@/shared/config/queryConfig';
+
 
 interface FriendActivity {
   user: {
@@ -39,11 +39,11 @@ export function useFriendsPulse(currentUserProfileId?: string) {
       }
 
       // The RPC function returns JSON, parse it
-      return (data as FriendActivity[]) || [];
+      return (data as unknown as FriendActivity[]) || [];
     },
     enabled: !!currentUserProfileId,
-    staleTime: QUERY_STALE_TIME.MEDIUM, // 2 minutes
-    gcTime: QUERY_STALE_TIME.MEDIUM,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    gcTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: true,
     refetchInterval: 60000, // Refetch every minute for real-time feel
   });

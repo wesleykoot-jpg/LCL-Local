@@ -59,7 +59,6 @@ export function MorphingHeader({ containerRef }: MorphingHeaderProps) {
   // Transform values based on scroll position
   const scale = useTransform(scrollY, [SCROLL_START, SCROLL_END], [1, 0.85]);
   const opacity = useTransform(scrollY, [SCROLL_START, SCROLL_END], [1, 0]);
-  const cardHeight = useTransform(scrollY, [SCROLL_START, SCROLL_END], [220, 64]);
   const borderRadius = useTransform(scrollY, [SCROLL_START, SCROLL_END], [20, 0]);
   const padding = useTransform(scrollY, [SCROLL_START, SCROLL_END], [24, 16]);
   
@@ -150,7 +149,7 @@ export function MorphingHeader({ containerRef }: MorphingHeaderProps) {
           opacity: motionPreset.prefersReducedMotion ? 0 : navOpacity,
           pointerEvents: 'auto',
         }}
-        aria-hidden={motionPreset.prefersReducedMotion}
+        aria-hidden={!!motionPreset.prefersReducedMotion}
       >
         <div className="flex items-center gap-3 px-4 py-3 max-w-lg mx-auto">
           {/* Compact Avatar */}

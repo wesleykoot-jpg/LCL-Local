@@ -32,7 +32,7 @@ export async function incrementInterestScore(
       return { success: false };
     }
 
-    const currentScores: InterestScores = profile?.interest_scores || {};
+    const currentScores = (profile?.interest_scores as unknown as InterestScores) || {};
     const newScores = {
       ...currentScores,
       [categoryId]: (currentScores[categoryId] || 0) + incrementBy,
@@ -68,8 +68,8 @@ export async function incrementInterestScore(
 
     return {
       success: true,
-      scores: data.interest_scores,
-      isParentDetected: data.is_parent_detected,
+      scores: data?.interest_scores as unknown as InterestScores,
+      isParentDetected: data?.is_parent_detected,
     };
   } catch (error) {
     console.error('Error incrementing interest score:', error);
@@ -80,21 +80,21 @@ export async function incrementInterestScore(
 /**
  * Track event view
  */
-export async function trackEventView(profileId: string, eventCategory: string) {
+export function trackEventView(profileId: string, eventCategory: string) {
   return incrementInterestScore(profileId, eventCategory, 1);
 }
 
 /**
  * Track event like (higher weight)
  */
-export async function trackEventLike(profileId: string, eventCategory: string) {
+export function trackEventLike(profileId: string, eventCategory: string) {
   return incrementInterestScore(profileId, eventCategory, 2);
 }
 
 /**
  * Track event join (highest weight)
  */
-export async function trackEventJoin(profileId: string, eventCategory: string) {
+export function trackEventJoin(profileId: string, eventCategory: string) {
   return incrementInterestScore(profileId, eventCategory, 3);
 }
 
@@ -117,7 +117,7 @@ export async function getInterestScores(
     }
 
     return {
-      scores: data?.interest_scores || {},
+      scores: (data?.interest_scores as unknown as InterestScores) || {},
       isParentDetected: data?.is_parent_detected || false,
     };
   } catch (error) {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, lazy, Suspense, useRef } from 'react';
+import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FloatingNav, LoadingSkeleton, ErrorBoundary } from '@/shared/components';

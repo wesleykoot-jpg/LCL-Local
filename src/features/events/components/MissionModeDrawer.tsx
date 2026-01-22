@@ -38,7 +38,7 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
   const config = intent ? INTENT_CONFIGS[intent] : null;
 
   // Handle drag gestures to close
-  const handleDragEnd = async (event: any, info: PanInfo) => {
+  const handleDragEnd = async (_event: any, info: PanInfo) => {
     dragging.current = false;
     if (info.offset.y > 150 || info.velocity.y > 500) {
       await controls.start({ y: '100%' });
@@ -157,7 +157,7 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
                       {/* Using simplified card for mission mode */}
                       <TimelineEventCard 
                         event={event} 
-                        showDayHeader={false}
+                        // showDayHeader={false}
                         onClick={() => onEventClick(event.id)}
                       />
                       

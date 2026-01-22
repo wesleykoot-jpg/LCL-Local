@@ -136,10 +136,10 @@ const Feed = () => {
   }, [allEvents, activeFilter]);
 
   const rankedEvents = useMemo(() => {
-    return rankEvents(filteredEvents as any, feedPreferences || null, {
+    return rankEvents(filteredEvents as unknown as any[], feedPreferences || null, {
       ensureDiversity: true,
       debug: false,
-    }) as EventWithAttendees[];
+    }) as unknown as EventWithAttendees[];
   }, [filteredEvents, feedPreferences]);
 
   // Featured event (top ranked with image)

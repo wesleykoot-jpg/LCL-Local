@@ -20,6 +20,7 @@ interface TimelineEventCardProps {
 }
 
 // Format time like "7:00 PM"
+/*
 function formatTime(timeStr: string): string {
   if (!timeStr) return '';
   
@@ -33,6 +34,7 @@ function formatTime(timeStr: string): string {
   
   return timeStr;
 }
+*/
 
 export const TimelineEventCard = memo(function TimelineEventCard({
   event,
@@ -281,8 +283,8 @@ export const TimelineEventCard = memo(function TimelineEventCard({
 
   // Default and Minimal Variants
   // Get time_mode with fallback to 'fixed' for existing events
-  const timeMode = (event.time_mode || 'fixed') as TimeMode;
-  const openingHours = event.opening_hours as OpeningHours | null;
+  const timeMode = ((event as any).time_mode || 'fixed') as TimeMode;
+  const openingHours = (event as any).opening_hours as OpeningHours | null;
   
   return (
     <motion.div

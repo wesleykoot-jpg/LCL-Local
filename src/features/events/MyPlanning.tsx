@@ -1,7 +1,5 @@
-import React from 'react';
 import { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
 import { ItineraryTimeline } from './components/ItineraryTimeline';
-import { PendingInvitesRail } from './components/PendingInvitesRail';
 import { LoadingSkeleton } from '@/shared/components/LoadingSkeleton';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +27,7 @@ const MyPlanning = () => {
   const { groupedTimeline, timelineItems, isLoading, isEmpty, refresh } = useUnifiedItinerary();
 
   // Separate Pending Invites
-  const pendingInvites = timelineItems.filter(i => i.status === 'pending');
+  // No pending invites logic yet
   const confirmedTimeline = timelineItems.filter(i => i.status !== 'pending');
   // Re-group confirmed items only for the main timeline
   // Note: groupedTimeline from hook includes all, so we might need to filter manually or rely on hook update
@@ -53,10 +51,7 @@ const MyPlanning = () => {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-  const handleRespond = (id: string, response: 'accept' | 'decline') => {
-    console.log(`Responded to ${id}: ${response}`);
-    // TODO: Wire up to API
-  };
+
 
   const handleShare = async () => {
     await hapticImpact('light');
@@ -76,7 +71,7 @@ const MyPlanning = () => {
           text: text,
           url: window.location.href,
         });
-      } catch (err) {
+      } catch (_err) {
         console.log('Share cancelled');
       }
     } else {

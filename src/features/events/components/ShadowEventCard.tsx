@@ -24,10 +24,10 @@ export const ShadowEventCard = memo(function ShadowEventCard({
   item,
   isPast = false,
 }: ShadowEventCardProps) {
-  const googleEvent = item.data as GoogleCalendarExternalEvent;
+  const googleEvent = (item as any).data as GoogleCalendarExternalEvent;
   const hasLocation = Boolean(item.location);
   const hasExternalLink = Boolean(googleEvent.htmlLink);
-  const timeLabel = item.isAllDay
+  const timeLabel = (item as any).isAllDay
     ? 'All Day'
     : new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(item.startTime);
 
@@ -66,9 +66,9 @@ export const ShadowEventCard = memo(function ShadowEventCard({
       <div className="flex items-start gap-3 mt-1">
         {/* Icon/Time Bubble */}
         <div className="flex-shrink-0 flex flex-col items-center">
-          {item.icon ? (
+          {(item as any).icon ? (
             <span className="text-lg" role="img" aria-label="Event type">
-              {item.icon}
+              {(item as any).icon}
             </span>
           ) : (
             <div className={`

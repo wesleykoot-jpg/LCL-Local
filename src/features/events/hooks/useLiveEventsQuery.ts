@@ -200,12 +200,12 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
 
         // Calculate distance if user location and event location are available
         let distanceKm: number | undefined;
-        if (userLocation && event.latitude && event.longitude) {
+        if (userLocation && (event as any).latitude && (event as any).longitude) {
           distanceKm = calculateDistance(
             userLocation.lat,
             userLocation.lng,
-            event.latitude,
-            event.longitude
+            (event as any).latitude,
+            (event as any).longitude
           );
         }
 

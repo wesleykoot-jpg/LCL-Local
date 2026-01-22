@@ -120,5 +120,5 @@ export function parseEventsWithAttendees(data: unknown): EventWithAttendees[] {
     handleSchemaFailure('events', result.error);
     return [];
   }
-  return result.data as EventWithAttendees[];
+  return result.data as unknown as EventWithAttendees[];
 }

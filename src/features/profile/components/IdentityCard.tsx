@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Users } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDeviceTilt } from '@/hooks/useDeviceTilt';
 import { hapticImpact } from '@/shared/lib/haptics';

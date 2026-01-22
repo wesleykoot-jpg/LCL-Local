@@ -7,8 +7,6 @@ export {
   useUnifiedItinerary,
   type ItineraryItem,
   type ItineraryItemType,
-  type ItineraryItemStatus,
-  type GroupedTimeline,
 } from './useUnifiedItinerary';
 
 // Re-export existing hooks

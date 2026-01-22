@@ -28,6 +28,18 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.spec.ts", "src/**/*.spec.tsx", "src/**/*.stories.tsx", "src/test", "src/storybook", "supabase/functions"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/**/*.stories.tsx",
+    "src/test",
+    "src/storybook",
+    "supabase/functions",
+    "src/components",
+    "src/hooks",
+    "src/lib"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function UpcomingBoardingPasses() {
     const { timelineItems, isLoading } = useUnifiedItinerary();
-    const motionPreset = useMotionPreset();
+
     const navigate = useNavigate();
 
     // Filter for future events only

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,7 +75,7 @@ export function PrivacySettings() {
 
       // Call the delete-user-account Edge Function
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/delete-user-account`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user-account`,
         {
           method: 'POST',
           headers: {

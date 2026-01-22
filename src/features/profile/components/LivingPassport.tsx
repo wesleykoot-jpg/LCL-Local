@@ -23,7 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function LivingPassport() {
   const { timelineItems, isLoading } = useUnifiedItinerary();
-  const motionPreset = useMotionPreset();
+
   const navigate = useNavigate();
 
   // Filter for past events only

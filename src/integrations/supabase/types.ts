@@ -655,6 +655,8 @@ export type Database = {
           updated_at: string | null
           user_id: string | null
           verified_resident: boolean | null
+          interest_scores: Json | null
+          is_parent_detected: boolean | null
         }
         Insert: {
           avatar_url?: string | null
@@ -672,6 +674,8 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           verified_resident?: boolean | null
+          interest_scores?: Json | null
+          is_parent_detected?: boolean | null
         }
         Update: {
           avatar_url?: string | null
@@ -689,6 +693,8 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           verified_resident?: boolean | null
+          interest_scores?: Json | null
+          is_parent_detected?: boolean | null
         }
         Relationships: []
       }

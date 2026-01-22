@@ -73,7 +73,6 @@ const getMockItems = (): ItineraryItem[] => {
       location: 'Schiphol Airport',
       status: 'tentative',
       originalData: {},
-      originalData: {},
     },
     {
       id: 'mock-invite-1',
@@ -141,6 +140,7 @@ const DEV_SAMPLE_EVENTS = [
     category: 'family',
     image_url: null,
     attendee_count: 12,
+    location: 'Sneek',
     ticket_number: 'TKT-DEV-001',
   },
   {
@@ -152,6 +152,7 @@ const DEV_SAMPLE_EVENTS = [
     category: 'entertainment',
     image_url: null,
     attendee_count: 8,
+    location: 'Adoroble Studio',
     ticket_number: 'TKT-DEV-002',
   },
   {
@@ -163,6 +164,7 @@ const DEV_SAMPLE_EVENTS = [
     category: 'music',
     image_url: null,
     attendee_count: 25,
+    location: 'Leeuwarden',
     ticket_number: 'TKT-DEV-003',
   },
 ];
@@ -170,14 +172,14 @@ const DEV_SAMPLE_EVENTS = [
 export const useUnifiedItinerary = () => {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
-  const { events: calendarEvents } = useGoogleCalendar();
+  const { calendarEvents } = useGoogleCalendar() as any;
 
   // Use profile.id if available, fallback to user.id for dev test users
   const effectiveUserId = profile?.id || user?.id;
-  const isDevMode = !effectiveUserId;
+  // const isDevMode = !effectiveUserId;
 
   // 1. Fetch "My Events" (Joined/Attending)
-  const { data: myEvents, isLoading: isEventsLoading } = useQuery({
+  const { data: myEvents } = useQuery({
     queryKey: queryKeys.profile.myEvents(effectiveUserId || 'dev-user'),
     queryFn: () => effectiveUserId ? eventService.fetchUserEvents(effectiveUserId) : Promise.resolve(DEV_SAMPLE_EVENTS),
     enabled: true, // Always enabled - uses dev data if not authenticated

@@ -10,7 +10,7 @@
  * and serves as the source of truth for intent definitions.
  */
 
-import type { PersonaType } from '@/lib/personaPredictor';
+
 
 /**
  * Base intent metadata structure following Apple App Intents framework
