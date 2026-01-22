@@ -139,6 +139,13 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
         )}
       </div>
       
+      {/* TEMP RCA DEBUG */}
+      <div className="px-4 py-2 bg-red-900/80 text-white text-xs mb-2">
+        <p>Title: {title}</p>
+        <p>Event Count: {events.length}</p>
+        <p>First Event: {events[0]?.title ?? 'NONE'}</p>
+      </div>
+      
       {/* Horizontal scroll */}
       <div 
         ref={scrollRef}

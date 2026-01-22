@@ -75,14 +75,14 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
               strokeWidth={derivedActiveView === 'planning' ? 2.5 : 1.5}
               className={`transition-colors ${
                 derivedActiveView === 'planning' 
-                  ? 'text-brand-primary' 
+                  ? 'text-primary' 
                   : 'text-muted-foreground'
               }`}
             />
             <span 
               className={`text-[10px] font-medium transition-colors ${
                 derivedActiveView === 'planning' 
-                  ? 'text-brand-primary' 
+                  ? 'text-primary' 
                   : 'text-muted-foreground'
               }`}
             >
@@ -109,14 +109,14 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
               strokeWidth={derivedActiveView === 'feed' ? 2.5 : 1.5}
               className={`transition-colors ${
                 derivedActiveView === 'feed' 
-                  ? 'text-brand-primary' 
+                  ? 'text-primary' 
                   : 'text-muted-foreground'
               }`}
             />
             <span 
               className={`text-[10px] font-medium transition-colors ${
                 derivedActiveView === 'feed' 
-                  ? 'text-brand-primary' 
+                  ? 'text-primary' 
                   : 'text-muted-foreground'
               }`}
             >
@@ -143,14 +143,14 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
               strokeWidth={isNowActive ? 2.5 : 1.5}
               className={`transition-colors ${
                 isNowActive 
-                  ? 'text-brand-primary' 
+                  ? 'text-primary' 
                   : 'text-muted-foreground'
               }`}
             />
             <span 
               className={`text-[10px] font-medium transition-colors ${
                 isNowActive 
-                  ? 'text-brand-primary' 
+                  ? 'text-primary' 
                   : 'text-muted-foreground'
               }`}
             >
@@ -177,7 +177,7 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
               strokeWidth={derivedActiveView === 'profile' ? 2.5 : 1.5}
               className={`transition-colors ${
                 derivedActiveView === 'profile' 
-                  ? 'text-brand-primary' 
+                  ? 'text-primary' 
                   : 'text-muted-foreground'
               }`}
             />

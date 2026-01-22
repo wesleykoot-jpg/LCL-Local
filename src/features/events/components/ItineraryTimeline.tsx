@@ -237,10 +237,10 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
             {/* Sticky Date Header - Solid Surface (LCL Core 2026) */}
             <div className="sticky top-[60px] z-20 py-4 mb-6 bg-surface-primary shadow-apple-sm border-b border-border -mx-4 px-6">
               <h3 className="text-base font-bold text-text-primary tracking-tight flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-brand-primary" />
+                <Calendar className="w-4 h-4 text-primary" />
                 {dateHeader}
                 {isToday && (
-                  <span className="ml-2 text-[11px] px-2.5 py-1 bg-brand-primary text-white rounded-full font-semibold shadow-apple-sm">
+                  <span className="ml-2 text-[11px] px-2.5 py-1 bg-primary text-white rounded-full font-semibold shadow-apple-sm">
                     Today
                   </span>
                 )}
@@ -258,7 +258,7 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                     {group.type === 'parent_child' && group.showParent && group.parent && (
                       <div className="relative">
                         {/* Activity Thread Line - Connects parent to children - LCL Core 2026 */}
-                        <div className="absolute left-[76px] top-0 bottom-0 w-[3px] bg-gradient-to-b from-brand-primary/70 via-brand-primary/50 to-brand-primary/70 rounded-full" />
+                        <div className="absolute left-[76px] top-0 bottom-0 w-[3px] bg-gradient-to-b from-primary/70 via-primary/50 to-primary/70 rounded-full" />
                       </div>
                     )}
                     
@@ -311,7 +311,7 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                   item.type === 'LCL_EVENT' 
                                     ? isChildEvent
                                       ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" // Child event (fork)
-                                      : "bg-brand-primary shadow-[0_0_8px_rgba(99,102,241,0.5)]" // Parent or standalone - Social Indigo
+                                      : "bg-primary shadow-[0_0_8px_rgba(99,102,241,0.5)]" // Parent or standalone - Social Indigo
                                     : "bg-muted-foreground/40" // Google Calendar
                                 )} />
                                 
@@ -320,7 +320,7 @@ export const ItineraryTimeline = ({ groupedItems }: { groupedItems: Record<strin
                                   <div className={cn(
                                     "w-[3px] flex-1 mt-2 min-h-[40px] rounded-full",
                                     group.type === 'parent_child' && group.showParent
-                                      ? "bg-brand-primary/50" // Emphasized line for parent-child - Social Air v5.0
+                                      ? "bg-primary/50" // Emphasized line for parent-child - Social Air v5.0
                                       : "bg-muted-foreground/20"
                                   )} />
                                 )}
