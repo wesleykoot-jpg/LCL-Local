@@ -300,17 +300,6 @@ const Discovery = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {/* RCA DEBUG - Parent Level */}
-                    <div className="mx-4 p-3 bg-yellow-900 text-yellow-100 text-xs font-mono rounded">
-                      <p><strong>RCA DEBUG (Discovery.tsx)</strong></p>
-                      <p>Mode: {mode}</p>
-                      <p>railsLoading: {String(railsLoading)}</p>
-                      <p>discoveryLayout: {discoveryLayout ? 'DEFINED' : 'UNDEFINED'}</p>
-                      <p>sections: {discoveryLayout?.sections ? String(discoveryLayout.sections.length) : 'MISSING'}</p>
-                      {discoveryLayout?.sections?.map((s, i) => (
-                        <p key={i}>- Section {i}: "{s.title}" ({s.items?.length ?? 0} items)</p>
-                      ))}
-                    </div>
                     {discoveryLayout?.sections.map((section, index) => (
                       <div
                          key={`${section.type}-${section.title}`}

@@ -118,16 +118,7 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
     onSeeAll?.();
   }, [onSeeAll]);
 
-  // TEMP RCA DEBUG - Always show to trace data flow
-  if (events.length === 0) {
-    return (
-      <div className="px-4 py-2 bg-red-900/80 text-white text-xs mb-2">
-        <p>⚠️ Carousel Empty!</p>
-        <p>Title: {title}</p>
-        <p>Event Count: {events.length}</p>
-      </div>
-    );
-  }
+  if (events.length === 0) return null;
 
   return (
     <div className="space-y-3">
@@ -146,13 +137,6 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
             <ChevronRight size={16} />
           </button>
         )}
-      </div>
-      
-      {/* TEMP RCA DEBUG */}
-      <div className="px-4 py-2 bg-red-900/80 text-white text-xs mb-2">
-        <p>Title: {title}</p>
-        <p>Event Count: {events.length}</p>
-        <p>First Event: {events[0]?.title ?? 'NONE'}</p>
       </div>
       
       {/* Horizontal scroll */}
