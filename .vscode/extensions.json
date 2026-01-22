@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-ossdata.vscode-postgresql",
+    "supabase.supabase-edge-functions",
+    "bradlc.vscode-tailwindcss",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense",
+    "dsznajder.es7-react-js-snippets"
+  ]
+}
