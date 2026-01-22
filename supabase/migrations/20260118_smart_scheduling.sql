@@ -59,11 +59,13 @@ CREATE INDEX IF NOT EXISTS idx_proposals_event_status ON proposals(event_id, sta
 ALTER TABLE proposals ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Anyone can read proposals (for discovering meetups)
+DROP POLICY IF EXISTS "Proposals are viewable by everyone" ON proposals;
 CREATE POLICY "Proposals are viewable by everyone"
   ON proposals FOR SELECT
   USING (true);
 
 -- Policy: Users can create proposals if they are authenticated
+DROP POLICY IF EXISTS "Users can create proposals" ON proposals;
 CREATE POLICY "Users can create proposals"
   ON proposals FOR INSERT
   WITH CHECK (
@@ -72,6 +74,7 @@ CREATE POLICY "Users can create proposals"
   );
 
 -- Policy: Users can update their own proposals
+DROP POLICY IF EXISTS "Users can update own proposals" ON proposals;
 CREATE POLICY "Users can update own proposals"
   ON proposals FOR UPDATE
   USING (
@@ -82,6 +85,7 @@ CREATE POLICY "Users can update own proposals"
   );
 
 -- Policy: Users can delete their own proposals
+DROP POLICY IF EXISTS "Users can delete own proposals" ON proposals;
 CREATE POLICY "Users can delete own proposals"
   ON proposals FOR DELETE
   USING (
