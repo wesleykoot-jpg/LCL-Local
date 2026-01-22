@@ -34,9 +34,11 @@ async function cleanupBadData() {
     const updatedSources = await sql`
       UPDATE scraper_sources 
       SET 
+        next_scrape_at = NOW(),
         last_scraped_at = NULL, 
         last_success = NULL,
         consecutive_failures = 0,
+        consecutive_errors = 0,
         last_error = NULL
       WHERE enabled = true
     `;
