@@ -39,7 +39,8 @@ async function cleanupBadData() {
         last_success = NULL,
         consecutive_failures = 0,
         consecutive_errors = 0,
-        last_error = NULL
+        last_error = NULL,
+        last_payload_hash = NULL
       WHERE enabled = true
     `;
     console.log(

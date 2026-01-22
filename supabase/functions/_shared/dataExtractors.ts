@@ -1181,7 +1181,7 @@ export async function runExtractionWaterfall(
             )[]
           ).filter((s) => s !== ctx.preferredMethod),
         ]
-      : ["hydration", "json_ld", "microdata", "feed", "dom"];
+      : ["hydration", "json_ld", "microdata", "feed", "iframe", "dom"];
 
   let winningStrategy: ExtractionStrategy | "microdata" | null = null;
   let allEvents: RawEventCard[] = [];
