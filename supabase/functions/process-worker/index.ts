@@ -245,14 +245,11 @@ async function processRow(
     // 2. THE POLISHER (Enrichment)
     const { geocodeLocation, optimizeImage } = await import("../_shared/enrichment.ts");
     
-    // Geocoding (non-blocking - quality over speed)
-    const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN"); 
-    
-    if (mapboxToken && normalized.venue_name && (!normalized.venue_address || normalized.venue_address.length < 5)) {
+    if (normalized.venue_name && (!normalized.venue_address || normalized.venue_address.length < 5)) {
         try {
             const query = normalized.venue_address || normalized.venue_name; 
             if (query) {
-                 const geo = await geocodeLocation(query, mapboxToken);
+                 const geo = await geocodeLocation(query);
                  if (geo) {
                      (normalized as any)._geo = geo;
                  }

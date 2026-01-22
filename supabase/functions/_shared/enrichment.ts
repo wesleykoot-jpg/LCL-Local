@@ -1,37 +1,39 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Geocodes an address string to {lat, lng} using Mapbox (preferred) or Google Maps.
+ * Geocodes an address string to {lat, lng} using Nominatim (OpenStreetMap).
  * Returns null if failing.
  */
 export async function geocodeLocation(
-  address: string,
-  mapboxToken?: string
+  address: string
 ): Promise<{ lat: number; lng: number } | null> {
   if (!address || address.length < 5) return null;
-  if (!mapboxToken) {
-    console.warn("Geocoding skipped: No Mapbox token provided");
-    return null;
-  }
 
   try {
-    const encodedAddress = encodeURIComponent(address);
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${mapboxToken}&limit=1&types=address,poi`;
+    const encodedAddress = encodeURIComponent(address + ", Netherlands"); // Bias to NL
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1`;
     
-    const res = await fetch(url);
-    if (!res.ok) {
-        console.warn(`Geocoding failed: ${res.statusText}`);
-        return null;
-    }
-
-    const data = await res.json();
-    if (data.features && data.features.length > 0) {
-      const [lng, lat] = data.features[0].center;
-      return { lat, lng };
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'LCL-Local-Scraper/1.0 (https://lcl.social)' // Required by Nominatim ToS
+      }
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          console.log(`Geocoded "${address}" to (${lat}, ${lng}) via Nominatim`);
+          return { lat, lng };
+        }
+      }
     }
   } catch (err) {
-    console.error("Geocoding error:", err);
+    console.error("Geocoding failed:", err);
   }
+
   return null;
 }
 
