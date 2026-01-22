@@ -1,25 +1,25 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FloatingNav, LoadingSkeleton, ErrorBoundary } from '@/shared/components';
-import { useAuth } from '@/features/auth';
-import { useLocation } from '@/features/location';
-import { useEventsQuery } from './hooks/useEventsQuery';
-import { useJoinEvent, type EventWithAttendees } from './hooks/hooks';
-import { FeaturedEventHero } from './components/FeaturedEventHero';
-import { SolidSearchBar } from './components/SolidSearchBar';
-import { DeepDiveView } from './components/DeepDiveView';
-import { CategoryPills } from './components/CategoryPills';
+import { FloatingNav, LoadingSkeleton, ErrorBoundary } from '@/shared/components/index.ts';
+import { useAuth } from '@/features/auth/index.ts';
+import { useLocation } from '@/features/location/index.ts';
+import { useEventsQuery } from './hooks/useEventsQuery.ts';
+import { useJoinEvent, type EventWithAttendees } from './hooks/hooks.ts';
+import { FeaturedEventHero } from './components/FeaturedEventHero.tsx';
+import { SolidSearchBar } from './components/SolidSearchBar.tsx';
+import { DeepDiveView } from './components/DeepDiveView.tsx';
+import { CategoryPills } from './components/CategoryPills.tsx';
 import { MapPin, Navigation, ChevronDown, Plus } from 'lucide-react';
-import { useDiscoveryRails } from './hooks/useDiscoveryRails';
-import { IntentPills } from './components/IntentPills';
-import { MissionModeDrawer } from './components/MissionModeDrawer';
-import { DynamicRailRenderer } from './components/DynamicRailRenderer';
-import type { MissionIntent } from './types/discoveryTypes';
-import { hapticImpact } from '@/shared/lib/haptics';
+import { useDiscoveryRails } from './hooks/useDiscoveryRails.ts';
+import { IntentPills } from './components/IntentPills.tsx';
+import { MissionModeDrawer } from './components/MissionModeDrawer.tsx';
+import { DynamicRailRenderer } from './components/DynamicRailRenderer.tsx';
+import type { MissionIntent } from './types/discoveryTypes.ts';
+import { hapticImpact } from '@/shared/lib/haptics.ts';
 
-const CreateEventModal = lazy(() => import('./components/CreateEventModal').then(m => ({ default: m.CreateEventModal })));
-const EventDetailModal = lazy(() => import('./components/EventDetailModal'));
+const CreateEventModal = lazy(() => import('./components/CreateEventModal.tsx').then(m => ({ default: m.CreateEventModal })));
+const EventDetailModal = lazy(() => import('./components/EventDetailModal.tsx'));
 
 // Shared motion animation config for rails
 const railMotionConfig = {
@@ -206,6 +206,7 @@ const Discovery = () => {
           <div className="px-6 py-3 flex items-center justify-between">
             <button
               onClick={handleLocationClick}
+              type="button"
               className="flex items-center gap-2 hover:bg-muted rounded-button py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
               aria-label="Change location"
             >
@@ -320,10 +321,11 @@ const Discovery = () => {
                       </motion.div>
                     ))}
                     
-                    {/* Fallback/Backup: If no sections returned (e.g., empty DB or error), show manual logic */}
-                    {(!discoveryLayout?.sections || discoveryLayout.sections.length === 0) && (
+                    {/* Fallback/Backup: If no sections returned and not loading, show message */}
+                    {!railsLoading && (!discoveryLayout?.sections || discoveryLayout.sections.length === 0) && (
                       <div className="px-6 py-8 text-center text-muted-foreground">
                         <p>No recommendations available right now.</p>
+                        <p className="text-sm mt-2 opacity-70 px-4">Try checking your internet connection or exploring by category below.</p>
                       </div>
                     )}
                   </div>

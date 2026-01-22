@@ -8,8 +8,8 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import type { DiscoveryLayout } from '../types/discoveryTypes';
-import { fetchDiscoveryRails } from '../api/eventService';
+import type { DiscoveryLayout } from '../types/discoveryTypes.ts';
+import { fetchDiscoveryRails } from '../api/eventService.ts';
 
 interface UseDiscoveryRailsOptions {
   userId?: string;
@@ -27,12 +27,10 @@ export function useDiscoveryRails({
   return useQuery<DiscoveryLayout>({
     queryKey: ['discovery-rails', userId, userLocation, radiusKm],
     queryFn: () => {
-      if (!userId || !userLocation) {
-        throw new Error('User ID and location are required for discovery rails');
-      }
-      return fetchDiscoveryRails(userId, userLocation, radiusKm);
+      // Backend handles null location by showing non-geospatial recommendations
+      return fetchDiscoveryRails(userId || 'anonymous', userLocation || { lat: 0, lng: 0 }, radiusKm);
     },
-    enabled: enabled && !!userId && !!userLocation,
+    enabled: enabled && (!!userId || !!userLocation),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: true,

@@ -64,8 +64,8 @@ BEGIN
   ) INTO happening_now_events
   FROM public.events e
   WHERE 
-    e.event_date >= today_date
-    AND e.event_date <= today_date + INTERVAL '6 hours'
+    e.event_date >= now_timestamp
+    AND e.event_date <= now_timestamp + INTERVAL '6 hours'
     AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
   ORDER BY 
     CASE WHEN user_point IS NULL THEN 0 ELSE ST_Distance(e.location, user_point) END ASC
