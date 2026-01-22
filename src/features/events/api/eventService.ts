@@ -80,21 +80,41 @@ export async function fetchDiscoveryRails(
   userLocation: { lat: number; lng: number },
   radiusKm: number = 25
 ): Promise<DiscoveryLayout> {
+  const { handleSupabaseError } = await import('@/lib/errorHandler');
+  const { queryWithTimeout, QUERY_TIMEOUTS } = await import('@/lib/queryTimeout');
+  const { retrySupabaseQuery } = await import('@/lib/retryWithBackoff');
+  const { monitorQuery } = await import('@/lib/queryMonitor');
+
   try {
-    const { data, error } = await supabase.rpc('get_discovery_rails', {
-      p_user_id: userId,
-      p_user_lat: userLocation.lat,
-      p_user_long: userLocation.lng,
-      p_radius_km: radiusKm,
-      p_limit_per_rail: 10,
+    return await monitorQuery(
+      'fetchDiscoveryRails',
+      async () => {
+        return await retrySupabaseQuery(async () => {
+          return await queryWithTimeout(async () => {
+            const { data, error } = await supabase.rpc('get_discovery_rails', {
+              p_user_id: userId,
+              p_user_lat: userLocation.lat,
+              p_user_long: userLocation.lng,
+              p_radius_km: radiusKm,
+              p_limit_per_rail: 10,
+            });
+
+            if (error) throw error;
+            if (!data) throw new Error('No discovery rails data returned');
+
+            return data as DiscoveryLayout;
+          }, QUERY_TIMEOUTS.COMPLEX);
+        });
+      },
+      2000 // 2s threshold for slow query warning
+    );
+  } catch (error) {
+    handleSupabaseError(error, {
+      operation: 'fetchDiscoveryRails',
+      component: 'eventService',
+      metadata: { userId, radiusKm, userLocation },
     });
 
-    if (error) throw error;
-    if (!data) throw new Error('No discovery rails data returned');
-
-    return data as DiscoveryLayout;
-  } catch (error) {
-    console.error('Error fetching discovery rails:', error);
     // Return empty layout on error
     return { sections: [] };
   }
@@ -141,85 +161,34 @@ export async function fetchMissionModeEvents(
  */
 export async function joinEvent({ eventId, profileId, status = 'going' }: JoinEventParams): Promise<JoinEventResult> {
   try {
-    // Check if event has capacity limit and current attendance
-    const { data: event, error: eventError } = await supabase
-      .from('events')
-      .select('max_attendees')
-      .eq('id', eventId)
-      .maybeSingle();
+    // Use atomic RPC as PRIMARY method to prevent race conditions
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
+      p_event_id: eventId,
+      p_profile_id: profileId,
+      p_status: status,
+    });
 
-    if (eventError) throw eventError;
-    if (!event) throw new Error('Event not found');
+    if (rpcError) throw rpcError;
 
-    let finalStatus = status;
-    let wasWaitlisted = false;
-
-    // If event has capacity limit and user wants to go, check if full
-    if (event.max_attendees && status === 'going') {
-      const { count, error: countError } = await supabase
-        .from('event_attendees')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'going');
-
-      if (countError) throw countError;
-
-      // If at capacity, automatically add to waitlist instead
-      if (count && count >= event.max_attendees) {
-        finalStatus = 'waitlist';
-        wasWaitlisted = true;
-      }
+    // Handle RPC responses
+    if (rpcResult?.status === 'exists') {
+      return { data: null, rpcResult, error: new Error('already_joined'), waitlisted: false };
     }
 
-    const attendee: EventAttendee = {
-      event_id: eventId,
-      profile_id: profileId,
-      status: finalStatus,
-      joined_at: new Date().toISOString(),
-    };
+    if (rpcResult?.status === 'full' && status === 'going') {
+      return { data: null, rpcResult, error: new Error('event_full'), waitlisted: true };
+    }
 
-    const { data, error } = await supabase
-      .from('event_attendees')
-      .insert(attendee)
-      .select()
-      .maybeSingle();
+    // Success path for RPC
+    if (rpcResult?.status === 'ok') {
+      return { data: null, rpcResult, error: null, waitlisted: false };
+    }
 
-    if (error) throw error;
-    if (!data) throw new Error('Failed to create attendance record');
-
-    return { data, error: null, waitlisted: wasWaitlisted };
+    // Unexpected RPC status
+    return { data: null, rpcResult, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
   } catch (error) {
     console.error('Error joining event:', error);
-
-    // Fallback to atomic RPC to handle stricter RLS or race conditions in UAT
-    try {
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('join_event_atomic', {
-        p_event_id: eventId,
-        p_profile_id: profileId,
-        p_status: status,
-      });
-
-      if (rpcError) throw rpcError;
-
-      if (rpcResult?.status === 'exists') {
-        return { data: null, error: new Error('already_joined'), waitlisted: false };
-      }
-
-      if (rpcResult?.status === 'full' && status === 'going') {
-        return { data: null, rpcResult, error: new Error('event_full'), waitlisted: true };
-      }
-
-      // Success path for RPC
-      if (rpcResult?.status === 'ok') {
-        return { data: null, rpcResult, error: null, waitlisted: false };
-      }
-
-      // Unexpected RPC status
-      return { data: null, rpcResult, error: new Error(rpcResult?.message || 'Unable to join event'), waitlisted: false };
-    } catch (fallbackError) {
-      console.error('Fallback RPC join failed:', fallbackError);
-      return { data: null, error: fallbackError as Error, waitlisted: false };
-    }
+    return { data: null, error: error as Error, waitlisted: false };
   }
 }
 

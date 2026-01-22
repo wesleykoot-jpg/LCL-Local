@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # LCL Project Knowledge Base & Rules
 
 > **Agent Memory**: This document contains the core architectural, workflow, and
@@ -95,10 +99,8 @@ Beleef, Visit, Uit).
 
 The project follows a strict AI-assisted workflow:
 
-- **Branching**: MANDATORY `feature/<description>` branches. Direct commits to
-  `main` are PROHIBITED.
-- **Commits**: Must follow **Conventional Commits** (e.g., `feat:`, `fix:`,
-  `chore:`).
+- **Branching**:  Direct commits to
+  `main`.
 - **PR Automation**:
   1. Generate "Metric-Driven Summary".
   2. Identify risks/testing owners.

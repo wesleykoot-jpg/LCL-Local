@@ -34,42 +34,22 @@ interface StagingRow {
   status: string;
 }
 
-// Helper: Claim pending rows
+// Helper: Claim pending rows atomically using RPC
 async function claimPendingRows(supabase: SupabaseClient): Promise<StagingRow[]> {
-  // Strategy: Fetch IDs first, then lock them by updating status to 'processing'
-  // Note: Race condition exists but minimized for low concurrency.
-  // Ideally, use an RPC `claim_staging_rows` if available.
-  
-  const { data: candidates, error } = await supabase
-    .from("raw_event_staging")
-    .select("id")
-    .eq("status", "pending")
-    .limit(BATCH_SIZE)
-    .order("created_at", { ascending: true }); // process oldest first
+  const { data, error } = await supabase.rpc('claim_staging_rows', {
+    p_batch_size: BATCH_SIZE
+  });
 
-  if (error || !candidates || candidates.length === 0) return [];
-
-  const ids = candidates.map(c => c.id);
-  
-  // Lock them (trigger will set processing_started_at automatically)
-  const { data: locked, error: lockError } = await supabase
-    .from("raw_event_staging")
-    .update({ 
-      status: "processing",
-      updated_at: new Date().toISOString()
-    })
-    .in("id", ids)
-    .eq("status", "pending") // Ensure they are still pending
-    .select("*"); // Select all fields including payloads
-
-  if (lockError) {
-    console.error("Failed to lock rows:", lockError);
+  if (error) {
+    console.error("Failed to claim rows:", error);
     return [];
   }
 
+  if (!data || data.length === 0) return [];
+
   // Type assertion and schema compatibility layer
   // Handle both old schema (raw_payload JSONB) and new schema (raw_html TEXT)
-  return (locked || []).map((row: any) => {
+  return (data || []).map((row: any) => {
       let payload: RawEventCard;
       
       // Check if we have the old schema (raw_payload as JSONB object)
