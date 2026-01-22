@@ -1094,7 +1094,9 @@ export function extractFromDom(
 
         // Extract description
         const description = $el
-          .find("p, .description, .excerpt, [class*='description']")
+          .find(
+            "p, .description, .excerpt, .intro, .summary, .content, .text-content, .event-text, .long-description, [class*='description'], [class*='content']",
+          )
           .first()
           .text()
           .trim();
