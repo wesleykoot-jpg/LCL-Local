@@ -153,7 +153,7 @@ BEGIN
       AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
       AND 1 - (e.embedding <=> ure.embedding) > 0.7  -- Similarity threshold
     GROUP BY e.id, e.title, e.description, e.category, e.event_type, e.venue_name, 
-             e.event_date, e.event_time, e.image_url, e.location, user_point
+             e.event_date, e.event_time, e.image_url, e.location
     ORDER BY e.id, similarity DESC
   )
   SELECT json_agg(
@@ -212,7 +212,7 @@ BEGIN
       AND e.event_date >= today_date
       AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
     GROUP BY e.id, e.title, e.description, e.category, e.event_type, e.venue_name,
-             e.event_date, e.event_time, e.image_url, e.location, user_point
+             e.event_date, e.event_time, e.image_url, e.location
     ORDER BY friend_count DESC, e.event_date ASC
     LIMIT p_limit_per_rail
   )
