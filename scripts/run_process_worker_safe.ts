@@ -146,6 +146,50 @@ async function processRow(row: any) {
 
     // Process found events
     for (const evt of waterfallResult.events) {
+      let finalDescription = evt.description;
+
+      // DEEP EXTRACTION FALLBACK: Missing or very short description?
+      if (!finalDescription || finalDescription.length < 50) {
+        if (evt.detailUrl) {
+          console.log(
+            `  🔍 Empty description. Trying Deep Extraction: ${evt.detailUrl}`,
+          );
+          try {
+            const res = await fetch(evt.detailUrl);
+            if (res.ok) {
+              const detailHtml = await res.text();
+              const deepResult = await runExtractionWaterfall(detailHtml, {
+                baseUrl: evt.detailUrl,
+                sourceName: "DeepExtractor",
+                preferredMethod: "auto",
+                feedDiscovery: false,
+              });
+
+              if (deepResult.totalEvents > 0) {
+                // Look for best match or just take first event's description
+                const bestMatch =
+                  deepResult.events.find(
+                    (e) =>
+                      e.title.includes(evt.title) ||
+                      evt.title.includes(e.title),
+                  ) || deepResult.events[0];
+                if (
+                  bestMatch.description &&
+                  bestMatch.description.length > (finalDescription?.length || 0)
+                ) {
+                  console.log(
+                    `  ✨ Deep Extraction Success! Captured ${bestMatch.description.length} chars.`,
+                  );
+                  finalDescription = bestMatch.description;
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`  ❌ Deep Extraction failed for ${evt.detailUrl}`);
+          }
+        }
+      }
+
       // Validate Date
       let storageDate;
       try {
@@ -160,7 +204,7 @@ async function processRow(row: any) {
       const normalized = {
         title: evt.title,
         event_date: storageDate.dateOnly || evt.date,
-        description: evt.description,
+        description: finalDescription,
         image_url: evt.imageUrl,
         venue_name: evt.location,
         detail_url: evt.detailUrl,
