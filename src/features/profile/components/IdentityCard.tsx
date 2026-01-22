@@ -39,7 +39,7 @@ export function IdentityCard() {
   const navigate = useNavigate();
   const motionPreset = useMotionPreset();
   const [isPressed, setIsPressed] = useState(false);
-  const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Enable subtle device tilt for 3D effect (optional enhancement)
   const tilt = useDeviceTilt({

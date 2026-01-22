@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set a timeout to ensure loading state is always resolved
     // This prevents infinite loading if Supabase connection hangs
-    let loadingTimeout: NodeJS.Timeout | null = setTimeout(() => {
+    let loadingTimeout: ReturnType<typeof setTimeout> | null = setTimeout(() => {
       console.warn('[Auth] Session check timeout - continuing without authentication');
       setLoading(false);
       loadingTimeout = null;

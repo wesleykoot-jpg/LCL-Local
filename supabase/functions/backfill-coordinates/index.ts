@@ -41,18 +41,33 @@ export const handler = async (req: Request): Promise<Response> => {
     const { batchSize = 10 } = await req.json().catch(() => ({ batchSize: 10 }));
     
     // Find events with missing coordinates
-    const { data: events, error: fetchError } = await supabase
+    // We'll fetch all and filter in memory since PostGIS queries are tricky with Supabase client
+    const { data: allEvents, error: fetchError } = await supabase
       .from("events")
-      .select("id, venue_name, title")
-      .or("location.is.null,location.eq.POINT(0 0)")
-      .limit(batchSize);
+      .select("id, venue_name, title, location")
+      .limit(batchSize * 3); // Fetch extra to account for filtering
     
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error("Fetch error:", fetchError);
+      throw new Error(`Failed to fetch events: ${fetchError.message}`);
+    }
+    
+    // Filter events that need geocoding (location is null or POINT(0 0) in EWKB hex)
+    const events = (allEvents || []).filter(event => {
+      if (!event.location) return true;
+      const locStr = String(event.location);
+      // EWKB Hex for POINT(0 0) with SRID 4326
+      return locStr === '0101000020E610000000000000000000000000000000000000';
+    }).slice(0, batchSize);
+    
     if (!events || events.length === 0) {
       return new Response(JSON.stringify({ 
         message: "No events need geocoding",
         processed: 0 
-      }), { status: 200 });
+      }), { 
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
     let successCount = 0;

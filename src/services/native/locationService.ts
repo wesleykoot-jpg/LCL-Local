@@ -13,9 +13,6 @@ const AMSTERDAM_COORDINATES = {
 };
 
 const isTestEnvironment = () => {
-  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
-    return true;
-  }
   return typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
 };
 

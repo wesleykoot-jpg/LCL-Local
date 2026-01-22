@@ -1,71 +1,215 @@
-/* URL IMPORTS (SUCH AS FONT IMPORTS) SHOULD BE KEPT ABOVE TAILWIND IMPORTS - DO NOT DELETE THIS COMMENT */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
 
-/* PLEASE NOTE: THESE TAILWIND IMPORTS SHOULD NEVER BE DELETED - DO NOT DELETE THIS COMMENT */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  /* v5.0 Social Air Design System - Liquid Solid */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
 
-@layer utilities {
-  /* Hide scrollbar for horizontal scroll containers */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* Brand Identity */
+  --color-brand-primary: #6366f1;
+  --color-brand-secondary: #4f46e5;
+
+  /* Semantic Roles */
+  --color-action: #6366f1;
+  --color-action-foreground: #ffffff;
+
+  /* Neutrals */
+  --color-surface-base: #ffffff;
+  --color-surface-card: #ffffff;
+  --color-surface-subtle: #f9fafb;
+  --color-surface-overlay: rgba(0, 0, 0, 0.4);
+
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+
+  --color-border: #e5e7eb;
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* Sidebar */
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Border Radius */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-2xl: 1rem;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
+  --radius-card: 20px;
+  --radius-button: 12px;
+  --radius-pill: 9999px;
+  --radius-input: 12px;
+
+  /* Shadows */
+  --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.08);
+  --shadow-card-active: 0 2px 4px rgba(0, 0, 0, 0.18);
+  --shadow-floating: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-bottom-nav: 0 -4px 20px rgba(0, 0, 0, 0.05);
+
+  /* Legacy Shadows */
+  --shadow-card-elevated: 0 6px 16px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-nav: 0 -4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-up-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
+
+  /* Font Families */
+  --font-sans: "Inter", "Circular", "system-ui", "sans-serif";
+
+  /* Spacing */
+  --spacing-11: 2.75rem;
+  --spacing-13: 3.25rem;
+  --spacing-15: 3.75rem;
+  --spacing-18: 4.5rem;
+  --spacing-touch: 48px;
+
+  /* Keyframes */
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
   }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
   }
+  @keyframes liquid-pulse {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.02);
+    }
+  }
+  @keyframes proximity-glow {
+    0% {
+      box-shadow: 0 0 0 0 rgba(var(--primary), 0.4);
+    }
+    100% {
+      box-shadow: 0 0 12px 4px rgba(var(--primary), 0.6);
+    }
+  }
+  @keyframes refraction-glide {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  @keyframes blob {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(20px, -20px) scale(1.1);
+    }
+    50% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+    75% {
+      transform: translate(20px, 20px) scale(1.05);
+    }
+  }
+
+  /* Animations */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-liquid-pulse: liquid-pulse 8s ease-in-out infinite;
+  --animate-proximity-glow: proximity-glow 2s ease-in-out alternate infinite;
+  --animate-refraction-glide: refraction-glide 6s ease-in-out infinite;
+  --animate-blob: blob 20s ease-in-out infinite;
 }
-/* DO NOT DELETE THESE TAILWIND IMPORTS, OTHERWISE THE STYLING WILL NOT RENDER AT ALL - DO NOT DELETE THIS COMMENT */
 
 @layer base {
   :root {
     /* v5.0 Social Air Theme */
-    --background: 0 0% 97%;      /* #F7F7F7 */
-    --foreground: 0 0% 13%;      /* #222222 */
-    
-    --card: 0 0% 100%;           /* #FFFFFF */
+    --background: 0 0% 97%; /* #F7F7F7 */
+    --foreground: 0 0% 13%; /* #222222 */
+
+    --card: 0 0% 100%; /* #FFFFFF */
     --card-foreground: 0 0% 13%;
-    
-    --primary: 239 84% 67%;      /* #6366F1 Social Indigo */
+
+    --primary: 239 84% 67%; /* #6366F1 Social Indigo */
     --primary-foreground: 0 0% 100%;
-    
+
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 13%;
-    
+
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;  /* #717171 */
-    
+    --muted-foreground: 0 0% 45%; /* #717171 */
+
     --accent: 0 0% 96%;
     --accent-foreground: 0 0% 13%;
-    
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    
-    --border: 0 0% 87%;          /* #DDDDDD */
+
+    --border: 0 0% 87%; /* #DDDDDD */
     --input: 0 0% 87%;
     --ring: 239 84% 67%;
-    --radius: 1.25rem;           /* 20px default */
-    
+    --radius: 1.25rem; /* 20px default */
+
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 13%;
-    
+
     /* v5.0 Action Color - Social Indigo */
     --action: 239 84% 67%;
     --action-foreground: 0 0% 100%;
-    
+
     /* Clean Surface Colors */
     --surface-base: 0 0% 97%;
     --surface-elevated: 0 0% 100%;
     --surface-overlay: 0 0% 95%;
-    
+
     /* Hairline Border for iOS feel */
     --border-hairline: 0 0% 88%;
-    
+
     /* Shadows */
     --shadow-warm: 0 0% 10%;
     --shadow-warm-glow: 239 84% 67%;
-    
+
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 45%;
@@ -98,19 +242,19 @@
     --border: 0 0% 18%;
     --input: 0 0% 18%;
     --ring: 239 84% 70%;
-    
+
     --action: 239 84% 70%;
     --action-foreground: 0 0% 100%;
-    
+
     --surface-base: 0 0% 8%;
     --surface-elevated: 0 0% 12%;
     --surface-overlay: 0 0% 15%;
-    
+
     --border-hairline: 0 0% 20%;
-    
+
     --shadow-warm: 0 0% 5%;
     --shadow-warm-glow: 239 84% 60%;
-    
+
     --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 55%;
     --sidebar-primary: 239 84% 70%;
@@ -124,18 +268,27 @@
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    @apply bg-background text-foreground;
+    font-family:
+      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer utilities {
+  /* Hide scrollbar for horizontal scroll containers */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   /* iOS Safe Area Insets */
   .pt-safe {
     padding-top: env(safe-area-inset-top, 0px);
@@ -163,44 +316,44 @@
   .mb-safe {
     margin-bottom: env(safe-area-inset-bottom, 0px);
   }
-  
+
   /* Minimum touch target (44pt iOS HIG) */
   .min-touch {
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   /* Typography - Neo-Grotesque Bold */
   .font-display {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 800;
     letter-spacing: -0.02em;
   }
-  
+
   .font-headline {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 700;
     letter-spacing: -0.015em;
   }
-  
+
   /* Bento Card Surfaces */
   .bento-card {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: 1.25rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 4px 16px rgba(0, 0, 0, 0.03);
     transition: all 0.2s ease;
   }
-  
+
   .bento-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04), 0 12px 32px rgba(0, 0, 0, 0.06);
     transform: translateY(-2px);
   }
-  
+
   .bento-card:active {
     transform: scale(0.98);
   }
-  
+
   /* Pill Tags */
   .pill-tag {
     display: inline-flex;
@@ -214,7 +367,7 @@
     border-radius: 9999px;
     transition: all 0.15s ease;
   }
-  
+
   /* Action Button - Electric Blue */
   .btn-action {
     background: hsl(var(--action));
@@ -224,38 +377,46 @@
     transition: all 0.15s ease;
     box-shadow: 0 2px 8px hsl(var(--action) / 0.25);
   }
-  
+
   .btn-action:hover {
     box-shadow: 0 4px 16px hsl(var(--action) / 0.35);
     transform: translateY(-1px);
   }
-  
+
   .btn-action:active {
     transform: scale(0.97);
     box-shadow: 0 1px 4px hsl(var(--action) / 0.2);
   }
-  
+
   /* Warm shadows */
   .shadow-bento {
-    box-shadow: 0 1px 3px rgba(180,120,60,0.03), 0 4px 16px rgba(180,120,60,0.05);
+    box-shadow:
+      0 1px 3px rgba(180, 120, 60, 0.03),
+      0 4px 16px rgba(180, 120, 60, 0.05);
   }
-  
+
   .shadow-bento-hover {
-    box-shadow: 0 4px 12px rgba(180,120,60,0.06), 0 12px 32px rgba(180,120,60,0.08);
+    box-shadow:
+      0 4px 12px rgba(180, 120, 60, 0.06),
+      0 12px 32px rgba(180, 120, 60, 0.08);
   }
-  
+
   .shadow-float {
-    box-shadow: 0 8px 32px rgba(180,120,60,0.15);
+    box-shadow: 0 8px 32px rgba(180, 120, 60, 0.15);
   }
-  
+
   .shadow-card-warm {
-    box-shadow: 0 2px 8px rgba(180,120,60,0.06), 0 8px 24px rgba(180,120,60,0.08);
+    box-shadow:
+      0 2px 8px rgba(180, 120, 60, 0.06),
+      0 8px 24px rgba(180, 120, 60, 0.08);
   }
-  
+
   .shadow-card-warm-hover {
-    box-shadow: 0 4px 16px rgba(180,120,60,0.1), 0 16px 40px rgba(180,120,60,0.12);
+    box-shadow:
+      0 4px 16px rgba(180, 120, 60, 0.1),
+      0 16px 40px rgba(180, 120, 60, 0.12);
   }
-  
+
   /* Tab Toggle - Segmented Control */
   .tab-toggle {
     position: relative;
@@ -265,7 +426,7 @@
     border-radius: 9999px;
     gap: 0.125rem;
   }
-  
+
   .tab-toggle-item {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
@@ -274,17 +435,17 @@
     border-radius: 9999px;
     transition: all 0.2s ease;
   }
-  
+
   .tab-toggle-item:hover {
     color: hsl(var(--foreground));
   }
-  
+
   .tab-toggle-item[data-active="true"] {
     background: hsl(var(--foreground));
     color: hsl(var(--background));
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
-  
+
   /* Section Divider */
   .section-divider {
     display: flex;
@@ -292,15 +453,15 @@
     gap: 0.75rem;
     margin: 1.5rem 0;
   }
-  
+
   .section-divider::before,
   .section-divider::after {
-    content: '';
+    content: "";
     flex: 1;
     height: 1px;
     background: hsl(var(--border));
   }
-  
+
   .section-divider-label {
     display: inline-flex;
     align-items: center;

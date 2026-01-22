@@ -36,7 +36,7 @@ const MOCK_STATS = {
 };
 
 interface MorphingHeaderProps {
-  containerRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function MorphingHeader({ containerRef }: MorphingHeaderProps) {
