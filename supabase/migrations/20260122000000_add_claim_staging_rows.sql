@@ -5,10 +5,8 @@ CREATE OR REPLACE FUNCTION public.claim_staging_rows(p_batch_size INTEGER DEFAUL
 RETURNS TABLE(
   id UUID,
   source_id UUID,
-  url TEXT,
-  raw_payload JSONB,
+  source_url TEXT,
   raw_html TEXT,
-  detail_html TEXT,
   status TEXT,
   parsing_method TEXT
 )
@@ -21,9 +19,9 @@ BEGIN
   WITH candidates AS (
     SELECT raw_event_staging.id
     FROM raw_event_staging
-    WHERE status = 'pending'
-      AND (retry_count IS NULL OR retry_count < 3)
-    ORDER BY created_at ASC
+    WHERE raw_event_staging.status = 'pending'
+      AND (raw_event_staging.retry_count IS NULL OR raw_event_staging.retry_count < 3)
+    ORDER BY raw_event_staging.created_at ASC
     LIMIT p_batch_size
     FOR UPDATE SKIP LOCKED  -- Atomic lock prevents race conditions
   )
@@ -32,15 +30,14 @@ BEGIN
     status = 'processing',
     processing_started_at = NOW(),
     updated_at = NOW()
-  WHERE raw_event_staging.id IN (SELECT id FROM candidates)
+  WHERE raw_event_staging.id IN (SELECT candidates.id FROM candidates)
   RETURNING 
     raw_event_staging.id,
     raw_event_staging.source_id,
-    raw_event_staging.url,
-    raw_event_staging.raw_payload,
+    raw_event_staging.source_url,
     raw_event_staging.raw_html,
-    raw_event_staging.detail_html,
-    raw_event_staging.status,
+    raw_event_staging.status::TEXT,
+    raw_event_staging.parsing_method::TEXT;
     raw_event_staging.parsing_method;
 END;
 $$;
