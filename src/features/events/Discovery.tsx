@@ -1,25 +1,35 @@
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { FloatingNav, LoadingSkeleton, ErrorBoundary } from '@/shared/components/index.ts';
-import { useAuth } from '@/features/auth/index.ts';
-import { useLocation } from '@/features/location/index.ts';
-import { useEventsQuery } from './hooks/useEventsQuery.ts';
-import { useJoinEvent, type EventWithAttendees } from './hooks/hooks.ts';
-import { FeaturedEventHero } from './components/FeaturedEventHero.tsx';
-import { SolidSearchBar } from './components/SolidSearchBar.tsx';
-import { DeepDiveView } from './components/DeepDiveView.tsx';
-import { CategoryPills } from './components/CategoryPills.tsx';
-import { MapPin, Navigation, ChevronDown, Plus } from 'lucide-react';
-import { useDiscoveryRails } from './hooks/useDiscoveryRails.ts';
-import { IntentPills } from './components/IntentPills.tsx';
-import { MissionModeDrawer } from './components/MissionModeDrawer.tsx';
-import { DynamicRailRenderer } from './components/DynamicRailRenderer.tsx';
-import type { MissionIntent } from './types/discoveryTypes.ts';
-import { hapticImpact } from '@/shared/lib/haptics.ts';
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  FloatingNav,
+  LoadingSkeleton,
+  ErrorBoundary,
+} from "@/shared/components/index.ts";
+import { useAuth } from "@/features/auth/index.ts";
+import { useLocation } from "@/features/location/index.ts";
+import { useEventsQuery } from "./hooks/useEventsQuery.ts";
+import { useJoinEvent, type EventWithAttendees } from "./hooks/hooks.ts";
+import { FeaturedEventHero } from "./components/FeaturedEventHero.tsx";
+import { SolidSearchBar } from "./components/SolidSearchBar.tsx";
+import { DeepDiveView } from "./components/DeepDiveView.tsx";
+import { CategoryPills } from "./components/CategoryPills.tsx";
+import { MapPin, Navigation, ChevronDown, Plus } from "lucide-react";
+import { useDiscoveryRails } from "./hooks/useDiscoveryRails.ts";
+import { IntentPills } from "./components/IntentPills.tsx";
+import { MissionModeDrawer } from "./components/MissionModeDrawer.tsx";
+import { DynamicRailRenderer } from "./components/DynamicRailRenderer.tsx";
+import type { MissionIntent } from "./types/discoveryTypes.ts";
+import { hapticImpact } from "@/shared/lib/haptics.ts";
 
-const CreateEventModal = lazy(() => import('./components/CreateEventModal.tsx').then(m => ({ default: m.CreateEventModal })));
-const EventDetailModal = lazy(() => import('./components/EventDetailModal.tsx'));
+const CreateEventModal = lazy(() =>
+  import("./components/CreateEventModal.tsx").then((m) => ({
+    default: m.CreateEventModal,
+  })),
+);
+const EventDetailModal = lazy(
+  () => import("./components/EventDetailModal.tsx"),
+);
 
 // Shared motion animation config for rails
 const railMotionConfig = {
@@ -30,7 +40,7 @@ const railMotionConfig = {
 
 /**
  * Discovery Page - Hybrid Intent Model (v5)
- * 
+ *
  * Rails (in order):
  * 1. "Featured Hero" - Top event
  * 2. "What's Happening Now" (Traditional)
@@ -38,7 +48,7 @@ const railMotionConfig = {
  * 4. "Based on your recent joins" (AI)
  * 5. "The Social Pulse" (AI)
  * 6. "Morning/Evening Vibes" (AI Contextual)
- * 
+ *
  * Modes:
  * - Browsing: Hybrid rails + Mission Mode triggers
  * - Searching: Deep Dive vertical list
@@ -47,24 +57,37 @@ const railMotionConfig = {
 const Discovery = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { location: userLocation, preferences: locationPrefs, permissionState, requestPermission } = useLocation();
+  const {
+    location: userLocation,
+    preferences: locationPrefs,
+    permissionState,
+    requestPermission,
+  } = useLocation();
 
   // Mode state
-  const [mode, setMode] = useState<'browsing' | 'searching'>('browsing');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [mode, setMode] = useState<"browsing" | "searching">("browsing");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  
+
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [explicitEvent, setExplicitEvent] = useState<EventWithAttendees | null>(null);
+  const [explicitEvent, setExplicitEvent] = useState<EventWithAttendees | null>(
+    null,
+  );
 
   // Mission Mode state
-  const [missionIntent, setMissionIntent] = useState<MissionIntent | null>(null);
+  const [missionIntent, setMissionIntent] = useState<MissionIntent | null>(
+    null,
+  );
   const [showMissionDrawer, setShowMissionDrawer] = useState(false);
 
   // 1. Fetch all events for Search/DeepDive (Client-side filtering for now)
-  const { events: allEvents, loading, refetch } = useEventsQuery({
+  const {
+    events: allEvents,
+    loading,
+    refetch,
+  } = useEventsQuery({
     currentUserProfileId: profile?.id,
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
@@ -76,14 +99,38 @@ const Discovery = () => {
     userId: profile?.id,
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
-    enabled: mode === 'browsing'
+    enabled: mode === "browsing",
   });
 
-  const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);
+  // Debug logging
+  useMemo(() => {
+    if (import.meta.env.DEV) {
+      console.log("[Discovery] Layout Data:", {
+        sections: discoveryLayout?.sections?.length || 0,
+        isLoading: railsLoading,
+        hasLocation: !!userLocation,
+        mode,
+      });
+      if (discoveryLayout?.sections) {
+        discoveryLayout.sections.forEach((s, i) => {
+          console.log(
+            `[Discovery] Rail ${i}: "${s.title}" (${s.items?.length || 0} items)`,
+          );
+        });
+      }
+    }
+  }, [discoveryLayout, railsLoading, userLocation, mode]);
+
+  const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(
+    profile?.id,
+    refetch,
+  );
 
   // Featured event (top event with image) - Derived from allTokens or could be first rail item
   const featuredEvent = useMemo(() => {
-    return allEvents.find(e => e.image_url || (e.attendee_count && e.attendee_count > 2));
+    return allEvents.find(
+      (e) => e.image_url || (e.attendee_count && e.attendee_count > 2),
+    );
   }, [allEvents]);
 
   // Search filtered events (Combined Search + Category)
@@ -93,17 +140,18 @@ const Discovery = () => {
     // 1. Text Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(e =>
-        e.title.toLowerCase().includes(q) ||
-        e.venue_name?.toLowerCase().includes(q) ||
-        e.category?.toLowerCase().includes(q)
+      filtered = filtered.filter(
+        (e) =>
+          e.title.toLowerCase().includes(q) ||
+          e.venue_name?.toLowerCase().includes(q) ||
+          e.category?.toLowerCase().includes(q),
       );
     }
 
     // 2. Category Filter
     if (selectedCategory) {
-      filtered = filtered.filter(e =>
-        e.category?.toLowerCase() === selectedCategory.toLowerCase()
+      filtered = filtered.filter(
+        (e) => e.category?.toLowerCase() === selectedCategory.toLowerCase(),
       );
     }
 
@@ -120,47 +168,56 @@ const Discovery = () => {
     setExplicitEvent(null);
   }, []);
 
-  const handleJoinEvent = useCallback(async (eventId?: string) => {
-    const id = eventId || selectedEventId;
-    if (!id) return;
-    await joinEvent(id);
-    if (!eventId) setSelectedEventId(null);
-  }, [selectedEventId, joinEvent]);
+  const handleJoinEvent = useCallback(
+    async (eventId?: string) => {
+      const id = eventId || selectedEventId;
+      if (!id) return;
+      await joinEvent(id);
+      if (!eventId) setSelectedEventId(null);
+    },
+    [selectedEventId, joinEvent],
+  );
 
-  const handleNavigate = useCallback((view: 'feed' | 'planning' | 'profile' | 'now') => {
-    if (view === 'feed') navigate('/');
-    else if (view === 'profile') navigate('/profile');
-    else if (view === 'planning') navigate('/planning');
-    else if (view === 'now') navigate('/now');
-  }, [navigate]);
+  const handleNavigate = useCallback(
+    (view: "feed" | "planning" | "profile" | "now") => {
+      if (view === "feed") navigate("/");
+      else if (view === "profile") navigate("/profile");
+      else if (view === "planning") navigate("/planning");
+      else if (view === "now") navigate("/now");
+    },
+    [navigate],
+  );
 
   const handleLocationClick = useCallback(async () => {
-    if (permissionState !== 'granted') {
+    if (permissionState !== "granted") {
       await requestPermission();
     }
   }, [permissionState, requestPermission]);
 
   const handleSearchFocus = useCallback(() => {
-    setMode('searching');
+    setMode("searching");
   }, []);
 
   const handleSearchCancel = useCallback(() => {
-    setMode('browsing');
-    setSearchQuery('');
+    setMode("browsing");
+    setSearchQuery("");
     setSelectedCategory(null);
   }, []);
 
-  const handleCategorySelect = useCallback((category: string | null) => {
-    setSelectedCategory(category);
-    // Auto-switch to searching mode if a category is selected and we are browsing
-    if (category && mode === 'browsing') {
-      setMode('searching');
-    }
-    // If deselecting and no search query, go back to browsing
-    if (!category && !searchQuery && mode === 'searching') {
-      setMode('browsing');
-    }
-  }, [mode, searchQuery]);
+  const handleCategorySelect = useCallback(
+    (category: string | null) => {
+      setSelectedCategory(category);
+      // Auto-switch to searching mode if a category is selected and we are browsing
+      if (category && mode === "browsing") {
+        setMode("searching");
+      }
+      // If deselecting and no search query, go back to browsing
+      if (!category && !searchQuery && mode === "searching") {
+        setMode("browsing");
+      }
+    },
+    [mode, searchQuery],
+  );
 
   // Mission Mode Handlers
   const handleIntentSelect = useCallback((intent: MissionIntent) => {
@@ -176,20 +233,25 @@ const Discovery = () => {
   const selectedEvent = useMemo(() => {
     if (explicitEvent) return explicitEvent;
     if (!selectedEventId) return null;
-    return allEvents.find(e => e.id === selectedEventId) || null;
+    return allEvents.find((e) => e.id === selectedEventId) || null;
   }, [selectedEventId, allEvents, explicitEvent]);
 
   const hasJoinedFeatured = useMemo(() => {
     if (!featuredEvent || !profile?.id) return false;
-    return featuredEvent.attendees?.some(a => a.profile?.id === profile.id) || false;
+    return (
+      featuredEvent.attendees?.some((a) => a.profile?.id === profile.id) ||
+      false
+    );
   }, [featuredEvent, profile?.id]);
 
   // Get location display text
   const locationText = useMemo(() => {
-    if (locationPrefs.useGPS && permissionState === 'granted') {
-      return 'Current location';
+    if (locationPrefs.useGPS && permissionState === "granted") {
+      return "Current location";
     }
-    return locationPrefs.manualZone || profile?.location_city || 'Select location';
+    return (
+      locationPrefs.manualZone || profile?.location_city || "Select location"
+    );
   }, [locationPrefs, permissionState, profile?.location_city]);
 
   return (
@@ -210,7 +272,7 @@ const Discovery = () => {
               className="flex items-center gap-2 hover:bg-muted rounded-button py-2 px-3 -ml-3 min-h-[44px] min-w-[44px] transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
               aria-label="Change location"
             >
-              {permissionState === 'granted' && locationPrefs.useGPS ? (
+              {permissionState === "granted" && locationPrefs.useGPS ? (
                 <Navigation size={18} className="text-primary" />
               ) : (
                 <MapPin size={18} className="text-primary" />
@@ -236,15 +298,15 @@ const Discovery = () => {
 
           {/* Intent Pills - Only visible in browsing mode */}
           <AnimatePresence>
-            {mode === 'browsing' && (
+            {mode === "browsing" && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
+                animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
                 <div className="pb-3 pt-1">
-                  <IntentPills 
+                  <IntentPills
                     onIntentSelect={handleIntentSelect}
                     selectedIntent={missionIntent}
                   />
@@ -254,7 +316,7 @@ const Discovery = () => {
           </AnimatePresence>
 
           {/* Category Pills (New v5.0) */}
-           <div className="pb-3 border-t border-border/50 pt-2">
+          <div className="pb-3 border-t border-border/50 pt-2">
             <CategoryPills
               selectedCategory={selectedCategory}
               onSelectCategory={handleCategorySelect}
@@ -264,10 +326,8 @@ const Discovery = () => {
 
         {/* Main Content */}
         <main className="overflow-x-hidden">
-        
-
           <AnimatePresence mode="wait">
-            {mode === 'browsing' ? (
+            {mode === "browsing" ? (
               <motion.div
                 key="browsing"
                 initial={{ opacity: 0 }}
@@ -277,10 +337,7 @@ const Discovery = () => {
               >
                 {/* 1. Featured Hero (Always shown first) */}
                 {featuredEvent && (
-                  <motion.div
-                    className="mb-8 px-4"
-                    {...railMotionConfig}
-                  >
+                  <motion.div className="mb-8 px-4" {...railMotionConfig}>
                     <FeaturedEventHero
                       event={featuredEvent}
                       onEventClick={handleEventClick}
@@ -292,36 +349,48 @@ const Discovery = () => {
                 )}
 
                 {/* 2. Hybrid Rails (Traditional + Generative) */}
-                {railsLoading ? (
-                  <div className="px-6 space-y-8">
-                    <LoadingSkeleton className="h-[280px] w-full" />
-                    <LoadingSkeleton className="h-[220px] w-full" />
-                    <LoadingSkeleton className="h-[220px] w-full" />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {discoveryLayout?.sections.map((section, index) => (
-                      <div
-                         key={`${section.type}-${section.title}`}
-                         className="mb-8"
-                      >
-                        <DynamicRailRenderer
-                          section={section}
-                          onEventClick={handleEventClick}
-                          index={index}
-                        />
-                      </div>
-                    ))}
-                    
-                    {/* Fallback/Backup: If no sections returned and not loading, show message */}
-                    {!railsLoading && (!discoveryLayout?.sections || discoveryLayout.sections.length === 0) && (
-                      <div className="px-6 py-8 text-center text-muted-foreground">
-                        <p>No recommendations available right now.</p>
-                        <p className="text-sm mt-2 opacity-70 px-4">Try checking your internet connection or exploring by category below.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <ErrorBoundary>
+                  {railsLoading ? (
+                    <div className="px-6 space-y-8">
+                      <LoadingSkeleton className="h-[280px] w-full" />
+                      <LoadingSkeleton className="h-[220px] w-full" />
+                      <LoadingSkeleton className="h-[220px] w-full" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {discoveryLayout?.sections &&
+                      discoveryLayout.sections.length > 0 ? (
+                        discoveryLayout.sections.map((section, index) => (
+                          <div
+                            key={`${section.type}-${section.title}-${index}`}
+                            className="mb-8"
+                          >
+                            <DynamicRailRenderer
+                              section={section}
+                              onEventClick={handleEventClick}
+                              index={index}
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        /* Fallback/Backup: If no sections returned and not loading, show message */
+                        <div className="px-6 py-12 text-center text-muted-foreground bg-surface-card/30 mx-6 rounded-3xl border border-dashed border-border/50">
+                          <div className="mb-4 flex justify-center opacity-50">
+                            <MapPin size={48} strokeWidth={1.5} />
+                          </div>
+                          <h3 className="text-lg font-semibold text-foreground mb-2">
+                            No recommendations nearby
+                          </h3>
+                          <p className="text-sm opacity-70 px-4 max-w-xs mx-auto">
+                            We couldn't find any events matching your vibe right
+                            now. Try adjusting your search or exploring
+                            categories.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </ErrorBoundary>
               </motion.div>
             ) : (
               // SEARCHING MODE (Deep Dive)
@@ -333,7 +402,9 @@ const Discovery = () => {
               >
                 <div className="px-4 py-2">
                   <h2 className="text-xl font-bold mb-4 px-2">
-                    {selectedCategory ? `${selectedCategory} Events` : 'All Events'}
+                    {selectedCategory
+                      ? `${selectedCategory} Events`
+                      : "All Events"}
                   </h2>
                   <DeepDiveView
                     events={searchFilteredEvents}
@@ -349,16 +420,13 @@ const Discovery = () => {
         </main>
 
         {/* Floating Nav */}
-        <FloatingNav
-          onNavigate={handleNavigate}
-          activeView="feed"
-        />
+        <FloatingNav onNavigate={handleNavigate} activeView="feed" />
 
         {/* Floating Action Button - Only show in dev mode */}
         {import.meta.env.DEV && (
           <motion.button
             onClick={async () => {
-              await hapticImpact('medium');
+              await hapticImpact("medium");
               setShowCreateModal(true);
             }}
             className="fixed bottom-24 right-5 z-40 w-16 h-16 min-h-[52px] min-w-[52px] rounded-card bg-primary text-primary-foreground flex items-center justify-center mb-safe shadow-floating focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary focus-visible:outline-none"
@@ -401,11 +469,6 @@ const Discovery = () => {
             />
           )}
         </Suspense>
-        
-        {/* Error Boundary for critical failures */}
-        <ErrorBoundary>
-           <div>{/* Content for error boundary */}</div>
-        </ErrorBoundary>
       </motion.div>
     </div>
   );

@@ -1,5 +1,5 @@
-import { memo, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { memo, type ReactNode } from "react";
+import { motion } from "framer-motion";
 
 interface DiscoveryRailProps {
   title: ReactNode;
@@ -9,7 +9,7 @@ interface DiscoveryRailProps {
 
 /**
  * DiscoveryRail - Wrapper component for horizontal scrolling sections
- * 
+ *
  * LCL Core v5.0 "Social Air" Design System:
  * - Section headers: text-xl font-bold tracking-tight
  * - Primary color: Social Indigo (#6366F1)
@@ -47,11 +47,7 @@ export const DiscoveryRail = memo(function DiscoveryRail({
       )}
 
       {/* Content - Horizontal scroll container */}
-      <div className="px-6 -mx-6">
-        <div className="px-6">
-          {children}
-        </div>
-      </div>
+      <div className="w-full">{children}</div>
     </motion.section>
   );
 });

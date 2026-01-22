@@ -1,10 +1,10 @@
-import { memo, useRef, useCallback, useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronRight, Users, Clock, MapPin, Heart } from 'lucide-react';
-import { hapticImpact } from '@/shared/lib/haptics';
-import { formatEventDate, formatEventTime } from '@/shared/lib/formatters.ts';
-import { useImageFallback } from '../hooks/useImageFallback.ts';
-import type { EventWithAttendees } from '../hooks/hooks.ts';
+import { memo, useRef, useCallback, useState } from "react";
+import { motion } from "framer-motion";
+import { ChevronRight, Users, Clock, MapPin, Heart } from "lucide-react";
+import { hapticImpact } from "@/shared/lib/haptics";
+import { formatEventDate, formatEventTime } from "@/shared/lib/formatters.ts";
+import { useImageFallback } from "../hooks/useImageFallback.ts";
+import type { EventWithAttendees } from "../hooks/hooks.ts";
 
 interface HorizontalEventCarouselProps {
   title: string;
@@ -29,41 +29,43 @@ const CarouselEventCard = memo(function CarouselEventCard({
 }) {
   const [isSaved, setIsSaved] = useState(false);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(
-    event.image_url || '',
-    event.category
+    event.image_url || "",
+    event.category,
   );
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await hapticImpact('light');
+    await hapticImpact("light");
     setIsSaved(!isSaved);
   };
 
   return (
     <motion.div
-      className="flex-shrink-0 w-[260px] cursor-pointer group"
+      className="shrink-0 w-[260px] cursor-pointer group"
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
     >
       {/* Image */}
-      <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted mb-2">
-        <img 
-          src={imageUrl} 
+      <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-muted mb-2">
+        <img
+          src={imageUrl}
           onError={handleImageError}
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
-        
+
         {/* Heart button - Airbnb style */}
         <button
           type="button"
           onClick={handleSave}
           className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90  flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
         >
-          <Heart 
-            size={14} 
-            className={isSaved ? 'text-primary fill-primary' : 'text-foreground'} 
+          <Heart
+            size={14}
+            className={
+              isSaved ? "text-primary fill-primary" : "text-foreground"
+            }
           />
         </button>
 
@@ -72,18 +74,18 @@ const CarouselEventCard = memo(function CarouselEventCard({
           {formatEventDate(event.event_date)}
         </div>
       </div>
-      
+
       {/* Content - Below image */}
       <div className="space-y-1">
         <h3 className="text-[15px] font-semibold text-foreground leading-tight line-clamp-1">
           {event.title}
         </h3>
-        
+
         <p className="text-[13px] text-muted-foreground line-clamp-1 flex items-center gap-1">
-          <MapPin size={12} className="flex-shrink-0" />
+          <MapPin size={12} className="shrink-0" />
           {event.venue_name}
         </p>
-        
+
         <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
           {formatEventTime(event.event_time) && (
             <span className="flex items-center gap-1">
@@ -114,7 +116,7 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleSeeAll = useCallback(async () => {
-    await hapticImpact('light');
+    await hapticImpact("light");
     onSeeAll?.();
   }, [onSeeAll]);
 
@@ -123,10 +125,8 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-[18px] font-semibold text-foreground">
-          {title}
-        </h2>
+      <div className="flex items-center justify-between px-6 mb-4">
+        <h2 className="text-[18px] font-semibold text-foreground">{title}</h2>
         {onSeeAll && events.length > 3 && (
           <button
             type="button"
@@ -138,19 +138,20 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
           </button>
         )}
       </div>
-      
+
       {/* Horizontal scroll */}
-      <div 
+      <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 -ml-4 -mr-4 scrollbar-hide snap-x snap-mandatory"
+        className="flex gap-4 overflow-x-auto pb-4 px-6 scrollbar-hide snap-x snap-mandatory"
       >
         {events.map((event) => {
           const hasJoined = Boolean(
-            currentUserProfileId && event.attendees?.some(
-              attendee => attendee.profile?.id === currentUserProfileId
-            )
+            currentUserProfileId &&
+            event.attendees?.some(
+              (attendee) => attendee.profile?.id === currentUserProfileId,
+            ),
           );
-          
+
           return (
             <div key={event.id} className="snap-start">
               <CarouselEventCard
