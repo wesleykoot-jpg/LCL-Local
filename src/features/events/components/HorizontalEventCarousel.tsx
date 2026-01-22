@@ -118,7 +118,16 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
     onSeeAll?.();
   }, [onSeeAll]);
 
-  if (events.length === 0) return null;
+  // TEMP RCA DEBUG - Always show to trace data flow
+  if (events.length === 0) {
+    return (
+      <div className="px-4 py-2 bg-red-900/80 text-white text-xs mb-2">
+        <p>⚠️ Carousel Empty!</p>
+        <p>Title: {title}</p>
+        <p>Event Count: {events.length}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
