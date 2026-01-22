@@ -144,20 +144,33 @@ The project follows a strict AI-assisted workflow:
 - **Services**: `eventService.ts` handles all Supabase RPC and table mutations.
 - **RLS Policies**: Users can only edit `profiles` where `user_id = auth.uid()`.
 
-## 🏗️ Supabase Integration Infrastructure
+### Primary Connection Method (Default)
 
-The project uses a resilient infrastructure for Supabase interactions:
+LCL primarily uses **Direct PostgreSQL Connections** (via PgBouncer/Supabase Pooler) and **MCP (Model Context Protocol)** for database interactions, especially when administrative or complex schema changes are required.
+
+- **MCP Server**: Use the `supabase` MCP server for direct schema inspection and SQL execution.
+  - URL: `https://mcp.supabase.com/mcp?project_ref=mlpefjsbriqgxcaqxhic`
+
+- **Direct Connection String** (Use values from `.env`):
+  - `postgresql://[SUPABASE_DB_USER]:[SUPABASE_DB_PASSWORD]@[SUPABASE_DB_HOST]:[SUPABASE_DB_PORT_SESSION]/[SUPABASE_DB_NAME]` (Session Mode - Port 6543)
+  - `postgresql://[SUPABASE_DB_USER]:[SUPABASE_DB_PASSWORD]@[SUPABASE_DB_HOST]:[SUPABASE_DB_PORT_TRANSACTION]/[SUPABASE_DB_NAME]` (Transaction Mode - Port 5432)
+- **Workflow Priority**:
+  1. Use **MCP** tools for research and simple queries.
+  2. Use **Direct SQL via PG Pooler** for migrations, complex RPC deployments, or bypassing REST API limitations (e.g., schema cache issues).
+  3. Use **Supabase Client (REST)** primarily for frontend application logic.
 
 ### Resiliency Patterns
+
 - **Error Handling**: Use `handleSupabaseError` and `getUserFriendlyErrorMessage` from `@/lib/errorHandler`.
 - **Timeouts**: Use `queryWithTimeout` from `@/lib/queryTimeout` (Standard: 10s, Complex/RPC: 15s).
 - **Retries**: Use `retrySupabaseQuery` or `retryWithBackoff` for transient network/5xx failures.
 - **Monitoring**: Use `monitorQuery` from `@/lib/queryMonitor` to track slow queries (>1s).
 
 ### Database Interaction Rules
+
 - **Atomic Operations**: Always use RPC for "Check-then-Act" patterns (e.g., Joining events, Claiming rows) to prevent race conditions.
 - **Security Declarations**: Database functions must explicitly declare `SECURITY DEFINER` (for RLS bypass) or `SECURITY INVOKER` (default).
-- **Connection Pooling**: Node.js scripts must use `scripts/lib/db.cjs` for efficient PostgreSQL access.
+- **Connection Pooling**: Node.js scripts must use `scripts/lib/db.cjs` for efficient PostgreSQL access. Ensure pooler settings align with the connection method (Session vs Transaction).
 - **Environment Variables**: Never hardcode Supabase credentials; use `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
 ---
