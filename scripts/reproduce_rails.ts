@@ -31,7 +31,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function verifyDiscoveryRails() {
-  console.log('--- Verifying Discovery Rails RPC (Final Check) ---');
+  console.log('--- Verifying Discovery Rails RPC (Post-Fix) ---');
   
   const testUserId = '00000000-0000-0000-0000-000000000000'; // Anonymous fallback
   const testLocation = { lat: 53.2194, lng: 6.5665 }; 
@@ -56,10 +56,13 @@ async function verifyDiscoveryRails() {
         console.log(`✅ Rails found: ${sections.length}`);
         
         if (sections.length === 0) {
-            console.log('WARN: No sections returned! (Fix applied but no matching data?)');
+            console.log('WARN: No sections returned! (RPC works but no content)');
         } else {
             sections.forEach((s: any) => {
               console.log(`  - Rail: "${s.title}" (${s.items?.length || 0} items)`);
+              if (s.items?.length > 0) {
+                  console.log(`    First item: ${s.items[0].title}`);
+              }
             });
         }
       }

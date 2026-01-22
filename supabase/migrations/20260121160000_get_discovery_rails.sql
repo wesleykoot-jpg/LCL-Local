@@ -125,24 +125,8 @@ BEGIN
     LIMIT 3
   ),
   similar_events AS (
-    SELECT DISTINCT ON (e.id)
+    SELECT 
       e.id,
-      e.title,
-      e.description,
-      e.category,
-      e.event_type,
-      e.venue_name,
-      e.event_date,
-      e.event_time,
-      e.image_url,
-      COALESCE(
-        (SELECT COUNT(*) FROM public.event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going'),
-        0
-      ) as attendee_count,
-      CASE
-        WHEN user_point IS NULL THEN NULL
-        ELSE ST_Distance(e.location, user_point) / 1000.0
-      END as distance_km,
       MAX(1 - (e.embedding <=> ure.embedding)) as similarity
     FROM public.events e
     CROSS JOIN user_recent_events ure
@@ -151,56 +135,44 @@ BEGIN
       AND e.embedding IS NOT NULL
       AND e.event_date >= today_date
       AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
-      AND 1 - (e.embedding <=> ure.embedding) > 0.7  -- Similarity threshold
-    GROUP BY e.id, e.title, e.description, e.category, e.event_type, e.venue_name, 
-             e.event_date, e.event_time, e.image_url, e.location
-    ORDER BY e.id, similarity DESC
+      AND 1 - (e.embedding <=> ure.embedding) > 0.7
+    GROUP BY e.id
+    ORDER BY similarity DESC
+    LIMIT p_limit_per_rail
   )
   SELECT json_agg(
     json_build_object(
-      'id', id,
-      'title', title,
-      'description', description,
-      'category', category,
-      'event_type', event_type,
-      'venue_name', venue_name,
-      'event_date', event_date,
-      'event_time', event_time,
-      'image_url', image_url,
-      'attendee_count', attendee_count,
-      'distance_km', distance_km,
-      'similarity', similarity
+      'id', e.id,
+      'title', e.title,
+      'description', e.description,
+      'category', e.category,
+      'event_type', e.event_type,
+      'venue_name', e.venue_name,
+      'event_date', e.event_date,
+      'event_time', e.event_time,
+      'image_url', e.image_url,
+      'attendee_count', COALESCE(
+        (SELECT COUNT(*) FROM public.event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going'),
+        0
+      ),
+      'distance_km', CASE
+        WHEN user_point IS NULL THEN NULL
+        ELSE ST_Distance(e.location, user_point) / 1000.0
+      END,
+      'similarity', se.similarity
     )
   ) INTO recent_joins_events
-  FROM (
-    SELECT * FROM similar_events
-    ORDER BY similarity DESC
-    LIMIT p_limit_per_rail
-  ) se;
+  FROM similar_events se
+  JOIN public.events e ON e.id = se.id
+  ORDER BY se.similarity DESC;
 
   -- ============================================================================
   -- RAIL 4: "The Social Pulse" (AI - Social Graph)
   -- Events that user's friends are attending
   -- ============================================================================
   WITH friend_events AS (
-    SELECT DISTINCT
+    SELECT 
       e.id,
-      e.title,
-      e.description,
-      e.category,
-      e.event_type,
-      e.venue_name,
-      e.event_date,
-      e.event_time,
-      e.image_url,
-      COALESCE(
-        (SELECT COUNT(*) FROM public.event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going'),
-        0
-      ) as attendee_count,
-      CASE
-        WHEN user_point IS NULL THEN NULL
-        ELSE ST_Distance(e.location, user_point) / 1000.0
-      END as distance_km,
       COUNT(DISTINCT ur.following_id) as friend_count
     FROM public.user_relationships ur
     INNER JOIN public.event_attendees ea ON ea.profile_id = ur.following_id
@@ -211,28 +183,35 @@ BEGIN
       AND ea.status = 'going'
       AND e.event_date >= today_date
       AND (user_point IS NULL OR ST_DWithin(e.location, user_point, p_radius_km * 1000))
-    GROUP BY e.id, e.title, e.description, e.category, e.event_type, e.venue_name,
-             e.event_date, e.event_time, e.image_url, e.location
-    ORDER BY friend_count DESC, e.event_date ASC
+    GROUP BY e.id
+    ORDER BY friend_count DESC
     LIMIT p_limit_per_rail
   )
   SELECT json_agg(
     json_build_object(
-      'id', id,
-      'title', title,
-      'description', description,
-      'category', category,
-      'event_type', event_type,
-      'venue_name', venue_name,
-      'event_date', event_date,
-      'event_time', event_time,
-      'image_url', image_url,
-      'attendee_count', attendee_count,
-      'distance_km', distance_km,
-      'friend_count', friend_count
+      'id', e.id,
+      'title', e.title,
+      'description', e.description,
+      'category', e.category,
+      'event_type', e.event_type,
+      'venue_name', e.venue_name,
+      'event_date', e.event_date,
+      'event_time', e.event_time,
+      'image_url', e.image_url,
+      'attendee_count', COALESCE(
+        (SELECT COUNT(*) FROM public.event_attendees ea WHERE ea.event_id = e.id AND ea.status = 'going'),
+        0
+      ),
+      'distance_km', CASE
+        WHEN user_point IS NULL THEN NULL
+        ELSE ST_Distance(e.location, user_point) / 1000.0
+      END,
+      'friend_count', fe.friend_count
     )
   ) INTO social_pulse_events
-  FROM friend_events;
+  FROM friend_events fe
+  JOIN public.events e ON e.id = fe.id
+  ORDER BY fe.friend_count DESC, e.event_date ASC;
 
   -- ============================================================================
   -- RAIL 5: "Contextual Vibe" (AI - Time-based)
