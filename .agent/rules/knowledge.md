@@ -144,6 +144,22 @@ The project follows a strict AI-assisted workflow:
 - **Services**: `eventService.ts` handles all Supabase RPC and table mutations.
 - **RLS Policies**: Users can only edit `profiles` where `user_id = auth.uid()`.
 
+## 🏗️ Supabase Integration Infrastructure
+
+The project uses a resilient infrastructure for Supabase interactions:
+
+### Resiliency Patterns
+- **Error Handling**: Use `handleSupabaseError` and `getUserFriendlyErrorMessage` from `@/lib/errorHandler`.
+- **Timeouts**: Use `queryWithTimeout` from `@/lib/queryTimeout` (Standard: 10s, Complex/RPC: 15s).
+- **Retries**: Use `retrySupabaseQuery` or `retryWithBackoff` for transient network/5xx failures.
+- **Monitoring**: Use `monitorQuery` from `@/lib/queryMonitor` to track slow queries (>1s).
+
+### Database Interaction Rules
+- **Atomic Operations**: Always use RPC for "Check-then-Act" patterns (e.g., Joining events, Claiming rows) to prevent race conditions.
+- **Security Declarations**: Database functions must explicitly declare `SECURITY DEFINER` (for RLS bypass) or `SECURITY INVOKER` (default).
+- **Connection Pooling**: Node.js scripts must use `scripts/lib/db.cjs` for efficient PostgreSQL access.
+- **Environment Variables**: Never hardcode Supabase credentials; use `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+
 ---
 
 ## 🚀 Development & Ops
