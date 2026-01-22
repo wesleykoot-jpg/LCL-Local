@@ -91,8 +91,13 @@ export async function fetchDiscoveryRails(
       async () => {
         return await retrySupabaseQuery(async () => {
           return await queryWithTimeout(async () => {
+            // Handle anonymous user by using NIL UUID to satisfy UUID type in RPC
+            const safeUserId = (userId && userId !== 'anonymous') 
+              ? userId 
+              : '00000000-0000-0000-0000-000000000000';
+
             const { data, error } = await supabase.rpc('get_discovery_rails', {
-              p_user_id: userId,
+              p_user_id: safeUserId,
               p_user_lat: userLocation.lat,
               p_user_long: userLocation.lng,
               p_radius_km: radiusKm,

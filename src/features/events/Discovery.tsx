@@ -76,7 +76,7 @@ const Discovery = () => {
     userId: profile?.id,
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
-    enabled: mode === 'browsing' && !!profile?.id
+    enabled: mode === 'browsing'
   });
 
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(profile?.id, refetch);

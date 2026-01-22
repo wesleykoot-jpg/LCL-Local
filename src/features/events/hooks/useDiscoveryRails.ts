@@ -30,7 +30,7 @@ export function useDiscoveryRails({
       // Backend handles null location by showing non-geospatial recommendations
       return fetchDiscoveryRails(userId || 'anonymous', userLocation || { lat: 0, lng: 0 }, radiusKm);
     },
-    enabled: enabled && (!!userId || !!userLocation),
+    enabled: enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: true,
