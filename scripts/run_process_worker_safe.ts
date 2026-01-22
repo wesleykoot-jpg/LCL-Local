@@ -83,12 +83,19 @@ async function processRow(row: any) {
       raw = { rawHtml: row.raw_html };
     }
 
+    // GET SOURCE PREFERENCE
+    const { data: source } = await supabase
+      .from("scraper_sources")
+      .select("preferred_method")
+      .eq("id", row.source_id)
+      .single();
+
     // WATERFALL EXTRACTION
     console.log(`  🌊 Running Waterfall...`);
     const waterfallResult = await runExtractionWaterfall(raw.rawHtml, {
       baseUrl: row.source_url || row.url,
       sourceName: "LocalRunner",
-      preferredMethod: "auto",
+      preferredMethod: (source?.preferred_method as any) || "auto",
       feedDiscovery: false,
       fetcher: {
         fetch: async (url: string) => {
@@ -246,7 +253,7 @@ async function processRow(row: any) {
         row.source_id,
       );
 
-      const payload = {
+      const payload: any = {
         title: normalized.title,
         description: normalized.description,
         category: category,
@@ -266,20 +273,77 @@ async function processRow(row: any) {
       // Geocode
       try {
         if (payload.venue_name) {
-          const geo = await geocodeLocation(payload.venue_name);
+          const geo = await geocodeLocation(supabase, payload.venue_name);
           if (geo) payload.location = `POINT(${geo.lng} ${geo.lat})`;
         }
       } catch {}
 
-      // Insert
-      const { error: insErr } = await supabase
+      // SMART DEDUPLICATION & PROMOTION
+      const { data: existingEvent } = await supabase
         .from("events")
-        .upsert(payload, { onConflict: "event_fingerprint" });
+        .select("*")
+        .eq("title", normalized.title)
+        .eq("event_date", storageDate.timestamp)
+        .eq("venue_name", normalized.venue_name)
+        .maybeSingle();
 
-      if (insErr) {
-        console.error("  ❌ DB Insert Error:", insErr.message);
+      if (existingEvent) {
+        console.log(`  🔄 Existing event found. Comparing for promotion...`);
+        const existingDescLen = (existingEvent.description || "").length;
+        const newDescLen = (normalized.description || "").length;
+
+        // Merge source URLs
+        const existingUrls = existingEvent.all_source_urls || [];
+        const newUrl = normalized.detail_url || row.source_url;
+        const mergedUrls = Array.from(
+          new Set([...existingUrls, newUrl]),
+        ).filter(Boolean);
+        payload.all_source_urls = mergedUrls;
+
+        // PROMOTION LOGIC: Only overwrite if the new data is significantly better
+        const isBetterDesc = newDescLen > existingDescLen + 50; // Threshold to prevent tiny jitter updates
+        const isBetterImage = !existingEvent.image_url && payload.image_url;
+
+        if (isBetterDesc || isBetterImage) {
+          if (isBetterDesc)
+            console.log(
+              `  ✨ Promoting superior description (+${newDescLen - existingDescLen} chars)`,
+            );
+          if (isBetterImage)
+            console.log(`  🖼️ Adding missing image from new source`);
+
+          const { error: updErr } = await supabase
+            .from("events")
+            .update(payload)
+            .eq("id", existingEvent.id);
+
+          if (updErr) console.error("  ❌ Promotion Error:", updErr.message);
+        } else {
+          // Just update URLs if no promotion happened
+          await supabase
+            .from("events")
+            .update({ all_source_urls: mergedUrls })
+            .eq("id", existingEvent.id);
+          console.log("  🤝 Event exists. Metadata preserved, URLs merged.");
+        }
       } else {
-        console.log("  ✅ Event Created!");
+        // Insert new record
+        payload.all_source_urls = [normalized.detail_url || row.source_url];
+        const { error: insErr } = await supabase.from("events").insert(payload);
+
+        if (insErr) {
+          console.error("  ❌ DB Insert Error:", insErr.message);
+        } else {
+          console.log("  ✅ Event Created!");
+        }
+      }
+
+      // STRATEGY PERSISTENCE: Record the winning method for the source
+      if (waterfallResult.winningStrategy) {
+        await supabase
+          .from("scraper_sources")
+          .update({ preferred_method: waterfallResult.winningStrategy })
+          .eq("id", row.source_id);
       }
     }
 
@@ -310,6 +374,24 @@ function stripHtml(html: string | undefined | null): string {
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Global fingerprint for cross-source deduplication
+ */
+async function createGlobalFingerprint(
+  title: string,
+  date: string,
+  venue: string,
+): Promise<string> {
+  const clean = `${title}-${date}-${venue}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  const encoder = new TextEncoder();
+  const data = encoder.encode(clean);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function main() {
