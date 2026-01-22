@@ -204,7 +204,7 @@ async function processRow(row: any) {
       const normalized = {
         title: evt.title,
         event_date: storageDate.dateOnly || evt.date,
-        description: finalDescription,
+        description: stripHtml(finalDescription),
         image_url: evt.imageUrl,
         venue_name: evt.location,
         detail_url: evt.detailUrl,
@@ -281,6 +281,18 @@ async function processRow(row: any) {
       .update({ status: "failed", error_message: String(e) })
       .eq("id", row.id);
   }
+}
+
+/**
+ * Simple HTML stripping utility
+ */
+function stripHtml(html: string | undefined | null): string {
+  if (!html) return "";
+  return html
+    .replace(/<[^>]*>?/gm, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function main() {
