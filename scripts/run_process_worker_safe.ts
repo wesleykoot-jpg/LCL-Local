@@ -147,46 +147,63 @@ async function processRow(row: any) {
     // Process found events
     for (const evt of waterfallResult.events) {
       let finalDescription = evt.description;
+      let finalImageUrl = evt.imageUrl;
+      let finalVenue = evt.location;
 
-      // DEEP EXTRACTION FALLBACK: Missing or very short description?
-      if (!finalDescription || finalDescription.length < 50) {
-        if (evt.detailUrl) {
-          console.log(
-            `  🔍 Empty description. Trying Deep Extraction: ${evt.detailUrl}`,
-          );
-          try {
-            const res = await fetch(evt.detailUrl);
-            if (res.ok) {
-              const detailHtml = await res.text();
-              const deepResult = await runExtractionWaterfall(detailHtml, {
-                baseUrl: evt.detailUrl,
-                sourceName: "DeepExtractor",
-                preferredMethod: "auto",
-                feedDiscovery: false,
-              });
+      // DETAIL-FIRST ENRICHMENT: Proactively fetch detail page if possible
+      const shouldFetchDetail =
+        evt.detailUrl &&
+        (!finalDescription || finalDescription.length < 500 || !finalImageUrl);
 
-              if (deepResult.totalEvents > 0) {
-                // Look for best match or just take first event's description
-                const bestMatch =
-                  deepResult.events.find(
-                    (e) =>
-                      e.title.includes(evt.title) ||
-                      evt.title.includes(e.title),
-                  ) || deepResult.events[0];
-                if (
-                  bestMatch.description &&
-                  bestMatch.description.length > (finalDescription?.length || 0)
-                ) {
-                  console.log(
-                    `  ✨ Deep Extraction Success! Captured ${bestMatch.description.length} chars.`,
-                  );
-                  finalDescription = bestMatch.description;
-                }
+      if (shouldFetchDetail && evt.detailUrl) {
+        console.log(`  🔍 Proactive Enrichment: ${evt.detailUrl}`);
+        try {
+          const res = await fetch(evt.detailUrl);
+          if (res.ok) {
+            const detailHtml = await res.text();
+            const deepResult = await runExtractionWaterfall(detailHtml, {
+              baseUrl: evt.detailUrl,
+              sourceName: "ProactiveEnricher",
+              preferredMethod: "auto",
+              feedDiscovery: false,
+            });
+
+            if (deepResult.totalEvents > 0) {
+              // Look for best match (by title similarity)
+              const bestMatch =
+                deepResult.events.find(
+                  (e) =>
+                    e.title.toLowerCase().includes(evt.title.toLowerCase()) ||
+                    evt.title.toLowerCase().includes(e.title.toLowerCase()),
+                ) || deepResult.events[0];
+
+              // Priority 1: Description (Detail always wins if non-empty)
+              if (
+                bestMatch.description &&
+                bestMatch.description.length > (finalDescription?.length || 0)
+              ) {
+                console.log(
+                  `  ✨ Enhanced Description: ${bestMatch.description.length} chars.`,
+                );
+                finalDescription = bestMatch.description;
+              }
+
+              // Priority 2: High-res Images
+              if (bestMatch.imageUrl && !finalImageUrl) {
+                finalImageUrl = bestMatch.imageUrl;
+              }
+
+              // Priority 3: Specific Venue
+              if (
+                bestMatch.location &&
+                (!finalVenue || finalVenue === "Onbekend" || finalVenue === "")
+              ) {
+                finalVenue = bestMatch.location;
               }
             }
-          } catch (e) {
-            console.error(`  ❌ Deep Extraction failed for ${evt.detailUrl}`);
           }
+        } catch (e) {
+          console.error(`  ❌ Detail fetch failed: ${evt.detailUrl}`);
         }
       }
 
@@ -205,8 +222,8 @@ async function processRow(row: any) {
         title: evt.title,
         event_date: storageDate.dateOnly || evt.date,
         description: stripHtml(finalDescription),
-        image_url: evt.imageUrl,
-        venue_name: evt.location,
+        image_url: finalImageUrl,
+        venue_name: finalVenue || "TBD",
         detail_url: evt.detailUrl,
         event_time: "TBD",
       };
