@@ -28,7 +28,9 @@ export function useDiscoveryRails({
     queryKey: ['discovery-rails', userId, userLocation, radiusKm],
     queryFn: () => {
       // Backend handles null location by showing non-geospatial recommendations
-      return fetchDiscoveryRails(userId || 'anonymous', userLocation || { lat: 0, lng: 0 }, radiusKm);
+      // Default to Groningen if no location provided (for testing/MVP)
+      const defaultLocation = { lat: 53.2194, lng: 6.5665 }; 
+      return fetchDiscoveryRails(userId || 'anonymous', userLocation || defaultLocation, radiusKm);
     },
     enabled: enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
