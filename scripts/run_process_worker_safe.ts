@@ -53,7 +53,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const BATCH_SIZE = 5;
+const BATCH_SIZE = 20;
 
 // -------- LOGIC ADAPTED --------
 
@@ -198,7 +198,7 @@ async function processRow(row: any) {
         event_fingerprint: fp,
         image_url: normalized.image_url,
         venue_name: normalized.venue_name,
-        source_url: normalized.detail_url || row.url,
+        source_url: normalized.detail_url || row.source_url,
         location: "POINT(0 0)",
       };
 
@@ -241,20 +241,18 @@ async function processRow(row: any) {
 
 async function main() {
   console.log("🚀 Starting Local Processor...");
-  let idleCount = 0;
 
-  // Run at least one batch to prove it works
-  const rows = await claimPendingRows();
-  if (!rows || rows.length === 0) {
-    console.log("No rows to process yet.");
-    return;
+  while (true) {
+    const rows = await claimPendingRows();
+    if (!rows || rows.length === 0) {
+      console.log("No more rows to process.");
+      break;
+    }
+
+    console.log(`Picked up ${rows.length} rows`);
+    await Promise.all(rows.map(processRow));
+    console.log("Batch complete. Checking for more...");
   }
-
-  console.log(`Picked up ${rows.length} rows`);
-  await Promise.all(rows.map(processRow));
-
-  // Just run one batch for verification evidence
-  console.log("Batch complete.");
 }
 
 main();

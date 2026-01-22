@@ -99,7 +99,7 @@ Beleef, Visit, Uit).
 
 The project follows a strict AI-assisted workflow:
 
-- **Branching**:  Direct commits to
+- **Branching**: Direct commits to
   `main`.
 - **PR Automation**:
   1. Generate "Metric-Driven Summary".
@@ -113,7 +113,7 @@ The project follows a strict AI-assisted workflow:
 ### Direct SQL Integration
 
 - **SQL Tools**: The project supports direct SQL execution via VS Code
-  extensions (e.g., `Supabase.session.sql`).
+  extensions (e.g., `Supabase.session.sql`) and or Supabase MCP serv
 - **Direct DB Scripts**: `check_db_direct.cjs` enables direct PostgreSQL
   connections using `postgres` package for quick verification without the
   Supabase client overhead.

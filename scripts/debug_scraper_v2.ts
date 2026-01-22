@@ -28,7 +28,12 @@ async function runScraper(sourceNameOrId: string) {
     .single();
 
   if (!source) {
-    console.error("Source not found");
+    console.error("Source not found. Listing top 10 sources:");
+    const { data: all } = await supabase
+      .from("scraper_sources")
+      .select("name, id")
+      .limit(10);
+    console.log(all);
     return;
   }
 
