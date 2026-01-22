@@ -264,6 +264,18 @@ const Discovery = () => {
 
         {/* Main Content */}
         <main className="overflow-x-hidden">
+        
+          {/* TEMP DEBUG OVERLAY */}
+          <div className="bg-black/80 text-green-400 p-2 text-xs font-mono m-2 rounded overflow-auto max-h-40">
+            <p>DEBUG INFO:</p>
+            <p>Mode: {mode}</p>
+            <p>Loading: {railsLoading ? 'YES' : 'NO'}</p>
+            <p>UserLoc: {userLocation ? `${userLocation.lat.toFixed(2)},${userLocation.lng.toFixed(2)}` : 'NULL'}</p>
+            <p>Sections: {discoveryLayout?.sections?.length ?? 'UNDEFINED'}</p>
+            {discoveryLayout?.sections?.map((s, i) => (
+                <p key={i}>Section {i}: {s.title} ({s.items?.length} items)</p>
+            ))}
+          </div>
           <AnimatePresence mode="wait">
             {mode === 'browsing' ? (
               <motion.div
