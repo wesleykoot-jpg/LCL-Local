@@ -29,7 +29,7 @@ const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
  */
 async function retryWithBackoff<T>(
   operation: () => Promise<T>,
-  config: RetryConfig = {}
+  config: RetryConfig = {},
 ): Promise<T> {
   const { maxRetries, initialDelayMs, maxDelayMs, backoffMultiplier } = {
     ...DEFAULT_RETRY_CONFIG,
@@ -37,28 +37,30 @@ async function retryWithBackoff<T>(
   };
 
   let lastError: Error | undefined;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       if (attempt === maxRetries) {
         break;
       }
-      
+
       const delayMs = Math.min(
         initialDelayMs * Math.pow(backoffMultiplier, attempt),
-        maxDelayMs
+        maxDelayMs,
       );
-      
-      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delayMs}ms delay`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+
+      console.log(
+        `Retry attempt ${attempt + 1}/${maxRetries} after ${delayMs}ms delay`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
-  
-  throw lastError || new Error('Operation failed after retries');
+
+  throw lastError || new Error("Operation failed after retries");
 }
 
 /**
@@ -88,17 +90,18 @@ export interface PageFetcher {
  */
 export class StaticPageFetcher implements PageFetcher {
   private defaultHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-                  '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+      "(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
   };
 
   constructor(
     private fetchImpl: typeof fetch = fetch,
     private customHeaders?: Record<string, string>,
     private timeout?: number,
-    private retryConfig?: RetryConfig
+    private retryConfig?: RetryConfig,
   ) {}
 
   async fetchPage(url: string) {
@@ -107,9 +110,9 @@ export class StaticPageFetcher implements PageFetcher {
 
     return retryWithBackoff(async () => {
       const res = await this.fetchImpl(url, {
-        method: 'GET',
+        method: "GET",
         headers,
-        redirect: 'follow',
+        redirect: "follow",
         signal: AbortSignal.timeout(timeoutMs),
       });
 
@@ -126,30 +129,33 @@ export class StaticPageFetcher implements PageFetcher {
  * DynamicPageFetcher implements PageFetcher using headless browser rendering.
  * Supports Puppeteer, Playwright, and ScrapingBee for JavaScript-rendered pages
  * and handling anti-bot protections.
- * 
+ *
  * Note: This implementation uses conditional logic based on available libraries.
  * Libraries are optional dependencies and loaded dynamically when needed.
  */
 export class DynamicPageFetcher implements PageFetcher {
   constructor(
-    private fetcherType: 'puppeteer' | 'playwright' | 'scrapingbee' = 'puppeteer',
+    private fetcherType:
+      | "puppeteer"
+      | "playwright"
+      | "scrapingbee" = "puppeteer",
     private config?: {
       apiKey?: string;
       headless?: boolean;
       waitForSelector?: string;
       waitForTimeout?: number;
     },
-    private retryConfig?: RetryConfig
+    private retryConfig?: RetryConfig,
   ) {}
 
   async fetchPage(url: string) {
     return retryWithBackoff(async () => {
       switch (this.fetcherType) {
-        case 'scrapingbee':
+        case "scrapingbee":
           return await this.fetchWithScrapingBee(url);
-        case 'puppeteer':
+        case "puppeteer":
           return await this.fetchWithPuppeteer(url);
-        case 'playwright':
+        case "playwright":
           return await this.fetchWithPlaywright(url);
         default:
           throw new Error(`Unsupported fetcher type: ${this.fetcherType}`);
@@ -158,33 +164,42 @@ export class DynamicPageFetcher implements PageFetcher {
   }
 
   private async fetchWithScrapingBee(url: string) {
-    const apiKey = this.config?.apiKey || Deno.env.get('SCRAPINGBEE_API_KEY');
-    
+    const apiKey = this.config?.apiKey || Deno.env.get("SCRAPINGBEE_API_KEY");
+
     if (!apiKey) {
-      console.warn('ScrapingBee API key not found, falling back to static fetch');
+      console.warn(
+        "ScrapingBee API key not found, falling back to static fetch",
+      );
       return await this.fallbackToStaticFetch(url);
     }
 
     // Basic API key validation
-    if (typeof apiKey !== 'string' || apiKey.length < 20) {
-      console.warn('ScrapingBee API key appears invalid, falling back to static fetch');
+    if (typeof apiKey !== "string" || apiKey.length < 20) {
+      console.warn(
+        "ScrapingBee API key appears invalid, falling back to static fetch",
+      );
       return await this.fallbackToStaticFetch(url);
     }
 
     try {
-      const scrapingBeeUrl = new URL('https://app.scrapingbee.com/api/v1/');
-      scrapingBeeUrl.searchParams.set('api_key', apiKey);
-      scrapingBeeUrl.searchParams.set('url', url);
-      scrapingBeeUrl.searchParams.set('render_js', 'true');
-      
+      const scrapingBeeUrl = new URL("https://app.scrapingbee.com/api/v1/");
+      scrapingBeeUrl.searchParams.set("api_key", apiKey);
+      scrapingBeeUrl.searchParams.set("url", url);
+      scrapingBeeUrl.searchParams.set("render_js", "true");
+
       if (this.config?.waitForTimeout) {
-        scrapingBeeUrl.searchParams.set('wait', String(this.config.waitForTimeout));
+        scrapingBeeUrl.searchParams.set(
+          "wait",
+          String(this.config.waitForTimeout),
+        );
       }
 
       const response = await fetch(scrapingBeeUrl.toString());
-      
+
       if (!response.ok) {
-        throw new Error(`ScrapingBee API error: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `ScrapingBee API error: ${response.status} ${response.statusText}`,
+        );
       }
 
       const html = await response.text();
@@ -195,7 +210,7 @@ export class DynamicPageFetcher implements PageFetcher {
         headers: response.headers,
       };
     } catch (error) {
-      console.error('ScrapingBee fetch failed:', error);
+      console.error("ScrapingBee fetch failed:", error);
       throw error;
     }
   }
@@ -204,37 +219,41 @@ export class DynamicPageFetcher implements PageFetcher {
     try {
       // Attempt to import puppeteer dynamically
       // This will work in environments where puppeteer is available
-      const puppeteer = await import('npm:puppeteer@23.11.1').catch(() => null);
-      
+      const puppeteer = await import("npm:puppeteer@23.11.1").catch(() => null);
+
       if (!puppeteer) {
-        console.warn('Puppeteer not available, falling back to static fetch');
+        console.warn("Puppeteer not available, falling back to static fetch");
         return await this.fallbackToStaticFetch(url);
       }
 
       const browser = await puppeteer.default.launch({
         headless: this.config?.headless ?? true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
 
       try {
         const page = await browser.newPage();
         await page.setUserAgent(
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-          '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
         );
 
-        await page.goto(url, { 
-          waitUntil: 'networkidle2',
-          timeout: this.config?.waitForTimeout || 30000 
+        await page.goto(url, {
+          waitUntil: "networkidle2",
+          timeout: this.config?.waitForTimeout || 30000,
         });
 
         if (this.config?.waitForSelector) {
           const selectorTimeout = this.config?.waitForTimeout || 10000;
-          await page.waitForSelector(this.config.waitForSelector, {
-            timeout: selectorTimeout,
-          }).catch(() => {
-            console.warn(`Selector ${this.config?.waitForSelector} not found, continuing anyway`);
-          });
+          await page
+            .waitForSelector(this.config.waitForSelector, {
+              timeout: selectorTimeout,
+            })
+            .catch(() => {
+              console.warn(
+                `Selector ${this.config?.waitForSelector} not found, continuing anyway`,
+              );
+            });
         }
 
         const html = await page.content();
@@ -250,7 +269,7 @@ export class DynamicPageFetcher implements PageFetcher {
         await browser.close();
       }
     } catch (error) {
-      console.error('Puppeteer fetch failed:', error);
+      console.error("Puppeteer fetch failed:", error);
       throw error;
     }
   }
@@ -258,10 +277,12 @@ export class DynamicPageFetcher implements PageFetcher {
   private async fetchWithPlaywright(url: string) {
     try {
       // Attempt to import playwright dynamically
-      const playwright = await import('npm:playwright@1.49.1').catch(() => null);
-      
+      const playwright = await import("npm:playwright@1.49.1").catch(
+        () => null,
+      );
+
       if (!playwright) {
-        console.warn('Playwright not available, falling back to static fetch');
+        console.warn("Playwright not available, falling back to static fetch");
         return await this.fallbackToStaticFetch(url);
       }
 
@@ -271,23 +292,28 @@ export class DynamicPageFetcher implements PageFetcher {
 
       try {
         const context = await browser.newContext({
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-                    '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+          userAgent:
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
         });
 
         const page = await context.newPage();
-        await page.goto(url, { 
-          waitUntil: 'networkidle',
-          timeout: this.config?.waitForTimeout || 30000 
+        await page.goto(url, {
+          waitUntil: "networkidle",
+          timeout: this.config?.waitForTimeout || 30000,
         });
 
         if (this.config?.waitForSelector) {
           const selectorTimeout = this.config?.waitForTimeout || 10000;
-          await page.waitForSelector(this.config.waitForSelector, {
-            timeout: selectorTimeout,
-          }).catch(() => {
-            console.warn(`Selector ${this.config?.waitForSelector} not found, continuing anyway`);
-          });
+          await page
+            .waitForSelector(this.config.waitForSelector, {
+              timeout: selectorTimeout,
+            })
+            .catch(() => {
+              console.warn(
+                `Selector ${this.config?.waitForSelector} not found, continuing anyway`,
+              );
+            });
         }
 
         const html = await page.content();
@@ -303,14 +329,24 @@ export class DynamicPageFetcher implements PageFetcher {
         await browser.close();
       }
     } catch (error) {
-      console.error('Playwright fetch failed:', error);
+      console.error("Playwright fetch failed:", error);
       throw error;
     }
   }
 
-  private async fallbackToStaticFetch(url: string): Promise<{ html: string; finalUrl: string; statusCode: number; headers?: Headers }> {
-    console.log('Using static fetch fallback');
-    const fetcher = new StaticPageFetcher(fetch, undefined, undefined, this.retryConfig);
+  private async fallbackToStaticFetch(url: string): Promise<{
+    html: string;
+    finalUrl: string;
+    statusCode: number;
+    headers?: Headers;
+  }> {
+    console.log("Using static fetch fallback");
+    const fetcher = new StaticPageFetcher(
+      fetch,
+      undefined,
+      undefined,
+      this.retryConfig,
+    );
     return await fetcher.fetchPage(url);
   }
 }
@@ -330,67 +366,85 @@ export class FailoverPageFetcher implements PageFetcher {
 
   constructor(source: ScraperSource) {
     this.source = source;
-    
+
     // Create static fetcher as primary
     const retryConfig: RetryConfig = {
       maxRetries: 3,
       initialDelayMs: 1000,
       maxDelayMs: 10000,
     };
-    
+
     this.staticFetcher = new StaticPageFetcher(
       fetch,
       source.config.headers,
       15000,
-      retryConfig
+      retryConfig,
     );
-    
+
     // Pre-create dynamic fetcher if ScrapingBee key is available
-    if (source.config.scrapingbee_api_key || Deno.env.get('SCRAPINGBEE_API_KEY')) {
+    if (
+      source.config.scrapingbee_api_key ||
+      Deno.env.get("SCRAPINGBEE_API_KEY")
+    ) {
       const dynamicConfig = {
-        apiKey: source.config.scrapingbee_api_key || Deno.env.get('SCRAPINGBEE_API_KEY'),
+        apiKey:
+          source.config.scrapingbee_api_key ||
+          Deno.env.get("SCRAPINGBEE_API_KEY"),
         headless: source.config.headless ?? true,
         waitForSelector: source.config.wait_for_selector,
         waitForTimeout: source.config.wait_for_timeout,
       };
-      
+
       this.dynamicFetcher = new DynamicPageFetcher(
-        'scrapingbee',
+        "scrapingbee",
         dynamicConfig,
-        retryConfig
+        retryConfig,
       );
     }
   }
 
-  async fetchPage(url: string): Promise<{ html: string; finalUrl: string; statusCode: number }> {
+  async fetchPage(
+    url: string,
+  ): Promise<{ html: string; finalUrl: string; statusCode: number }> {
     // If already failed over, use dynamic fetcher
     if (this.hasFailedOver && this.dynamicFetcher) {
-      console.log(`Using dynamic fetcher (failover active) for ${this.source.name}`);
+      console.log(
+        `Using dynamic fetcher (failover active) for ${this.source.name}`,
+      );
       return await this.dynamicFetcher.fetchPage(url);
     }
 
     try {
       // Try static fetcher first
       const result = await this.staticFetcher.fetchPage(url);
-      
+
       // Reset failure count on success
       this.failureCount = 0;
-      
+
       return result;
     } catch (error) {
       // Increment failure count
       this.failureCount++;
-      console.warn(`Static fetch failed (${this.failureCount}/${this.maxFailuresBeforeFailover}) for ${this.source.name}:`, error);
-      
+      console.warn(
+        `Static fetch failed (${this.failureCount}/${this.maxFailuresBeforeFailover}) for ${this.source.name}:`,
+        error,
+      );
+
       // Check if we should fail over
-      if (this.failureCount >= this.maxFailuresBeforeFailover && this.dynamicFetcher && !this.hasFailedOver) {
+      if (
+        this.failureCount >= this.maxFailuresBeforeFailover &&
+        this.dynamicFetcher &&
+        !this.hasFailedOver
+      ) {
         this.hasFailedOver = true;
-        console.log(`Failing over to dynamic fetcher for ${this.source.name} after ${this.failureCount} failures`);
-        
+        console.log(
+          `Failing over to dynamic fetcher for ${this.source.name} after ${this.failureCount} failures`,
+        );
+
         // Retry with dynamic fetcher
         return await this.dynamicFetcher.fetchPage(url);
       }
-      
+
       // Re-throw if we can't fail over
       throw error;
     }
@@ -401,19 +455,19 @@ export class FailoverPageFetcher implements PageFetcher {
  * Factory function to create the appropriate PageFetcher for a source.
  * Reads fetcher_type from scraper_sources to support per-source configuration
  * of 'static' vs 'dynamic' fetching strategies.
- * 
+ *
  * Now includes automatic failover: if static fetching fails 3 times, it pivots to
  * dynamic fetching (ScrapingBee) for the session.
- * 
+ *
  * @param source - The scraper source configuration
  * @param options - Optional configuration, including useProxy to force proxy usage
  * @returns A PageFetcher instance (with failover capability)
  */
 export function createFetcherForSource(
-  source: ScraperSource, 
-  options: { useProxy?: boolean } = {}
+  source: ScraperSource,
+  options: { useProxy?: boolean } = {},
 ): PageFetcher {
-  const fetcherType = source.fetcher_type || 'static';
+  const fetcherType = source.fetcher_type || "static";
   const retryConfig: RetryConfig = {
     maxRetries: 3,
     initialDelayMs: 1000,
@@ -421,7 +475,8 @@ export function createFetcherForSource(
   };
 
   const dynamicConfig = {
-    apiKey: source.config.scrapingbee_api_key || Deno.env.get('SCRAPINGBEE_API_KEY'),
+    apiKey:
+      source.config.scrapingbee_api_key || Deno.env.get("SCRAPINGBEE_API_KEY"),
     headless: source.config.headless ?? true,
     waitForSelector: source.config.wait_for_selector,
     waitForTimeout: source.config.wait_for_timeout,
@@ -430,23 +485,19 @@ export function createFetcherForSource(
   // If proxy is explicitly requested (e.g. for retries), force usage of ScrapingBee
   if (options.useProxy) {
     console.log(`Using proxy (ScrapingBee) for ${source.name} as requested`);
-    return new DynamicPageFetcher(
-      'scrapingbee',
-      dynamicConfig,
-      retryConfig
-    );
+    return new DynamicPageFetcher("scrapingbee", dynamicConfig, retryConfig);
   }
 
   // Use failover fetcher for static sources (automatic pivot to dynamic if needed)
-  if (fetcherType === 'static') {
+  if (fetcherType === "static") {
     return new FailoverPageFetcher(source);
   }
 
   // Dynamic fetchers (Puppeteer, Playwright, ScrapingBee) - no failover needed
   return new DynamicPageFetcher(
-    fetcherType as 'puppeteer' | 'playwright' | 'scrapingbee',
+    fetcherType as "puppeteer" | "playwright" | "scrapingbee",
     dynamicConfig,
-    retryConfig
+    retryConfig,
   );
 }
 
@@ -458,13 +509,13 @@ export interface FetchOptions {
 /**
  * @deprecated Use StaticPageFetcher directly instead.
  * This function is kept for backward compatibility.
- * 
+ *
  * Migration example:
  * ```typescript
  * // Old way:
  * const fetcher = createSpoofedFetch({ headers: customHeaders });
  * const response = await fetcher(url, { method: "GET" });
- * 
+ *
  * // New way:
  * const fetcher = new StaticPageFetcher(fetch, customHeaders);
  * const { html, finalUrl, statusCode } = await fetcher.fetchPage(url);
@@ -474,9 +525,17 @@ export function createSpoofedFetch(options: FetchOptions = {}): typeof fetch {
   const mergedHeaders = { ...DEFAULT_HEADERS, ...options.headers };
   const timeout = options.timeout ?? 15000;
 
-  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    
+  return async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+
     return fetch(url, {
       ...init,
       headers: { ...mergedHeaders, ...(init?.headers || {}) },
@@ -485,11 +544,24 @@ export function createSpoofedFetch(options: FetchOptions = {}): typeof fetch {
   };
 }
 
-export function generatePathFallbacks(baseUrl: string, hints: string[] = []): string[] {
+export function generatePathFallbacks(
+  baseUrl: string,
+  hints: string[] = [],
+): string[] {
   const url = new URL(baseUrl);
   const paths = new Set<string>();
   paths.add(baseUrl);
-  const commonPaths = ["/agenda", "/evenementen", "/events", "/programma", "/kalender", "/activiteiten", "/wat-te-doen", "/uitagenda", ...hints];
+  const commonPaths = [
+    "/agenda",
+    "/evenementen",
+    "/events",
+    "/programma",
+    "/kalender",
+    "/activiteiten",
+    "/wat-te-doen",
+    "/uitagenda",
+    ...hints,
+  ];
   for (const path of commonPaths) {
     paths.add(`${url.protocol}//${url.host}${path}`);
   }
@@ -498,8 +570,20 @@ export function generatePathFallbacks(baseUrl: string, hints: string[] = []): st
 
 export interface ScraperStrategy {
   discoverListingUrls(fetcher: PageFetcher): Promise<string[]>;
-  fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string; headers?: Headers }>;
-  parseListing(html: string, listingUrl: string, options?: { enableDebug?: boolean; fetcher?: PageFetcher }): Promise<RawEventCard[]>;
+  fetchListing(
+    url: string,
+    fetcher: PageFetcher,
+  ): Promise<{
+    status: number;
+    html: string;
+    finalUrl: string;
+    headers?: Headers;
+  }>;
+  parseListing(
+    html: string,
+    listingUrl: string,
+    options?: { enableDebug?: boolean; fetcher?: PageFetcher },
+  ): Promise<{ events: RawEventCard[]; nextPageUrl?: string }>;
 }
 
 const SELECTORS = [
@@ -534,9 +618,18 @@ export class DefaultStrategy implements ScraperStrategy {
     return generatePathFallbacks(this.source.url, hints);
   }
 
-  async fetchListing(url: string, fetcher: PageFetcher): Promise<{ status: number; html: string; finalUrl: string; headers?: Headers }> {
+  async fetchListing(
+    url: string,
+    fetcher: PageFetcher,
+  ): Promise<{
+    status: number;
+    html: string;
+    finalUrl: string;
+    headers?: Headers;
+  }> {
     try {
-      const { html, finalUrl, statusCode, headers } = await fetcher.fetchPage(url);
+      const { html, finalUrl, statusCode, headers } =
+        await fetcher.fetchPage(url);
       return { status: statusCode, html, finalUrl, headers };
     } catch (error) {
       console.warn(`Fetch failed for ${url}:`, error);
@@ -547,25 +640,27 @@ export class DefaultStrategy implements ScraperStrategy {
   async parseListing(
     html: string,
     listingUrl: string,
-    _options?: { enableDebug?: boolean; fetcher?: PageFetcher }
-  ): Promise<RawEventCard[]> {
+    _options?: { enableDebug?: boolean; fetcher?: PageFetcher },
+  ): Promise<{ events: RawEventCard[]; nextPageUrl?: string }> {
     // Dynamic import to avoid circular dependencies
     const { runExtractionWaterfall } = await import("./dataExtractors.ts");
     const { fingerprintCMS } = await import("./cmsFingerprinter.ts");
-    
+
     // 1. Light Check (Fingerprinting)
     // This understands which method to try first based on the HTML content
     const fingerprint = fingerprintCMS(html);
-    
+
     // 2. Determine preferred method
     // If user set a specific method, use it. Otherwise, use the fingerprint's top recommendation.
-    const method = this.source.preferred_method || 'auto';
+    const method = this.source.preferred_method || "auto";
     let preferredMethod = method as any;
-    
-    if (method === 'auto' && fingerprint.recommendedStrategies.length > 0) {
+
+    if (method === "auto" && fingerprint.recommendedStrategies.length > 0) {
       preferredMethod = fingerprint.recommendedStrategies[0];
       if (_options?.enableDebug) {
-        console.log(`[Fingerprint] Detected ${fingerprint.cms} for ${this.source.name}. Optimization: Trying ${preferredMethod} first.`);
+        console.log(
+          `[Fingerprint] Detected ${fingerprint.cms} for ${this.source.name}. Optimization: Trying ${preferredMethod} first.`,
+        );
       }
     }
 
@@ -578,21 +673,52 @@ export class DefaultStrategy implements ScraperStrategy {
       domSelectors: this.source.config?.selectors,
       fetcher: {
         fetch: async (url: string) => {
-           const f = new StaticPageFetcher();
-           const res = await f.fetchPage(url);
-           return { html: res.html, status: res.statusCode };
-        }
-      }
+          const f = new StaticPageFetcher();
+          const res = await f.fetchPage(url);
+          return { html: res.html, status: res.statusCode };
+        },
+      },
     });
 
-    console.log(`[Waterfall] Source: ${this.source.name} | CMS: ${fingerprint.cms} | Strategy: ${result.winningStrategy || 'NONE'} | Found: ${result.totalEvents}`);
-    
+    console.log(
+      `[Waterfall] Source: ${this.source.name} | CMS: ${fingerprint.cms} | Strategy: ${result.winningStrategy || "NONE"} | Found: ${result.totalEvents}`,
+    );
+
+    // 4. Pagination Discovery
+    let nextPageUrl: string | undefined;
+    try {
+      const $ = cheerio.load(html);
+      const nextEl = $(
+        'a[rel="next"], .pagination .next, a:contains("Volgende"), a:contains("Next")',
+      )
+        .filter((_, el) => {
+          // Basic filter to ensure it's likely a pagination link
+          const href = $(el).attr("href");
+          return !!href && href.length > 2;
+        })
+        .first();
+
+      const relativeUrl = nextEl.attr("href");
+      if (relativeUrl) {
+        try {
+          nextPageUrl = new URL(relativeUrl, listingUrl).href;
+        } catch {
+          // ignore invalid URLs
+        }
+      }
+    } catch (err) {
+      console.warn(`Pagination discovery failed for ${this.source.name}:`, err);
+    }
+
     // events already tagged with parsingMethod by dataExtractors.ts update
-    return result.events;
+    return { events: result.events, nextPageUrl };
   }
 }
 
-export function resolveStrategy(name: string | undefined, source: ScraperSource): ScraperStrategy {
+export function resolveStrategy(
+  name: string | undefined,
+  source: ScraperSource,
+): ScraperStrategy {
   // For now, always use DefaultStrategy
   // Future: add platform-specific strategies
   return new DefaultStrategy(source);

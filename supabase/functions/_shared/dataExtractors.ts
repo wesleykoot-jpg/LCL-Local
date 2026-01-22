@@ -38,6 +38,7 @@ export type ExtractionStrategy =
   | "json_ld"
   | "microdata"
   | "feed"
+  | "iframe"
   | "dom";
 
 export interface ExtractionResult {
@@ -809,6 +810,85 @@ export async function extractFromFeeds(
   }
 }
 
+// ============================================================================
+// PRIORITY 3.5: IFRAME EXTRACTION
+// ============================================================================
+
+/**
+ * Extracts events from embedded iframes (e.g. Google Calendar, Timely, etc.)
+ */
+export async function extractFromIframes(
+  html: string,
+  ctx: FeedExtractionContext,
+): Promise<ExtractionResult> {
+  const startTime = Date.now();
+  const events: RawEventCard[] = [];
+
+  try {
+    const $ = cheerio.load(html);
+    const iframeUrls: string[] = [];
+
+    $("iframe").each((_, el) => {
+      const src = $(el).attr("src");
+      if (!src) return;
+
+      // Filter for likely event/calendar iframes
+      if (src.match(/agenda|calendar|event|programma|activity/i)) {
+        iframeUrls.push(resolveUrl(src, ctx.baseUrl));
+      }
+    });
+
+    // Limit to 2 iframes to prevent massive recursion
+    for (const url of iframeUrls.slice(0, 2)) {
+      if (!ctx.fetcher) break;
+      try {
+        const { html: iframeHtml, status } = await ctx.fetcher.fetch(url);
+        if (status !== 200 || !iframeHtml) continue;
+
+        // RECURSE: Run waterfall on iframe content
+        // Prevent infinite loops by not passing 'iframe' as preferred method
+        const result = await runExtractionWaterfall(iframeHtml, {
+          ...ctx,
+          baseUrl: url,
+          preferredMethod: "auto", // Reset preference
+          feedDiscovery: false, // Don't check feeds inside iframes for now
+        });
+
+        if (result.events.length > 0) {
+          events.push(...result.events);
+          // Tag them as from iframe (optional, or rely on parsingMethod)
+          result.events.forEach((e) => {
+            e.debugInfo = { ...e.debugInfo, fromIframe: url };
+          });
+        }
+      } catch (err) {
+        console.warn(`Failed to process iframe ${url}:`, err);
+      }
+    }
+
+    return {
+      strategy: "iframe",
+      tried: true,
+      found: events.length,
+      error:
+        events.length === 0 && iframeUrls.length > 0
+          ? `Found ${iframeUrls.length} iframes but 0 events`
+          : null,
+      events,
+      timeMs: Date.now() - startTime,
+    };
+  } catch (error) {
+    return {
+      strategy: "iframe",
+      tried: true,
+      found: 0,
+      error: String(error),
+      events: [],
+      timeMs: Date.now() - startTime,
+    };
+  }
+}
+
 /**
  * Parses RSS/Atom feed content into RawEventCards.
  */
@@ -1124,6 +1204,9 @@ export async function runExtractionWaterfall(
         break;
       case "dom":
         result = extractFromDom(html, ctx);
+        break;
+      case "iframe":
+        result = await extractFromIframes(html, ctx);
         break;
       default:
         continue;
