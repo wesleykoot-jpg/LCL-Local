@@ -15,10 +15,12 @@ const corsHeaders = {
 // Sportlink Credentials
 const SPORTLINK_CLIENT_ID = "oCuV9oozaaz8zee";
 const SPORTLINK_CLIENT_SECRET = "eep7Shoo7i";
-const SPORTLINK_USER = "wesleykoot@gmail.com";
-const SPORTLINK_PASS = "Jejwyz-qoxco6-fitmob";
+// Use credentials from user's successful cURL to rule out account issues
+const SPORTLINK_USER = "rxxnrextolzwlqsspy@hthlm.com";
+const SPORTLINK_PASS = "test1234";
 
-const SPORTLINK_AUTH_URL = "https://data.sportlink.com/oauth/token";
+const SPORTLINK_AUTH_URL =
+  "https://app-vnl-production.sportlink.com/oauth/token";
 const SPORTLINK_API_BASE = "https://data.sportlink.com";
 
 const CLUBS = [
@@ -31,6 +33,15 @@ const CLUBS = [
     sourceId: "c4601bcf-abe4-420d-af6d-1069a22bc14d",
   },
 ];
+
+const APP_HEADERS = {
+  "X-Real-User-Agent":
+    "sportlink-app-voetbalnl/6.26.0-2025017636 android SM-N976N/samsung/25 (6.26.0)",
+  "X-Navajo-Instance": "KNVB",
+  "X-Navajo-Locale": "nl",
+  "X-Navajo-Version": "2",
+  "User-Agent": "okhttp/4.12.0",
+};
 
 async function generateHash(input: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -45,15 +56,17 @@ async function getAccessToken() {
   const params = new URLSearchParams();
   params.append("grant_type", "password");
   params.append("client_id", SPORTLINK_CLIENT_ID);
-  params.append("client_secret", SPORTLINK_CLIENT_SECRET);
+  params.append("secret", SPORTLINK_CLIENT_SECRET);
   params.append("username", SPORTLINK_USER);
   params.append("password", SPORTLINK_PASS);
-  params.append("scope", "all");
 
   console.log(`[Sportlink] Requesting token for user ${SPORTLINK_USER}...`);
   const response = await fetch(SPORTLINK_AUTH_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "okhttp/4.12.0",
+    },
     body: params,
   });
 
@@ -85,28 +98,60 @@ async function getAccessToken() {
   return data;
 }
 
-async function fetchClubProgram(accessToken: string, clubId: string) {
-  // Use the native app endpoint provided by the user
-  // This appears to be the internal API for the "Voetbal.nl" app
+async function searchClubs(accessToken: string, query: string) {
   const baseUrl = "https://app-vnl-production.sportlink.com";
-  const endpoint = "/entity/common/memberportal/app/club/ClubProgram";
-  const url = `${baseUrl}${endpoint}?v=3&ClubId=${clubId}`;
+  const endpoint = "/entity/common/memberportal/app/club/ClubSearch";
+  const url = `${baseUrl}${endpoint}?v=2&q=${encodeURIComponent(query)}`;
 
-  console.log(`[Sportlink] Fetching via App-VNL endpoint: ${url}`);
+  console.log(`[Sportlink] Searching clubs via App-VNL: ${url}`);
 
   const response = await fetch(url, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-      "User-Agent": "okhttp/4.9.1",
+      ...APP_HEADERS,
+    },
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`[Sportlink] Search failed: ${response.status} ${errorBody}`);
+    return { error: errorBody, status: response.status };
+  }
+
+  const data = await response.json();
+  return data;
+}
+
+async function fetchClubProgram(accessToken: string, clubId: string) {
+  const baseUrl = "https://app-vnl-production.sportlink.com";
+  const endpoint = "/entity/common/memberportal/app/club/ClubProgram";
+
+  const params = new URLSearchParams({
+    clubcode: clubId,
+    aantaldagen: "60",
+    weekoffset: "0",
+    eigenwedstrijden: "JA",
+    thuis: "JA",
+    uit: "JA",
+  });
+
+  const url = `${baseUrl}${endpoint}?${params.toString()}`;
+
+  console.log(`[Sportlink] Fetching via App-VNL endpoint (GET): ${url}`);
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...APP_HEADERS,
     },
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
     console.error(
-      `[Sportlink] App-VNL fetch failed: ${response.status} ${errorBody}`,
+      `[Sportlink] App-VNL GET failed: ${response.status} ${errorBody}`,
     );
     await logHttpError(
       "sportlink-ingest",
@@ -120,10 +165,9 @@ async function fetchClubProgram(accessToken: string, clubId: string) {
   }
 
   const rawData = await response.json();
-
-  // Return raw data for now so we can inspect it in debug mode
-  // We'll map 'program' once we see the actual key
-  const program = [];
+  const program = rawData.programma?.output?.[0]?.columns || []; // Attempt to extract if standard Navajo format
+  // Or if it's a flat list, we'll see.
+  // Based on schema, output is `output` array.
 
   return { program, raw: rawData };
 }
@@ -139,12 +183,13 @@ serve(async (req: Request): Promise<Response> => {
     async () => {
       const url = new URL(req.url);
       const action = url.searchParams.get("action") || "ingest";
+      const query = url.searchParams.get("q");
 
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-      if (action === "ingest" || action === "debug") {
+      if (action === "ingest" || action === "debug" || action === "search") {
         const authData = await getAccessToken();
 
         if (!authData.access_token) {
@@ -162,6 +207,16 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const token = authData.access_token;
+
+        if (action === "search") {
+          if (!query)
+            return new Response("Missing query param 'q'", { status: 400 });
+          const searchResults = await searchClubs(token, query);
+          return new Response(JSON.stringify(searchResults), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         let totalProcessed = 0;
         const results = [];
         const debugData: any[] = [];
