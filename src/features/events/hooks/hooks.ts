@@ -1,16 +1,16 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { joinEvent, checkEventAttendance } from '../api/eventService';
-import { hapticNotification } from '@/shared/lib/haptics';
-import toast from 'react-hot-toast';
-import type { Database } from '@/integrations/supabase/types';
-import { queryKeys } from '@/shared/config/queryKeys';
-import { QUERY_STALE_TIME, QUERY_GC_TIME } from '@/shared/config/queryConfig';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { joinEvent, checkEventAttendance } from "../api/eventService";
+import { hapticNotification } from "@/shared/lib/haptics";
+import toast from "react-hot-toast";
+import type { Database } from "@/integrations/supabase/types";
+import { queryKeys } from "@/shared/config/queryKeys";
+import { QUERY_STALE_TIME, QUERY_GC_TIME } from "@/shared/config/queryConfig";
 
-type Event = Database['public']['Tables']['events']['Row'];
-type PersonaStats = Database['public']['Tables']['persona_stats']['Row'];
-type PersonaBadge = Database['public']['Tables']['persona_badges']['Row'];
+type Event = Database["public"]["Tables"]["events"]["Row"];
+type PersonaStats = Database["public"]["Tables"]["persona_stats"]["Row"];
+type PersonaBadge = Database["public"]["Tables"]["persona_badges"]["Row"];
 
 export interface AttendeeProfile {
   id: string;
@@ -26,6 +26,7 @@ export interface EventWithAttendees extends Event {
   attendee_count?: number;
   attendees?: EventAttendee[];
   parent_event?: Event | null;
+  distance_km?: number | null;
 }
 
 const ATTENDEE_LIMIT = 4;
@@ -36,11 +37,12 @@ const ATTENDEE_LIMIT = 4;
  */
 type EventWithCount = Event & { attendee_count?: Array<{ count: number }> };
 
-const getAttendeeCount = (event: { attendee_count?: Array<{ count: number }> }) =>
+const getAttendeeCount = (event: {
+  attendee_count?: Array<{ count: number }>;
+}) =>
   Array.isArray(event?.attendee_count) && event.attendee_count.length > 0
     ? event.attendee_count[0]?.count || 0
     : 0;
-
 
 export function usePersonaStats(profileId: string) {
   const [stats, setStats] = useState<PersonaStats | null>(null);
@@ -51,9 +53,9 @@ export function usePersonaStats(profileId: string) {
       try {
         // Fetch all persona stats and combine them
         const { data, error } = await supabase
-          .from('persona_stats')
-          .select('*')
-          .eq('profile_id', profileId);
+          .from("persona_stats")
+          .select("*")
+          .eq("profile_id", profileId);
 
         if (error) throw error;
 
@@ -61,16 +63,24 @@ export function usePersonaStats(profileId: string) {
         if (data && data.length > 0) {
           const combined: PersonaStats = {
             ...data[0],
-            rallies_hosted: data.reduce((sum, s) => sum + (s.rallies_hosted || 0), 0),
-            newcomers_welcomed: data.reduce((sum, s) => sum + (s.newcomers_welcomed || 0), 0),
-            host_rating: data.reduce((sum, s) => sum + (s.host_rating || 0), 0) / data.length,
+            rallies_hosted: data.reduce(
+              (sum, s) => sum + (s.rallies_hosted || 0),
+              0,
+            ),
+            newcomers_welcomed: data.reduce(
+              (sum, s) => sum + (s.newcomers_welcomed || 0),
+              0,
+            ),
+            host_rating:
+              data.reduce((sum, s) => sum + (s.host_rating || 0), 0) /
+              data.length,
           };
           setStats(combined);
         } else {
           setStats(null);
         }
       } catch (e) {
-        console.error('Error fetching persona stats:', e);
+        console.error("Error fetching persona stats:", e);
       } finally {
         setLoading(false);
       }
@@ -93,14 +103,14 @@ export function usePersonaBadges(profileId: string) {
       try {
         // Fetch all badges regardless of persona type
         const { data, error } = await supabase
-          .from('persona_badges')
-          .select('*')
-          .eq('profile_id', profileId);
+          .from("persona_badges")
+          .select("*")
+          .eq("profile_id", profileId);
 
         if (error) throw error;
         setBadges(data || []);
       } catch (e) {
-        console.error('Error fetching badges:', e);
+        console.error("Error fetching badges:", e);
       } finally {
         setLoading(false);
       }
@@ -128,10 +138,10 @@ export function useEvents(options?: {
   const [loading, setLoading] = useState(true);
 
   // Stabilize dependency keys to prevent re-renders from reference changes
-  const categoryKey = options?.category?.join(',') ?? '';
-  const eventTypeKey = options?.eventType?.join(',') ?? '';
-  const currentUserProfileId = options?.currentUserProfileId ?? '';
-  const parentEventId = options?.parentEventId ?? '';
+  const categoryKey = options?.category?.join(",") ?? "";
+  const eventTypeKey = options?.eventType?.join(",") ?? "";
+  const currentUserProfileId = options?.currentUserProfileId ?? "";
+  const parentEventId = options?.parentEventId ?? "";
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -141,8 +151,9 @@ export function useEvents(options?: {
       // Limit attendees to first 4 per event to keep it light
       // Supabase default limit is 1000 rows which is sufficient for our use case
       let query = supabase
-        .from('events')
-        .select(`
+        .from("events")
+        .select(
+          `
           *,
           attendee_count:event_attendees(count),
           attendees:event_attendees(
@@ -152,34 +163,35 @@ export function useEvents(options?: {
               full_name
             )
           )
-        `)
-        .order('event_date', { ascending: true })
-        .limit(ATTENDEE_LIMIT, { foreignTable: 'event_attendees' });
+        `,
+        )
+        .order("event_date", { ascending: true })
+        .limit(ATTENDEE_LIMIT, { foreignTable: "event_attendees" });
 
       if (options?.category && options.category.length > 0) {
-        query = query.in('category', options.category);
+        query = query.in("category", options.category);
       }
 
       if (options?.eventType && options.eventType.length > 0) {
-        query = query.in('event_type', options.eventType);
+        query = query.in("event_type", options.eventType);
       }
 
       if (options?.parentEventId) {
-        query = query.eq('parent_event_id', options.parentEventId);
+        query = query.eq("parent_event_id", options.parentEventId);
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      let eventsWithData = (data || []).map(event => {
+      let eventsWithData = (data || []).map((event) => {
         // Extract count from nested array
         const count = Array.isArray(event.attendee_count)
           ? event.attendee_count[0]?.count || 0
           : 0;
 
         const attendees = Array.isArray(event.attendees)
-          ? event.attendees as EventAttendee[]
+          ? (event.attendees as EventAttendee[])
           : [];
 
         return {
@@ -192,31 +204,38 @@ export function useEvents(options?: {
       // If currentUserProfileId is provided, fetch user's attendance for each event
       // to ensure the "Joined" state is accurate even if user is not in first 4 attendees
       if (options?.currentUserProfileId && eventsWithData.length > 0) {
-        const eventIds = eventsWithData.map(e => e.id);
+        const eventIds = eventsWithData.map((e) => e.id);
         const { data: userAttendances } = await supabase
-          .from('event_attendees')
-          .select('event_id, profile_id, profiles(id, avatar_url, full_name)')
-          .eq('profile_id', options.currentUserProfileId)
-          .in('event_id', eventIds);
+          .from("event_attendees")
+          .select("event_id, profile_id, profiles(id, avatar_url, full_name)")
+          .eq("profile_id", options.currentUserProfileId)
+          .in("event_id", eventIds);
 
         if (userAttendances) {
           // Add current user to attendees list if they've joined but aren't in the first 4
-          eventsWithData = eventsWithData.map(event => {
-            const userAttendance = userAttendances.find(a => a.event_id === event.id);
+          eventsWithData = eventsWithData.map((event) => {
+            const userAttendance = userAttendances.find(
+              (a) => a.event_id === event.id,
+            );
             if (userAttendance) {
               // Check if user is already in attendees list
-              const isInList = event.attendees?.some(a => a.profile?.id === options.currentUserProfileId);
+              const isInList = event.attendees?.some(
+                (a) => a.profile?.id === options.currentUserProfileId,
+              );
               if (!isInList && userAttendance.profiles) {
                 // Add user to beginning of attendees list
                 return {
                   ...event,
-                  attendees: [{
-                    profile: {
-                      id: userAttendance.profiles.id,
-                      avatar_url: userAttendance.profiles.avatar_url,
-                      full_name: userAttendance.profiles.full_name,
-                    }
-                  }, ...(event.attendees || [])]
+                  attendees: [
+                    {
+                      profile: {
+                        id: userAttendance.profiles.id,
+                        avatar_url: userAttendance.profiles.avatar_url,
+                        full_name: userAttendance.profiles.full_name,
+                      },
+                    },
+                    ...(event.attendees || []),
+                  ],
                 };
               }
             }
@@ -228,7 +247,7 @@ export function useEvents(options?: {
       setEvents(eventsWithData);
     } catch (e) {
       if (import.meta.env.DEV) {
-        console.error('Error fetching events:', e);
+        console.error("Error fetching events:", e);
       }
     } finally {
       setLoading(false);
@@ -243,33 +262,37 @@ export function useEvents(options?: {
 }
 
 export function useUserCommitments(profileId: string) {
-  const [commitments, setCommitments] = useState<Array<EventWithAttendees & { ticket_number?: string }>>([]);
+  const [commitments, setCommitments] = useState<
+    Array<EventWithAttendees & { ticket_number?: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchCommitments() {
       try {
         const { data, error } = await supabase
-          .from('event_attendees')
-          .select(`
+          .from("event_attendees")
+          .select(
+            `
             *,
             event:events(*)
-          `)
-          .eq('profile_id', profileId)
-          .eq('status', 'going')
-          .order('joined_at', { ascending: false })
+          `,
+          )
+          .eq("profile_id", profileId)
+          .eq("status", "going")
+          .order("joined_at", { ascending: false })
           .limit(3);
 
         if (error) throw error;
 
-        const commitmentsWithEvents = (data || []).map(attendance => ({
+        const commitmentsWithEvents = (data || []).map((attendance) => ({
           ...attendance.event,
           ticket_number: attendance.ticket_number,
         })) as Array<EventWithAttendees & { ticket_number?: string }>;
 
         setCommitments(commitmentsWithEvents);
       } catch (e) {
-        console.error('Error fetching commitments:', e);
+        console.error("Error fetching commitments:", e);
       } finally {
         setLoading(false);
       }
@@ -303,20 +326,22 @@ export function useAllUserCommitments(profileId: string) {
         { data: createdEvents, error: createdError },
       ] = await Promise.all([
         supabase
-          .from('event_attendees')
-          .select(`
+          .from("event_attendees")
+          .select(
+            `
             *,
             event:events(
               *,
               attendee_count:event_attendees(count)
             )
-          `)
-          .eq('profile_id', profileId)
-          .eq('status', 'going'),
+          `,
+          )
+          .eq("profile_id", profileId)
+          .eq("status", "going"),
         supabase
-          .from('events')
-          .select('*, attendee_count:event_attendees(count)')
-          .eq('created_by', profileId),
+          .from("events")
+          .select("*, attendee_count:event_attendees(count)")
+          .eq("created_by", profileId),
       ]);
 
       if (attendanceError) throw attendanceError;
@@ -324,7 +349,7 @@ export function useAllUserCommitments(profileId: string) {
 
       // Process and sort by event date
       const commitmentsWithEvents = (attendanceData || [])
-        .map(attendance => {
+        .map((attendance) => {
           const event = attendance.event as EventWithCount;
           return {
             ...event,
@@ -332,9 +357,11 @@ export function useAllUserCommitments(profileId: string) {
             attendee_count: getAttendeeCount(event),
           };
         })
-        .filter(e => e.id) as Array<EventWithAttendees & { ticket_number?: string }>;
+        .filter((e) => e.id) as Array<
+        EventWithAttendees & { ticket_number?: string }
+      >;
 
-      const createdByUser = (createdEvents || []).map(event => ({
+      const createdByUser = (createdEvents || []).map((event) => ({
         ...event,
         attendee_count: getAttendeeCount(event as EventWithCount),
       })) as Array<EventWithAttendees & { ticket_number?: string }>;
@@ -342,8 +369,8 @@ export function useAllUserCommitments(profileId: string) {
       // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
       // This ensures creator-owned events still appear even if the creator isn't listed as an attendee
       const merged = [...commitmentsWithEvents];
-      const existingIds = new Set(merged.map(event => event.id));
-      createdByUser.forEach(event => {
+      const existingIds = new Set(merged.map((event) => event.id));
+      createdByUser.forEach((event) => {
         if (!existingIds.has(event.id)) {
           merged.push(event);
           existingIds.add(event.id);
@@ -370,7 +397,10 @@ export function useAllUserCommitments(profileId: string) {
   const groupedByMonth = useMemo(() => {
     return commitments.reduce((grouped: GroupedEvents, event) => {
       const date = new Date(event.event_date);
-      const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const monthYear = date.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
       if (!grouped[monthYear]) {
         grouped[monthYear] = [];
       }
@@ -387,14 +417,17 @@ export function useAllUserCommitments(profileId: string) {
  * @param profileId - The ID of the user's profile
  * @returns Object with handleJoinEvent function, joiningEvents set, and isJoining helper
  */
-export function useJoinEvent(profileId: string | undefined, onSuccess?: () => void) {
+export function useJoinEvent(
+  profileId: string | undefined,
+  onSuccess?: () => void,
+) {
   const [joiningEvents, setJoiningEvents] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
 
   const handleJoinEvent = useCallback(
     async (eventId: string) => {
       if (!profileId) {
-        toast.error('Please sign in to join events');
+        toast.error("Please sign in to join events");
         return;
       }
 
@@ -412,22 +445,27 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
 
       try {
         // Check if already attending
-        const { isAttending, status } = await checkEventAttendance(eventId, profileId);
+        const { isAttending, status } = await checkEventAttendance(
+          eventId,
+          profileId,
+        );
         if (isAttending) {
-          await hapticNotification('warning');
-          toast.error(`You're already ${status === 'waitlist' ? 'on the waitlist' : 'attending'} this event`);
+          await hapticNotification("warning");
+          toast.error(
+            `You're already ${status === "waitlist" ? "on the waitlist" : "attending"} this event`,
+          );
           return;
         }
 
         const { error, waitlisted } = await joinEvent({
           eventId,
           profileId,
-          status: 'going',
+          status: "going",
         });
 
         if (error) throw error;
 
-        await hapticNotification('success');
+        await hapticNotification("success");
         if (waitlisted) {
           toast.success("Event is full! You've been added to the waitlist");
         } else {
@@ -437,21 +475,25 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
         // Invalidate both events feed, user commitments, and myEvents queries concurrently
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.events.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.profile.commitments(profileId) }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.profile.myEvents(profileId) }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.profile.commitments(profileId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.profile.myEvents(profileId),
+          }),
         ]);
 
         // Call refetch callback if provided
         onSuccess?.();
       } catch (error) {
-        console.error('Error joining event:', error);
-        if (error instanceof Error && error.message === 'already_joined') {
-          await hapticNotification('warning');
+        console.error("Error joining event:", error);
+        if (error instanceof Error && error.message === "already_joined") {
+          await hapticNotification("warning");
           toast.error("You're already attending this event");
           return;
         }
-        await hapticNotification('error');
-        toast.error('Failed to join event. Please try again.');
+        await hapticNotification("error");
+        toast.error("Failed to join event. Please try again.");
       } finally {
         setJoiningEvents((prev) => {
           const newSet = new Set(prev);
@@ -460,12 +502,12 @@ export function useJoinEvent(profileId: string | undefined, onSuccess?: () => vo
         });
       }
     },
-    [profileId, queryClient, onSuccess]
+    [profileId, queryClient, onSuccess],
   );
 
   const isJoining = useCallback(
     (eventId: string) => joiningEvents.has(eventId),
-    [joiningEvents]
+    [joiningEvents],
   );
 
   return { handleJoinEvent, joiningEvents, isJoining };

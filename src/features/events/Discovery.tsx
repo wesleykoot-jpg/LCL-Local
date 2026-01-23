@@ -94,13 +94,20 @@ const Discovery = () => {
     usePersonalizedFeed: !!userLocation && !!profile?.id,
   });
 
-  // 2. Fetch Discovery Rails (Server-side hybrid generation)
-  const { data: discoveryLayout, isLoading: railsLoading } = useDiscoveryRails({
+  // 2. Fetch Discovery Rails (Client-side generation)
+  // Now uses synchronous calculation based on allEvents
+  const discoveryLayout = useDiscoveryRails({
+    allEvents,
     userId: profile?.id,
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
     enabled: mode === "browsing",
+    // In the future, we can pass profile.interests or similar here
+    selectedCategories: [],
   });
+
+  // Rails are "loading" if the source events are loading
+  const railsLoading = loading;
 
   // Debug logging
   useMemo(() => {

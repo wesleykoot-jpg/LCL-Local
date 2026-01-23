@@ -1,14 +1,14 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import type { EventWithAttendees, EventAttendee } from './hooks';
-import type { Database } from '@/integrations/supabase/types';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import type { EventWithAttendees, EventAttendee } from "./hooks";
+import type { Database } from "@/integrations/supabase/types";
 import {
   parseEventsWithAttendees,
   parsePersonalizedFeedRows,
   parseUserAttendanceRows,
-} from '@/lib/api/schemas';
+} from "@/lib/api/schemas";
 
-type Event = Database['public']['Tables']['events']['Row'];
+type Event = Database["public"]["Tables"]["events"]["Row"];
 
 const ATTENDEE_LIMIT = 4;
 
@@ -23,7 +23,7 @@ interface UseEventsQueryOptions {
 
 /**
  * Fetches events using TanStack Query with optional personalized feed RPC
- * 
+ *
  * Benefits:
  * - Automatic caching and background refetching
  * - Window focus refetching for fresh data
@@ -32,7 +32,7 @@ interface UseEventsQueryOptions {
  */
 export function useEventsQuery(options?: UseEventsQueryOptions) {
   const queryClient = useQueryClient();
-  
+
   const {
     category,
     eventType,
@@ -44,13 +44,15 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
   // Create stable query key from options
   const queryKey = [
-    'events',
+    "events",
     {
-      category: category?.sort().join(',') || 'all',
-      eventType: eventType?.sort().join(',') || 'all',
-      location: userLocation ? `${userLocation.lat},${userLocation.lng}` : 'none',
+      category: category?.sort().join(",") || "all",
+      eventType: eventType?.sort().join(",") || "all",
+      location: userLocation
+        ? `${userLocation.lat},${userLocation.lng}`
+        : "none",
       radius: radiusKm,
-      userId: currentUserProfileId || 'anonymous',
+      userId: currentUserProfileId || "anonymous",
       personalized: usePersonalizedFeed,
     },
   ];
@@ -62,45 +64,50 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
       let blockedUserIds: string[] = [];
       if (currentUserProfileId) {
         const { data: blockedData } = await supabase
-          .from('user_blocks')
-          .select('blocked_id')
-          .eq('blocker_id', currentUserProfileId);
-        
-        blockedUserIds = (blockedData || []).map(b => b.blocked_id);
+          .from("user_blocks")
+          .select("blocked_id")
+          .eq("blocker_id", currentUserProfileId);
+
+        blockedUserIds = (blockedData || []).map((b) => b.blocked_id);
       }
 
       // Use personalized feed RPC if enabled and user location is available
       if (usePersonalizedFeed && userLocation && currentUserProfileId) {
-        const { data, error } = await (supabase.rpc as any)('get_personalized_feed', {
-          user_lat: userLocation.lat,
-          user_long: userLocation.lng,
-          user_id: currentUserProfileId,
-          limit_count: 100,
-          offset_count: 0,
-        });
+        const { data, error } = await (supabase.rpc as any)(
+          "get_personalized_feed",
+          {
+            user_lat: userLocation.lat,
+            user_long: userLocation.lng,
+            user_id: currentUserProfileId,
+            limit_count: 100,
+            offset_count: 0,
+          },
+        );
 
         if (error) throw error;
 
         // Transform RPC result to EventWithAttendees format
         const rpcEvents = parsePersonalizedFeedRows(data);
-        
+
         if (rpcEvents.length === 0) {
           return [];
         }
 
         // Fetch attendees for these events separately
-        const eventIds = rpcEvents.map(e => e.event_id);
+        const eventIds = rpcEvents.map((e) => e.event_id);
         const { data: attendeesData } = await supabase
-          .from('event_attendees')
-          .select(`
+          .from("event_attendees")
+          .select(
+            `
             event_id,
             profile:profiles(
               id,
               avatar_url,
               full_name
             )
-          `)
-          .in('event_id', eventIds)
+          `,
+          )
+          .in("event_id", eventIds)
           .limit(ATTENDEE_LIMIT);
 
         // Group attendees by event
@@ -116,56 +123,61 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
         // Fetch event details including created_by to filter blocked users
         const { data: fullEventsData } = await supabase
-          .from('events')
-          .select('id, created_by')
-          .in('id', eventIds);
+          .from("events")
+          .select("id, created_by")
+          .in("id", eventIds);
 
         const eventCreatorMap = new Map<string, string | null>();
-        (fullEventsData || []).forEach(e => {
+        (fullEventsData || []).forEach((e) => {
           eventCreatorMap.set(e.id, e.created_by);
         });
 
         // Combine RPC data with attendees and filter blocked users
         const combinedEvents = rpcEvents
-          .filter(rpcEvent => {
+          .filter((rpcEvent) => {
             const creatorId = eventCreatorMap.get(rpcEvent.event_id);
             // Filter out events created by blocked users
             return !creatorId || !blockedUserIds.includes(creatorId);
           })
-          .map(rpcEvent => ({
-            id: rpcEvent.event_id,
-            title: rpcEvent.title,
-            description: rpcEvent.description,
-            category: rpcEvent.category as Event['category'],
-            event_type: rpcEvent.event_type as Event['event_type'],
-            parent_event_id: rpcEvent.parent_event_id,
-            venue_name: rpcEvent.venue_name,
-            location: rpcEvent.location,
-            event_date: rpcEvent.event_date,
-            event_time: rpcEvent.event_time,
-            status: rpcEvent.status as Event['status'],
-            image_url: rpcEvent.image_url,
-            match_percentage: rpcEvent.match_percentage,
-            attendee_count: rpcEvent.attendee_count,
-            attendees: attendeesByEvent.get(rpcEvent.event_id) || [],
-            created_by: eventCreatorMap.get(rpcEvent.event_id) || null,
-            created_at: new Date().toISOString(),
-            source_id: null,
-            event_fingerprint: null,
-            max_attendees: null,
-            structured_date: null,
-            structured_location: null,
-            organizer: null,
-            parent_event: null,
-          } as unknown as EventWithAttendees));
+          .map(
+            (rpcEvent) =>
+              ({
+                id: rpcEvent.event_id,
+                title: rpcEvent.title,
+                description: rpcEvent.description,
+                category: rpcEvent.category as Event["category"],
+                event_type: rpcEvent.event_type as Event["event_type"],
+                parent_event_id: rpcEvent.parent_event_id,
+                venue_name: rpcEvent.venue_name,
+                location: rpcEvent.location,
+                event_date: rpcEvent.event_date,
+                event_time: rpcEvent.event_time,
+                status: rpcEvent.status as Event["status"],
+                image_url: rpcEvent.image_url,
+                match_percentage: rpcEvent.match_percentage,
+                attendee_count: rpcEvent.attendee_count,
+                attendees: attendeesByEvent.get(rpcEvent.event_id) || [],
+                created_by: eventCreatorMap.get(rpcEvent.event_id) || null,
+                created_at: new Date().toISOString(),
+                source_id: null,
+                event_fingerprint: null,
+                max_attendees: null,
+                structured_date: null,
+                structured_location: null,
+                organizer: null,
+                parent_event: null,
+                distance_km: rpcEvent.distance_km || null,
+              }) as unknown as EventWithAttendees,
+          );
 
         return combinedEvents;
       }
 
       // Fallback to standard query (existing behavior)
       let query = supabase
-        .from('events')
-        .select(`
+        .from("events")
+        .select(
+          `
           *,
           attendee_count:event_attendees(count),
           attendees:event_attendees(
@@ -175,16 +187,17 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
               full_name
             )
           )
-        `)
-        .order('event_date', { ascending: true })
-        .limit(ATTENDEE_LIMIT, { foreignTable: 'event_attendees' });
+        `,
+        )
+        .order("event_date", { ascending: true })
+        .limit(ATTENDEE_LIMIT, { foreignTable: "event_attendees" });
 
       if (category && category.length > 0) {
-        query = query.in('category', category);
+        query = query.in("category", category);
       }
 
       if (eventType && eventType.length > 0) {
-        query = query.in('event_type', eventType);
+        query = query.in("event_type", eventType);
       }
 
       const { data, error } = await query;
@@ -193,14 +206,17 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
       let eventsWithData = (data || [])
         // Filter out events from blocked users
-        .filter(event => !event.created_by || !blockedUserIds.includes(event.created_by))
-        .map(event => {
+        .filter(
+          (event) =>
+            !event.created_by || !blockedUserIds.includes(event.created_by),
+        )
+        .map((event) => {
           const count = Array.isArray(event.attendee_count)
             ? event.attendee_count[0]?.count || 0
             : 0;
-          
+
           const attendees = Array.isArray(event.attendees)
-            ? event.attendees as EventAttendee[]
+            ? (event.attendees as EventAttendee[])
             : [];
 
           return {
@@ -212,29 +228,36 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
       // Fetch current user's attendance if provided
       if (currentUserProfileId && eventsWithData.length > 0) {
-        const eventIds = eventsWithData.map(e => e.id);
+        const eventIds = eventsWithData.map((e) => e.id);
         const { data: userAttendances } = await supabase
-          .from('event_attendees')
-          .select('event_id, profile_id, profiles(id, avatar_url, full_name)')
-          .eq('profile_id', currentUserProfileId)
-          .in('event_id', eventIds);
+          .from("event_attendees")
+          .select("event_id, profile_id, profiles(id, avatar_url, full_name)")
+          .eq("profile_id", currentUserProfileId)
+          .in("event_id", eventIds);
 
         const attendanceRows = parseUserAttendanceRows(userAttendances);
         if (attendanceRows.length > 0) {
-          eventsWithData = eventsWithData.map(event => {
-            const userAttendance = attendanceRows.find(a => a.event_id === event.id);
+          eventsWithData = eventsWithData.map((event) => {
+            const userAttendance = attendanceRows.find(
+              (a) => a.event_id === event.id,
+            );
             if (userAttendance) {
-              const isInList = event.attendees?.some(a => a.profile?.id === currentUserProfileId);
+              const isInList = event.attendees?.some(
+                (a) => a.profile?.id === currentUserProfileId,
+              );
               if (!isInList && userAttendance.profiles) {
                 return {
                   ...event,
-                  attendees: [{
-                    profile: {
-                      id: userAttendance.profiles.id,
-                      avatar_url: userAttendance.profiles.avatar_url,
-                      full_name: userAttendance.profiles.full_name as string,
-                    }
-                  }, ...(event.attendees || [])]
+                  attendees: [
+                    {
+                      profile: {
+                        id: userAttendance.profiles.id,
+                        avatar_url: userAttendance.profiles.avatar_url,
+                        full_name: userAttendance.profiles.full_name as string,
+                      },
+                    },
+                    ...(event.attendees || []),
+                  ],
                 };
               }
             }
@@ -243,7 +266,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
         }
       }
 
-    return parseEventsWithAttendees(eventsWithData) as EventWithAttendees[];
+      return parseEventsWithAttendees(eventsWithData) as EventWithAttendees[];
     },
     staleTime: 1000 * 60 * 2, // Consider data fresh for 2 minutes
     gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes (formerly cacheTime)
@@ -254,7 +277,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
   // Provide a refetch function for manual updates
   const refetch = () => {
-    return queryClient.invalidateQueries({ queryKey: ['events'] });
+    return queryClient.invalidateQueries({ queryKey: ["events"] });
   };
 
   return {
