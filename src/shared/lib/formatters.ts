@@ -44,38 +44,41 @@ export interface StructuredLocation {
 export function formatEventDate(
   dateStr: string,
   structuredDate?: StructuredDate | null,
-  formatType: 'pill' | 'full' = 'pill'
+  formatType: "pill" | "full" = "pill",
 ): string {
   // Use structured date if available, otherwise parse dateStr
   const dateSource = structuredDate?.utc_start || dateStr;
-  
+
   // Extract date part (handle both ISO timestamps and date-only strings)
-  const datePart = dateSource.split('T')[0].split(' ')[0];
-  const eventDate = new Date(datePart + 'T00:00:00');
-  
+  const datePart = dateSource.split("T")[0].split(" ")[0];
+  const eventDate = new Date(datePart + "T00:00:00");
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-  
+
   // Check for relative dates
   if (eventDate.getTime() === today.getTime()) {
-    return 'Vandaag';
+    return "Vandaag";
   } else if (eventDate.getTime() === tomorrow.getTime()) {
-    return 'Morgen';
+    return "Morgen";
   }
-  
+
   // Format based on type
-  if (formatType === 'pill') {
+  if (formatType === "pill") {
     // Short format: "za 18"
-    return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric' });
+    return eventDate.toLocaleDateString("nl-NL", {
+      weekday: "short",
+      day: "numeric",
+    });
   } else {
     // Full format: "zaterdag 18 mei"
-    return eventDate.toLocaleDateString('nl-NL', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long' 
+    return eventDate.toLocaleDateString("nl-NL", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
     });
   }
 }
@@ -88,40 +91,40 @@ export function formatEventDate(
  */
 export function formatEventTime(
   timeStr: string,
-  structuredDate?: StructuredDate | null
+  structuredDate?: StructuredDate | null,
 ): string {
   // Check if all-day event via structured data
   if (structuredDate?.all_day) {
-    return 'Hele dag';
+    return "Hele dag";
   }
-  
-  if (!timeStr) return '';
-  
+
+  if (!timeStr) return "";
+
   // Handle descriptive time strings
   const descriptiveMap: Record<string, string> = {
-    'TBD': '',
-    'tbd': '',
-    'Hele dag': 'Hele dag',
-    'hele dag': 'Hele dag',
-    'all day': 'Hele dag',
-    'Avond': 'Avond',
-    'avond': 'Avond',
-    'Middag': 'Middag',
-    'middag': 'Middag',
-    'Ochtend': 'Ochtend',
-    'ochtend': 'Ochtend',
+    TBD: "",
+    tbd: "",
+    "Hele dag": "Hele dag",
+    "hele dag": "Hele dag",
+    "all day": "Hele dag",
+    Avond: "Avond",
+    avond: "Avond",
+    Middag: "Middag",
+    middag: "Middag",
+    Ochtend: "Ochtend",
+    ochtend: "Ochtend",
   };
-  
+
   if (descriptiveMap[timeStr] !== undefined) {
     return descriptiveMap[timeStr];
   }
-  
+
   // Format HH:MM times with leading zeros
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-    const [hours, minutes] = timeStr.split(':');
-    return `${hours.padStart(2, '0')}:${minutes}`;
+    const [hours, minutes] = timeStr.split(":");
+    return `${hours.padStart(2, "0")}:${minutes}`;
   }
-  
+
   return timeStr;
 }
 
@@ -133,7 +136,7 @@ export function formatEventTime(
  */
 export function formatEventLocation(
   venueName: string,
-  structuredLocation?: StructuredLocation | null
+  structuredLocation?: StructuredLocation | null,
 ): string {
   // Prefer structured location name if available
   if (structuredLocation?.name) {
@@ -144,13 +147,17 @@ export function formatEventLocation(
   if (structuredLocation?.address) {
     return structuredLocation.address;
   }
-  
+
   // Last resort: legacy venue name (if valid)
-  if (venueName && venueName.toLowerCase() !== 'unknown' && venueName.toLowerCase() !== 'unknown location') {
+  if (
+    venueName &&
+    venueName.toLowerCase() !== "unknown" &&
+    venueName.toLowerCase() !== "unknown location"
+  ) {
     return venueName;
   }
 
-  return 'Locatie onbekend';
+  return "Locatie onbekend";
 }
 
 /**
@@ -161,21 +168,28 @@ export function formatEventLocation(
  */
 export function getEventCoordinates(
   location: unknown,
-  structuredLocation?: StructuredLocation | null
+  structuredLocation?: StructuredLocation | null,
 ): { lat: number; lng: number } | null {
   // Prefer structured location coordinates
   if (structuredLocation?.coordinates) {
     const { lat, lng } = structuredLocation.coordinates;
-    if (Number.isFinite(lat) && Number.isFinite(lng) && !(Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6)) {
+    if (
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      !(Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6)
+    ) {
       return structuredLocation.coordinates;
     }
   }
-  
+
   // Parse legacy POINT format
   if (!location) return null;
-  
-  if (typeof location === 'string') {
-    const match = location.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
+
+  if (typeof location === "string") {
+    // 1. Handle POINT(lng lat) format
+    const match = location.match(
+      /POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i,
+    );
     if (match) {
       const lng = parseFloat(match[1]);
       const lat = parseFloat(match[2]);
@@ -183,9 +197,46 @@ export function getEventCoordinates(
         return { lng, lat };
       }
     }
+
+    // 2. Handle Supabase/PostGIS Hex EWKB format (0101000020E6100000...)
+    // This is a rough but effective way to parse EWKB for POINT(4326)
+    // EWKB Header (18 chars) + X (16 chars/64-bit double) + Y (16 chars/64-bit double)
+    if (location.length >= 50 && /^[0-9a-fA-F]+$/.test(location)) {
+      try {
+        // Extract hex chunks for X and Y coordinate doubles
+        // Offset 18-34: Longitude, Offset 34-50: Latitude
+        const lngHex = location.substring(18, 34);
+        const latHex = location.substring(34, 50);
+
+        // Helper to convert hex to double (little endian)
+        const hexToDouble = (hex: string) => {
+          const bytes = new Uint8Array(
+            hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
+          );
+          const view = new DataView(bytes.buffer);
+          return view.getFloat64(0, true);
+        };
+
+        const lng = hexToDouble(lngHex);
+        const lat = hexToDouble(latHex);
+
+        if (
+          Number.isFinite(lat) &&
+          Number.isFinite(lng) &&
+          !(Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6)
+        ) {
+          return { lng, lat };
+        }
+      } catch (e) {
+        console.warn("Failed to parse hex location:", e);
+      }
+    }
   }
-  
-  if (typeof location === 'object' && (location as { coordinates?: number[] }).coordinates) {
+
+  if (
+    typeof location === "object" &&
+    (location as { coordinates?: number[] }).coordinates
+  ) {
     const coords = (location as { coordinates?: number[] }).coordinates;
     if (Array.isArray(coords) && coords.length >= 2) {
       const lng = Number(coords[0]);
@@ -195,6 +246,6 @@ export function getEventCoordinates(
       }
     }
   }
-  
+
   return null;
 }
