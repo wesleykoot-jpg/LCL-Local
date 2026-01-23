@@ -125,6 +125,30 @@ export default function ExplorePage() {
                     ? error.message
                     : JSON.stringify(error, null, 2)}
               </p>
+
+              <div className="mt-4 pt-4 border-t border-red-100 text-[10px] text-red-700 font-mono">
+                <p>
+                  <strong>Debug Info:</strong>
+                </p>
+                <p>
+                  URL Configured:{" "}
+                  {import.meta.env.VITE_SUPABASE_URL ? "YES" : "NO"}
+                </p>
+                <p>
+                  Key Configured:{" "}
+                  {import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "YES" : "NO"}
+                </p>
+                {import.meta.env.VITE_SUPABASE_URL && (
+                  <p>
+                    Current URL:{" "}
+                    {import.meta.env.VITE_SUPABASE_URL.substring(0, 15)}...
+                  </p>
+                )}
+                <p className="mt-2 text-red-500 italic">
+                  Note: VITE_ variables are baked in at BUILD time. You must
+                  redeploy after changing them.
+                </p>
+              </div>
             </div>
           </div>
         ) : (
