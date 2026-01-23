@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import type { EventWithAttendees } from '@/features/events/hooks/hooks';
+import { z } from "zod";
+import type { EventWithAttendees } from "@/features/events/hooks/hooks";
 
 const attendeeProfileSchema = z.object({
   id: z.string(),
@@ -14,68 +14,74 @@ const attendeeSchema = z.object({
 // Backend can return JSON, strings, or null for location-related fields.
 const flexibleValue = z.any();
 
-const eventWithAttendeesSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().nullable().optional(),
-  category: z.string(),
-  event_type: z.string(),
-  parent_event_id: z.string().nullable().optional(),
-  venue_name: z.string().nullable().optional(),
-  location: flexibleValue.nullable().optional(),
-  event_date: z.string(),
-  event_time: z.string().nullable().optional(),
-  status: z.string().nullable().optional(),
-  image_url: z.string().nullable().optional(),
-  match_percentage: z.number().nullable().optional(),
-  attendee_count: z.number().nullable().optional(),
-  attendees: z.array(attendeeSchema).optional(),
-  created_by: z.string().nullable().optional(),
-  created_at: z.string().optional(),
-  source_id: z.string().nullable().optional(),
-  event_fingerprint: z.string().nullable().optional(),
-  max_attendees: z.number().nullable().optional(),
-  structured_date: z.string().nullable().optional(),
-  structured_location: flexibleValue.nullable().optional(),
-  organizer: z.string().nullable().optional(),
-  parent_event: flexibleValue.nullable().optional(),
-}).passthrough();
+const eventWithAttendeesSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().nullable().optional(),
+    category: z.string(),
+    event_type: z.string(),
+    parent_event_id: z.string().nullable().optional(),
+    venue_name: z.string().nullable().optional(),
+    location: flexibleValue.nullable().optional(),
+    event_date: z.string(),
+    event_time: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+    image_url: z.string().nullable().optional(),
+    match_percentage: z.number().nullable().optional(),
+    attendee_count: z.number().nullable().optional(),
+    attendees: z.array(attendeeSchema).optional(),
+    created_by: z.string().nullable().optional(),
+    created_at: z.string().optional(),
+    source_id: z.string().nullable().optional(),
+    event_fingerprint: z.string().nullable().optional(),
+    max_attendees: z.number().nullable().optional(),
+    structured_date: z.string().nullable().optional(),
+    structured_location: flexibleValue.nullable().optional(),
+    organizer: z.string().nullable().optional(),
+    parent_event: flexibleValue.nullable().optional(),
+  })
+  .passthrough();
 
-const eventsWithAttendeesSchema = z.array(eventWithAttendeesSchema);
-
-const personalizedFeedRowSchema = z.object({
-  event_id: z.string(),
-  title: z.string(),
-  description: z.string().nullable().optional(),
-  category: z.string(),
-  event_type: z.string(),
-  parent_event_id: z.string().nullable().optional(),
-  venue_name: z.string().nullable().optional(),
-  location: flexibleValue.nullable().optional(),
-  event_date: z.string(),
-  event_time: z.string().nullable().optional(),
-  status: z.string().nullable().optional(),
-  image_url: z.string().nullable().optional(),
-  match_percentage: z.number().nullable().optional(),
-  attendee_count: z.number().nullable().optional(),
-  host_reliability: z.number().nullable().optional(),
-  distance_km: z.number().nullable().optional(),
-  final_score: z.number().nullable().optional(),
-}).passthrough();
+const personalizedFeedRowSchema = z
+  .object({
+    event_id: z.string(),
+    title: z.string(),
+    description: z.string().nullable().optional(),
+    category: z.string(),
+    event_type: z.string(),
+    parent_event_id: z.string().nullable().optional(),
+    venue_name: z.string().nullable().optional(),
+    location: flexibleValue.nullable().optional(),
+    event_date: z.string(),
+    event_time: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+    image_url: z.string().nullable().optional(),
+    match_percentage: z.number().nullable().optional(),
+    attendee_count: z.number().nullable().optional(),
+    host_reliability: z.number().nullable().optional(),
+    distance_km: z.number().nullable().optional(),
+    final_score: z.number().nullable().optional(),
+  })
+  .passthrough();
 
 const personalizedFeedResponseSchema = z.array(personalizedFeedRowSchema);
 
-const attendeeRowSchema = z.object({
-  event_id: z.string(),
-  profile: attendeeProfileSchema.nullable(),
-}).passthrough();
+const attendeeRowSchema = z
+  .object({
+    event_id: z.string(),
+    profile: attendeeProfileSchema.nullable(),
+  })
+  .passthrough();
 
 const attendeeRowsSchema = z.array(attendeeRowSchema);
 
-const userAttendanceRowSchema = z.object({
-  event_id: z.string(),
-  profiles: attendeeProfileSchema.nullable(),
-}).passthrough();
+const userAttendanceRowSchema = z
+  .object({
+    event_id: z.string(),
+    profiles: attendeeProfileSchema.nullable(),
+  })
+  .passthrough();
 
 const userAttendanceRowsSchema = z.array(userAttendanceRowSchema);
 
@@ -87,10 +93,12 @@ function handleSchemaFailure(context: string, error: z.ZodError) {
   console.warn(`[schemas] Invalid ${context} data received`, error.flatten());
 }
 
-export function parsePersonalizedFeedRows(data: unknown): PersonalizedFeedRow[] {
+export function parsePersonalizedFeedRows(
+  data: unknown,
+): PersonalizedFeedRow[] {
   const result = personalizedFeedResponseSchema.safeParse(data ?? []);
   if (!result.success) {
-    handleSchemaFailure('personalized feed', result.error);
+    handleSchemaFailure("personalized feed", result.error);
     return [];
   }
   return result.data;
@@ -99,7 +107,7 @@ export function parsePersonalizedFeedRows(data: unknown): PersonalizedFeedRow[] 
 export function parseAttendeeRows(data: unknown): AttendeeRow[] {
   const result = attendeeRowsSchema.safeParse(data ?? []);
   if (!result.success) {
-    handleSchemaFailure('attendees', result.error);
+    handleSchemaFailure("attendees", result.error);
     return [];
   }
   return result.data;
@@ -108,17 +116,36 @@ export function parseAttendeeRows(data: unknown): AttendeeRow[] {
 export function parseUserAttendanceRows(data: unknown): UserAttendanceRow[] {
   const result = userAttendanceRowsSchema.safeParse(data ?? []);
   if (!result.success) {
-    handleSchemaFailure('user attendance', result.error);
+    handleSchemaFailure("user attendance", result.error);
     return [];
   }
   return result.data;
 }
 
 export function parseEventsWithAttendees(data: unknown): EventWithAttendees[] {
-  const result = eventsWithAttendeesSchema.safeParse(data ?? []);
-  if (!result.success) {
-    handleSchemaFailure('events', result.error);
+  if (!Array.isArray(data)) {
+    console.warn("[schemas] Expected array for events, got:", typeof data);
     return [];
   }
-  return result.data as unknown as EventWithAttendees[];
+
+  const validEvents: EventWithAttendees[] = [];
+  const errors: any[] = [];
+
+  data.forEach((item, index) => {
+    const result = eventWithAttendeesSchema.safeParse(item);
+    if (result.success) {
+      validEvents.push(result.data as unknown as EventWithAttendees);
+    } else {
+      errors.push({ index, error: result.error });
+    }
+  });
+
+  if (errors.length > 0) {
+    console.warn(
+      `[schemas] Failed to parse ${errors.length} events. First error:`,
+      errors[0],
+    );
+  }
+
+  return validEvents;
 }
