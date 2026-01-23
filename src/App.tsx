@@ -17,6 +17,7 @@ import {
   MyPlanningPage,
   NowPage,
 } from "@/features/events";
+import Explore from "@/features/events/Explore";
 import {
   ProfilePage,
   PrivacySettingsPage,
@@ -105,7 +106,9 @@ const App = () => (
                 <BrowserRouter>
                   <Routes>
                     {/* Main app routes - accessible without login for dev */}
-                    <Route path="/" element={<DiscoveryPage />} />
+                    <Route path="/" element={<Explore />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/discovery" element={<DiscoveryPage />} />
                     <Route path="/feed" element={<FeedPage />} />
                     <Route path="/now" element={<NowPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />
@@ -171,7 +174,9 @@ const App = () => (
                 <BrowserRouter>
                   <Routes>
                     {/* Main app routes - accessible without login for dev */}
-                    <Route path="/" element={<DiscoveryPage />} />
+                    <Route path="/" element={<Explore />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/discovery" element={<DiscoveryPage />} />
                     <Route path="/feed" element={<FeedPage />} />
                     <Route path="/now" element={<NowPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />

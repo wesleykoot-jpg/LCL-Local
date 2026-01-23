@@ -18,24 +18,11 @@ interface UseDiscoveryRailsOptions {
 export function useDiscoveryRails({
   allEvents,
   userId,
-  userLocation, // kept for dependency tracking
+  userLocation,
   radiusKm = 25,
   enabled = true,
   selectedCategories = [],
 }: UseDiscoveryRailsOptions) {
-  // We use userId and userLocation in the dependency array to ensure rails refresh
-  // if the user switches accounts or moves significantly.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const dependencies = [
-    allEvents,
-    userId,
-    userLocation?.lat,
-    userLocation?.lng,
-    radiusKm,
-    enabled,
-    selectedCategories,
-  ];
-
   return useMemo<DiscoveryLayout>(() => {
     if (!enabled || !allEvents || allEvents.length === 0) {
       return { sections: [] };
@@ -44,17 +31,14 @@ export function useDiscoveryRails({
     const sections: DiscoverySection[] = [];
 
     // --- Rail 1: "Your Local Pulse" (Personalized/Engagement) ---
-    // High-engagement events matching user's category preferences.
     let pulseEvents = allEvents;
     if (selectedCategories.length > 0) {
       pulseEvents = allEvents.filter((e) =>
         selectedCategories.includes(e.category),
       );
     }
-    // Fallback if no categories selected or no matches: top attended events
     if (pulseEvents.length === 0) pulseEvents = allEvents;
 
-    // Sort by attendee count desc
     pulseEvents = [...pulseEvents]
       .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0))
       .slice(0, 8);
@@ -69,19 +53,15 @@ export function useDiscoveryRails({
       });
     }
 
-    // --- Rail 2: "The Wildcard" (Generic/Discovery) ---
-    // Events from categories the user has NOT selected (or random if none selected).
+    // --- Rail 2: "The Wildcard" (Generative) ---
     let wildcardEvents: EventWithAttendees[] = [];
     if (selectedCategories.length > 0) {
       wildcardEvents = allEvents.filter(
         (e) => !selectedCategories.includes(e.category),
       );
     } else {
-      // If no preferences, pick random categories or just shuffle
       wildcardEvents = [...allEvents];
     }
-
-    // Shuffle/Randomize to ensure variety, take top 8
     wildcardEvents = wildcardEvents.sort(() => 0.5 - Math.random()).slice(0, 8);
 
     if (wildcardEvents.length > 0) {
@@ -95,30 +75,51 @@ export function useDiscoveryRails({
     }
 
     // --- Rail 3: "Community Rituals" (Social/Stacks) ---
-    // Recurring stacks (events with forks).
+    const ritualKeywords = [
+      "weekly",
+      "monthly",
+      "yearly",
+      "club",
+      "meetup",
+      "class",
+      "group",
+      "borrel",
+      "ritueel",
+      "training",
+    ];
+    const ritualEventsFromKeywords = allEvents.filter((e) => {
+      const title = e.title.toLowerCase();
+      const desc = (e.description || "").toLowerCase();
+      return ritualKeywords.some(
+        (kw) => title.includes(kw) || desc.includes(kw),
+      );
+    });
+
     const allStacks = groupEventsIntoStacks(allEvents);
     const ritualStacks = allStacks.filter(
       (stack) => stack.type === "stack" && stack.forks.length > 0,
     );
+    const ritualEventsFromStacks = ritualStacks.map((s) => s.anchor);
 
-    // For the rail, we display the ANCHOR events of these stacks
-    const ritualEvents = ritualStacks.map((s) => s.anchor).slice(0, 8);
+    const combinedRitualEvents = Array.from(
+      new Set([...ritualEventsFromKeywords, ...ritualEventsFromStacks]),
+    ).slice(0, 8);
 
-    if (ritualEvents.length > 0) {
+    if (combinedRitualEvents.length > 0) {
       sections.push({
         type: "social",
         title: "Community Rituals",
         description: "Weekly meetups and recurring groups",
-        items: ritualEvents,
+        items: combinedRitualEvents,
         layout: "carousel",
       });
     }
 
-    // --- Rail 4: "Hidden Gems" (Generic/Algorithm) ---
-    // Low attendee count (< 5) BUT high match percentage (> 80%).
+    // --- Rail 4: "Hidden Gems" (Generative) ---
     const hiddenEvents = allEvents
       .filter((e) => (e.attendee_count || 0) < 5)
-      .filter((e) => (e.match_percentage || 0) > 80)
+      .filter((e) => !!e.image_url)
+      .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
       .slice(0, 8);
 
     if (hiddenEvents.length > 0) {
@@ -131,23 +132,18 @@ export function useDiscoveryRails({
       });
     }
 
-    // --- Rail 5: "Neighborhood Serendipity" (Location/Generic) ---
-    // Events within very tight radius (< 2km).
-    // Uses distance_km from backend provided data
-    let serendipityEvents: EventWithAttendees[] = [];
-
-    serendipityEvents = allEvents.filter((e) => {
+    // --- Rail 5: "Neighborhood Serendipity" (Location) ---
+    const serendipityEvents = allEvents.filter((e) => {
       return typeof e.distance_km === "number" && e.distance_km < 2.0;
     });
 
-    // Sort by closest distance
     serendipityEvents
       .sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999))
       .slice(0, 8);
 
     if (serendipityEvents.length > 0) {
       sections.push({
-        type: "utility", // Using utility icon for location
+        type: "utility",
         title: "Neighborhood Serendipity",
         description: "Right around the corner (< 2km)",
         items: serendipityEvents,
@@ -156,5 +152,13 @@ export function useDiscoveryRails({
     }
 
     return { sections };
-  }, dependencies);
+  }, [
+    allEvents,
+    userId,
+    userLocation?.lat,
+    userLocation?.lng,
+    radiusKm,
+    enabled,
+    selectedCategories,
+  ]);
 }
