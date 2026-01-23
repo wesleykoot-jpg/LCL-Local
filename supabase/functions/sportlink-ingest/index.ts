@@ -86,38 +86,32 @@ async function getAccessToken() {
 }
 
 async function fetchClubProgram(accessToken: string, clubId: string) {
-  // Attempt POST with parameters in body, as GET returned schema
-  const url = `${SPORTLINK_API_BASE}/api/v1/club/program?clubId=${clubId}`;
+  // Use the native app endpoint provided by the user
+  // This appears to be the internal API for the "Voetbal.nl" app
+  const baseUrl = "https://app-vnl-production.sportlink.com";
+  const endpoint = "/entity/common/memberportal/app/club/ClubProgram";
+  const url = `${baseUrl}${endpoint}?v=3&ClubId=${clubId}`;
 
-  const params = new URLSearchParams();
-  params.append("aantaldagen", "60");
-  params.append("weekoffset", "0");
-  params.append("eigenwedstrijden", "JA");
-  params.append("thuis", "JA");
-  params.append("uit", "JA");
+  console.log(`[Sportlink] Fetching via App-VNL endpoint: ${url}`);
 
-  console.log(
-    `[Sportlink] Fetching program for club ${clubId} via POST (form-urlencoded)...`,
-  );
   const response = await fetch(url, {
-    method: "POST",
+    method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "okhttp/4.9.1",
     },
-    body: params,
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
     console.error(
-      `[Sportlink] Program fetch failed for ${clubId}: ${response.status} ${errorBody}`,
+      `[Sportlink] App-VNL fetch failed: ${response.status} ${errorBody}`,
     );
     await logHttpError(
       "sportlink-ingest",
       "fetchClubProgram",
-      "Fetch Club Program",
+      "Fetch App-VNL Program",
       url,
       response.status,
       errorBody,
@@ -126,17 +120,11 @@ async function fetchClubProgram(accessToken: string, clubId: string) {
   }
 
   const rawData = await response.json();
-  console.log(
-    `[Sportlink] Raw response from ${clubId}:`,
-    JSON.stringify(rawData).substring(0, 500),
-  );
 
-  const program = Array.isArray(rawData)
-    ? rawData
-    : rawData.program || rawData.wedstrijden || [];
-  console.log(
-    `[Sportlink] Received ${program.length} items for club ${clubId}.`,
-  );
+  // Return raw data for now so we can inspect it in debug mode
+  // We'll map 'program' once we see the actual key
+  const program = [];
+
   return { program, raw: rawData };
 }
 
