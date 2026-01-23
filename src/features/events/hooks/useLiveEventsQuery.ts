@@ -3,8 +3,7 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { EventWithAttendees, EventAttendee } from "./hooks";
 import { parseEventsWithAttendees } from "@/lib/api/schemas";
-
-const ATTENDEE_LIMIT = 4;
+import { getEventCoordinates } from "@/shared/lib/formatters";
 
 /** Daypart mode based on time of day */
 export type DaypartMode = "morning" | "afternoon" | "evening";
@@ -154,7 +153,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
         blockedUserIds = (blockedData || []).map((b) => b.blocked_id);
       }
 
-      // Build query for events happening now or starting soon
+      // Build query for events starting today onwards
       const dbQuery = supabase
         .from("events")
         .select(
@@ -171,27 +170,15 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
         `,
         )
         .gte("event_date", todayStr)
-        .lte("event_date", endDateStr)
-        .limit(ATTENDEE_LIMIT, { foreignTable: "event_attendees" });
+        .order("event_date", { ascending: true })
+        .limit(50); // Fetch more to sift through
 
       const { data, error } = await dbQuery;
 
-      if (error) {
-        console.error("[LiveEvents] DB Error:", error);
-        throw error;
-      }
-
-      console.log(
-        "[LiveEvents] Raw DB events:",
-        data?.length || 0,
-        "for window:",
-        todayStr,
-        "to",
-        endDateStr,
-      );
+      if (error) throw error;
 
       // Filter events by time window
-      const filteredEvents = (data || []).filter((event) => {
+      let filteredEvents = (data || []).filter((event) => {
         // Skip events from blocked users
         if (event.created_by && blockedUserIds.includes(event.created_by)) {
           return false;
@@ -200,17 +187,21 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
         const eventDate = event.event_date.split("T")[0];
         const eventTime = event.event_time || "00:00";
 
-        // For today's events
+        // For today's events, check if it's within the concierge window
         if (eventDate === todayStr) {
-          // Include events that have started (happening now) or will start within the window
+          // If time is TBD, we assume it's relevant for now as a fallback
+          if (eventTime === "TBD" || eventTime === "") return true;
           return eventTime <= endTimeStr;
         }
 
-        // For future dates within the window (when offset spans midnight)
+        // For future dates within the window
         return eventDate <= endDateStr;
       });
 
-      console.log("[LiveEvents] Filtered events:", filteredEvents.length);
+      // Fallback: If no events in strict 2h window, show next 5 upcoming events
+      if (filteredEvents.length === 0 && data && data.length > 0) {
+        filteredEvents = data.slice(0, 5);
+      }
 
       // Transform to EventWithAttendees format with distance calculation
       const eventsWithData = filteredEvents.map((event) => {
@@ -222,18 +213,17 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
           ? (event.attendees as EventAttendee[])
           : [];
 
+        // Parse coordinates correctly using the helper
+        const coords = getEventCoordinates(event.location);
+
         // Calculate distance if user location and event location are available
         let distanceKm: number | undefined;
-        if (
-          userLocation &&
-          (event as any).latitude &&
-          (event as any).longitude
-        ) {
+        if (userLocation && coords) {
           distanceKm = calculateDistance(
             userLocation.lat,
             userLocation.lng,
-            (event as any).latitude,
-            (event as any).longitude,
+            coords.lat,
+            coords.lng,
           );
         }
 
