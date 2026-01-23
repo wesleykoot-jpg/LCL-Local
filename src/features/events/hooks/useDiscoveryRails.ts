@@ -39,9 +39,9 @@ export function useDiscoveryRails({
     }
     if (pulseEvents.length === 0) pulseEvents = allEvents;
 
-    pulseEvents = [...pulseEvents]
-      .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0))
-      .slice(0, 8);
+    pulseEvents = [...pulseEvents].sort(
+      (a, b) => (b.attendee_count || 0) - (a.attendee_count || 0),
+    );
 
     if (pulseEvents.length > 0) {
       sections.push({
@@ -62,7 +62,7 @@ export function useDiscoveryRails({
     } else {
       wildcardEvents = [...allEvents];
     }
-    wildcardEvents = wildcardEvents.sort(() => 0.5 - Math.random()).slice(0, 8);
+    wildcardEvents = wildcardEvents.sort(() => 0.5 - Math.random());
 
     if (wildcardEvents.length > 0) {
       sections.push({
@@ -103,7 +103,7 @@ export function useDiscoveryRails({
 
     const combinedRitualEvents = Array.from(
       new Set([...ritualEventsFromKeywords, ...ritualEventsFromStacks]),
-    ).slice(0, 8);
+    );
 
     if (combinedRitualEvents.length > 0) {
       sections.push({
@@ -119,8 +119,7 @@ export function useDiscoveryRails({
     const hiddenEvents = allEvents
       .filter((e) => (e.attendee_count || 0) < 5)
       .filter((e) => !!e.image_url)
-      .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
-      .slice(0, 8);
+      .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0));
 
     if (hiddenEvents.length > 0) {
       sections.push({
@@ -137,9 +136,9 @@ export function useDiscoveryRails({
       return typeof e.distance_km === "number" && e.distance_km < 2.0;
     });
 
-    serendipityEvents
-      .sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999))
-      .slice(0, 8);
+    serendipityEvents.sort(
+      (a, b) => (a.distance_km || 999) - (b.distance_km || 999),
+    );
 
     if (serendipityEvents.length > 0) {
       sections.push({

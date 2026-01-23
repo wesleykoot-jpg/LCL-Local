@@ -21,10 +21,16 @@ import { useAuth } from "@/features/auth";
 import { useLocation } from "@/features/location";
 import { useJoinEvent } from "./hooks/hooks";
 import { EventDetailModal } from "./components/EventDetailModal";
+import { TimelineEventCard } from "./components/TimelineEventCard";
+import { ChevronDown } from "lucide-react";
 
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<{
+    title: string;
+    items: any[];
+  } | null>(null);
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs } = useLocation();
 
@@ -90,7 +96,7 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-32">
       {/* Search Header - Social Air 6.0 Style */}
-      <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] px-6 py-4">
+      <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
         <div className="flex items-center gap-4 mb-4">
           <button
             className="flex items-center gap-1.5 text-[#1A1A1A] font-bold text-lg active:scale-95 transition-transform"
@@ -202,9 +208,12 @@ export default function ExplorePage() {
                     title={section.title}
                     description={section.description}
                     icon={getIcon(section.title)}
-                    onSeeAll={() => console.log("See All", section.title)}
+                    onSeeAll={() => {
+                      hapticImpact("light");
+                      setActiveSection(section);
+                    }}
                   >
-                    {section.items.map((event) => (
+                    {section.items.slice(0, 8).map((event) => (
                       <ExploreEventCard
                         key={event.id}
                         event={event}
@@ -235,6 +244,57 @@ export default function ExplorePage() {
           )}
         />
       )}
+
+      {/* Full Screen Section View (See All) */}
+      <AnimatePresence>
+        {activeSection && (
+          <motion.div
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-50 bg-[#F9FAFB] flex flex-col pt-[calc(env(safe-area-inset-top)+10px)]"
+          >
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shrink-0 shadow-sm z-10 sticky top-0">
+              <button
+                onClick={() => setActiveSection(null)}
+                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 active:scale-90 transition-transform"
+              >
+                <ChevronDown size={24} className="rotate-90" />
+              </button>
+              <div>
+                <h2 className="text-lg font-bold text-[#1A1A1A] leading-tight">
+                  {activeSection.title}
+                </h2>
+                <p className="text-xs text-gray-500 font-medium">
+                  {activeSection.items.length} events
+                </p>
+              </div>
+            </div>
+
+            {/* List Content */}
+            <div className="flex-1 overflow-y-auto p-4 pb-32">
+              <div className="space-y-4 max-w-lg mx-auto">
+                {activeSection.items.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => {
+                      hapticImpact("light");
+                      setSelectedEventId(event.id);
+                      // Don't close section view, just show modal on top
+                    }}
+                  >
+                    <TimelineEventCard event={event} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

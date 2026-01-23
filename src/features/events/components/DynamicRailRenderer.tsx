@@ -53,7 +53,7 @@ export const DynamicRailRenderer = memo(function DynamicRailRenderer({
 
       <HorizontalEventCarousel
         title="" // Header handled by DiscoveryRail
-        events={section.items}
+        events={section.items.slice(0, 8)}
         onEventClick={onEventClick}
       />
     </DiscoveryRail>
