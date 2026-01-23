@@ -110,16 +110,20 @@ export default function ExplorePage() {
               </div>
             </div>
           </div>
-        ) : error ? (
+        ) : error || !import.meta.env.VITE_SUPABASE_URL ? (
           <div className="px-6 py-12 text-center text-[#4B5563]">
             <p className="font-medium text-red-600 mb-2">
-              Failed to load events.
+              {!import.meta.env.VITE_SUPABASE_URL
+                ? "Configuration Error"
+                : "Failed to load events"}
             </p>
             <div className="bg-red-50 p-4 rounded-xl text-left overflow-auto max-h-40">
               <p className="text-xs font-mono text-red-800 whitespace-pre-wrap">
-                {error instanceof Error
-                  ? error.message
-                  : JSON.stringify(error, null, 2)}
+                {!import.meta.env.VITE_SUPABASE_URL
+                  ? "Missing VITE_SUPABASE_URL. Please add this environment variable to your Vercel Project Settings."
+                  : error instanceof Error
+                    ? error.message
+                    : JSON.stringify(error, null, 2)}
               </p>
             </div>
           </div>
