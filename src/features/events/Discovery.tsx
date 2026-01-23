@@ -112,12 +112,14 @@ const Discovery = () => {
   // Debug logging
   useMemo(() => {
     if (import.meta.env.DEV) {
-      console.log("[Discovery] Layout Data:", {
-        sections: discoveryLayout?.sections?.length || 0,
-        isLoading: railsLoading,
-        hasLocation: !!userLocation,
-        mode,
+      console.log("[Discovery] Layout Debug:", {
+        allEventsLength: allEvents.length,
+        firstEvent: allEvents[0],
+        railsLoading,
+        sectionsCount: discoveryLayout?.sections?.length,
+        userLocation,
       });
+
       if (discoveryLayout?.sections) {
         discoveryLayout.sections.forEach((s, i) => {
           console.log(
@@ -126,7 +128,7 @@ const Discovery = () => {
         });
       }
     }
-  }, [discoveryLayout, railsLoading, userLocation, mode]);
+  }, [allEvents, discoveryLayout, railsLoading, userLocation]);
 
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(
     profile?.id,
