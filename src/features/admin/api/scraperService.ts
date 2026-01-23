@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
 // Constants
 export const MAX_RETRY_ATTEMPTS = 3;
@@ -8,9 +8,9 @@ export interface ScraperSource {
   name: string;
   url: string;
   enabled: boolean;
-  config: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
+  config: Record<string, unknown> | null;
+  created_at: string | null;
+  updated_at: string | null;
   last_scraped_at: string | null;
   last_success: boolean | null;
   total_events_scraped: number | null;
@@ -58,31 +58,34 @@ export interface CoordinatorResult {
  */
 export async function getSources(): Promise<ScraperSource[]> {
   const { data, error } = await supabase
-    .from('scraper_sources')
-    .select('*')
-    .order('name', { ascending: true });
-  
+    .from("scraper_sources")
+    .select("*")
+    .order("name", { ascending: true });
+
   if (error) {
     throw new Error(error.message);
   }
-  
+
   return (data || []) as ScraperSource[];
 }
 
 /**
  * Toggle source enabled status
  */
-export async function toggleSource(id: string, enabled: boolean): Promise<void> {
+export async function toggleSource(
+  id: string,
+  enabled: boolean,
+): Promise<void> {
   const { error } = await supabase
-    .from('scraper_sources')
-    .update({ 
+    .from("scraper_sources")
+    .update({
       enabled,
       // Reset auto_disabled if manually re-enabling
       auto_disabled: enabled ? false : undefined,
       consecutive_failures: enabled ? 0 : undefined,
     })
-    .eq('id', id);
-  
+    .eq("id", id);
+
   if (error) {
     throw new Error(error.message);
   }
@@ -92,39 +95,49 @@ export async function toggleSource(id: string, enabled: boolean): Promise<void> 
  * Trigger scrape coordinator to queue jobs for enabled sources
  */
 export async function triggerCoordinator(): Promise<CoordinatorResult> {
-  const { data, error } = await supabase.functions.invoke('scrape-coordinator');
+  const { data, error } = await supabase.functions.invoke("scrape-coordinator");
 
   if (error) {
     return { success: false, error: error.message };
   }
 
-  return (data as CoordinatorResult) ?? { success: false, error: 'Unknown error' };
+  return (
+    (data as CoordinatorResult) ?? { success: false, error: "Unknown error" }
+  );
 }
 
 /**
  * Trigger scrape worker to process queued jobs
  */
-export async function triggerWorker(): Promise<{ success: boolean; processed?: number; error?: string }> {
-  const { data, error } = await supabase.functions.invoke('scrape-worker');
+export async function triggerWorker(): Promise<{
+  success: boolean;
+  processed?: number;
+  error?: string;
+}> {
+  const { data, error } = await supabase.functions.invoke("scrape-worker");
 
   if (error) {
     return { success: false, error: error.message };
   }
 
-  return data ?? { success: false, error: 'Unknown error' };
+  return data ?? { success: false, error: "Unknown error" };
 }
 
 /**
  * Retry failed jobs
  */
-export async function retryFailedJobs(): Promise<{ success: boolean; retriedCount: number; error?: string }> {
+export async function retryFailedJobs(): Promise<{
+  success: boolean;
+  retriedCount: number;
+  error?: string;
+}> {
   try {
     // Get all failed jobs
     const { data: failedJobs, error: fetchError } = await supabase
-      .from('scrape_jobs')
-      .select('id, source_id')
-      .eq('status', 'failed')
-      .lt('attempts', MAX_RETRY_ATTEMPTS); // Only retry if attempts < MAX_RETRY_ATTEMPTS
+      .from("scrape_jobs")
+      .select("id, source_id")
+      .eq("status", "failed")
+      .lt("attempts", MAX_RETRY_ATTEMPTS); // Only retry if attempts < MAX_RETRY_ATTEMPTS
 
     if (fetchError) {
       throw new Error(fetchError.message);
@@ -136,12 +149,15 @@ export async function retryFailedJobs(): Promise<{ success: boolean; retriedCoun
 
     // Reset them to pending
     const { error: updateError } = await supabase
-      .from('scrape_jobs')
-      .update({ 
-        status: 'pending',
+      .from("scrape_jobs")
+      .update({
+        status: "pending",
         error_message: null,
       })
-      .in('id', failedJobs.map(j => j.id));
+      .in(
+        "id",
+        failedJobs.map((j) => j.id),
+      );
 
     if (updateError) {
       throw new Error(updateError.message);
@@ -152,7 +168,7 @@ export async function retryFailedJobs(): Promise<{ success: boolean; retriedCoun
     return {
       success: false,
       retriedCount: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -163,13 +179,16 @@ export async function retryFailedJobs(): Promise<{ success: boolean; retriedCoun
 export async function fetchLogs(minutes: number = 60): Promise<LogsResult> {
   // Use fetch directly to support query params
   const url = `https://mlpefjsbriqgxcaqxhic.supabase.co/functions/v1/fetch-last-15min-logs?minutes=${minutes}`;
-  
-  const { data: { session } } = await supabase.auth.getSession();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const response = await fetch(url, {
     headers: {
-      'Authorization': `Bearer ${session?.access_token || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGVmanNicmlxZ3hjYXF4aGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MTMwNjMsImV4cCI6MjA4MzQ4OTA2M30.UxuID8hbNO4ZS9qEOJ95QabLPcZ4V_lMXEvp9EuxYZA'}`,
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGVmanNicmlxZ3hjYXF4aGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MTMwNjMsImV4cCI6MjA4MzQ4OTA2M30.UxuID8hbNO4ZS9qEOJ95QabLPcZ4V_lMXEvp9EuxYZA',
-    }
+      Authorization: `Bearer ${session?.access_token || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGVmanNicmlxZ3hjYXF4aGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MTMwNjMsImV4cCI6MjA4MzQ4OTA2M30.UxuID8hbNO4ZS9qEOJ95QabLPcZ4V_lMXEvp9EuxYZA"}`,
+      apikey:
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGVmanNicmlxZ3hjYXF4aGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5MTMwNjMsImV4cCI6MjA4MzQ4OTA2M30.UxuID8hbNO4ZS9qEOJ95QabLPcZ4V_lMXEvp9EuxYZA",
+    },
   });
 
   if (!response.ok) {
@@ -182,7 +201,9 @@ export async function fetchLogs(minutes: number = 60): Promise<LogsResult> {
     from: data?.from,
     to: data?.to,
     minutes: data?.minutes,
-    count: data?.summary?.total ?? (Array.isArray(data?.logs) ? data.logs.length : 0),
+    count:
+      data?.summary?.total ??
+      (Array.isArray(data?.logs) ? data.logs.length : 0),
     summary: data?.summary,
     logs: data?.logs || [],
   };

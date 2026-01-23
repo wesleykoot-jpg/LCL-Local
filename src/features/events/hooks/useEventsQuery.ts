@@ -184,8 +184,9 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
       if (userLocation) {
         // Prepare filters
         const categoryFilter =
-          category && category.length > 0 ? category : null;
-        const typeFilter = eventType && eventType.length > 0 ? eventType : null;
+          category && category.length > 0 ? category[0] : null;
+        const typeFilter =
+          eventType && eventType.length > 0 ? eventType[0] : null;
 
         const { data, error } = await supabase.rpc("get_nearby_events", {
           user_lat: userLocation.lat,
@@ -193,8 +194,8 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           radius_km: radiusKm,
           limit_count: 100,
           offset_count: 0,
-          filter_category: categoryFilter,
-          filter_type: typeFilter,
+          filter_category: categoryFilter || undefined,
+          filter_type: typeFilter || undefined,
         });
 
         if (error) {
@@ -225,20 +226,23 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
         // Group attendees by event
         const attendeesByEvent = new Map<string, EventAttendee[]>();
-        (attendeesData || []).forEach((att: any) => {
-          if (!attendeesByEvent.has(att.event_id)) {
-            attendeesByEvent.set(att.event_id, []);
-          }
-          attendeesByEvent.get(att.event_id)!.push({
-            profile: att.profile,
+
+        if (attendeesData && Array.isArray(attendeesData)) {
+          attendeesData.forEach((att: any) => {
+            if (!attendeesByEvent.has(att.event_id)) {
+              attendeesByEvent.set(att.event_id, []);
+            }
+            attendeesByEvent.get(att.event_id)!.push({
+              profile: att.profile,
+            });
           });
-        });
+        }
 
         return data
           .filter(
-            (e) => !e.created_by || !blockedUserIds.includes(e.created_by),
+            (e: any) => !e.created_by || !blockedUserIds.includes(e.created_by),
           )
-          .map((e) => ({
+          .map((e: any) => ({
             id: e.id,
             title: e.title,
             description: e.description,
