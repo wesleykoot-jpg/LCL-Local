@@ -4,7 +4,7 @@ import { eventService } from "../api/eventService";
 import { useAuth } from "@/features/auth";
 import { useGoogleCalendar } from "@/features/calendar/hooks/useGoogleCalendar";
 import { queryKeys } from "@/shared/config/queryKeys";
-import { addDays, startOfToday, setHours } from "date-fns";
+import { queryKeys } from "@/shared/config/queryKeys";
 
 export type ItineraryItemType = "LCL_EVENT" | "GOOGLE_CALENDAR";
 
@@ -24,160 +24,32 @@ export interface ItineraryItem {
   conflictType?: "overlap" | null;
 }
 
-// 🎭 STATIC MOCK DATA GENERATOR
-const getMockItems = (): ItineraryItem[] => {
-  const today = startOfToday();
-  return [
-    {
-      id: "mock-1",
-      type: "GOOGLE_CALENDAR",
-      title: "Strategy Sync w/ Design Team",
-      startTime: setHours(today, 10), // 10:00 AM Today
-      location: "Google Meet",
-      status: "tentative",
-      originalData: {},
-    },
-    {
-      id: "mock-2",
-      type: "GOOGLE_CALENDAR",
-      title: "Lunch with Sarah",
-      startTime: setHours(today, 13), // 1:00 PM Today
-      location: "De Pijp, Amsterdam",
-      status: "confirmed",
-      originalData: {},
-    },
-    {
-      id: "mock-3",
-      type: "LCL_EVENT",
-      title: "Jazz & Wine Tasting",
-      startTime: setHours(addDays(today, 1), 19), // 7:00 PM Tomorrow
-      location: "Blue Note Club",
-      image:
-        "https://images.unsplash.com/photo-1514525253440-b393452e8d26?auto=format&fit=crop&w=800&q=80",
-      status: "confirmed",
-      originalData: {
-        id: "mock-3-data",
-        title: "Jazz & Wine Tasting",
-        venue_name: "Blue Note Club",
-        event_date: setHours(addDays(today, 1), 19).toISOString(),
-        event_time: "19:00",
-        image_url:
-          "https://images.unsplash.com/photo-1514525253440-b393452e8d26?auto=format&fit=crop&w=800&q=80",
-        category: "music",
-        attendee_count: 12,
-      },
-    },
-    {
-      id: "mock-4",
-      type: "GOOGLE_CALENDAR",
-      title: "Flight to Berlin",
-      startTime: setHours(addDays(today, 2), 9), // 9:00 AM Day after Tomorrow
-      location: "Schiphol Airport",
-      status: "tentative",
-      originalData: {},
-    },
-    {
-      id: "mock-invite-1",
-      type: "LCL_EVENT",
-      title: "Secret rooftop party",
-      startTime: setHours(addDays(today, 3), 20), // 8:00 PM in 3 days
-      location: "Unknown Location",
-      image:
-        "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80",
-      status: "pending", // Pending Invite!
-      category: "social",
-      attendeeCount: 5,
-      originalData: {
-        id: "mock-invite-1-data",
-        title: "Secret rooftop party",
-        venue_name: "Unknown Location",
-        category: "social",
-        attendee_count: 5,
-      },
-    },
-  ];
-};
-
 /**
  * Detect time overlaps between itinerary items
- * Marks items with conflictType='overlap' if they have strictly overlapping times
- * Adjacent events (end === start) are NOT considered overlaps
- * Items without endTime are treated as zero-length events at startTime
  */
 function detectTimeOverlaps(items: ItineraryItem[]): ItineraryItem[] {
-  // Clone items and reset conflictType
   const cloned = items.map((i) => ({
     ...i,
     conflictType: null as "overlap" | null,
   }));
-
-  // Sort by startTime for comparison
   const sorted = cloned
     .slice()
     .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-
-  // Check each pair for overlaps
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const cur = sorted[i];
-
-    // Get end times (if missing, use startTime for zero-length)
     const prevEnd = (prev.endTime ?? prev.startTime).getTime();
     const curStart = cur.startTime.getTime();
-
-    // Strict overlap check (curStart < prevEnd, not <=)
     if (curStart < prevEnd) {
       prev.conflictType = "overlap";
       cur.conflictType = "overlap";
     }
   }
-
-  // Map back to original order using item IDs
   const byId = new Map(sorted.map((it) => [it.id, it]));
   return items.map(
     (orig) => byId.get(orig.id) ?? { ...orig, conflictType: null },
   );
 }
-
-// Dev fallback sample data for when not authenticated
-const DEV_SAMPLE_EVENTS = [
-  {
-    id: "dev-1",
-    title: "South African Roadtrip - We Are Family",
-    date: new Date().toISOString(),
-    event_time: "14:00",
-    venue_name: "Sneek Agenda",
-    category: "family",
-    image_url: null,
-    attendee_count: 12,
-    location: "Sneek",
-    ticket_number: "TKT-DEV-001",
-  },
-  {
-    id: "dev-2",
-    title: "Creative Workshop: Art & Design",
-    date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-    event_time: "10:00",
-    venue_name: "Adoroble Studio",
-    category: "entertainment",
-    image_url: null,
-    attendee_count: 8,
-    location: "Adoroble Studio",
-    ticket_number: "TKT-DEV-002",
-  },
-  {
-    id: "dev-3",
-    title: "Leeuwarden Free Tour",
-    date: new Date(Date.now() + 86400000 * 2).toISOString(), // Day after tomorrow
-    event_time: "12:00",
-    venue_name: "A Guide to Leeuwarden",
-    category: "music",
-    image_url: null,
-    attendee_count: 25,
-    location: "Leeuwarden",
-    ticket_number: "TKT-DEV-003",
-  },
-];
 
 export const useUnifiedItinerary = () => {
   const { profile } = useAuth();
