@@ -11,14 +11,19 @@ import { FeedProvider } from "@/contexts/FeedContext";
 import { ErrorBoundary } from "@/shared/components";
 
 // Feature-based page imports
-import { FeedPage, DiscoveryPage, MyPlanningPage, NowPage } from "@/features/events";
-import { 
-  ProfilePage, 
-  PrivacySettingsPage, 
-  PersonalInformationPage, 
-  VerificationSafetyPage, 
-  NotificationPreferencesPage, 
-  ShareProfilePage 
+import {
+  FeedPage,
+  DiscoveryPage,
+  MyPlanningPage,
+  NowPage,
+} from "@/features/events";
+import {
+  ProfilePage,
+  PrivacySettingsPage,
+  PersonalInformationPage,
+  VerificationSafetyPage,
+  NotificationPreferencesPage,
+  ShareProfilePage,
 } from "@/features/profile";
 import { LoginPage } from "@/features/auth";
 import { GoogleCalendarSettingsPage } from "@/features/calendar";
@@ -37,19 +42,20 @@ const queryClient = new QueryClient({
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
 });
-const storagePersister = typeof window !== 'undefined'
-  ? createSyncStoragePersister({ storage: window.localStorage })
-  : null;
+const storagePersister =
+  typeof window !== "undefined"
+    ? createSyncStoragePersister({ storage: window.localStorage })
+    : null;
 
 /**
  * IO26 Refraction SVG Filter
- * 
+ *
  * Hidden global SVG filter using feTurbulence and feDisplacementMap
  * to simulate physical light bending at card edges for the Liquid Glass effect.
  */
 const IO26RefractionFilter = () => (
   <svg
-    style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
+    style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}
     aria-hidden="true"
   >
     <defs>
@@ -85,7 +91,10 @@ const App = () => (
     {storagePersister ? (
       <PersistQueryClientProvider
         client={queryClient}
-        persistOptions={{ persister: storagePersister, maxAge: 1000 * 60 * 60 * 24 }}
+        persistOptions={{
+          persister: storagePersister,
+          maxAge: 1000 * 60 * 60 * 24,
+        }}
       >
         <TooltipProvider>
           <AuthProvider>
@@ -101,15 +110,33 @@ const App = () => (
                     <Route path="/now" element={<NowPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
-                    
+
                     {/* Profile Settings routes */}
-                    <Route path="/profile/privacy-settings" element={<PrivacySettingsPage />} />
-                    <Route path="/profile/personal-information" element={<PersonalInformationPage />} />
-                    <Route path="/profile/verification-safety" element={<VerificationSafetyPage />} />
-                    <Route path="/profile/notification-preferences" element={<NotificationPreferencesPage />} />
-                    <Route path="/profile/share" element={<ShareProfilePage />} />
-                    <Route path="/profile/calendar" element={<GoogleCalendarSettingsPage />} />
-                    
+                    <Route
+                      path="/profile/privacy-settings"
+                      element={<PrivacySettingsPage />}
+                    />
+                    <Route
+                      path="/profile/personal-information"
+                      element={<PersonalInformationPage />}
+                    />
+                    <Route
+                      path="/profile/verification-safety"
+                      element={<VerificationSafetyPage />}
+                    />
+                    <Route
+                      path="/profile/notification-preferences"
+                      element={<NotificationPreferencesPage />}
+                    />
+                    <Route
+                      path="/profile/share"
+                      element={<ShareProfilePage />}
+                    />
+                    <Route
+                      path="/profile/calendar"
+                      element={<GoogleCalendarSettingsPage />}
+                    />
+
                     {/* Admin routes (dev mode only) */}
                     {import.meta.env.DEV && (
                       <>
@@ -117,10 +144,10 @@ const App = () => (
                         <Route path="/scraper-admin" element={<AdminPage />} />
                       </>
                     )}
-                    
+
                     {/* Auth routes */}
                     <Route path="/login" element={<LoginPage />} />
-                    
+
                     {/* Catch-all */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
@@ -131,7 +158,10 @@ const App = () => (
         </TooltipProvider>
       </PersistQueryClientProvider>
     ) : (
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{ persister }}
+      >
         <TooltipProvider>
           <AuthProvider>
             <LocationProvider>
@@ -146,15 +176,33 @@ const App = () => (
                     <Route path="/now" element={<NowPage />} />
                     <Route path="/planning" element={<MyPlanningPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
-                    
+
                     {/* Profile Settings routes */}
-                    <Route path="/profile/privacy-settings" element={<PrivacySettingsPage />} />
-                    <Route path="/profile/personal-information" element={<PersonalInformationPage />} />
-                    <Route path="/profile/verification-safety" element={<VerificationSafetyPage />} />
-                    <Route path="/profile/notification-preferences" element={<NotificationPreferencesPage />} />
-                    <Route path="/profile/share" element={<ShareProfilePage />} />
-                    <Route path="/profile/calendar" element={<GoogleCalendarSettingsPage />} />
-                    
+                    <Route
+                      path="/profile/privacy-settings"
+                      element={<PrivacySettingsPage />}
+                    />
+                    <Route
+                      path="/profile/personal-information"
+                      element={<PersonalInformationPage />}
+                    />
+                    <Route
+                      path="/profile/verification-safety"
+                      element={<VerificationSafetyPage />}
+                    />
+                    <Route
+                      path="/profile/notification-preferences"
+                      element={<NotificationPreferencesPage />}
+                    />
+                    <Route
+                      path="/profile/share"
+                      element={<ShareProfilePage />}
+                    />
+                    <Route
+                      path="/profile/calendar"
+                      element={<GoogleCalendarSettingsPage />}
+                    />
+
                     {/* Admin routes (dev mode only) */}
                     {import.meta.env.DEV && (
                       <>
@@ -162,10 +210,10 @@ const App = () => (
                         <Route path="/scraper-admin" element={<AdminPage />} />
                       </>
                     )}
-                    
+
                     {/* Auth routes */}
                     <Route path="/login" element={<LoginPage />} />
-                    
+
                     {/* Catch-all */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
