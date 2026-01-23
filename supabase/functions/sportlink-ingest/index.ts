@@ -16,8 +16,8 @@ const corsHeaders = {
 const SPORTLINK_CLIENT_ID = "oCuV9oozaaz8zee";
 const SPORTLINK_CLIENT_SECRET = "eep7Shoo7i";
 // Use credentials from user's successful cURL to rule out account issues
-const SPORTLINK_USER = "rxxnrextolzwlqsspy@hthlm.com";
-const SPORTLINK_PASS = "test1234";
+const SPORTLINK_USER = "wesleykoot@gmail.com";
+const SPORTLINK_PASS = "Jejwyz-qoxco6-fitmob";
 
 const SPORTLINK_AUTH_URL =
   "https://app-vnl-production.sportlink.com/oauth/token";
