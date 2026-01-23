@@ -110,46 +110,11 @@ export default function ExplorePage() {
               </div>
             </div>
           </div>
-        ) : error || !import.meta.env.VITE_SUPABASE_URL ? (
+        ) : error ? (
           <div className="px-6 py-12 text-center text-[#4B5563]">
-            <p className="font-medium text-red-600 mb-2">
-              {!import.meta.env.VITE_SUPABASE_URL
-                ? "Configuration Error"
-                : "Failed to load events"}
+            <p className="font-medium">
+              Failed to load events. Please try again later.
             </p>
-            <div className="bg-red-50 p-4 rounded-xl text-left overflow-auto max-h-40">
-              <p className="text-xs font-mono text-red-800 whitespace-pre-wrap">
-                {!import.meta.env.VITE_SUPABASE_URL
-                  ? "Missing VITE_SUPABASE_URL. Please add this environment variable to your Vercel Project Settings."
-                  : error instanceof Error
-                    ? error.message
-                    : JSON.stringify(error, null, 2)}
-              </p>
-
-              <div className="mt-4 pt-4 border-t border-red-100 text-[10px] text-red-700 font-mono">
-                <p>
-                  <strong>Debug Info:</strong>
-                </p>
-                <p>
-                  URL Configured:{" "}
-                  {import.meta.env.VITE_SUPABASE_URL ? "YES" : "NO"}
-                </p>
-                <p>
-                  Key Configured:{" "}
-                  {import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "YES" : "NO"}
-                </p>
-                {import.meta.env.VITE_SUPABASE_URL && (
-                  <p>
-                    Current URL:{" "}
-                    {import.meta.env.VITE_SUPABASE_URL.substring(0, 15)}...
-                  </p>
-                )}
-                <p className="mt-2 text-red-500 italic">
-                  Note: VITE_ variables are baked in at BUILD time. You must
-                  redeploy after changing them.
-                </p>
-              </div>
-            </div>
           </div>
         ) : (
           <>
