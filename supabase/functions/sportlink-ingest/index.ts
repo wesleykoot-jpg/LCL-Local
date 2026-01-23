@@ -15,8 +15,8 @@ const corsHeaders = {
 // Sportlink Credentials
 const SPORTLINK_CLIENT_ID = "oCuV9oozaaz8zee";
 const SPORTLINK_CLIENT_SECRET = "eep7Shoo7i";
-const SPORTLINK_USER = "rxxnrextolzwlqsspy@hthlm.com";
-const SPORTLINK_PASS = "test1234";
+const SPORTLINK_USER = "wesleykoot@gmail.com";
+const SPORTLINK_PASS = "Jejwyz-qoxco6-fitmob";
 
 const SPORTLINK_AUTH_URL = "https://data.sportlink.com/oauth/token";
 const SPORTLINK_API_BASE = "https://data.sportlink.com";
@@ -72,26 +72,41 @@ async function getAccessToken() {
   }
 
   const data = await response.json();
-  console.log(`[Sportlink] Token received successfully.`);
-  return data.access_token;
+  if (!data.access_token) {
+    console.error(
+      `[Sportlink] Token response missing access_token:`,
+      JSON.stringify(data),
+    );
+  } else {
+    console.log(
+      `[Sportlink] Token received successfully. Expires in: ${data.expires_in}`,
+    );
+  }
+  return data;
 }
 
 async function fetchClubProgram(accessToken: string, clubId: string) {
-  const now = new Date();
-  const fromDate = now.toISOString().split("T")[0];
-  const toDate = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0]; // +60 days
+  // Attempt POST with parameters in body, as GET returned schema
+  const url = `${SPORTLINK_API_BASE}/api/v1/club/program?clubId=${clubId}`;
 
-  const url = `${SPORTLINK_API_BASE}/api/v1/club/program?client_id=${SPORTLINK_CLIENT_ID}&clubId=${clubId}&fromDate=${fromDate}&toDate=${toDate}`;
+  const params = new URLSearchParams();
+  params.append("aantaldagen", "60");
+  params.append("weekoffset", "0");
+  params.append("eigenwedstrijden", "JA");
+  params.append("thuis", "JA");
+  params.append("uit", "JA");
+
   console.log(
-    `[Sportlink] Fetching program for club ${clubId} from ${fromDate} to ${toDate}...`,
+    `[Sportlink] Fetching program for club ${clubId} via POST (form-urlencoded)...`,
   );
   const response = await fetch(url, {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
+    body: params,
   });
 
   if (!response.ok) {
@@ -107,7 +122,7 @@ async function fetchClubProgram(accessToken: string, clubId: string) {
       response.status,
       errorBody,
     );
-    return [];
+    return { program: [], raw: { error: errorBody, status: response.status } };
   }
 
   const rawData = await response.json();
@@ -122,7 +137,7 @@ async function fetchClubProgram(accessToken: string, clubId: string) {
   console.log(
     `[Sportlink] Received ${program.length} items for club ${clubId}.`,
   );
-  return program;
+  return { program, raw: rawData };
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -142,16 +157,35 @@ serve(async (req: Request): Promise<Response> => {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
       if (action === "ingest" || action === "debug") {
-        const token = await getAccessToken();
+        const authData = await getAccessToken();
+
+        if (!authData.access_token) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: "Authentication failed",
+              authResponse: authData,
+            }),
+            {
+              status: 401,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        const token = authData.access_token;
         let totalProcessed = 0;
         const results = [];
         const debugData: any[] = [];
 
         for (const club of CLUBS) {
           try {
-            const matches = await fetchClubProgram(token, club.id);
+            const { program: matches, raw } = await fetchClubProgram(
+              token,
+              club.id,
+            );
             if (action === "debug")
-              debugData.push({ club: club.name, raw: matches });
+              debugData.push({ club: club.name, raw: raw });
 
             const eventsToInsert = await Promise.all(
               matches.map(async (m: any) => {
