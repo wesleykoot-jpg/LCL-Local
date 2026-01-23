@@ -106,7 +106,12 @@ export function parsePersonalizedFeedRows(
 ): PersonalizedFeedRow[] {
   const result = personalizedFeedResponseSchema.safeParse(data ?? []);
   if (!result.success) {
-    handleSchemaFailure("personalized feed", result.error);
+    console.error(
+      `[schemas] Invalid personalized feed data received:`,
+      JSON.stringify(result.error.flatten(), null, 2),
+    );
+    // Also log the first item that failed if possible to help debug
+    console.error(`[schemas] First error details:`, result.error.issues[0]);
     return [];
   }
   return result.data;

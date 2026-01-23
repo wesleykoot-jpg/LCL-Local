@@ -84,12 +84,18 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           },
         );
 
-        if (error) throw error;
+        if (error) {
+          console.error("[useEventsQuery] RPC Error:", error);
+          throw error;
+        }
 
         // Transform RPC result to EventWithAttendees format
         const rpcEvents = parsePersonalizedFeedRows(data);
+        console.log("[useEventsQuery] RPC Raw Data:", data);
+        console.log("[useEventsQuery] Parsed Events:", rpcEvents);
 
         if (rpcEvents.length === 0) {
+          console.warn("[useEventsQuery] RPC returned 0 events");
           return [];
         }
 
@@ -203,7 +209,10 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error("[useEventsQuery] Fallback Query Error:", error);
+        throw error;
+      }
 
       let eventsWithData = (data || [])
         // Filter out events from blocked users
