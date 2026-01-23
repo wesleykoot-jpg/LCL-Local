@@ -57,9 +57,17 @@ const personalizedFeedRowSchema = z
     event_time: z.string().nullable().optional(),
     status: z.string().nullable().optional(),
     image_url: z.string().nullable().optional(),
-    match_percentage: z.number().nullable().optional(),
+    match_percentage: z
+      .union([z.number(), z.string()])
+      .transform((val) => Number(val))
+      .nullable()
+      .optional(),
     attendee_count: z.number().nullable().optional(),
-    host_reliability: z.number().nullable().optional(),
+    host_reliability: z
+      .union([z.number(), z.string()])
+      .transform((val) => Number(val))
+      .nullable()
+      .optional(),
     distance_km: z.number().nullable().optional(),
     final_score: z.number().nullable().optional(),
   })
