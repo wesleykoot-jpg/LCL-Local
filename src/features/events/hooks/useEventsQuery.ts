@@ -177,6 +177,94 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           );
 
         return combinedEvents;
+        return combinedEvents;
+      }
+
+      // NEW: Use location-based RPC if user has location but no personalized feed
+      if (userLocation) {
+        // Prepare filters
+        const categoryFilter =
+          category && category.length > 0 ? category : null;
+        const typeFilter = eventType && eventType.length > 0 ? eventType : null;
+
+        const { data, error } = await supabase.rpc("get_nearby_events", {
+          user_lat: userLocation.lat,
+          user_long: userLocation.lng,
+          radius_km: radiusKm,
+          limit_count: 100,
+          offset_count: 0,
+          filter_category: categoryFilter,
+          filter_type: typeFilter,
+        });
+
+        if (error) {
+          console.error("[useEventsQuery] get_nearby_events RPC Error:", error);
+          throw error;
+        }
+
+        if (!data || data.length === 0) {
+          return [];
+        }
+
+        // Fetch attendees for these events separately
+        const eventIds = data.map((e) => e.id);
+        const { data: attendeesData } = await supabase
+          .from("event_attendees")
+          .select(
+            `
+            event_id,
+            profile:profiles(
+              id,
+              avatar_url,
+              full_name
+            )
+          `,
+          )
+          .in("event_id", eventIds)
+          .limit(ATTENDEE_LIMIT);
+
+        // Group attendees by event
+        const attendeesByEvent = new Map<string, EventAttendee[]>();
+        (attendeesData || []).forEach((att: any) => {
+          if (!attendeesByEvent.has(att.event_id)) {
+            attendeesByEvent.set(att.event_id, []);
+          }
+          attendeesByEvent.get(att.event_id)!.push({
+            profile: att.profile,
+          });
+        });
+
+        return data
+          .filter(
+            (e) => !e.created_by || !blockedUserIds.includes(e.created_by),
+          )
+          .map((e) => ({
+            id: e.id,
+            title: e.title,
+            description: e.description,
+            category: e.category as Event["category"],
+            event_type: e.event_type as Event["event_type"],
+            parent_event_id: e.parent_event_id,
+            venue_name: e.venue_name,
+            location: e.location,
+            event_date: e.event_date,
+            event_time: e.event_time,
+            status: e.status as Event["status"],
+            image_url: e.image_url,
+            match_percentage: e.match_percentage,
+            attendee_count: Number(e.attendee_count), // RPC returns bigint
+            attendees: attendeesByEvent.get(e.id) || [],
+            created_by: e.created_by,
+            created_at: e.created_at,
+            source_id: null,
+            event_fingerprint: null,
+            max_attendees: null,
+            structured_date: null,
+            structured_location: null,
+            organizer: null,
+            parent_event: null,
+            distance_km: e.distance_km,
+          })) as unknown as EventWithAttendees[];
       }
 
       // Fallback to standard query (existing behavior)

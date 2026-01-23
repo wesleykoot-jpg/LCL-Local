@@ -456,16 +456,14 @@ const Discovery = () => {
             />
           )}
 
-          <AnimatePresence>
-            {selectedEvent && (
-              <EventDetailModal
-                event={selectedEvent}
-                onClose={handleCloseEventDetail}
-                // onJoinEvent={() => selectedEvent && handleJoinEvent(selectedEvent.id)}
-                isJoining={isJoining(selectedEvent.id)}
-              />
-            )}
-          </AnimatePresence>
+          {selectedEvent && (
+            <EventDetailModal
+              event={selectedEvent}
+              onClose={handleCloseEventDetail}
+              onJoin={() => handleJoinEvent(selectedEvent.id)}
+              isJoining={isJoining(selectedEvent.id)}
+            />
+          )}
 
           {/* Mission Mode Drawer */}
           {userLocation && (

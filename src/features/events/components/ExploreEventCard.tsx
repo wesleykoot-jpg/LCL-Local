@@ -36,7 +36,7 @@ export const ExploreEventCard = memo(function ExploreEventCard({
 
   return (
     <motion.div
-      className="shrink-0 w-[240px] cursor-pointer group bg-white rounded-3xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.08)] border border-[#E5E7EB]"
+      className="shrink-0 w-[240px] snap-start cursor-pointer group bg-white rounded-3xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.08)] border border-[#E5E7EB]"
       whileTap={{ scale: 0.96 }}
       onClick={onClick}
     >

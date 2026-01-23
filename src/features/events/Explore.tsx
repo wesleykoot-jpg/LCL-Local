@@ -19,9 +19,12 @@ import { hapticImpact } from "@/shared/lib/haptics";
 import { FloatingNav } from "@/shared/components/FloatingNav";
 import { useAuth } from "@/features/auth";
 import { useLocation } from "@/features/location";
+import { useJoinEvent } from "./hooks/hooks";
+import { EventDetailModal } from "./components/EventDetailModal";
 
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs } = useLocation();
 
@@ -37,9 +40,29 @@ export default function ExplorePage() {
     usePersonalizedFeed: !!userLocation && !!profile?.id,
   });
 
+  const { handleJoinEvent, isJoining } = useJoinEvent(profile?.id, () => {
+    // Optional: refine query on join
+  });
+
+  const selectedEvent = useMemo(() => {
+    return allEvents.find((e) => e.id === selectedEventId) || null;
+  }, [allEvents, selectedEventId]);
+
+  // Filter events based on search query
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery.trim()) return allEvents;
+    const query = searchQuery.toLowerCase();
+    return allEvents.filter(
+      (e) =>
+        e.title.toLowerCase().includes(query) ||
+        e.description?.toLowerCase().includes(query) ||
+        e.venue_name?.toLowerCase().includes(query),
+    );
+  }, [allEvents, searchQuery]);
+
   // Generate the 5 specific rails
   const { sections } = useDiscoveryRails({
-    allEvents,
+    allEvents: filteredEvents,
     userId: profile?.id,
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs?.radiusKm || 25,
@@ -122,13 +145,19 @@ export default function ExplorePage() {
             <AnimatePresence mode="wait">
               {featuredEvent && (
                 <motion.div
+                  key={featuredEvent.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
                   className="px-6 py-6"
                 >
                   <div
                     className="relative aspect-video rounded-3xl overflow-hidden bg-zinc-900 shadow-lg group cursor-pointer"
-                    onClick={() => hapticImpact("medium")}
+                    onClick={() => {
+                      hapticImpact("medium");
+                      setSelectedEventId(featuredEvent.id);
+                    }}
                   >
                     <img
                       src={featuredEvent.image_url || ""}
@@ -179,7 +208,10 @@ export default function ExplorePage() {
                       <ExploreEventCard
                         key={event.id}
                         event={event}
-                        onClick={() => hapticImpact("light")}
+                        onClick={() => {
+                          hapticImpact("light");
+                          setSelectedEventId(event.id);
+                        }}
                       />
                     ))}
                   </ExploreRail>
@@ -190,6 +222,19 @@ export default function ExplorePage() {
         )}
       </main>
       <FloatingNav activeView="feed" />
+
+      {selectedEvent && (
+        <EventDetailModal
+          event={selectedEvent}
+          onClose={() => setSelectedEventId(null)}
+          onJoin={() => handleJoinEvent(selectedEvent.id)}
+          isJoining={isJoining(selectedEvent.id)}
+          currentUserProfileId={profile?.id}
+          hasJoined={selectedEvent.attendees?.some(
+            (a) => a.profile?.id === profile?.id,
+          )}
+        />
+      )}
     </div>
   );
 }
