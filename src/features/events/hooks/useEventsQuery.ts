@@ -189,6 +189,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           )
         `,
         )
+        .eq("status", "published")
         .order("event_date", { ascending: true })
         .limit(ATTENDEE_LIMIT, { foreignTable: "event_attendees" });
 
