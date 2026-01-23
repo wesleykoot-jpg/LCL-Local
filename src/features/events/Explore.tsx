@@ -112,9 +112,16 @@ export default function ExplorePage() {
           </div>
         ) : error ? (
           <div className="px-6 py-12 text-center text-[#4B5563]">
-            <p className="font-medium">
-              Failed to load events. Please try again later.
+            <p className="font-medium text-red-600 mb-2">
+              Failed to load events.
             </p>
+            <div className="bg-red-50 p-4 rounded-xl text-left overflow-auto max-h-40">
+              <p className="text-xs font-mono text-red-800 whitespace-pre-wrap">
+                {error instanceof Error
+                  ? error.message
+                  : JSON.stringify(error, null, 2)}
+              </p>
+            </div>
           </div>
         ) : (
           <>
