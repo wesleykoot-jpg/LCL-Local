@@ -340,18 +340,47 @@ async function processRow(
     }
 
     // Slow Path: AI
-    if (!normalized || !normalized.title || !normalized.event_date) {
-      // Cheap fallback
-      const dummySource = {
-        id: sourceId,
-        name: "Staging",
-        country: "NL",
-        language: "nl",
-      };
+    // Cheap fallback
+    const dummySource = {
+      id: sourceId,
+      name: "Staging",
+      country: "NL",
+      language: "nl",
+    };
+    if (!normalized) {
       normalized = cheapNormalizeEvent(raw, dummySource as any);
+    }
 
-      // AI Extraction
-      // Use detail_html if available (preferred), fallback to listing card HTML
+    // 1.5.1 WATERFALL: Try JSON-LD on Detail HTML first (high quality, low cost)
+    if (row.detail_html && (!normalized || !normalized.image_url)) {
+      const { extractJsonLdEvents, isJsonLdComplete, jsonLdToNormalized } =
+        await import("../_shared/jsonLdParser.ts");
+
+      const detailJsonLds = extractJsonLdEvents(row.detail_html);
+      if (detailJsonLds && detailJsonLds.length > 0) {
+        const completeEvent = detailJsonLds.find(isJsonLdComplete);
+        if (completeEvent) {
+          const detailNorm = jsonLdToNormalized(
+            completeEvent,
+          ) as NormalizedEvent;
+          normalized = {
+            ...(normalized || {}),
+            ...detailNorm,
+            // Ensure we keep the best title if already set
+            title: detailNorm.title || normalized?.title || raw.title,
+          };
+          parsingMethod = "deterministic_detail";
+          console.log(`[${row.id}] Waterfall: JSON-LD found on Detail Page`);
+        }
+      }
+    }
+
+    // 1.5.2 AI Fallback
+    if (
+      !normalized ||
+      !normalized.image_url ||
+      normalized.description?.length < 100
+    ) {
       const htmlToParse = row.detail_html || raw.rawHtml;
       const aiParsed = await runAIParsing(htmlToParse);
 
@@ -367,7 +396,8 @@ async function processRow(
             aiParsed.image_url || normalized?.image_url || raw.imageUrl,
           persona_tags: aiParsed.persona_tags,
         };
-        parsingMethod = "ai";
+        parsingMethod =
+          parsingMethod === "deterministic_detail" ? "hybrid_ai" : "ai";
         console.log(
           `[${row.id}] Parsing: AI with ${row.detail_html ? "Detail" : "Card"} HTML`,
         );
