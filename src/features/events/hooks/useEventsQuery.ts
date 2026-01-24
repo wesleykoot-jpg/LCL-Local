@@ -19,6 +19,8 @@ interface UseEventsQueryOptions {
   radiusKm?: number;
   currentUserProfileId?: string;
   usePersonalizedFeed?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 /**
@@ -40,6 +42,8 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
     radiusKm = 25,
     currentUserProfileId,
     usePersonalizedFeed = false,
+    limit = 100,
+    offset = 0,
   } = options || {};
 
   // Create stable query key from options
@@ -54,6 +58,8 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
       radius: radiusKm,
       userId: currentUserProfileId || "anonymous",
       personalized: usePersonalizedFeed,
+      limit,
+      offset,
     },
   ];
 
@@ -79,8 +85,8 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
             user_lat: userLocation.lat,
             user_long: userLocation.lng,
             user_id: currentUserProfileId,
-            limit_count: 100,
-            offset_count: 0,
+            limit_count: limit,
+            offset_count: offset,
           },
         );
 
@@ -192,8 +198,8 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           user_lat: userLocation.lat,
           user_long: userLocation.lng,
           radius_km: radiusKm,
-          limit_count: 100,
-          offset_count: 0,
+          limit_count: limit,
+          offset_count: offset,
           filter_category: categoryFilter || undefined,
           filter_type: typeFilter || undefined,
         });
@@ -289,6 +295,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
         )
         .eq("status", "published")
         .order("event_date", { ascending: true })
+        .range(offset, offset + limit - 1)
         .limit(ATTENDEE_LIMIT, { foreignTable: "event_attendees" });
 
       if (category && category.length > 0) {

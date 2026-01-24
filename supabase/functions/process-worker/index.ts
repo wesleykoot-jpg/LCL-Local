@@ -29,10 +29,66 @@ const BATCH_SIZE = 10;
 interface StagingRow {
   id: string;
   source_id: string;
-  url: string;
-  raw_payload: RawEventCard;
+  source_url: string;
+  raw_html: string | null;
   detail_html: string | null;
   status: string;
+  parsing_method: string | null;
+  raw_payload: RawEventCard; // Add raw_payload back as it's added by mapping logic
+}
+
+/**
+ * Calculates a quality score for an event based on field completeness.
+ */
+function calculateQualityScore(event: any): number {
+  let score = 0;
+
+  // Weights: Title (mandatory), Date (mandatory) - handled by validation
+
+  // Description: +0.3
+  if (event.description && event.description.length > 50) {
+    score += 0.3;
+  } else if (event.description) {
+    score += 0.15;
+  }
+
+  // Image URL: +0.2
+  // Check if it's a real image and not a placeholder or empty
+  if (
+    event.image_url &&
+    event.image_url.startsWith("http") &&
+    !event.image_url.includes("placeholder")
+  ) {
+    score += 0.2;
+  }
+
+  // Venue Name: +0.2
+  if (
+    event.venue_name &&
+    event.venue_name !== "TBD" &&
+    event.venue_name.length > 2
+  ) {
+    score += 0.2;
+  }
+
+  // Coordinates (Location): +0.2
+  // If location is provided and it's not the default POINT(0 0)
+  if (event.location && event.location !== "POINT(0 0)") {
+    score += 0.2;
+  }
+
+  // Correct Year / Metadata: +0.1
+  // If the event date is within the next 2 years (reasonable window)
+  const eventDate = new Date(event.event_date);
+  const now = new Date();
+  const twoYearsOut = new Date();
+  twoYearsOut.setFullYear(now.getFullYear() + 2);
+
+  if (eventDate >= now && eventDate <= twoYearsOut) {
+    score += 0.1;
+  }
+
+  return score;
 }
 
 // Helper: Claim pending rows atomically using RPC
@@ -89,6 +145,7 @@ async function claimPendingRows(
 
     return {
       ...row,
+      source_url: row.source_url || (payload as any).detailUrl || "",
       raw_payload: payload,
     };
   });
@@ -181,9 +238,28 @@ async function processRow(
   try {
     const raw = row.raw_payload;
     const sourceId = row.source_id;
+    const sourceUrl = row.source_url;
+
     // 1. HYBRID PARSING (The Sorting Arm)
     let normalized: NormalizedEvent | null = null;
     let parsingMethod: string = "ai"; // Default
+    let healingAttempted = false;
+
+    // Helper to run AI parsing
+    const runAIParsing = async (htmlContent: string | null) => {
+      try {
+        return await parseDetailedEventWithAI(
+          aiApiKey,
+          raw,
+          htmlContent,
+          fetch,
+          { targetYear: new Date().getFullYear(), language: "nl" },
+        );
+      } catch (e) {
+        console.warn(`AI parsing failed for row ${row.id}`, e);
+        return null;
+      }
+    };
 
     // Check if we have a trusted method from the scraper
     // TRUSTED METHODS: If we already have high-fidelity data, skip expensive AI extraction
@@ -243,34 +319,79 @@ async function processRow(
       normalized = cheapNormalizeEvent(raw, dummySource as any);
 
       // AI Extraction
-      try {
-        const aiParsed = await parseDetailedEventWithAI(
-          aiApiKey,
-          raw,
-          row.detail_html,
-          fetch,
-          { targetYear: new Date().getFullYear(), language: "nl" },
-        );
+      const aiParsed = await runAIParsing(row.detail_html);
 
-        if (aiParsed) {
-          normalized = {
-            ...(normalized || {}),
-            ...aiParsed,
-            title: aiParsed.title || normalized?.title || raw.title,
-            event_date: aiParsed.event_date || normalized?.event_date,
-            description:
-              aiParsed.description ||
-              normalized?.description ||
-              raw.description,
-            image_url:
-              aiParsed.image_url || normalized?.image_url || raw.imageUrl,
-            persona_tags: aiParsed.persona_tags,
-          };
-          parsingMethod = "ai";
-          console.log(`[${row.id}] Slow Path: AI Extraction`);
+      if (aiParsed) {
+        normalized = {
+          ...(normalized || {}),
+          ...aiParsed,
+          title: aiParsed.title || normalized?.title || raw.title,
+          event_date: aiParsed.event_date || normalized?.event_date,
+          description:
+            aiParsed.description || normalized?.description || raw.description,
+          image_url:
+            aiParsed.image_url || normalized?.image_url || raw.imageUrl,
+          persona_tags: aiParsed.persona_tags,
+        };
+        parsingMethod = "ai";
+        console.log(`[${row.id}] Slow Path: AI Extraction`);
+      }
+    }
+
+    // 1.5 SELF-HEALING (The Second Chance)
+    // If score is low and we haven't fetched detail_html yet, try to fetch it and re-parse
+    if (
+      normalized &&
+      !row.detail_html &&
+      sourceUrl &&
+      sourceUrl.startsWith("http")
+    ) {
+      const tempScore = calculateQualityScore({
+        ...normalized,
+        location: (normalized as any)._geo
+          ? `POINT(${(normalized as any)._geo.lng} ${(normalized as any)._geo.lat})`
+          : "POINT(0 0)",
+        event_date: normalizeEventDateForStorage(
+          normalized.event_date,
+          normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
+        ).timestamp,
+      });
+
+      if (tempScore < 0.6) {
+        console.log(
+          `[${row.id}] Low quality score (${tempScore}), triggering self-healing...`,
+        );
+        try {
+          const { StaticPageFetcher } =
+            await import("../_shared/strategies.ts");
+          const fetcher = new StaticPageFetcher();
+          const { html: detailHtml } = await fetcher.fetchPage(sourceUrl);
+
+          if (detailHtml && detailHtml.length > 500) {
+            // Store detail HTML for future use
+            await supabase
+              .from("raw_event_staging")
+              .update({ detail_html: detailHtml })
+              .eq("id", row.id);
+
+            // Re-run AI extraction with full detail HTML
+            const healedParsed = await runAIParsing(detailHtml);
+            if (healedParsed) {
+              normalized = {
+                ...normalized,
+                ...healedParsed,
+                title: healedParsed.title || normalized.title,
+                event_date: healedParsed.event_date || normalized.event_date,
+                description: healedParsed.description || normalized.description,
+                image_url: healedParsed.image_url || normalized.image_url,
+              };
+              healingAttempted = true;
+              console.log(`[${row.id}] Self-healing successful.`);
+            }
+          }
+        } catch (healError) {
+          console.warn(`[${row.id}] Self-healing failed:`, healError);
         }
-      } catch (e) {
-        console.warn(`AI parsing failed for row ${row.id}`, e);
       }
     }
 
@@ -416,11 +537,6 @@ async function processRow(
     normalized.tags = tags;
 
     // Final Enrichment & Post-Processing
-    if (normalized) {
-      // 2. Final normalization (lowercase category for DB if needed, but we use Enum now)
-      // The migration 20260121170000 ensures 'category' is the Enum.
-    }
-
     const normalizedDate = normalizeEventDateForStorage(
       normalized.event_date,
       normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
@@ -441,9 +557,16 @@ async function processRow(
       updated_at: new Date().toISOString(),
       image_url: normalized.image_url,
       venue_name: normalized.venue_name || "",
-      source_url: normalized.detail_url || raw.detailUrl, // FIX: Mapped to source_url
+      source_url: normalized.detail_url || raw.detailUrl || sourceUrl, // FIX: Mapped to source_url
       tags: normalized.tags || [],
     };
+
+    // Calculate quality score
+    const finalQualityScore = calculateQualityScore({
+      ...eventPayload,
+      location: eventPayload.location || "POINT(0 0)",
+      event_date: normalizedDate.timestamp,
+    });
 
     // 9. Description Scrubbing (Data Hygiene)
     const SCRUB_PATTERNS = [
@@ -528,7 +651,13 @@ async function processRow(
       // Perform Update
       const { error: updateError } = await supabase
         .from("events")
-        .update(eventPayload)
+        .update({
+          ...eventPayload,
+          quality_score: eventPayload.quality_score,
+          last_healed_at: healingAttempted
+            ? new Date().toISOString()
+            : existing.last_healed_at,
+        })
         .eq("id", existing.id);
 
       if (updateError) throw new Error(`Merge failed: ${updateError.message}`);
@@ -541,9 +670,11 @@ async function processRow(
       if (normalized.persona_tags)
         eventPayload.persona_tags = normalized.persona_tags;
 
-      const { error: insertError } = await supabase
-        .from("events")
-        .insert(eventPayload);
+      const { error: insertError } = await supabase.from("events").insert({
+        ...eventPayload,
+        quality_score: eventPayload.quality_score,
+        last_healed_at: healingAttempted ? new Date().toISOString() : null,
+      });
       if (insertError) {
         // Handle race condition where it was created in between
         if (insertError.code === "23505") {

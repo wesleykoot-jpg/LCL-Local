@@ -1,13 +1,24 @@
-import { memo, useMemo, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Map, Clock, Users, MapPin, Heart, Loader2, Check, SlidersHorizontal } from 'lucide-react';
-import { LoadingSkeleton } from '@/shared/components/index.ts';
-import { TimeFilterPills, type TimeFilter } from './TimeFilterPills.tsx';
-import EventMap from './EventMap.tsx';
-import { hapticImpact } from '@/shared/lib/haptics.ts';
-import { useImageFallback } from '../hooks/useImageFallback.ts';
-import type { EventWithAttendees } from '../hooks/hooks.ts';
-import { Button } from '@/shared/components/ui/button.tsx';
+import { memo, useMemo, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Map,
+  Clock,
+  Users,
+  MapPin,
+  Heart,
+  Loader2,
+  Check,
+  SlidersHorizontal,
+} from "lucide-react";
+import { LoadingSkeleton } from "@/shared/components/index.ts";
+import { TimeFilterPills, type TimeFilter } from "./TimeFilterPills.tsx";
+import EventMap from "./EventMap.tsx";
+import { hapticImpact } from "@/shared/lib/haptics.ts";
+import { useImageFallback } from "../hooks/useImageFallback.ts";
+import type { EventWithAttendees } from "../hooks/hooks.ts";
+import { Button } from "@/shared/components/ui/button.tsx";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useRef, useEffect } from "react";
 
 interface DeepDiveViewProps {
   events: EventWithAttendees[];
@@ -18,35 +29,41 @@ interface DeepDiveViewProps {
   loading?: boolean;
   /** Callback when filter button is clicked */
   onFilterClick?: () => void;
+  /** Callback for infinite scroll */
+  onLoadMore?: () => void;
+  hasMore?: boolean;
 }
 
 // Helper to parse date as local
 function parseLocalDate(dateString: string): Date {
-  const datePart = dateString.split('T')[0].split(' ')[0];
-  const [year, month, day] = datePart.split('-').map(Number);
+  const datePart = dateString.split("T")[0].split(" ")[0];
+  const [year, month, day] = datePart.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
 // Filter events by time
-function filterByTime(events: EventWithAttendees[], filter: TimeFilter): EventWithAttendees[] {
+function filterByTime(
+  events: EventWithAttendees[],
+  filter: TimeFilter,
+): EventWithAttendees[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   switch (filter) {
-    case 'tonight':
-      return events.filter(e => {
+    case "tonight":
+      return events.filter((e) => {
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === today.getTime();
       });
-    case 'tomorrow': {
+    case "tomorrow": {
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
-      return events.filter(e => {
+      return events.filter((e) => {
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === tomorrow.getTime();
       });
     }
-    case 'weekend': {
+    case "weekend": {
       const dayOfWeek = today.getDay();
       const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
       const friday = new Date(today);
@@ -55,12 +72,12 @@ function filterByTime(events: EventWithAttendees[], filter: TimeFilter): EventWi
       const sunday = new Date(friday);
       sunday.setDate(friday.getDate() + 2);
       sunday.setHours(23, 59, 59, 999);
-      return events.filter(e => {
+      return events.filter((e) => {
         const eventDay = parseLocalDate(e.event_date);
         return eventDay >= friday && eventDay <= sunday;
       });
     }
-    case 'all':
+    case "all":
     default:
       return events;
   }
@@ -68,20 +85,20 @@ function filterByTime(events: EventWithAttendees[], filter: TimeFilter): EventWi
 
 // Format event time
 function formatTime(timeStr: string): string {
-  if (!timeStr) return '';
+  if (!timeStr) return "";
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    const period = hours >= 12 ? "PM" : "AM";
     const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
   }
   return timeStr;
 }
 
 // Format event date
 function formatDate(dateStr: string): string {
-  const datePart = dateStr.split('T')[0].split(' ')[0];
-  const eventDate = new Date(datePart + 'T00:00:00');
+  const datePart = dateStr.split("T")[0].split(" ")[0];
+  const eventDate = new Date(datePart + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -89,12 +106,16 @@ function formatDate(dateStr: string): string {
   tomorrow.setDate(today.getDate() + 1);
 
   if (eventDate.getTime() === today.getTime()) {
-    return 'Vandaag';
+    return "Vandaag";
   } else if (eventDate.getTime() === tomorrow.getTime()) {
-    return 'Morgen';
+    return "Morgen";
   }
 
-  return eventDate.toLocaleDateString('nl-NL', { weekday: 'short', month: 'short', day: 'numeric' });
+  return eventDate.toLocaleDateString("nl-NL", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // Masonry Card component
@@ -115,23 +136,29 @@ const MasonryEventCard = memo(function MasonryEventCard({
 }) {
   const [isSaved, setIsSaved] = useState(false);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(
-    event.image_url || '',
-    event.category
+    event.image_url || "",
+    event.category,
   );
 
-  const handleSave = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await hapticImpact('light');
-    setIsSaved(!isSaved);
-  }, [isSaved]);
+  const handleSave = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      await hapticImpact("light");
+      setIsSaved(!isSaved);
+    },
+    [isSaved],
+  );
 
-  const handleJoinClick = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!hasJoined) {
-      await hapticImpact('medium');
-      onJoin?.();
-    }
-  }, [hasJoined, onJoin]);
+  const handleJoinClick = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!hasJoined) {
+        await hapticImpact("medium");
+        onJoin?.();
+      }
+    },
+    [hasJoined, onJoin],
+  );
 
   return (
     <motion.div
@@ -141,7 +168,9 @@ const MasonryEventCard = memo(function MasonryEventCard({
       layout
     >
       {/* Image */}
-      <div className={`relative overflow-hidden bg-muted ${tall ? 'aspect-[3/4]' : 'aspect-square'}`}>
+      <div
+        className={`relative overflow-hidden bg-muted ${tall ? "aspect-3/4" : "aspect-square"}`}
+      >
         <img
           src={imageUrl}
           onError={handleImageError}
@@ -158,7 +187,9 @@ const MasonryEventCard = memo(function MasonryEventCard({
         >
           <Heart
             size={16}
-            className={isSaved ? 'text-primary fill-primary' : 'text-foreground'}
+            className={
+              isSaved ? "text-primary fill-primary" : "text-foreground"
+            }
           />
         </button>
 
@@ -175,7 +206,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
         </h3>
 
         <p className="text-[12px] text-muted-foreground line-clamp-1 flex items-center gap-1">
-          <MapPin size={11} className="flex-shrink-0" />
+          <MapPin size={11} className="shrink-0" />
           {event.venue_name}
         </p>
 
@@ -199,18 +230,21 @@ const MasonryEventCard = memo(function MasonryEventCard({
           disabled={isJoining || hasJoined}
           className={`
             w-full py-2 rounded-lg text-[12px] font-semibold transition-all active:scale-[0.98] mt-2
-            ${hasJoined
-              ? 'bg-muted text-muted-foreground'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            ${
+              hasJoined
+                ? "bg-muted text-muted-foreground"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
             }
           `}
         >
           {isJoining ? (
             <Loader2 size={14} className="animate-spin mx-auto" />
           ) : hasJoined ? (
-            <span className="flex items-center justify-center gap-1"><Check size={12} /> Aangemeld</span>
+            <span className="flex items-center justify-center gap-1">
+              <Check size={12} /> Aangemeld
+            </span>
           ) : (
-            'Meedoen'
+            "Meedoen"
           )}
         </button>
       </div>
@@ -220,7 +254,7 @@ const MasonryEventCard = memo(function MasonryEventCard({
 
 /**
  * DeepDiveView - Search/filter view with masonry layout
- * 
+ *
  * Features:
  * - Sticky filter bar with date pills and filter button
  * - Glass header that hides scrolling content
@@ -235,32 +269,60 @@ export const DeepDiveView = memo(function DeepDiveView({
   currentUserProfileId,
   loading,
   onFilterClick,
+  onLoadMore,
+  hasMore,
 }: DeepDiveViewProps) {
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [showMap, setShowMap] = useState(false);
 
-  const filteredEvents = useMemo(() =>
-    filterByTime(events, timeFilter),
-    [events, timeFilter]
+  const filteredEvents = useMemo(
+    () => filterByTime(events, timeFilter),
+    [events, timeFilter],
   );
 
   const handleTimeFilterChange = useCallback(async (filter: TimeFilter) => {
-    await hapticImpact('light');
+    await hapticImpact("light");
     setTimeFilter(filter);
   }, []);
 
   const handleMapToggle = useCallback(async () => {
-    await hapticImpact('medium');
+    await hapticImpact("medium");
     setShowMap(!showMap);
     // Map view implementation would go here
   }, [showMap]);
 
   const handleFilterClick = useCallback(async () => {
-    await hapticImpact('light');
+    await hapticImpact("light");
     onFilterClick?.();
   }, [onFilterClick]);
 
-  // Split events into two columns for masonry effect
+  // Virtualization setup
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: Math.ceil(filteredEvents.length / 2),
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 320, // Estimated height of a card
+    overscan: 5,
+  });
+
+  // Infinite scroll detection
+  useEffect(() => {
+    const scrollElement = parentRef.current;
+    if (!scrollElement || !hasMore || loading) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+      if (scrollHeight - scrollTop <= clientHeight * 1.5) {
+        onLoadMore?.();
+      }
+    };
+
+    scrollElement.addEventListener("scroll", handleScroll);
+    return () => scrollElement.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loading, onLoadMore]);
+
+  // Split events into two columns for masonry effect (using virtual rows)
   const columns = useMemo(() => {
     const col1: { event: EventWithAttendees; tall: boolean }[] = [];
     const col2: { event: EventWithAttendees; tall: boolean }[] = [];
@@ -285,7 +347,9 @@ export const DeepDiveView = memo(function DeepDiveView({
           {/* Filter Row: Pills + Filter Button */}
           <div className="flex items-center gap-3">
             {/* Time Filter Pills - takes available space */}
-            <div className={`flex-1 min-w-0 transition-opacity duration-200 ${showMap ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <div
+              className={`flex-1 min-w-0 transition-opacity duration-200 ${showMap ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+            >
               <TimeFilterPills
                 activeFilter={timeFilter}
                 onFilterChange={handleTimeFilterChange}
@@ -297,7 +361,7 @@ export const DeepDiveView = memo(function DeepDiveView({
               variant="outline"
               size="icon"
               onClick={handleFilterClick}
-              className={`flex-shrink-0 rounded-full w-11 h-11 ${showMap ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              className={`flex-shrink-0 rounded-full w-11 h-11 ${showMap ? "opacity-0 pointer-events-none" : "opacity-100"}`}
               aria-label="Open filters"
             >
               <SlidersHorizontal size={18} />
@@ -337,41 +401,75 @@ export const DeepDiveView = memo(function DeepDiveView({
                 </div>
               ) : filteredEvents.length === 0 ? (
                 <div className="text-center py-16 px-6">
-                  <p className="text-muted-foreground text-[17px]">Geen evenementen gevonden</p>
+                  <p className="text-muted-foreground text-[17px]">
+                    Geen evenementen gevonden
+                  </p>
                   <p className="text-muted-foreground/60 text-[15px] mt-2">
                     Probeer een andere zoekopdracht of filter
                   </p>
                 </div>
               ) : (
-                <div className="px-4 py-4">
-                  {/* Masonry Grid - 2 columns */}
-                  <div className="flex gap-3">
-                    {columns.map((column, colIndex) => (
-                      <div key={colIndex} className="flex-1 flex flex-col gap-3">
-                        <AnimatePresence>
-                          {column.map(({ event, tall }) => {
+                <div
+                  ref={parentRef}
+                  className="px-4 py-4 h-[calc(100vh-140px)] overflow-y-auto"
+                >
+                  <div
+                    style={{
+                      height: `${rowVirtualizer.getTotalSize()}px`,
+                      width: "100%",
+                      position: "relative",
+                    }}
+                  >
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const rowItems = [
+                        { item: columns[0][virtualRow.index] },
+                        { item: columns[1][virtualRow.index] },
+                      ].filter((x) => x.item);
+
+                      return (
+                        <div
+                          key={virtualRow.key}
+                          className="flex gap-3"
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: `${virtualRow.size}px`,
+                            transform: `translateY(${virtualRow.start}px)`,
+                          }}
+                        >
+                          {rowItems.map(({ item }) => {
+                            const { event, tall } = item;
                             const hasJoined = Boolean(
-                              currentUserProfileId && event.attendees?.some(
-                                a => a.profile?.id === currentUserProfileId
-                              )
+                              currentUserProfileId &&
+                              event.attendees?.some(
+                                (a) => a.profile?.id === currentUserProfileId,
+                              ),
                             );
 
                             return (
-                              <MasonryEventCard
-                                key={event.id}
-                                event={event}
-                                tall={tall}
-                                onClick={() => onEventClick?.(event.id)}
-                                onJoin={() => onJoinEvent?.(event.id)}
-                                isJoining={isJoining(event.id)}
-                                hasJoined={hasJoined}
-                              />
+                              <div key={event.id} className="flex-1">
+                                <MasonryEventCard
+                                  event={event}
+                                  tall={tall}
+                                  onClick={() => onEventClick?.(event.id)}
+                                  onJoin={() => onJoinEvent?.(event.id)}
+                                  isJoining={isJoining(event.id)}
+                                  hasJoined={hasJoined}
+                                />
+                              </div>
                             );
                           })}
-                        </AnimatePresence>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
+                  {loading && (
+                    <div className="py-4 flex justify-center">
+                      <Loader2 className="animate-spin text-primary" />
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>

@@ -68,6 +68,8 @@ const Discovery = () => {
   const [mode, setMode] = useState<"browsing" | "searching">("browsing");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const LIMIT = 50;
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -92,6 +94,8 @@ const Discovery = () => {
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
     usePersonalizedFeed: !!userLocation && !!profile?.id,
+    limit: mode === "searching" ? LIMIT : 100,
+    offset: mode === "searching" ? offset : 0,
   });
 
   // 2. Fetch Discovery Rails (Client-side generation)
@@ -211,6 +215,7 @@ const Discovery = () => {
     setMode("browsing");
     setSearchQuery("");
     setSelectedCategory(null);
+    setOffset(0);
   }, []);
 
   const handleCategorySelect = useCallback(
@@ -224,9 +229,16 @@ const Discovery = () => {
       if (!category && !searchQuery && mode === "searching") {
         setMode("browsing");
       }
+      setOffset(0);
     },
     [mode, searchQuery],
   );
+
+  const handleSeeAll = useCallback((category: string) => {
+    setSelectedCategory(category);
+    setMode("searching");
+    hapticImpact("light");
+  }, []);
 
   // Mission Mode Handlers
   const handleIntentSelect = useCallback((intent: MissionIntent) => {
@@ -377,6 +389,7 @@ const Discovery = () => {
                             <DynamicRailRenderer
                               section={section}
                               onEventClick={handleEventClick}
+                              onSeeAll={() => handleSeeAll(section.title)}
                               index={index}
                             />
                           </div>
@@ -421,6 +434,8 @@ const Discovery = () => {
                     onEventClick={handleEventClick}
                     onJoinEvent={handleJoinEvent}
                     isJoining={isJoining}
+                    onLoadMore={() => setOffset((prev) => prev + LIMIT)}
+                    hasMore={allEvents.length >= LIMIT}
                   />
                 </div>
               </motion.div>

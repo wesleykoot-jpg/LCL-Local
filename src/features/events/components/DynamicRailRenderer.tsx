@@ -7,6 +7,7 @@ import { DiscoveryRail } from "./DiscoveryRail";
 interface DynamicRailRendererProps {
   section: DiscoverySection;
   onEventClick: (eventId: string) => void;
+  onSeeAll?: () => void;
   index: number;
 }
 
@@ -20,6 +21,7 @@ const RAIL_ICONS: Record<string, any> = {
 export const DynamicRailRenderer = memo(function DynamicRailRenderer({
   section,
   onEventClick,
+  onSeeAll,
 }: DynamicRailRendererProps) {
   const isGenerative = section.type === "generative";
   const Icon = RAIL_ICONS[section.type] || Activity;
@@ -40,6 +42,7 @@ export const DynamicRailRenderer = memo(function DynamicRailRenderer({
           </span>
         </div>
       }
+      onSeeAll={onSeeAll}
     >
       {isGenerative && (
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 -mx-6 skew-y-1 rounded-3xl -z-10 pointer-events-none" />
@@ -55,6 +58,7 @@ export const DynamicRailRenderer = memo(function DynamicRailRenderer({
         title="" // Header handled by DiscoveryRail
         events={section.items.slice(0, 8)}
         onEventClick={onEventClick}
+        onSeeAll={onSeeAll}
       />
     </DiscoveryRail>
   );
