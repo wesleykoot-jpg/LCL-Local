@@ -68,8 +68,13 @@ export const handler = async (req: Request): Promise<Response> => {
           .from("scraper_sources")
           .update({ last_scraped_at: new Date().toISOString() })
           .eq("id", sourceId);
-        results.push({ sourceId, status: "skipped_unchanged" });
-        continue;
+        return new Response(
+          JSON.stringify({
+            message: "Skipped unchanged",
+            results: [{ sourceId, status: "skipped_unchanged" }],
+          }),
+          { status: 200 },
+        );
       }
 
       // 3. Parse & Discover
