@@ -6,7 +6,8 @@ import type { ScrapeJobPayload } from "../_shared/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 const MIN_INTERVAL_MINUTES = 15;
@@ -15,15 +16,15 @@ const CIRCUIT_BREAKER_THRESHOLD = 3;
 
 /**
  * Scrape Coordinator
- * 
+ *
  * This lightweight function enqueues scrape jobs for all available sources.
  * It does minimal CPU work - just database queries to create jobs.
  * Sends comprehensive Slack notifications with Block Kit formatting.
- * 
+ *
  * Scaling Improvements:
  * - Uses next_scrape_at scheduling with volatility-based intervals
  * - Respects circuit breaker logic for consecutive errors
- * 
+ *
  * Usage:
  * POST /functions/v1/scrape-coordinator
  * Body (optional): { "sourceIds": ["uuid1", "uuid2"], "triggerWorker": true }
@@ -34,9 +35,9 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   return withErrorLogging(
-    'scrape-coordinator',
-    'handler',
-    'Process coordinator request',
+    "scrape-coordinator",
+    "handler",
+    "Process coordinator request",
     async () => {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -47,136 +48,175 @@ serve(async (req: Request): Promise<Response> => {
 
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const cooldownCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const cooldownCutoff = new Date(
+        now.getTime() - 24 * 60 * 60 * 1000,
+      ).toISOString();
 
-    const calculateNextScrapeAt = (volatilityScore: number): string => {
-      const score = Math.min(1, Math.max(0, volatilityScore));
-      const intervalMinutes = Math.round(
-        MAX_INTERVAL_MINUTES - score * (MAX_INTERVAL_MINUTES - MIN_INTERVAL_MINUTES)
+      const calculateNextScrapeAt = (volatilityScore: number): string => {
+        const score = Math.min(1, Math.max(0, volatilityScore));
+        const intervalMinutes = Math.round(
+          MAX_INTERVAL_MINUTES -
+            score * (MAX_INTERVAL_MINUTES - MIN_INTERVAL_MINUTES),
+        );
+        return new Date(
+          now.getTime() + intervalMinutes * 60 * 1000,
+        ).toISOString();
+      };
+
+      // Parse optional request body
+      let options: { sourceIds?: string[]; triggerWorker?: boolean } = {};
+      if (req.method === "POST") {
+        try {
+          const body = await req.text();
+          options = body ? JSON.parse(body) : {};
+        } catch {
+          options = {};
+        }
+      }
+
+      const { sourceIds, triggerWorker } = options;
+
+      // Get available sources - filter for enabled, not auto-disabled sources
+      let query = supabase
+        .from("scraper_sources")
+        .select(
+          "id, name, volatility_score, next_scrape_at, last_scraped_at, consecutive_errors",
+        )
+        .eq("enabled", true)
+        .or("auto_disabled.is.null,auto_disabled.eq.false");
+
+      if (sourceIds && sourceIds.length > 0) {
+        query = query.in("id", sourceIds);
+      }
+
+      const { data: sources, error: sourcesError } = await query;
+      if (sourcesError) throw new Error(sourcesError.message);
+
+      const eligibleSources = (sources || []).filter((source) => {
+        const nextScrapeAt = source.next_scrape_at ?? null;
+        if (nextScrapeAt && new Date(nextScrapeAt) > now) {
+          return false;
+        }
+        const lastScrapedAt = source.last_scraped_at ?? null;
+        const consecutiveErrors = source.consecutive_errors ?? 0;
+        if (consecutiveErrors < CIRCUIT_BREAKER_THRESHOLD) {
+          return true;
+        }
+        if (!lastScrapedAt) {
+          return false;
+        }
+        return new Date(lastScrapedAt) <= new Date(cooldownCutoff);
+      });
+
+      if (eligibleSources.length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "No enabled sources to queue",
+            jobsCreated: 0,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const jobs = eligibleSources.map((source) => ({
+        source_id: source.id,
+        payload: {
+          sourceId: source.id,
+          scheduledAt: nowIso,
+        } satisfies ScrapeJobPayload,
+        next_scrape_at: calculateNextScrapeAt(source.volatility_score ?? 0.5),
+      }));
+
+      const { data: insertedJobs, error: insertError } = await supabase.rpc(
+        "enqueue_scrape_jobs",
+        { p_jobs: jobs },
       );
-      return new Date(now.getTime() + intervalMinutes * 60 * 1000).toISOString();
-    };
 
-    // Parse optional request body
-    let options: { sourceIds?: string[]; triggerWorker?: boolean } = {};
-    if (req.method === "POST") {
-      try {
-        const body = await req.text();
-        options = body ? JSON.parse(body) : {};
-      } catch {
-        options = {};
+      if (insertError) {
+        await logSupabaseError(
+          "scrape-coordinator",
+          "handler",
+          "Insert scrape jobs",
+          insertError,
+          { job_count: jobs.length },
+        );
+        throw new Error(insertError.message);
       }
-    }
 
-    const { sourceIds, triggerWorker } = options;
+      const jobsCreated = insertedJobs?.length || 0;
+      console.log(
+        `Coordinator: Enqueued ${jobsCreated} jobs for sources: ${eligibleSources.map((s) => s.name).join(", ")}`,
+      );
 
-    // Get available sources - filter for enabled, not auto-disabled sources
-    let query = supabase
-      .from("scraper_sources")
-      .select("id, name, volatility_score, next_scrape_at, last_scraped_at, consecutive_errors")
-      .eq("enabled", true)
-      .or("auto_disabled.is.null,auto_disabled.eq.false");
-    
-    if (sourceIds && sourceIds.length > 0) {
-      query = query.in("id", sourceIds);
-    }
+      await sendSlackNotification(
+        `🚀 Scrape Coordinator: queued ${jobsCreated} jobs for ${eligibleSources.length} sources`,
+        false,
+      );
 
-    const { data: sources, error: sourcesError } = await query;
-    if (sourcesError) throw new Error(sourcesError.message);
+      // Trigger Data-First Pipeline per source
+      console.log(
+        `Coordinator: Triggering Data-First Fetchers (scrape-events) for ${eligibleSources.length} sources...`,
+      );
 
-    const eligibleSources = (sources || []).filter((source) => {
-      const nextScrapeAt = source.next_scrape_at ?? null;
-      if (nextScrapeAt && new Date(nextScrapeAt) > now) {
-        return false;
-      }
-      const lastScrapedAt = source.last_scraped_at ?? null;
-      const consecutiveErrors = source.consecutive_errors ?? 0;
-      if (consecutiveErrors < CIRCUIT_BREAKER_THRESHOLD) {
-        return true;
-      }
-      if (!lastScrapedAt) {
-        return false;
-      }
-      return new Date(lastScrapedAt) <= new Date(cooldownCutoff);
-    });
+      // Use Promise.all with a small delay between triggers to prevent sudden CPU spikes
+      // Fetch is asynchronous and non-blocking here as we don't await the body
+      eligibleSources.forEach((source, index) => {
+        // Small staggered delay (100ms) between triggers
+        setTimeout(() => {
+          fetch(`${supabaseUrl}/functions/v1/scrape-events`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${supabaseKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ sourceId: source.id }),
+          }).catch((err) =>
+            console.error(
+              `Failed to trigger fetcher for source ${source.id}:`,
+              err,
+            ),
+          );
+        }, index * 100);
+      });
 
-    if (eligibleSources.length === 0) {
+      console.log(
+        "Coordinator: Triggering Data-First Processor (process-worker)...",
+      );
+      fetch(`${supabaseUrl}/functions/v1/process-worker`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+      }).catch((err) => console.error("Failed to trigger processor:", err));
+
       return new Response(
-        JSON.stringify({ success: true, message: "No enabled sources to queue", jobsCreated: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: true,
+          jobsCreated,
+          sources: eligibleSources.map((s) => ({ id: s.id, name: s.name })),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
-    }
-
-    const jobs = eligibleSources.map((source) => ({
-      source_id: source.id,
-      payload: {
-        sourceId: source.id,
-        scheduledAt: nowIso,
-      } satisfies ScrapeJobPayload,
-      next_scrape_at: calculateNextScrapeAt(source.volatility_score ?? 0.5),
-    }));
-
-    const { data: insertedJobs, error: insertError } = await supabase
-      .rpc("enqueue_scrape_jobs", { p_jobs: jobs });
-
-    if (insertError) {
-      await logSupabaseError(
-        'scrape-coordinator',
-        'handler',
-        'Insert scrape jobs',
-        insertError,
-        { job_count: jobs.length }
-      );
-      throw new Error(insertError.message);
-    }
-
-    const jobsCreated = insertedJobs?.length || 0;
-    console.log(`Coordinator: Enqueued ${jobsCreated} jobs for sources: ${eligibleSources.map((s) => s.name).join(", ")}`);
-
-    await sendSlackNotification(
-      `🚀 Scrape Coordinator: queued ${jobsCreated} jobs for ${eligibleSources.length} sources`,
-      false
-    );
-
-    // Trigger Data-First Pipeline
-    console.log("Coordinator: Triggering Data-First Fetcher (scrape-events)...");
-    fetch(`${supabaseUrl}/functions/v1/scrape-events`, {
-        method: "POST",
-        headers: { 
-            "Authorization": `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json"
-        }
-    }).catch(err => console.error("Failed to trigger fetcher:", err));
-
-    console.log("Coordinator: Triggering Data-First Processor (process-worker)...");
-    fetch(`${supabaseUrl}/functions/v1/process-worker`, {
-        method: "POST",
-        headers: { 
-            "Authorization": `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json"
-        }
-    }).catch(err => console.error("Failed to trigger processor:", err));
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        jobsCreated,
-        sources: eligibleSources.map((s) => ({ id: s.id, name: s.name })),
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
     },
     {
       method: req.method,
       url: req.url,
-    }
+    },
   ).catch((error) => {
     console.error("Coordinator error:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   });
 });
