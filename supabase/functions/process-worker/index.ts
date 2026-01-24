@@ -140,7 +140,15 @@ async function claimPendingRows(
     // Fallback: empty payload
     else {
       console.warn(`Row ${row.id} has no raw_payload or raw_html`);
-      payload = { rawHtml: "" } as any;
+      payload = {
+        title: "",
+        date: "",
+        location: "",
+        description: "",
+        detailUrl: "",
+        imageUrl: null,
+        rawHtml: "",
+      };
     }
 
     return {
@@ -240,10 +248,34 @@ async function processRow(
     const sourceId = row.source_id;
     const sourceUrl = row.source_url;
 
-    // 1. HYBRID PARSING (The Sorting Arm)
+    // 1. DETAIL FIRST FETCHING
+    // If we have a source URL but no detail HTML yet, fetch it immediately.
+    // This flips the architecture from "card-first" to "detail-first".
+    if (!row.detail_html && sourceUrl && sourceUrl.startsWith("http")) {
+      console.log(
+        `[${row.id}] Proactively fetching detail HTML from ${sourceUrl}...`,
+      );
+      try {
+        const { StaticPageFetcher } = await import("../_shared/strategies.ts");
+        const fetcher = new StaticPageFetcher();
+        const { html: fetchedHtml } = await fetcher.fetchPage(sourceUrl);
+
+        if (fetchedHtml && fetchedHtml.length > 500) {
+          row.detail_html = fetchedHtml;
+          // Store detail HTML for future use (idempotency)
+          await supabase
+            .from("raw_event_staging")
+            .update({ detail_html: fetchedHtml })
+            .eq("id", row.id);
+        }
+      } catch (fetchError) {
+        console.warn(`[${row.id}] Proactive detail fetch failed:`, fetchError);
+      }
+    }
+
+    // 2. HYBRID PARSING (The Sorting Arm)
     let normalized: NormalizedEvent | null = null;
     let parsingMethod: string = "ai"; // Default
-    let healingAttempted = false;
 
     // Helper to run AI parsing
     const runAIParsing = async (htmlContent: string | null) => {
@@ -300,7 +332,7 @@ async function processRow(
       if (jsonLdEvents && jsonLdEvents.length > 0) {
         const completeEvent = jsonLdEvents.find(isJsonLdComplete);
         if (completeEvent) {
-          normalized = jsonLdToNormalized(completeEvent);
+          normalized = jsonLdToNormalized(completeEvent) as NormalizedEvent;
           parsingMethod = "deterministic";
           console.log(`[${row.id}] Fast Path: JSON-LD`);
         }
@@ -319,7 +351,9 @@ async function processRow(
       normalized = cheapNormalizeEvent(raw, dummySource as any);
 
       // AI Extraction
-      const aiParsed = await runAIParsing(row.detail_html);
+      // Use detail_html if available (preferred), fallback to listing card HTML
+      const htmlToParse = row.detail_html || raw.rawHtml;
+      const aiParsed = await runAIParsing(htmlToParse);
 
       if (aiParsed) {
         normalized = {
@@ -334,64 +368,9 @@ async function processRow(
           persona_tags: aiParsed.persona_tags,
         };
         parsingMethod = "ai";
-        console.log(`[${row.id}] Slow Path: AI Extraction`);
-      }
-    }
-
-    // 1.5 SELF-HEALING (The Second Chance)
-    // If score is low and we haven't fetched detail_html yet, try to fetch it and re-parse
-    if (
-      normalized &&
-      !row.detail_html &&
-      sourceUrl &&
-      sourceUrl.startsWith("http")
-    ) {
-      const tempScore = calculateQualityScore({
-        ...normalized,
-        location: (normalized as any)._geo
-          ? `POINT(${(normalized as any)._geo.lng} ${(normalized as any)._geo.lat})`
-          : "POINT(0 0)",
-        event_date: normalizeEventDateForStorage(
-          normalized.event_date,
-          normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
-        ).timestamp,
-      });
-
-      if (tempScore < 0.6) {
         console.log(
-          `[${row.id}] Low quality score (${tempScore}), triggering self-healing...`,
+          `[${row.id}] Parsing: AI with ${row.detail_html ? "Detail" : "Card"} HTML`,
         );
-        try {
-          const { StaticPageFetcher } =
-            await import("../_shared/strategies.ts");
-          const fetcher = new StaticPageFetcher();
-          const { html: detailHtml } = await fetcher.fetchPage(sourceUrl);
-
-          if (detailHtml && detailHtml.length > 500) {
-            // Store detail HTML for future use
-            await supabase
-              .from("raw_event_staging")
-              .update({ detail_html: detailHtml })
-              .eq("id", row.id);
-
-            // Re-run AI extraction with full detail HTML
-            const healedParsed = await runAIParsing(detailHtml);
-            if (healedParsed) {
-              normalized = {
-                ...normalized,
-                ...healedParsed,
-                title: healedParsed.title || normalized.title,
-                event_date: healedParsed.event_date || normalized.event_date,
-                description: healedParsed.description || normalized.description,
-                image_url: healedParsed.image_url || normalized.image_url,
-              };
-              healingAttempted = true;
-              console.log(`[${row.id}] Self-healing successful.`);
-            }
-          }
-        } catch (healError) {
-          console.warn(`[${row.id}] Self-healing failed:`, healError);
-        }
       }
     }
 
@@ -508,7 +487,7 @@ async function processRow(
     const categoryKey = mapToCategoryKey(
       `${normalized.title} ${normalized.description}`,
       source?.category_key as any,
-      row.url,
+      row.source_url,
     );
 
     // Performance: Only extract tags if we have content
@@ -567,6 +546,7 @@ async function processRow(
       location: eventPayload.location || "POINT(0 0)",
       event_date: normalizedDate.timestamp,
     });
+    eventPayload.quality_score = finalQualityScore;
 
     // 9. Description Scrubbing (Data Hygiene)
     const SCRUB_PATTERNS = [
@@ -592,7 +572,10 @@ async function processRow(
       if (eventPayload.venue_name && !existing) {
         const { geocodeLocation } = await import("../_shared/enrichment.ts");
         try {
-          const newGeo = await geocodeLocation(eventPayload.venue_name);
+          const newGeo = await geocodeLocation(
+            supabase,
+            eventPayload.venue_name,
+          );
           if (newGeo) {
             eventPayload.location = `POINT(${newGeo.lng} ${newGeo.lat})`;
           } else {
@@ -653,8 +636,8 @@ async function processRow(
         .from("events")
         .update({
           ...eventPayload,
-          quality_score: eventPayload.quality_score,
-          last_healed_at: healingAttempted
+          quality_score: eventPayload.quality_score, // Always use new score
+          last_healed_at: row.detail_html // Use existence of detail_html as proxy for healing
             ? new Date().toISOString()
             : existing.last_healed_at,
         })
@@ -673,7 +656,7 @@ async function processRow(
       const { error: insertError } = await supabase.from("events").insert({
         ...eventPayload,
         quality_score: eventPayload.quality_score,
-        last_healed_at: healingAttempted ? new Date().toISOString() : null,
+        last_healed_at: row.detail_html ? new Date().toISOString() : null,
       });
       if (insertError) {
         // Handle race condition where it was created in between
