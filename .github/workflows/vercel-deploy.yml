@@ -11,6 +11,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -34,7 +38,8 @@ jobs:
 
       - name: Add PR Comment
         uses: mshick/add-pr-comment@v2
-        if: always()
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
         with:
           message: |
             ## Vercel Preview Deployment
