@@ -1,6 +1,6 @@
 import { memo, useCallback, type MouseEvent } from "react";
 import { motion } from "framer-motion";
-import { Heart, Clock, MapPin, Users, Loader2, GitFork } from "lucide-react";
+import { Heart, Clock, MapPin, Users, Loader2, GitBranch } from "lucide-react";
 import { CategoryBadge } from "./CategoryBadge";
 import { CATEGORY_MAP } from "@/shared/lib/categories";
 import { hapticImpact } from "@/shared/lib/haptics";
@@ -192,7 +192,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
             onClick={handleFork}
             className="flex-none w-[35%] h-touch rounded-button border border-border bg-surface-base text-text-primary text-[15px] font-semibold flex items-center justify-center gap-2 hover:bg-muted transition-all active:scale-[0.98]"
           >
-            <GitFork size={18} />
+            <GitBranch size={18} />
             <span>Fork</span>
           </button>
 
