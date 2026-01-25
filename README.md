@@ -108,15 +108,16 @@ supabase/
 
 Strategy-based Discovery experience with 5 psychological pillars:
 
-| Rail | Priority | Purpose | Animation |
-|------|----------|---------|-----------|
-| **For You** | 1 | Category-matched personalization (The Ego) | Glow |
-| **Rituals** | 2 | Recurring events with temporal stability (The Habit) | Rhythm |
-| **This Weekend** | 3 | Temporal anticipation (The Reward) | Sparkle |
-| **Location** | 4 | Proximity-based community (The Grounding) | Pulse |
-| **Pulse** | 5 | Trending events with social proof (The Collective) | Wave |
+| Rail             | Priority | Purpose                                              | Animation |
+| ---------------- | -------- | ---------------------------------------------------- | --------- |
+| **For You**      | 1        | Category-matched personalization (The Ego)           | Glow      |
+| **Rituals**      | 2        | Recurring events with temporal stability (The Habit) | Rhythm    |
+| **This Weekend** | 3        | Temporal anticipation (The Reward)                   | Sparkle   |
+| **Location**     | 4        | Proximity-based community (The Grounding)            | Pulse     |
+| **Pulse**        | 5        | Trending events with social proof (The Collective)   | Wave      |
 
 Key components:
+
 - **RailProviderRegistry**: Each rail is a standalone strategy with own filtering logic
 - **Ritual Detection Engine**: Detects recurring events via keywords and pattern analysis
 - **TitleFormatter**: Dynamic, contextual headers (e.g., "Zwolle's Saturday Night")
@@ -131,10 +132,10 @@ Multi-factor scoring system with configurable weights and boost multipliers:
 // Source: https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts#L76-L82
 const WEIGHTS = {
   CATEGORY: 0.35, // 35% - matches user's preferred categories
-  TIME: 0.20, // 20% - prioritizes upcoming events with exponential decay
+  TIME: 0.2, // 20% - prioritizes upcoming events with exponential decay
   SOCIAL: 0.15, // 15% - attendee count with logarithmic scaling
-  MATCH: 0.10, // 10% - pre-computed match_percentage from database
-  DISTANCE: 0.20, // 20% - proximity to user location
+  MATCH: 0.1, // 10% - pre-computed match_percentage from database
+  DISTANCE: 0.2, // 20% - proximity to user location
 } as const;
 ```
 
@@ -285,4 +286,4 @@ npm run build-storybook  # Build Storybook
 
 ---
 
-Built with ❤️ using React, TypeScript, and Supabase
+Built with ❤️ using React, TypeScript, and Supabase (Updated: Jan 2026)
