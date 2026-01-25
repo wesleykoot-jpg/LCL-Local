@@ -132,11 +132,12 @@ class RitualsRailProvider extends BaseRailProvider {
       (e) => e.event_date && new Date(e.event_date) >= new Date()
     );
 
-    // Fallback: if no future rituals, show recurring events sorted by match
+    // Fallback: if no future rituals, show events sorted by match percentage
     let resultEvents = futureRituals;
     if (resultEvents.length === 0) {
-      // Show events sorted by match percentage as fallback
+      // Show future events with valid match percentages as fallback
       resultEvents = [...events]
+        .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
         .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
         .slice(0, 10);
     }
@@ -298,6 +299,7 @@ class LocationRailProvider extends BaseRailProvider {
 class PulseRailProvider extends BaseRailProvider {
   readonly type: RailType = "pulse";
   readonly priority = 5;
+  private readonly TOP_TRENDING_PERCENTAGE = 0.4; // Show top 40% of events by attendance
 
   protected getAnimationStyle(): RailMetadata["animationStyle"] {
     return "wave";
@@ -314,15 +316,15 @@ class PulseRailProvider extends BaseRailProvider {
       .filter((e) => (e.attendee_count || 0) >= 2) // Minimum threshold
       .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0));
 
-    // Show only top 40% by attendance to focus on truly trending events
-    const topCount = Math.max(1, Math.ceil(sortedByAttendance.length * 0.4));
+    // Show only top percentage by attendance to focus on truly trending events
+    const topCount = Math.max(1, Math.ceil(sortedByAttendance.length * this.TOP_TRENDING_PERCENTAGE));
     const trendingEvents = sortedByAttendance.slice(0, topCount);
 
-    // Fallback: if no trending events, show top matched future events
+    // Fallback: if no trending events, show top matched future events with dates
     let resultEvents = trendingEvents;
     if (resultEvents.length === 0) {
       resultEvents = events
-        .filter((e) => !e.event_date || new Date(e.event_date) >= new Date())
+        .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
         .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
         .slice(0, 10);
     }
