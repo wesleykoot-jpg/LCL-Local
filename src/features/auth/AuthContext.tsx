@@ -5,6 +5,24 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
+const redirectUrl = (() => {
+  const envUrl = import.meta.env.VITE_SITE_URL;
+
+  if (envUrl) {
+    try {
+      return new URL(envUrl).origin;
+    } catch (error) {
+      console.error('[Auth] Invalid VITE_SITE_URL, falling back to window origin', error);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  return '';
+})();
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
