@@ -280,15 +280,17 @@ export const EventDetailModal = memo(function EventDetailModal({
 
           {/* Close button and actions menu - 48pt touch targets */}
           <div className="absolute top-4 right-4 z-20 flex gap-2">
-            {/* Actions Menu (Report/Block) */}
-            <div className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[20px] bg-white shadow-card flex items-center justify-center border border-gray-200">
-              <EventActionsMenu
-                eventId={event.id}
-                hostUserId={event.created_by || undefined}
-                currentUserProfileId={currentUserProfileId}
-                event={event}
-              />
-            </div>
+            {/* Actions Menu (Report/Block) - only show when user is authenticated and not the host */}
+            {currentUserProfileId && currentUserProfileId !== event.created_by && (
+              <div className="w-12 h-12 min-h-[48px] min-w-[48px] rounded-[20px] bg-white shadow-card flex items-center justify-center border border-gray-200">
+                <EventActionsMenu
+                  eventId={event.id}
+                  hostUserId={event.created_by || undefined}
+                  currentUserProfileId={currentUserProfileId}
+                  event={event}
+                />
+              </div>
+            )}
 
             {/* Close button - Design System v5.0 */}
             <button
