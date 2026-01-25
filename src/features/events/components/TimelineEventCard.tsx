@@ -87,9 +87,9 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         id: event.id,
         title: event.title,
         description: event.description,
-        venue_name: event.venue_name,
-        event_date: event.event_date,
-        event_time: event.event_time,
+        venue_name: event.venue_name || "",
+        event_date: event.event_date || "",
+        event_time: event.event_time || "",
       });
       
       if (success) {
@@ -311,7 +311,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         <div className="flex items-center justify-between mb-1">
           <SmartTimeLabel
             timeMode={timeMode}
-            eventTime={event.event_time}
+            eventTime={event.event_time || undefined}
             eventDate={event.event_date}
             openingHours={openingHours}
             category={event.category}

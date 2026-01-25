@@ -71,7 +71,7 @@ const CarouselEventCard = memo(function CarouselEventCard({
 
         {/* Date badge */}
         <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-white/95  text-[12px] font-semibold text-foreground shadow-sm">
-          {formatEventDate(event.event_date)}
+          {formatEventDate(event.event_date || "")}
         </div>
       </div>
 
@@ -87,10 +87,10 @@ const CarouselEventCard = memo(function CarouselEventCard({
         </p>
 
         <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-          {formatEventTime(event.event_time) && (
+          {formatEventTime(event.event_time || "") && (
             <span className="flex items-center gap-1">
               <Clock size={11} />
-              {formatEventTime(event.event_time)}
+              {formatEventTime(event.event_time || "")}
             </span>
           )}
           <span>•</span>

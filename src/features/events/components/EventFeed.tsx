@@ -89,6 +89,7 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
   switch (filter) {
     case 'tonight':
       return events.filter(e => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return isSameDay(eventDay, today);
       });
@@ -97,6 +98,7 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
       return events.filter(e => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return isSameDay(eventDay, tomorrow);
       });
@@ -105,6 +107,7 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
     case 'weekend': {
       const { friday, sunday } = getUpcomingWeekend(today);
       return events.filter(e => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return isWithinWeekend(eventDay, friday, sunday);
       });
@@ -163,6 +166,7 @@ function groupStacksByVibe(stacks: EventStack[]): VibeGroup[] {
   const groups: Map<VibeType, EventStack[]> = new Map();
   
   stacks.forEach(stack => {
+    if (!stack.anchor.event_date) return;
     const vibe = getVibeType(stack.anchor.event_date);
     const existing = groups.get(vibe) || [];
     existing.push(stack);

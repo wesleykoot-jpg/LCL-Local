@@ -141,7 +141,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
 
         {/* Date badge */}
         <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/95  text-[13px] font-semibold text-foreground shadow-sm">
-          {formatEventDate(event.event_date)}
+          {formatEventDate(event.event_date || "")}
         </div>
       </div>
 
@@ -160,10 +160,10 @@ const AnchorEventCard = memo(function AnchorEventCard({
 
         {/* Metadata row */}
         <div className="flex items-center gap-3 text-[13px] text-muted-foreground pt-1">
-          {formatEventTime(event.event_time) && (
+          {formatEventTime(event.event_time || "") && (
             <span className="flex items-center gap-1">
               <Clock size={12} />
-              {formatEventTime(event.event_time)}
+              {formatEventTime(event.event_time || "")}
             </span>
           )}
           <span className="flex items-center gap-1">
@@ -276,7 +276,7 @@ const ForkEventCard = memo(function ForkEventCard({
               {event.title}
             </h4>
             <div className="flex items-center gap-2 mt-1 text-[13px] text-muted-foreground">
-              <span>{formatEventTime(event.event_time)}</span>
+              <span>{formatEventTime(event.event_time || "")}</span>
               <span>•</span>
               <span>{event.attendee_count || 0} going</span>
             </div>

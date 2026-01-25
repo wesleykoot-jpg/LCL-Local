@@ -54,6 +54,7 @@ function filterByTime(
   switch (filter) {
     case "tonight":
       return events.filter((e) => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === today.getTime();
       });
@@ -61,6 +62,7 @@ function filterByTime(
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
       return events.filter((e) => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === tomorrow.getTime();
       });
@@ -75,6 +77,7 @@ function filterByTime(
       sunday.setDate(friday.getDate() + 2);
       sunday.setHours(23, 59, 59, 999);
       return events.filter((e) => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return eventDay >= friday && eventDay <= sunday;
       });

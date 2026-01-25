@@ -63,13 +63,15 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
   // Moved early return after hooks
   // if (!intent || !config) return null;
 
-  // Format events for map
+  // Format events for map - cast to any to avoid type conflicts since MissionModeEvent has different location type
   const eventsForMap = useMemo(
     () =>
-      data?.events.map((e) => ({
+      (data?.events.map((e) => ({
         ...e,
         distanceKm: e.distance_km,
-      })) || [],
+        // Convert location object back to string for EventMap compatibility
+        location: `POINT(${e.location.lng} ${e.location.lat})`,
+      })) || []) as any,
     [data?.events],
   );
 
@@ -171,10 +173,7 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
                   >
                     {/* Using simplified card for mission mode */}
                     <TimelineEventCard
-                      event={event}
-                      // showDayHeader={false}
-                      // @ts-expect-error - timeline event card props mismatch
-                      onClick={() => onEventClick(event.id)}
+                      event={event as any}
                     />
 
                     {/* Extra context overlay for mission mode */}

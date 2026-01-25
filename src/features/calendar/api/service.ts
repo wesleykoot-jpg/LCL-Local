@@ -78,14 +78,14 @@ export async function storeCalendarTokens(
   try {
     const { error } = await supabase.from("google_calendar_tokens").upsert(
       {
-        user_id: profileId,
+        profile_id: profileId,
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
         token_expiry: tokens.expiresAt.toISOString(),
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: "user_id",
+        onConflict: "profile_id",
       },
     );
 
@@ -362,12 +362,12 @@ export async function storeSyncedEvent(
   try {
     const { error } = await supabase.from("google_calendar_events").upsert(
       {
-        user_id: profileId,
+        profile_id: profileId,
         event_id: eventId,
         google_event_id: googleEventId,
       },
       {
-        onConflict: "user_id,event_id",
+        onConflict: "profile_id,event_id",
       },
     );
 

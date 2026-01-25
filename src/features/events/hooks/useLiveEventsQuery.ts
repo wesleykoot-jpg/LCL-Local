@@ -184,6 +184,7 @@ export function useLiveEventsQuery(options: UseLiveEventsQueryOptions) {
           return false;
         }
 
+        if (!event.event_date) return false;
         const eventDate = event.event_date.split("T")[0];
         const eventTime = event.event_time || "00:00";
 

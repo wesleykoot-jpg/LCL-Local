@@ -185,7 +185,7 @@ export const EventDetailModal = memo(function EventDetailModal({
   const hasValidCoords = !!parsedCoords;
   const venueCoords = parsedCoords || null;
   const locationLabel = formatEventLocation(
-    event.venue_name,
+    event.venue_name || "",
     (event as any).structured_location,
   );
   const staticMapUrl = venueCoords
@@ -214,7 +214,7 @@ export const EventDetailModal = memo(function EventDetailModal({
   const handleOpenMaps = useCallback(async () => {
     if (!venueCoords) return;
     await hapticImpact("light");
-    openInMaps(venueCoords.lat, venueCoords.lng, event.venue_name);
+    openInMaps(venueCoords.lat, venueCoords.lng, event.venue_name || "Event location");
   }, [venueCoords, event.venue_name]);
 
   const handleShare = useCallback(async () => {
@@ -324,7 +324,7 @@ export const EventDetailModal = memo(function EventDetailModal({
 
               {/* Date pill */}
               <div className="absolute top-4 right-16 px-3 py-1.5 rounded-[1rem] bg-background/90  text-[13px] font-semibold text-foreground border-[0.5px] border-border/20">
-                {formatDateShort(event.event_date)}
+                {formatDateShort(event.event_date || "")}
               </div>
 
               {/* Title overlay - Bottom of hero */}
@@ -341,7 +341,7 @@ export const EventDetailModal = memo(function EventDetailModal({
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px] bg-muted text-[14px] text-foreground font-medium shadow-card">
                   <Calendar size={15} className="text-primary" />
-                  {formatDate(event.event_date)}
+                  {formatDate(event.event_date || "")}
                 </div>
                 {/* Time pill - conditionally rendered (hides 00:00 for non-nightlife events) */}
                 {formattedTime && (

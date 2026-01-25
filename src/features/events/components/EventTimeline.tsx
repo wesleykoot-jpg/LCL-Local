@@ -29,6 +29,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
     const groups: Record<string, EventWithAttendees[]> = {};
     
     filteredEvents.forEach(event => {
+      if (!event.event_date) return;
       const eventDate = new Date(event.event_date);
       const dateKey = eventDate.toLocaleDateString('en-US', { 
         weekday: 'long', 
@@ -57,6 +58,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
 
   // Check if event is in the past
   const isPastEvent = (event: EventWithAttendees) => {
+    if (!event.event_date) return true;
     const eventDate = new Date(event.event_date);
     eventDate.setHours(0, 0, 0, 0);
     return eventDate < today;

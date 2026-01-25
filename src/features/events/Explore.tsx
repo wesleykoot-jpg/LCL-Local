@@ -69,9 +69,6 @@ export default function ExplorePage() {
   // Generate the 5 specific rails
   const { sections } = useDiscoveryRails({
     allEvents: filteredEvents,
-    userId: profile?.id,
-    userLocation: userLocation || undefined,
-    radiusKm: locationPrefs?.radiusKm || 25,
     enabled: !loading && !error,
   });
 

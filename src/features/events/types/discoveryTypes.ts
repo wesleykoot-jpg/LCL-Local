@@ -76,15 +76,18 @@ export interface MissionModeResponse {
 
 /**
  * Event with additional mission mode metadata
+ * Uses Omit to avoid conflict with the location property from EventWithAttendees
+ * where EventWithAttendees.location is a string (PostGIS POINT) but MissionModeEvent
+ * requires location as an object with lat/lng properties for map display
  */
-export interface MissionModeEvent extends EventWithAttendees {
+export interface MissionModeEvent extends Omit<EventWithAttendees, 'location'> {
   /** Distance from user in kilometers */
   distance_km: number;
 
   /** Estimated walking time in minutes */
   walking_time_minutes: number;
 
-  /** Event location coordinates */
+  /** Event location coordinates (parsed from string location) */
   location: {
     lat: number;
     lng: number;
