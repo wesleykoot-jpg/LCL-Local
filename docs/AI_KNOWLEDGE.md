@@ -73,6 +73,33 @@ Events are ranked using a multi-factor scoring system:
 
 ---
 
+## 🧭 Discovery Rails (`src/features/events/discovery/`)
+
+Strategy-based Discovery system transforming event lists into narrative-driven experiences using 5 psychological pillars:
+
+| Rail | Priority | Pillar | Animation | Weighting Focus |
+|------|----------|--------|-----------|-----------------|
+| **For You** | 1 | The Ego | Glow | Category (40%) |
+| **Rituals** | 2 | The Habit | Rhythm | Consistency (30%) |
+| **This Weekend** | 3 | The Reward | Sparkle | Time (35%) |
+| **Location** | 4 | The Grounding | Pulse | Distance (40%) |
+| **Pulse** | 5 | The Collective | Wave | Social (35%) |
+
+### Key Components
+
+- **RailProviderRegistry**: Each rail is a standalone strategy with own filtering logic, metadata, and priority
+- **TitleFormatter**: Dynamic contextual headers (e.g., "Zwolle's Saturday Night", "Your Tuesday Rituals")
+- **Ritual Detection Engine**: Detects recurring events via:
+  - Keyword matching (`weekly`, `monthly`, `meetup`, `borrel`, etc.)
+  - Pattern analysis (same venue + title + day of week)
+  - Streak tracking for user participation
+
+### Contextual Weights
+
+Each rail type has its own weight configuration for the ranking algorithm, allowing the "Rituals" rail to prioritize consistency while "Location" prioritizes proximity.
+
+---
+
 ## 🤖 Scraper Pipeline (`supabase/functions/scrape-events/`)
 
 The scraper uses a **Strategy Pattern** to handle various CMS platforms (Ontdek,
@@ -132,15 +159,32 @@ The project follows a strict AI-assisted workflow:
 - **Native Haptics**: Managed via `src/lib/haptics.ts` using Capacitor `Impact`
   and `Notification` types.
 - **Gestures**: Framer Motion for desktop-level smoothness on mobile.
-- **Safe Areas**: Tailwind utilities for iOS notch and home indicator handling.
+- **Safe Areas**: Tailwind utilities for iOS notch and home indicator handling:
+  - `pt-safe`: Top padding for notch
+  - `pb-safe`: Bottom padding for home indicator
+  - `top-safe`: Positioned safe from top
+  - Applied to headers, drawers, toasts, modals
+
+---
+
+## 🔐 Authentication
+
+- **Email/Password**: Standard Supabase Auth flow
+- **Google OAuth**: Enabled with validated redirect handling
+  - Prefers `VITE_SITE_URL` environment variable
+  - Falls back to `window.location.origin`
+  - Both `LoginView.tsx` and `SignUpView.tsx` have Google buttons
+  - Profile auto-created for new OAuth users
+- **Setup Guide**: See `docs/GOOGLE_OAUTH_SETUP.md`
 
 ---
 
 ## 🔑 Key Code Patterns
 
-- **Hooks**: `useEvents`, `useProfile`, `useJoinEvent` encapsulate all TanStack
+- **Hooks**: `useEvents`, `useProfile`, `useJoinEvent`, `useDiscoveryRails` encapsulate all TanStack
   Query logic.
 - **Services**: `eventService.ts` handles all Supabase RPC and table mutations.
+- **Rail Strategies**: `RailProviderRegistry` with `ForYou`, `Rituals`, `ThisWeekend`, `Location`, `Pulse` providers.
 - **RLS Policies**: Users can only edit `profiles` where `user_id = auth.uid()`.
 
 ## 🏗️ Supabase Integration Infrastructure

@@ -30,11 +30,12 @@ See AI_CONTEXT.md for comprehensive AI context.
 ## Features
 
 - 🎉 **Event Discovery** - Browse local events with smart feed algorithm
+- 🧭 **Discovery Rails** - 5 psychological pillars ("For You", "Rituals", "This Weekend", "Location", "Pulse") for narrative-driven exploration
 - 🤖 **AI Event Scraper** - Automatically scrape events from configured websites
 - ➕ **Create Events** - Host your own events with image uploads
-- 📱 **iOS-Optimized** - Native haptics, gestures, and smooth animations
+- 📱 **iOS-Optimized** - Native haptics, gestures, safe-area handling, and smooth animations
 - ⚡ **Real-time Updates** - Live event changes via Supabase Realtime
-- 🔐 **Secure Auth** - Email/password authentication with Supabase
+- 🔐 **Secure Auth** - Email/password and Google OAuth authentication
 - 🗺️ **Location-Agnostic** - Works globally with any coordinates
 
 ## Architecture
@@ -102,6 +103,23 @@ supabase/
 ```
 
 ## Key Services
+
+### Discovery Rails (`src/features/events/discovery/`)
+
+Strategy-based Discovery experience with 5 psychological pillars:
+
+| Rail | Priority | Purpose | Animation |
+|------|----------|---------|-----------|
+| **For You** | 1 | Category-matched personalization (The Ego) | Glow |
+| **Rituals** | 2 | Recurring events with temporal stability (The Habit) | Rhythm |
+| **This Weekend** | 3 | Temporal anticipation (The Reward) | Sparkle |
+| **Location** | 4 | Proximity-based community (The Grounding) | Pulse |
+| **Pulse** | 5 | Trending events with social proof (The Collective) | Wave |
+
+Key components:
+- **RailProviderRegistry**: Each rail is a standalone strategy with own filtering logic
+- **Ritual Detection Engine**: Detects recurring events via keywords and pattern analysis
+- **TitleFormatter**: Dynamic, contextual headers (e.g., "Zwolle's Saturday Night")
 
 ### Feed Algorithm ([`src/lib/feedAlgorithm.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/feedAlgorithm.ts))
 
@@ -204,6 +222,7 @@ npx cap open ios
 | [docs/core/FEED_ALGORITHM.md](docs/core/FEED_ALGORITHM.md)     | Feed ranking algorithm details                                |
 | [docs/core/BACKEND_SETUP.md](docs/core/BACKEND_SETUP.md)       | Database configuration                                        |
 | [docs/core/DEPLOYMENT_GUIDE.md](docs/core/DEPLOYMENT_GUIDE.md) | iOS App Store deployment                                      |
+| [docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md)       | **OAuth**: Google login setup guide                           |
 | [docs/design_system/README.md](docs/design_system/README.md)   | **Design System v4.0**                                        |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                             | Documentation & Contribution Guidelines                       |
 
