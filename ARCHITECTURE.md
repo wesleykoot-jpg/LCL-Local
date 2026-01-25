@@ -152,18 +152,48 @@ feedAlgorithm.ts
 ```
 User Login/Signup
        │
-       ▼
-Supabase Auth
+       ├──▶ Email/Password ──▶ Supabase Auth
+       │
+       └──▶ Google OAuth ──▶ Google Consent ──▶ Supabase Callback
+               │
+               ▼
+       AuthContext.tsx
+               │
+               ├──▶ Create/fetch profile
+               │
+               └──▶ Store session
+                      │
+                      ▼
+               Protected Routes
+```
+
+### 4. Discovery Rails Pipeline
+```
+All Events
        │
        ▼
-AuthContext.tsx
+RailProviderRegistry.generateRails()
        │
-       ├──▶ Create/fetch profile
+       ├──▶ ForYouProvider (priority 1)
+       │         └── Category matching, match_percentage sort
        │
-       └──▶ Store session
-              │
-              ▼
-       Protected Routes
+       ├──▶ RitualsProvider (priority 2)
+       │         └── Keyword + pattern-based ritual detection
+       │
+       ├──▶ ThisWeekendProvider (priority 3)
+       │         └── Temporal filtering (Sat-Sun)
+       │
+       ├──▶ LocationProvider (priority 4)
+       │         └── Distance-based filtering (half radius)
+       │
+       └──▶ PulseProvider (priority 5)
+                 └── Social proof (10+ attendees)
+               │
+               ▼
+       TitleFormatter (contextual headers)
+               │
+               ▼
+       RailResult[] (metadata + events + animations)
 ```
 
 ## Component Hierarchy
@@ -174,6 +204,12 @@ App.tsx
 │   └── LocationProvider
 │       └── QueryClientProvider
 │           └── Router
+│               ├── /discovery ───▶ Discovery.tsx
+│               │                    ├── useDiscoveryRails()
+│               │                    └── DynamicRailRenderer.tsx
+│               │                        ├── RailAnimation.tsx
+│               │                        └── RitualCard.tsx
+│               │
 │               ├── /feed ─────────▶ Feed.tsx
 │               │                     └── EventFeed.tsx
 │               │                         ├── TimeFilterPills.tsx
@@ -186,7 +222,7 @@ App.tsx
 │               │                     └── ProfileView.tsx
 │               │
 │               └── /login ────────▶ Login.tsx
-│                                     ├── LoginView.tsx
+│                                     ├── LoginView.tsx (Google OAuth)
 │                                     └── SignUpView.tsx
 ```
 
@@ -225,12 +261,19 @@ App.tsx
 - Immediate haptic feedback on iOS
 - Background sync with error rollback
 
+### 5. Discovery Rails Strategy Pattern
+- Each rail is a standalone strategy (RailProvider interface)
+- Extensible via RailProviderRegistry
+- Contextual weights allow different ranking per rail
+- Dynamic titles via TitleFormatter utility
+
 ## Performance Considerations
 
 ### Bundle Optimization
-- Code split by route
-- Vendor chunks separated
+- Code split by route with lazy loading
+- 8 vendor chunks (react, supabase, icons, animation, query, ui, map, form)
 - Tree shaking enabled
+- Main bundle: ~757 kB (gzip: ~212 kB)
 
 ### Database Queries
 - PostGIS indexes on location columns
@@ -239,15 +282,16 @@ App.tsx
 
 ### Mobile Optimization
 - Native haptics via Capacitor
-- Safe area handling for iOS
+- Safe area handling for iOS (pt-safe, pb-safe utilities)
 - Touch gesture support
 
 ## Security Model
 
 ### Authentication
-- Supabase Auth with email/password
+- Supabase Auth with email/password and Google OAuth
 - Session-based with refresh tokens
 - Protected routes via AuthContext
+- OAuth redirect validation (prefers VITE_SITE_URL over window.location.origin)
 
 ### Authorization
 - RLS policies on all tables
