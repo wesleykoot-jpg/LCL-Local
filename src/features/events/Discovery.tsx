@@ -8,6 +8,7 @@ import {
 } from "@/shared/components/index.ts";
 import { useAuth } from "@/features/auth/index.ts";
 import { useLocation } from "@/features/location/index.ts";
+import { OnboardingWizard, useOnboarding } from "@/features/profile";
 import { useEventsQuery } from "./hooks/useEventsQuery.ts";
 import {
   useJoinEvent,
@@ -65,7 +66,6 @@ const Discovery = () => {
     location: userLocation,
     preferences: locationPrefs,
     permissionState,
-    requestPermission,
   } = useLocation();
 
   // Mode state
@@ -87,6 +87,13 @@ const Discovery = () => {
     null,
   );
   const [showMissionDrawer, setShowMissionDrawer] = useState(false);
+
+  // Onboarding state for location change
+  const {
+    showOnboarding,
+    setShowOnboarding,
+    completeOnboarding,
+  } = useOnboarding();
 
   // 1. Fetch all events for Search/DeepDive (Client-side filtering for now)
   const {
@@ -208,10 +215,10 @@ const Discovery = () => {
   );
 
   const handleLocationClick = useCallback(async () => {
-    if (permissionState !== "granted") {
-      await requestPermission();
-    }
-  }, [permissionState, requestPermission]);
+    await hapticImpact("light");
+    // Open onboarding wizard to allow location change
+    setShowOnboarding(true);
+  }, [setShowOnboarding]);
 
   const handleSearchFocus = useCallback(() => {
     setMode("searching");
@@ -507,6 +514,16 @@ const Discovery = () => {
             />
           )}
         </Suspense>
+
+        {/* Onboarding Wizard for location change */}
+        <AnimatePresence>
+          {showOnboarding && (
+            <OnboardingWizard
+              onComplete={completeOnboarding}
+              onClose={() => setShowOnboarding(false)}
+            />
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
