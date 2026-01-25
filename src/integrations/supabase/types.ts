@@ -7,6 +7,11 @@ export type Json =
   | Json[];
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1";
+  };
   public: {
     Tables: {
       app_secrets: {
@@ -81,47 +86,41 @@ export type Database = {
       content_reports: {
         Row: {
           created_at: string | null;
-          details: string | null;
-          event_id: string | null;
           id: string;
           reason: string;
           reporter_id: string | null;
-          resolution_notes: string | null;
           status: string | null;
+          target_event_id: string | null;
         };
         Insert: {
           created_at?: string | null;
-          details?: string | null;
-          event_id?: string | null;
           id?: string;
           reason: string;
           reporter_id?: string | null;
-          resolution_notes?: string | null;
           status?: string | null;
+          target_event_id?: string | null;
         };
         Update: {
           created_at?: string | null;
-          details?: string | null;
-          event_id?: string | null;
           id?: string;
           reason?: string;
           reporter_id?: string | null;
-          resolution_notes?: string | null;
           status?: string | null;
+          target_event_id?: string | null;
         };
         Relationships: [
-          {
-            foreignKeyName: "content_reports_event_id_fkey";
-            columns: ["event_id"];
-            isOneToOne: false;
-            referencedRelation: "events";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "content_reports_reporter_id_fkey";
             columns: ["reporter_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "content_reports_target_event_id_fkey";
+            columns: ["target_event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
             referencedColumns: ["id"];
           },
         ];
@@ -130,30 +129,27 @@ export type Database = {
         Row: {
           city_id: string | null;
           completed_at: string | null;
-          created_at: string | null;
-          error_message: string | null;
-          events_found: number | null;
           id: string;
+          results_count: number | null;
+          source_id: string | null;
           started_at: string | null;
           status: string | null;
         };
         Insert: {
           city_id?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
-          error_message?: string | null;
-          events_found?: number | null;
           id?: string;
+          results_count?: number | null;
+          source_id?: string | null;
           started_at?: string | null;
           status?: string | null;
         };
         Update: {
           city_id?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
-          error_message?: string | null;
-          events_found?: number | null;
           id?: string;
+          results_count?: number | null;
+          source_id?: string | null;
           started_at?: string | null;
           status?: string | null;
         };
@@ -165,56 +161,113 @@ export type Database = {
             referencedRelation: "cities";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "discovery_jobs_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "scraper_sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      enrichment_logs: {
+        Row: {
+          api_calls_used: number | null;
+          created_at: string;
+          data_enriched: Json | null;
+          error_message: string | null;
+          event_id: string | null;
+          id: string;
+          source: string | null;
+          status: string;
+        };
+        Insert: {
+          api_calls_used?: number | null;
+          created_at?: string;
+          data_enriched?: Json | null;
+          error_message?: string | null;
+          event_id?: string | null;
+          id?: string;
+          source?: string | null;
+          status: string;
+        };
+        Update: {
+          api_calls_used?: number | null;
+          created_at?: string;
+          data_enriched?: Json | null;
+          error_message?: string | null;
+          event_id?: string | null;
+          id?: string;
+          source?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_logs_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
         ];
       };
       error_logs: {
         Row: {
+          context: Json | null;
           created_at: string | null;
-          error_data: Json | null;
-          error_message: string;
           id: string;
+          message: string;
           severity: string | null;
           source: string | null;
+          stack: string | null;
         };
         Insert: {
+          context?: Json | null;
           created_at?: string | null;
-          error_data?: Json | null;
-          error_message: string;
           id?: string;
+          message: string;
           severity?: string | null;
           source?: string | null;
+          stack?: string | null;
         };
         Update: {
+          context?: Json | null;
           created_at?: string | null;
-          error_data?: Json | null;
-          error_message?: string;
           id?: string;
+          message?: string;
           severity?: string | null;
           source?: string | null;
+          stack?: string | null;
         };
         Relationships: [];
       };
       event_attendees: {
         Row: {
           event_id: string;
+          id: string;
           joined_at: string | null;
           profile_id: string;
           status: string | null;
           ticket_number: string | null;
+          updated_at: string | null;
         };
         Insert: {
           event_id: string;
+          id?: string;
           joined_at?: string | null;
           profile_id: string;
           status?: string | null;
           ticket_number?: string | null;
+          updated_at?: string | null;
         };
         Update: {
           event_id?: string;
+          id?: string;
           joined_at?: string | null;
           profile_id?: string;
           status?: string | null;
           ticket_number?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [
           {
@@ -277,25 +330,28 @@ export type Database = {
           created_at: string | null;
           event_id: string | null;
           id: string;
-          invite_code: string;
-          max_uses: number | null;
-          used_count: number | null;
+          invite_code: string | null;
+          invited_email: string | null;
+          inviter_id: string | null;
+          status: string | null;
         };
         Insert: {
           created_at?: string | null;
           event_id?: string | null;
           id?: string;
-          invite_code: string;
-          max_uses?: number | null;
-          used_count?: number | null;
+          invite_code?: string | null;
+          invited_email?: string | null;
+          inviter_id?: string | null;
+          status?: string | null;
         };
         Update: {
           created_at?: string | null;
           event_id?: string | null;
           id?: string;
-          invite_code?: string;
-          max_uses?: number | null;
-          used_count?: number | null;
+          invite_code?: string | null;
+          invited_email?: string | null;
+          inviter_id?: string | null;
+          status?: string | null;
         };
         Relationships: [
           {
@@ -305,56 +361,108 @@ export type Database = {
             referencedRelation: "events";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "event_invites_inviter_id_fkey";
+            columns: ["inviter_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
         ];
       };
       events: {
         Row: {
+          address: string | null;
+          attendee_limit: number | null;
           category: string;
+          contact_phone: string | null;
           created_at: string | null;
           created_by: string | null;
           description: string | null;
-          event_date: string;
+          end_time: string | null;
+          enrichment_attempted_at: string | null;
+          event_date: string | null;
           event_time: string | null;
+          event_type: string;
+          google_place_id: string | null;
           id: string;
           image_url: string | null;
-          location: Database["public"]["CompositeTypes"]["geography"] | null;
+          is_private: boolean | null;
+          location: string | null;
+          opening_hours: Json | null;
           parent_event_id: string | null;
-          source_id: string | null;
-          source_url: string | null;
+          price_range: string | null;
+          social_links: Json | null;
+          start_time: string | null;
+          tags: string[] | null;
+          ticket_url: string | null;
+          time_mode: Database["public"]["Enums"]["time_mode"] | null;
           title: string;
+          updated_at: string | null;
           venue_name: string | null;
+          website_url: string | null;
         };
         Insert: {
+          address?: string | null;
+          attendee_limit?: number | null;
           category: string;
+          contact_phone?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
-          event_date: string;
+          end_time?: string | null;
+          enrichment_attempted_at?: string | null;
+          event_date?: string | null;
           event_time?: string | null;
+          event_type?: string;
+          google_place_id?: string | null;
           id?: string;
           image_url?: string | null;
-          location?: Database["public"]["CompositeTypes"]["geography"] | null;
+          is_private?: boolean | null;
+          location?: string | null;
+          opening_hours?: Json | null;
           parent_event_id?: string | null;
-          source_id?: string | null;
-          source_url?: string | null;
+          price_range?: string | null;
+          social_links?: Json | null;
+          start_time?: string | null;
+          tags?: string[] | null;
+          ticket_url?: string | null;
+          time_mode?: Database["public"]["Enums"]["time_mode"] | null;
           title: string;
+          updated_at?: string | null;
           venue_name?: string | null;
+          website_url?: string | null;
         };
         Update: {
+          address?: string | null;
+          attendee_limit?: number | null;
           category?: string;
+          contact_phone?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
-          event_date?: string;
+          end_time?: string | null;
+          enrichment_attempted_at?: string | null;
+          event_date?: string | null;
           event_time?: string | null;
+          event_type?: string;
+          google_place_id?: string | null;
           id?: string;
           image_url?: string | null;
-          location?: Database["public"]["CompositeTypes"]["geography"] | null;
+          is_private?: boolean | null;
+          location?: string | null;
+          opening_hours?: Json | null;
           parent_event_id?: string | null;
-          source_id?: string | null;
-          source_url?: string | null;
+          price_range?: string | null;
+          social_links?: Json | null;
+          start_time?: string | null;
+          tags?: string[] | null;
+          ticket_url?: string | null;
+          time_mode?: Database["public"]["Enums"]["time_mode"] | null;
           title?: string;
+          updated_at?: string | null;
           venue_name?: string | null;
+          website_url?: string | null;
         };
         Relationships: [
           {
@@ -371,61 +479,35 @@ export type Database = {
             referencedRelation: "events";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "events_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "scraper_sources";
-            referencedColumns: ["id"];
-          },
         ];
-      };
-      geocode_cache: {
-        Row: {
-          address: string;
-          coordinates: Database["public"]["CompositeTypes"]["geography"] | null;
-          created_at: string | null;
-          id: string;
-          last_used_at: string | null;
-        };
-        Insert: {
-          address: string;
-          coordinates?:
-            | Database["public"]["CompositeTypes"]["geography"]
-            | null;
-          created_at?: string | null;
-          id?: string;
-          last_used_at?: string | null;
-        };
-        Update: {
-          address?: string;
-          coordinates?:
-            | Database["public"]["CompositeTypes"]["geography"]
-            | null;
-          created_at?: string | null;
-          id?: string;
-          last_used_at?: string | null;
-        };
-        Relationships: [];
       };
       persona_badges: {
         Row: {
-          awarded_at: string | null;
-          badge_type: string;
+          category: string;
+          created_at: string | null;
           id: string;
-          profile_id: string | null;
+          image_url: string | null;
+          name: string;
+          persona_type: string;
+          profile_id: string;
         };
         Insert: {
-          awarded_at?: string | null;
-          badge_type: string;
+          category: string;
+          created_at?: string | null;
           id?: string;
-          profile_id?: string | null;
+          image_url?: string | null;
+          name: string;
+          persona_type: string;
+          profile_id: string;
         };
         Update: {
-          awarded_at?: string | null;
-          badge_type?: string;
+          category?: string;
+          created_at?: string | null;
           id?: string;
-          profile_id?: string | null;
+          image_url?: string | null;
+          name?: string;
+          persona_type?: string;
+          profile_id?: string;
         };
         Relationships: [
           {
@@ -439,28 +521,34 @@ export type Database = {
       };
       persona_stats: {
         Row: {
+          created_at: string | null;
           host_rating: number | null;
           id: string;
-          last_updated: string | null;
           newcomers_welcomed: number | null;
-          profile_id: string | null;
+          persona_type: string;
+          profile_id: string;
           rallies_hosted: number | null;
+          updated_at: string | null;
         };
         Insert: {
+          created_at?: string | null;
           host_rating?: number | null;
           id?: string;
-          last_updated?: string | null;
           newcomers_welcomed?: number | null;
-          profile_id?: string | null;
+          persona_type: string;
+          profile_id: string;
           rallies_hosted?: number | null;
+          updated_at?: string | null;
         };
         Update: {
+          created_at?: string | null;
           host_rating?: number | null;
           id?: string;
-          last_updated?: string | null;
           newcomers_welcomed?: number | null;
-          profile_id?: string | null;
+          persona_type?: string;
+          profile_id?: string;
           rallies_hosted?: number | null;
+          updated_at?: string | null;
         };
         Relationships: [
           {
@@ -481,11 +569,10 @@ export type Database = {
           full_name: string | null;
           id: string;
           location_city: string | null;
-          location_coordinates:
-            | Database["public"]["CompositeTypes"]["geography"]
-            | null;
+          location_coordinates: string | null;
           location_country: string | null;
           reliability_score: number | null;
+          user_id: string | null;
           verified_resident: boolean | null;
         };
         Insert: {
@@ -494,13 +581,12 @@ export type Database = {
           events_attended?: number | null;
           events_committed?: number | null;
           full_name?: string | null;
-          id: string;
+          id?: string;
           location_city?: string | null;
-          location_coordinates?:
-            | Database["public"]["CompositeTypes"]["geography"]
-            | null;
+          location_coordinates?: string | null;
           location_country?: string | null;
           reliability_score?: number | null;
+          user_id?: string | null;
           verified_resident?: boolean | null;
         };
         Update: {
@@ -511,127 +597,212 @@ export type Database = {
           full_name?: string | null;
           id?: string;
           location_city?: string | null;
-          location_coordinates?:
-            | Database["public"]["CompositeTypes"]["geography"]
-            | null;
+          location_coordinates?: string | null;
           location_country?: string | null;
           reliability_score?: number | null;
+          user_id?: string | null;
           verified_resident?: boolean | null;
         };
         Relationships: [];
       };
-      raw_events: {
+      proposal_votes: {
         Row: {
-          created_at: string | null;
-          error_message: string | null;
+          created_at: string;
           id: string;
-          processed_at: string | null;
-          raw_content: Json | null;
-          source_id: string | null;
-          source_url: string;
-          status: string | null;
+          proposal_id: string;
+          user_id: string;
+          vote: string;
         };
         Insert: {
-          created_at?: string | null;
-          error_message?: string | null;
+          created_at?: string;
           id?: string;
-          processed_at?: string | null;
-          raw_content?: Json | null;
-          source_id?: string | null;
-          source_url: string;
-          status?: string | null;
+          proposal_id: string;
+          user_id: string;
+          vote: string;
         };
         Update: {
-          created_at?: string | null;
-          error_message?: string | null;
+          created_at?: string;
           id?: string;
-          processed_at?: string | null;
-          raw_content?: Json | null;
-          source_id?: string | null;
-          source_url?: string;
-          status?: string | null;
+          proposal_id?: string;
+          user_id?: string;
+          vote?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "raw_events_source_id_fkey";
-            columns: ["source_id"];
+            foreignKeyName: "proposal_votes_proposal_id_fkey";
+            columns: ["proposal_id"];
             isOneToOne: false;
-            referencedRelation: "scraper_sources";
+            referencedRelation: "proposals";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "proposal_votes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
       };
-      scrape_jobs: {
+      proposals: {
         Row: {
-          completed_at: string | null;
-          created_at: string | null;
-          error_message: string | null;
-          events_found: number | null;
+          created_at: string;
+          creator_id: string;
+          description: string | null;
+          event_id: string;
           id: string;
-          source_id: string | null;
-          started_at: string | null;
-          status: string | null;
+          proposed_time: string | null;
+          proposed_times: Json;
+          status: string;
+          title: string | null;
+          updated_at: string;
+          venue_place_id: string | null;
         };
         Insert: {
-          completed_at?: string | null;
-          created_at?: string | null;
-          error_message?: string | null;
-          events_found?: number | null;
+          created_at?: string;
+          creator_id: string;
+          description?: string | null;
+          event_id: string;
           id?: string;
-          source_id?: string | null;
-          started_at?: string | null;
-          status?: string | null;
+          proposed_time?: string | null;
+          proposed_times: Json;
+          status?: string;
+          title?: string | null;
+          updated_at?: string;
+          venue_place_id?: string | null;
         };
         Update: {
-          completed_at?: string | null;
-          created_at?: string | null;
-          error_message?: string | null;
-          events_found?: number | null;
+          created_at?: string;
+          creator_id?: string;
+          description?: string | null;
+          event_id?: string;
           id?: string;
-          source_id?: string | null;
-          started_at?: string | null;
-          status?: string | null;
+          proposed_time?: string | null;
+          proposed_times?: Json;
+          status?: string;
+          title?: string | null;
+          updated_at?: string;
+          venue_place_id?: string | null;
         };
         Relationships: [
           {
-            foreignKeyName: "scrape_jobs_source_id_fkey";
-            columns: ["source_id"];
+            foreignKeyName: "proposals_creator_id_fkey";
+            columns: ["creator_id"];
             isOneToOne: false;
-            referencedRelation: "scraper_sources";
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "proposals_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
             referencedColumns: ["id"];
           },
         ];
       };
       scraper_sources: {
         Row: {
+          base_url: string;
+          category_mapping: Json | null;
           created_at: string | null;
+          discovery_params: Json | null;
+          enabled: boolean | null;
           id: string;
           is_active: boolean | null;
-          last_polled: string | null;
+          last_scraped_at: string | null;
           name: string;
-          polling_interval_mins: number | null;
-          source_url: string;
-          strategy: string | null;
+          reliability_score: number | null;
+          selector_config: Json | null;
+          source_type: string;
         };
         Insert: {
+          base_url: string;
+          category_mapping?: Json | null;
           created_at?: string | null;
+          discovery_params?: Json | null;
+          enabled?: boolean | null;
           id?: string;
           is_active?: boolean | null;
-          last_polled?: string | null;
+          last_scraped_at?: string | null;
           name: string;
-          polling_interval_mins?: number | null;
-          source_url: string;
-          strategy?: string | null;
+          reliability_score?: number | null;
+          selector_config?: Json | null;
+          source_type: string;
         };
         Update: {
+          base_url?: string;
+          category_mapping?: Json | null;
           created_at?: string | null;
+          discovery_params?: Json | null;
+          enabled?: boolean | null;
           id?: string;
           is_active?: boolean | null;
-          last_polled?: string | null;
+          last_scraped_at?: string | null;
           name?: string;
-          polling_interval_mins?: number | null;
-          source_url?: string;
-          strategy?: string | null;
+          reliability_score?: number | null;
+          selector_config?: Json | null;
+          source_type?: string;
+        };
+        Relationships: [];
+      };
+      staged_events: {
+        Row: {
+          category: string | null;
+          created_at: string | null;
+          description: string | null;
+          event_date: string | null;
+          event_time: string | null;
+          event_type: string | null;
+          external_id: string | null;
+          id: string;
+          image_url: string | null;
+          opening_hours: Json | null;
+          raw_data: Json | null;
+          source_id: string | null;
+          time_mode: Database["public"]["Enums"]["time_mode"] | null;
+          title: string;
+          updated_at: string | null;
+          venue_address: string | null;
+          venue_name: string | null;
+        };
+        Insert: {
+          category?: string | null;
+          created_at?: string | null;
+          description?: string | null;
+          event_date?: string | null;
+          event_time?: string | null;
+          event_type?: string | null;
+          external_id?: string | null;
+          id?: string;
+          image_url?: string | null;
+          opening_hours?: Json | null;
+          raw_data?: Json | null;
+          source_id?: string | null;
+          time_mode?: Database["public"]["Enums"]["time_mode"] | null;
+          title: string;
+          updated_at?: string | null;
+          venue_address?: string | null;
+          venue_name?: string | null;
+        };
+        Update: {
+          category?: string | null;
+          created_at?: string | null;
+          description?: string | null;
+          event_date?: string | null;
+          event_time?: string | null;
+          event_type?: string | null;
+          external_id?: string | null;
+          id?: string;
+          image_url?: string | null;
+          opening_hours?: Json | null;
+          raw_data?: Json | null;
+          source_id?: string | null;
+          time_mode?: Database["public"]["Enums"]["time_mode"] | null;
+          title?: string;
+          updated_at?: string | null;
+          venue_address?: string | null;
+          venue_name?: string | null;
         };
         Relationships: [];
       };
@@ -642,7 +813,7 @@ export type Database = {
           created_at: string | null;
           id: string;
           is_verified: boolean | null;
-          location: Database["public"]["CompositeTypes"]["geography"] | null;
+          location: string | null;
           name: string;
         };
         Insert: {
@@ -651,7 +822,7 @@ export type Database = {
           created_at?: string | null;
           id?: string;
           is_verified?: boolean | null;
-          location?: Database["public"]["CompositeTypes"]["geography"] | null;
+          location?: string | null;
           name: string;
         };
         Update: {
@@ -660,34 +831,14 @@ export type Database = {
           created_at?: string | null;
           id?: string;
           is_verified?: boolean | null;
-          location?: Database["public"]["CompositeTypes"]["geography"] | null;
+          location?: string | null;
           name?: string;
         };
         Relationships: [];
       };
     };
     Views: {
-      source_health_with_insights: {
-        Row: {
-          avg_events_per_run: number | null;
-          error_rate: number | null;
-          last_error: string | null;
-          last_run_at: string | null;
-          source_id: string | null;
-          source_name: string | null;
-          success_rate: number | null;
-          total_runs: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "scrape_jobs_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "scraper_sources";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+      [_ in never]: never;
     };
     Functions: {
       [_ in never]: never;
@@ -695,9 +846,10 @@ export type Database = {
     Enums: {
       fetcher_type_enum: "static" | "puppeteer" | "playwright" | "scrapingbee";
       raw_event_status: "pending" | "processing" | "completed" | "failed";
+      time_mode: "fixed" | "window" | "anytime";
     };
     CompositeTypes: {
-      geography: string;
+      [_ in never]: never;
     };
   };
 };
@@ -783,3 +935,13 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never;
+
+export const Constants = {
+  public: {
+    Enums: {
+      fetcher_type_enum: ["static", "puppeteer", "playwright", "scrapingbee"],
+      raw_event_status: ["pending", "processing", "completed", "failed"],
+      time_mode: ["fixed", "window", "anytime"],
+    },
+  },
+} as const;
