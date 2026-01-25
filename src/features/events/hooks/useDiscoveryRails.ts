@@ -2,22 +2,60 @@ import { useMemo } from "react";
 import type {
   DiscoveryLayout,
   DiscoverySection,
+  DiscoverySectionType,
 } from "../types/discoveryTypes.ts";
 import type { EventWithAttendees } from "./hooks.ts";
-import { groupEventsIntoStacks } from "../api/feedGrouping.ts";
+import { 
+  railRegistry, 
+  type RailContext, 
+  type RailType 
+} from "../discovery/index.ts";
 
 interface UseDiscoveryRailsOptions {
   allEvents: EventWithAttendees[];
   enabled?: boolean;
   selectedCategories?: string[];
   bookmarkedEvents?: EventWithAttendees[];
+  locationCity?: string;
+  country?: string;
+  userLocation?: { lat: number; lng: number } | null;
+  radiusKm?: number;
+  profileId?: string;
+  attendedEventIds?: Set<string>;
 }
 
+/**
+ * Map rail types to section types for backward compatibility
+ */
+const railTypeToSectionType: Record<RailType, DiscoverySectionType> = {
+  "for-you": "traditional",
+  "rituals": "social",
+  "this-weekend": "traditional",
+  "location": "utility",
+  "pulse": "traditional",
+};
+
+/**
+ * useDiscoveryRails - Strategy-based Discovery Rails Hook
+ * 
+ * Implements the 5 Psychological Pillars:
+ * 1. "For You" (The Ego) - Validation through personalization
+ * 2. "Rituals" (The Habit) - Stability through recurring events
+ * 3. "This Weekend" (The Reward) - Temporal anticipation
+ * 4. "Happening in [Location]" (The Grounding) - Physical connection
+ * 5. "Pulse of [Country]" (The Collective) - Big-picture belonging
+ */
 export function useDiscoveryRails({
   allEvents,
   enabled = true,
   selectedCategories = [],
   bookmarkedEvents = [],
+  locationCity,
+  country,
+  userLocation,
+  radiusKm = 25,
+  profileId,
+  attendedEventIds = new Set(),
 }: UseDiscoveryRailsOptions) {
   return useMemo<DiscoveryLayout>(() => {
     if (!enabled || !allEvents || allEvents.length === 0) {
@@ -26,7 +64,19 @@ export function useDiscoveryRails({
 
     const sections: DiscoverySection[] = [];
 
-    // --- Rail 0: "Saved for later" (Personalized) ---
+    // Build the rail context for providers
+    const context: RailContext = {
+      selectedCategories,
+      locationCity,
+      country,
+      userLocation,
+      radiusKm,
+      profileId,
+      bookmarkedEventIds: new Set(bookmarkedEvents.map(e => e.id)),
+      attendedEventIds,
+    };
+
+    // --- Rail 0: "Saved for later" (Special rail, not in registry) ---
     if (bookmarkedEvents.length > 0) {
       sections.push({
         type: "traditional",
@@ -37,96 +87,30 @@ export function useDiscoveryRails({
       });
     }
 
-    // --- Rail 1: "Your Local Pulse" (Personalized/Engagement) ---
-    let pulseEvents = allEvents;
-    if (selectedCategories.length > 0) {
-      pulseEvents = allEvents.filter((e) =>
-        selectedCategories.includes(e.category),
-      );
-    }
-    if (pulseEvents.length === 0) pulseEvents = allEvents;
+    // --- Generate rails from the registry ---
+    const railResults = railRegistry.generateRails(allEvents, context);
 
-    pulseEvents = [...pulseEvents].sort(
-      (a, b) => (b.attendee_count || 0) - (a.attendee_count || 0),
-    );
-
-    if (pulseEvents.length > 0) {
-      sections.push({
-        type: "traditional",
-        title: "Your Local Pulse",
-        description: "Popular events matching your vibe",
-        items: pulseEvents,
-        layout: "carousel",
-      });
+    for (const result of railResults) {
+      if (result.shouldShow && result.events.length > 0) {
+        sections.push({
+          type: railTypeToSectionType[result.metadata.type] || "traditional",
+          title: result.metadata.title,
+          description: result.metadata.description,
+          items: result.events,
+          layout: "carousel",
+          // Store additional metadata for the renderer
+          icon: undefined, // Will be rendered by DynamicRailRenderer based on type
+        });
+      }
     }
 
-    // --- Rail 2: "The Wildcard" (Generative) ---
-    let wildcardEvents: EventWithAttendees[] = [];
-    if (selectedCategories.length > 0) {
-      wildcardEvents = allEvents.filter(
-        (e) => !selectedCategories.includes(e.category),
-      );
-    } else {
-      wildcardEvents = [...allEvents];
-    }
-    wildcardEvents = wildcardEvents.sort(() => 0.5 - Math.random());
-
-    if (wildcardEvents.length > 0) {
-      sections.push({
-        type: "generative",
-        title: "The Wildcard",
-        description: "Step outside your comfort zone",
-        items: wildcardEvents,
-        layout: "carousel",
-      });
-    }
-
-    // --- Rail 3: "Community Rituals" (Social/Stacks) ---
-    const ritualKeywords = [
-      "weekly",
-      "monthly",
-      "yearly",
-      "club",
-      "meetup",
-      "class",
-      "group",
-      "borrel",
-      "ritueel",
-      "training",
-    ];
-    const ritualEventsFromKeywords = allEvents.filter((e) => {
-      const title = e.title.toLowerCase();
-      const desc = (e.description || "").toLowerCase();
-      return ritualKeywords.some(
-        (kw) => title.includes(kw) || desc.includes(kw),
-      );
-    });
-
-    const allStacks = groupEventsIntoStacks(allEvents);
-    const ritualStacks = allStacks.filter(
-      (stack) => stack.type === "stack" && stack.forks.length > 0,
-    );
-    const ritualEventsFromStacks = ritualStacks.map((s) => s.anchor);
-
-    const combinedRitualEvents = Array.from(
-      new Set([...ritualEventsFromKeywords, ...ritualEventsFromStacks]),
-    );
-
-    if (combinedRitualEvents.length > 0) {
-      sections.push({
-        type: "social",
-        title: "Community Rituals",
-        description: "Weekly meetups and recurring groups",
-        items: combinedRitualEvents,
-        layout: "carousel",
-      });
-    }
-
-    // --- Rail 4: "Hidden Gems" (Generative) ---
+    // --- Bonus Rail: "Hidden Gems" (Generative) ---
     const hiddenEvents = allEvents
       .filter((e) => (e.attendee_count || 0) < 5)
       .filter((e) => !!e.image_url)
-      .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0));
+      .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
+      .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
+      .slice(0, 10);
 
     if (hiddenEvents.length > 0) {
       sections.push({
@@ -138,25 +122,17 @@ export function useDiscoveryRails({
       });
     }
 
-    // --- Rail 5: "Neighborhood Serendipity" (Location) ---
-    const serendipityEvents = allEvents.filter((e) => {
-      return typeof e.distance_km === "number" && e.distance_km < 2.0;
-    });
-
-    serendipityEvents.sort(
-      (a, b) => (a.distance_km || 999) - (b.distance_km || 999),
-    );
-
-    if (serendipityEvents.length > 0) {
-      sections.push({
-        type: "utility",
-        title: "Neighborhood Serendipity",
-        description: "Right around the corner (< 2km)",
-        items: serendipityEvents,
-        layout: "carousel",
-      });
-    }
-
     return { sections };
-  }, [allEvents, enabled, selectedCategories, bookmarkedEvents]);
+  }, [
+    allEvents, 
+    enabled, 
+    selectedCategories, 
+    bookmarkedEvents,
+    locationCity,
+    country,
+    userLocation,
+    radiusKm,
+    profileId,
+    attendedEventIds,
+  ]);
 }
