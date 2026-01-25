@@ -99,7 +99,7 @@ function getUpcomingEvents(events: EventWithAttendees[], limit = 6): EventWithAt
 const Feed = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { location: userLocation, preferences: locationPrefs, permissionState, requestPermission } = useLocation();
+  const { location: userLocation, preferences: locationPrefs, permissionState } = useLocation();
   const { events: allEvents, loading, refetch } = useEventsQuery({
     currentUserProfileId: profile?.id,
     userLocation: userLocation || undefined,
@@ -200,9 +200,9 @@ const Feed = () => {
   };
 
   const handleLocationClick = async () => {
-    if (permissionState !== 'granted') {
-      await requestPermission();
-    }
+    await hapticImpact('light');
+    // Open onboarding wizard to allow location change
+    setShowOnboarding(true);
   };
 
   const selectedEvent = useMemo(() => {
