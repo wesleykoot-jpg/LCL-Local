@@ -308,37 +308,27 @@ class PulseRailProvider extends BaseRailProvider {
     _context: RailContext,
   ): EventWithAttendees[] {
     // Filter for trending/popular events (high social proof)
-    const trendingEvents = events.filter(
-      (e) =>
-        (e.attendee_count || 0) >= 2 && // Lower threshold for testing/dev
-        e.event_date &&
-        new Date(e.event_date) >= new Date(),
-    );
+    // Sort all future events by attendance
+    const sortedByAttendance = [...events]
+      .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
+      .filter((e) => (e.attendee_count || 0) >= 2) // Minimum threshold
+      .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0));
 
-    // Fallback: if no trending events, show events with any attendees or highest match
+    // Show only top 40% by attendance to focus on truly trending events
+    const topCount = Math.max(1, Math.ceil(sortedByAttendance.length * 0.4));
+    const trendingEvents = sortedByAttendance.slice(0, topCount);
+
+    // Fallback: if no trending events, show top matched future events
     let resultEvents = trendingEvents;
     if (resultEvents.length === 0) {
-      // Try events with at least 1 attendee
-      resultEvents = events.filter(
-        (e) =>
-          (e.attendee_count || 0) >= 1 &&
-          e.event_date &&
-          new Date(e.event_date) >= new Date(),
-      );
-      
-      // If still empty, just show top matched future events
-      if (resultEvents.length === 0) {
-        resultEvents = events
-          .filter((e) => !e.event_date || new Date(e.event_date) >= new Date())
-          .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
-          .slice(0, 10);
-      }
+      resultEvents = events
+        .filter((e) => !e.event_date || new Date(e.event_date) >= new Date())
+        .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
+        .slice(0, 10);
     }
 
-    // Sort by attendee count (highest first)
-    return [...resultEvents]
-      .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0))
-      .slice(0, 10);
+    // Return up to 10 events
+    return resultEvents.slice(0, 10);
   }
 
   getWeights(): ContextualWeights {
