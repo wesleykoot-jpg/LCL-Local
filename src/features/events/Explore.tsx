@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -20,9 +20,10 @@ import { FloatingNav } from "@/shared/components/FloatingNav";
 import { useAuth } from "@/features/auth";
 import { useLocation } from "@/features/location";
 import { useJoinEvent } from "./hooks/hooks";
-import { EventDetailModal } from "./components/EventDetailModal";
 import { TimelineEventCard } from "./components/TimelineEventCard";
 import { ChevronDown } from "lucide-react";
+
+const EventDetailModal = lazy(() => import("./components/EventDetailModal"));
 
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -230,16 +231,18 @@ export default function ExplorePage() {
       <FloatingNav activeView="feed" />
 
       {selectedEvent && (
-        <EventDetailModal
-          event={selectedEvent}
-          onClose={() => setSelectedEventId(null)}
-          onJoin={() => handleJoinEvent(selectedEvent.id)}
-          isJoining={isJoining(selectedEvent.id)}
-          currentUserProfileId={profile?.id}
-          hasJoined={selectedEvent.attendees?.some(
-            (a) => a.profile?.id === profile?.id,
-          )}
-        />
+        <Suspense fallback={null}>
+          <EventDetailModal
+            event={selectedEvent}
+            onClose={() => setSelectedEventId(null)}
+            onJoin={() => handleJoinEvent(selectedEvent.id)}
+            isJoining={isJoining(selectedEvent.id)}
+            currentUserProfileId={profile?.id}
+            hasJoined={selectedEvent.attendees?.some(
+              (a) => a.profile?.id === profile?.id,
+            )}
+          />
+        </Suspense>
       )}
 
       {/* Full Screen Section View (See All) */}

@@ -33,12 +33,11 @@ export { useLiveEventsQuery } from './hooks/useLiveEventsQuery';
 
 // Components
 export { EventStackCard } from './components/EventStackCard';
-export { default as EventDetailModal } from './components/EventDetailModal';
+// Note: EventDetailModal and CreateEventModal are lazy-loaded in pages, not exported here
 export { EventTimeline } from './components/EventTimeline';
 export { TimelineEventCard } from './components/TimelineEventCard';
 export { ItineraryTimeline } from './components/ItineraryTimeline';
 export { ShadowEventCard } from './components/ShadowEventCard';
-export { CreateEventModal } from './components/CreateEventModal';
 export { TimeFilterPills } from './components/TimeFilterPills';
 export type { TimeFilter } from './components/TimeFilterPills';
 export { CategoryBadge } from './components/CategoryBadge';

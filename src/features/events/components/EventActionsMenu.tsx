@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { MoreVertical, Flag, Ban, Loader2, GitFork } from 'lucide-react';
-import { CreateEventModal } from './CreateEventModal';
 import type { EventWithAttendees } from '../hooks/hooks';
+
+const CreateEventModal = lazy(() => import('./CreateEventModal').then(m => ({ default: m.CreateEventModal })));
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -302,11 +303,13 @@ export function EventActionsMenu({
 
       {/* Fork Creation Modal */}
       {showForkModal && event && (
-        <CreateEventModal
-          isOpen={showForkModal}
-          onClose={() => setShowForkModal(false)}
-          initialParentEvent={event}
-        />
+        <Suspense fallback={null}>
+          <CreateEventModal
+            isOpen={showForkModal}
+            onClose={() => setShowForkModal(false)}
+            initialParentEvent={event}
+          />
+        </Suspense>
       )}
     </>
   );
