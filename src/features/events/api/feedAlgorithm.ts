@@ -1,36 +1,36 @@
 /**
  * Feed Algorithm Module
- * 
+ *
  * This module implements a smart ranking algorithm for the event feed.
  * The algorithm considers multiple factors to personalize event recommendations:
- * 
+ *
  * 1. Category Preference Match (35% weight)
  *    - Events matching user's selected categories get higher scores
- * 
+ *
  * 2. Time Relevance (20% weight)
  *    - Events happening soon get higher priority
  *    - Uses exponential decay for events far in the future
- * 
+ *
  * 3. Social Proof (15% weight)
  *    - Events with more attendees are ranked higher
  *    - Applies logarithmic scaling to prevent large events from dominating
- * 
+ *
  * 4. Event Match Score (10% weight)
  *    - Uses the pre-computed match_percentage from the database
  *    - Represents algorithmic compatibility
- * 
+ *
  * 5. Distance/Proximity (20% weight)
  *    - Events closer to user's location get higher scores
  *    - Uses inverse distance scoring with configurable radius
- * 
+ *
  * Additionally, the algorithm ensures feed diversity by:
  * - Preventing too many cards of the same category appearing consecutively
  * - Boosting underrepresented categories in the initial results
- * 
+ *
  * This module is location-agnostic - works globally with any coordinates.
  */
 
-import { calculateDistanceKm } from '@/shared/lib/distance';
+import { calculateDistanceKm } from "@/shared/lib/distance";
 
 export interface EventForRanking {
   id: string;
@@ -51,7 +51,7 @@ export interface UserLocation {
   lng: number;
 }
 
-export type FeedMode = 'family' | 'social' | 'default';
+export type FeedMode = "family" | "social" | "default";
 
 export interface UserPreferences {
   selectedCategories: string[];
@@ -80,10 +80,10 @@ interface ScoredEvent<T extends EventForRanking> {
 // Algorithm weights - sum should equal 1.0
 const WEIGHTS = {
   CATEGORY: 0.35,
-  TIME: 0.20,
+  TIME: 0.2,
   SOCIAL: 0.15,
-  MATCH: 0.10,
-  DISTANCE: 0.20,
+  MATCH: 0.1,
+  DISTANCE: 0.2,
 } as const;
 
 // Configuration constants
@@ -106,18 +106,18 @@ const CONFIG = {
  */
 function calculateCategoryScore(
   eventCategory: string,
-  userCategories: string[]
+  userCategories: string[],
 ): number {
   if (userCategories.length === 0) {
     // No preferences set - all categories equal
     return 0.5;
   }
-  
+
   // Direct match
   if (userCategories.includes(eventCategory)) {
     return 1.0;
   }
-  
+
   // Not in preferences - apply penalty but don't eliminate completely
   return 0.3;
 }
@@ -129,18 +129,19 @@ function calculateCategoryScore(
 function calculateTimeScore(eventDate: string): number {
   const now = new Date();
   const eventDateTime = new Date(eventDate);
-  const daysUntilEvent = (eventDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  
+  const daysUntilEvent =
+    (eventDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
   // Events in the past get zero score
   if (daysUntilEvent < 0) {
     return 0;
   }
-  
+
   // Events happening very soon (within 24 hours) get maximum score
   if (daysUntilEvent < 1) {
     return 1.0;
   }
-  
+
   // Exponential decay for future events
   // Score decreases by ~50% every TIME_DECAY_DAYS
   const decayFactor = Math.exp(-daysUntilEvent / CONFIG.TIME_DECAY_DAYS);
@@ -155,23 +156,25 @@ function calculateSocialScore(attendeeCount: number = 0): number {
   if (attendeeCount <= 0) {
     return 0.2; // Base score for events with no attendees
   }
-  
+
   // Logarithmic scaling: log10(attendees) / log10(1000)
   // This means: 1 attendee ≈ 0.2, 10 ≈ 0.5, 100 ≈ 0.8, 1000 ≈ 1.0
   const maxAttendees = 1000;
   const score = Math.log10(attendeeCount + 1) / Math.log10(maxAttendees);
-  
+
   return Math.min(1.0, Math.max(0.2, score));
 }
 
 /**
  * Normalizes the match percentage score (0-1)
  */
-function calculateMatchScore(matchPercentage: number | null | undefined): number {
+function calculateMatchScore(
+  matchPercentage: number | null | undefined,
+): number {
   if (matchPercentage == null) {
     return 0.5; // Default score if not available
   }
-  
+
   return matchPercentage / 100;
 }
 
@@ -179,27 +182,27 @@ function calculateMatchScore(matchPercentage: number | null | undefined): number
  * Calculates distance score based on proximity to user (0-1)
  * Events closer to the user get higher scores
  * Uses inverse distance with configurable radius
- * 
+ *
  * Works globally - uses coordinates directly from events.
  */
 function calculateDistanceScore(
   eventCoordinates: { lat: number; lng: number } | null | undefined,
   userLocation: UserLocation | null | undefined,
-  radiusKm: number = CONFIG.DEFAULT_RADIUS_KM
+  radiusKm: number = CONFIG.DEFAULT_RADIUS_KM,
 ): number {
   // If either location is unavailable, return neutral score
   if (!userLocation || !eventCoordinates) {
     return 0.5;
   }
-  
+
   // Calculate distance between user and event
   const distanceKm = calculateDistanceKm(
     userLocation.lat,
     userLocation.lng,
     eventCoordinates.lat,
-    eventCoordinates.lng
+    eventCoordinates.lng,
   );
-  
+
   // Score calculation:
   // - At 0 km: score = 1.0
   // - At radiusKm: score ≈ 0.5
@@ -207,10 +210,10 @@ function calculateDistanceScore(
   if (distanceKm <= 0.1) {
     return 1.0; // Very close (< 100m)
   }
-  
+
   // Inverse distance with smooth decay
   const score = 1 / (1 + distanceKm / (radiusKm * 0.5));
-  
+
   return Math.max(CONFIG.DISTANCE_MIN_SCORE, Math.min(1.0, score));
 }
 
@@ -247,19 +250,45 @@ function calculateTrendingBoost(attendeeCount: number = 0): number {
  */
 function calculateModeMultiplier(
   category: string,
-  feedMode: FeedMode = 'default',
-  isParentDetected: boolean = false
+  feedMode: FeedMode = "default",
+  isParentDetected: boolean = false,
 ): number {
-  if (feedMode === 'family') {
+  if (feedMode === "family") {
     // Family Mode: 2.5x multiplier for family, 1.5x for outdoors/active if parent
-    if (category === 'family') return 2.5;
-    if (isParentDetected && (category === 'outdoors' || category === 'active')) return 1.5;
-  } else if (feedMode === 'social') {
+    if (category === "family") return 2.5;
+    if (isParentDetected && (category === "outdoors" || category === "active"))
+      return 1.5;
+  } else if (feedMode === "social") {
     // Social Mode: 2.0x for social/music/foodie, suppress family (0.3x)
-    if (category === 'social' || category === 'music' || category === 'foodie') return 2.0;
-    if (category === 'family') return 0.3;
+    if (category === "social" || category === "music" || category === "foodie")
+      return 2.0;
+    if (category === "family") return 0.3;
   }
   return 1.0;
+}
+
+/**
+ * Penalize events with poor data quality (missing image, short description)
+ * to prevent them from showing up high in the feed.
+ */
+function calculateQualityPenalty<T extends EventForRanking>(event: T): number {
+  let penalty = 1.0;
+
+  // Heavy penalty for missing image
+  if (!event.image_url) {
+    penalty *= 0.2;
+  }
+
+  // Moderate penalty for very short description or missing description
+  // Note: Some valid events might have short descriptions, so not too harsh
+  if (
+    !event.description ||
+    (typeof event.description === "string" && event.description.length < 50)
+  ) {
+    penalty *= 0.8;
+  }
+
+  return penalty;
 }
 
 /**
@@ -267,22 +296,26 @@ function calculateModeMultiplier(
  */
 function scoreEvent<T extends EventForRanking>(
   event: T,
-  preferences: UserPreferences | null
+  preferences: UserPreferences | null,
 ): ScoredEvent<T> {
   const userCategories = preferences?.selectedCategories || [];
   const userLocation = preferences?.userLocation;
   const radiusKm = preferences?.radiusKm || CONFIG.DEFAULT_RADIUS_KM;
-  const feedMode = preferences?.feedMode || 'default';
+  const feedMode = preferences?.feedMode || "default";
   const isParentDetected = preferences?.isParentDetected || false;
-  
+
   const categoryScore = calculateCategoryScore(event.category, userCategories);
   const timeScore = calculateTimeScore(event.event_date);
   const socialScore = calculateSocialScore(event.attendee_count);
   const matchScore = calculateMatchScore(event.match_percentage);
-  const distanceScore = calculateDistanceScore(event.coordinates, userLocation, radiusKm);
-  
+  const distanceScore = calculateDistanceScore(
+    event.coordinates,
+    userLocation,
+    radiusKm,
+  );
+
   // Weighted sum of all factors
-  const baseScore = 
+  const baseScore =
     categoryScore * WEIGHTS.CATEGORY +
     timeScore * WEIGHTS.TIME +
     socialScore * WEIGHTS.SOCIAL +
@@ -291,11 +324,18 @@ function scoreEvent<T extends EventForRanking>(
 
   const urgencyBoost = calculateUrgencyBoost(event.event_date);
   const trendingBoost = calculateTrendingBoost(event.attendee_count);
-  const modeMultiplier = calculateModeMultiplier(event.category, feedMode, isParentDetected);
-  
+  const modeMultiplier = calculateModeMultiplier(
+    event.category,
+    feedMode,
+    isParentDetected,
+  );
+  const qualityPenalty = calculateQualityPenalty(event);
+
   const boostMultiplier = Math.min(urgencyBoost * trendingBoost, 1.5);
-  const totalScore = baseScore * boostMultiplier * modeMultiplier;
-  
+  // Apply quality penalty at the end
+  const totalScore =
+    baseScore * boostMultiplier * modeMultiplier * qualityPenalty;
+
   return {
     event,
     score: totalScore,
@@ -317,58 +357,58 @@ function scoreEvent<T extends EventForRanking>(
  * Reorders events to ensure variety in the feed
  */
 function ensureDiversity<T extends EventForRanking>(
-  scoredEvents: ScoredEvent<T>[]
+  scoredEvents: ScoredEvent<T>[],
 ): ScoredEvent<T>[] {
   if (scoredEvents.length <= CONFIG.DIVERSITY_MIN_GAP) {
     return scoredEvents;
   }
-  
+
   const result: ScoredEvent<T>[] = [];
   const remaining = [...scoredEvents];
-  
+
   // Track the last N categories added
   const recentCategories: string[] = [];
-  
+
   while (remaining.length > 0) {
     let bestIndex = 0;
     let bestAdjustedScore = -1;
-    
+
     // Find the best event considering both score and diversity
     for (let i = 0; i < remaining.length; i++) {
       const event = remaining[i];
       let adjustedScore = event.score;
-      
+
       // Penalize if this category was recently shown
       const categoryIndex = recentCategories.indexOf(event.event.category);
       if (categoryIndex !== -1) {
         const recency = recentCategories.length - categoryIndex;
-        const penalty = 1 - (recency / (CONFIG.DIVERSITY_MIN_GAP + 1));
+        const penalty = 1 - recency / (CONFIG.DIVERSITY_MIN_GAP + 1);
         adjustedScore *= penalty;
       }
-      
+
       if (adjustedScore > bestAdjustedScore) {
         bestAdjustedScore = adjustedScore;
         bestIndex = i;
       }
     }
-    
+
     // Add the best event to results
     const selectedEvent = remaining.splice(bestIndex, 1)[0];
     result.push(selectedEvent);
-    
+
     // Track category
     recentCategories.push(selectedEvent.event.category);
     if (recentCategories.length > CONFIG.DIVERSITY_MIN_GAP) {
       recentCategories.shift();
     }
   }
-  
+
   return result;
 }
 
 /**
  * Main function: Ranks events based on the feed algorithm
- * 
+ *
  * @param events - Array of events to rank (should include coordinates from DB)
  * @param preferences - User preferences from onboarding
  * @param options - Optional configuration
@@ -380,13 +420,14 @@ export function rankEvents<T extends EventForRanking>(
   options?: {
     ensureDiversity?: boolean;
     debug?: boolean;
-  }
+  },
 ): T[] {
-  const { ensureDiversity: applyDiversity = true, debug = false } = options || {};
-  
+  const { ensureDiversity: applyDiversity = true, debug = false } =
+    options || {};
+
   // Score all events
-  let scoredEvents = events.map(event => scoreEvent(event, preferences));
-  
+  let scoredEvents = events.map((event) => scoreEvent(event, preferences));
+
   // Apply diversity if enabled
   if (applyDiversity) {
     scoredEvents = ensureDiversity(scoredEvents);
@@ -394,24 +435,24 @@ export function rankEvents<T extends EventForRanking>(
     // Just sort by score
     scoredEvents.sort((a, b) => b.score - a.score);
   }
-  
+
   // Debug logging
   if (debug && import.meta.env.DEV) {
-    console.group('🎯 Feed Algorithm Results');
-    console.log('User Preferences:', preferences);
+    console.group("🎯 Feed Algorithm Results");
+    console.log("User Preferences:", preferences);
     console.table(
       scoredEvents.slice(0, 10).map(({ event, score, breakdown }) => ({
         title: event.title || event.id.slice(0, 8),
         category: event.category,
         score: score.toFixed(3),
         ...Object.fromEntries(
-          Object.entries(breakdown).map(([k, v]) => [k, v.toFixed(2)])
+          Object.entries(breakdown).map(([k, v]) => [k, v.toFixed(2)]),
         ),
-      }))
+      })),
     );
     console.groupEnd();
   }
-  
+
   // Return just the events in ranked order
-  return scoredEvents.map(scored => scored.event);
+  return scoredEvents.map((scored) => scored.event);
 }
