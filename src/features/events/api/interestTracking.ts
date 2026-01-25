@@ -7,6 +7,9 @@
  * NOTE: This module is currently a stub. The interest_scores and is_parent_detected
  * columns do not exist in the profiles table. These functions return mock data
  * to avoid breaking the build while the feature is pending implementation.
+ * 
+ * TODO: Add interest_scores (JSONB) and is_parent_detected (boolean) columns to
+ * the profiles table via migration to enable persistent interest tracking.
  */
 
 export interface InterestScores {
