@@ -78,14 +78,14 @@ export async function storeCalendarTokens(
   try {
     const { error } = await supabase.from("google_calendar_tokens").upsert(
       {
-        user_id: profileId,
+        profile_id: profileId,
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
         token_expiry: tokens.expiresAt.toISOString(),
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: "user_id",
+        onConflict: "profile_id",
       },
     );
 
@@ -109,7 +109,7 @@ export async function getCalendarTokens(
     const { data, error } = await supabase
       .from("google_calendar_tokens")
       .select("access_token, refresh_token, token_expiry")
-      .eq("user_id", profileId)
+      .eq("profile_id", profileId)
       .maybeSingle();
 
     if (error || !data) return null;
@@ -333,13 +333,13 @@ export async function disconnectCalendar(
     await supabase
       .from("google_calendar_events")
       .delete()
-      .eq("user_id", profileId);
+      .eq("profile_id", profileId);
 
     // Delete tokens
     const { error } = await supabase
       .from("google_calendar_tokens")
       .delete()
-      .eq("user_id", profileId);
+      .eq("profile_id", profileId);
 
     if (error) throw error;
     return {};
@@ -362,12 +362,12 @@ export async function storeSyncedEvent(
   try {
     const { error } = await supabase.from("google_calendar_events").upsert(
       {
-        user_id: profileId,
+        profile_id: profileId,
         event_id: eventId,
         google_event_id: googleEventId,
       },
       {
-        onConflict: "user_id,event_id",
+        onConflict: "profile_id,event_id",
       },
     );
 
@@ -393,7 +393,7 @@ export async function getSyncedEventId(
     const { data, error } = await supabase
       .from("google_calendar_events")
       .select("google_event_id")
-      .eq("user_id", profileId)
+      .eq("profile_id", profileId)
       .eq("event_id", eventId)
       .maybeSingle();
 

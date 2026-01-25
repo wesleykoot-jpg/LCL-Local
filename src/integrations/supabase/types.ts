@@ -389,6 +389,7 @@ export type Database = {
           image_url: string | null;
           is_private: boolean | null;
           location: string | null;
+          max_attendees: number | null;
           opening_hours: Json | null;
           parent_event_id: string | null;
           price_range: string | null;
@@ -420,6 +421,7 @@ export type Database = {
           image_url?: string | null;
           is_private?: boolean | null;
           location?: string | null;
+          max_attendees?: number | null;
           opening_hours?: Json | null;
           parent_event_id?: string | null;
           price_range?: string | null;
@@ -451,6 +453,7 @@ export type Database = {
           image_url?: string | null;
           is_private?: boolean | null;
           location?: string | null;
+          max_attendees?: number | null;
           opening_hours?: Json | null;
           parent_event_id?: string | null;
           price_range?: string | null;
@@ -477,6 +480,89 @@ export type Database = {
             columns: ["parent_event_id"];
             isOneToOne: false;
             referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      google_calendar_events: {
+        Row: {
+          created_at: string | null;
+          event_id: string;
+          google_event_id: string;
+          id: string;
+          profile_id: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          event_id: string;
+          google_event_id: string;
+          id?: string;
+          profile_id: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          event_id?: string;
+          google_event_id?: string;
+          id?: string;
+          profile_id?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_events_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "google_calendar_events_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      google_calendar_tokens: {
+        Row: {
+          access_token: string;
+          calendar_id: string | null;
+          created_at: string | null;
+          id: string;
+          profile_id: string;
+          refresh_token: string | null;
+          token_expiry: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          access_token: string;
+          calendar_id?: string | null;
+          created_at?: string | null;
+          id?: string;
+          profile_id: string;
+          refresh_token?: string | null;
+          token_expiry: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          access_token?: string;
+          calendar_id?: string | null;
+          created_at?: string | null;
+          id?: string;
+          profile_id?: string;
+          refresh_token?: string | null;
+          token_expiry?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_tokens_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -571,6 +657,7 @@ export type Database = {
           location_city: string | null;
           location_coordinates: string | null;
           location_country: string | null;
+          profile_complete: boolean | null;
           reliability_score: number | null;
           user_id: string | null;
           verified_resident: boolean | null;
@@ -585,6 +672,7 @@ export type Database = {
           location_city?: string | null;
           location_coordinates?: string | null;
           location_country?: string | null;
+          profile_complete?: boolean | null;
           reliability_score?: number | null;
           user_id?: string | null;
           verified_resident?: boolean | null;
@@ -599,6 +687,7 @@ export type Database = {
           location_city?: string | null;
           location_coordinates?: string | null;
           location_country?: string | null;
+          profile_complete?: boolean | null;
           reliability_score?: number | null;
           user_id?: string | null;
           verified_resident?: boolean | null;
@@ -703,46 +792,124 @@ export type Database = {
       };
       scraper_sources: {
         Row: {
-          base_url: string;
-          category_mapping: Json | null;
-          created_at: string | null;
-          discovery_params: Json | null;
-          enabled: boolean | null;
           id: string;
-          is_active: boolean | null;
-          last_scraped_at: string | null;
           name: string;
-          reliability_score: number | null;
-          selector_config: Json | null;
-          source_type: string;
+          url: string;
+          enabled: boolean;
+          config: Json;
+          last_scraped_at: string | null;
+          total_events_scraped: number | null;
+          last_success: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+          consecutive_failures: number | null;
+          last_error: string | null;
+          auto_disabled: boolean | null;
+          auto_discovered: boolean | null;
+          description: string | null;
+          requires_render: boolean | null;
+          language: string | null;
+          country: string | null;
+          default_coordinates: Json | null;
+          location_name: string | null;
+          last_discovery_at: string | null;
+          disabled_reason: string | null;
+          volatility_score: number | null;
+          next_scrape_at: string | null;
+          consecutive_errors: number | null;
+          last_rate_limit_remaining: number | null;
+          last_rate_limit_reset_ts: string | null;
+          last_rate_limit_retry_after_seconds: number | null;
+          fetcher_type: string | null;
+          consecutive_zero_events: number | null;
+          last_non_zero_scrape: string | null;
+          tier: string | null;
+          preferred_method: string | null;
+          deep_scrape_enabled: boolean | null;
+          detected_cms: string | null;
+          detected_framework_version: string | null;
+          last_payload_hash: string | null;
+          total_savings_prevented_runs: number | null;
         };
         Insert: {
-          base_url: string;
-          category_mapping?: Json | null;
-          created_at?: string | null;
-          discovery_params?: Json | null;
-          enabled?: boolean | null;
           id?: string;
-          is_active?: boolean | null;
-          last_scraped_at?: string | null;
           name: string;
-          reliability_score?: number | null;
-          selector_config?: Json | null;
-          source_type: string;
+          url: string;
+          enabled?: boolean;
+          config?: Json;
+          last_scraped_at?: string | null;
+          total_events_scraped?: number | null;
+          last_success?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          consecutive_failures?: number | null;
+          last_error?: string | null;
+          auto_disabled?: boolean | null;
+          auto_discovered?: boolean | null;
+          description?: string | null;
+          requires_render?: boolean | null;
+          language?: string | null;
+          country?: string | null;
+          default_coordinates?: Json | null;
+          location_name?: string | null;
+          last_discovery_at?: string | null;
+          disabled_reason?: string | null;
+          volatility_score?: number | null;
+          next_scrape_at?: string | null;
+          consecutive_errors?: number | null;
+          last_rate_limit_remaining?: number | null;
+          last_rate_limit_reset_ts?: string | null;
+          last_rate_limit_retry_after_seconds?: number | null;
+          fetcher_type?: string | null;
+          consecutive_zero_events?: number | null;
+          last_non_zero_scrape?: string | null;
+          tier?: string | null;
+          preferred_method?: string | null;
+          deep_scrape_enabled?: boolean | null;
+          detected_cms?: string | null;
+          detected_framework_version?: string | null;
+          last_payload_hash?: string | null;
+          total_savings_prevented_runs?: number | null;
         };
         Update: {
-          base_url?: string;
-          category_mapping?: Json | null;
-          created_at?: string | null;
-          discovery_params?: Json | null;
-          enabled?: boolean | null;
           id?: string;
-          is_active?: boolean | null;
-          last_scraped_at?: string | null;
           name?: string;
-          reliability_score?: number | null;
-          selector_config?: Json | null;
-          source_type?: string;
+          url?: string;
+          enabled?: boolean;
+          config?: Json;
+          last_scraped_at?: string | null;
+          total_events_scraped?: number | null;
+          last_success?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          consecutive_failures?: number | null;
+          last_error?: string | null;
+          auto_disabled?: boolean | null;
+          auto_discovered?: boolean | null;
+          description?: string | null;
+          requires_render?: boolean | null;
+          language?: string | null;
+          country?: string | null;
+          default_coordinates?: Json | null;
+          location_name?: string | null;
+          last_discovery_at?: string | null;
+          disabled_reason?: string | null;
+          volatility_score?: number | null;
+          next_scrape_at?: string | null;
+          consecutive_errors?: number | null;
+          last_rate_limit_remaining?: number | null;
+          last_rate_limit_reset_ts?: string | null;
+          last_rate_limit_retry_after_seconds?: number | null;
+          fetcher_type?: string | null;
+          consecutive_zero_events?: number | null;
+          last_non_zero_scrape?: string | null;
+          tier?: string | null;
+          preferred_method?: string | null;
+          deep_scrape_enabled?: boolean | null;
+          detected_cms?: string | null;
+          detected_framework_version?: string | null;
+          last_payload_hash?: string | null;
+          total_savings_prevented_runs?: number | null;
         };
         Relationships: [];
       };
@@ -806,6 +973,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_blocks: {
+        Row: {
+          id: string;
+          blocker_id: string;
+          blocked_id: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          blocker_id: string;
+          blocked_id: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          blocker_id?: string;
+          blocked_id?: string;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey";
+            columns: ["blocker_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey";
+            columns: ["blocked_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       verified_venues: {
         Row: {
           address: string | null;
@@ -841,7 +1044,32 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      get_friends_pulse: {
+        Args: {
+          current_user_id: string;
+        };
+        Returns: Json;
+      };
+      get_nearby_events: {
+        Args: {
+          user_lat: number;
+          user_long: number;
+          radius_km: number;
+          limit_count: number;
+          offset_count: number;
+          filter_category: string[];
+          filter_type: string[];
+        };
+        Returns: Json;
+      };
+      join_event_atomic: {
+        Args: {
+          p_event_id: string;
+          p_profile_id: string;
+          p_status?: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       fetcher_type_enum: "static" | "puppeteer" | "playwright" | "scrapingbee";
@@ -854,27 +1082,33 @@ export type Database = {
   };
 };
 
-type PublicSchema = Database[Extract<keyof Database, "public">];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof DatabaseWithoutInternals,
+  "public"
+>];
 
 export type Tables<
   PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends PublicTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? (DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[PublicTableNameOrOptions] extends {
         Row: infer R;
       }
       ? R
@@ -883,19 +1117,21 @@ export type Tables<
 
 export type TablesInsert<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends PublicTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I;
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][PublicTableNameOrOptions] extends {
         Insert: infer I;
       }
       ? I
@@ -904,19 +1140,21 @@ export type TablesInsert<
 
 export type TablesUpdate<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends PublicTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U;
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][PublicTableNameOrOptions] extends {
         Update: infer U;
       }
       ? U
@@ -925,15 +1163,17 @@ export type TablesUpdate<
 
 export type Enums<
   PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends PublicEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+> = PublicEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][PublicEnumNameOrOptions]
     : never;
 
 export const Constants = {
