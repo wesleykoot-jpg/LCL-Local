@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { joinEvent, checkEventAttendance } from "../api/eventService";
+import {
+  joinEvent,
+  checkEventAttendance,
+  toggleBookmark,
+  fetchBookmarkedEvents,
+} from "../api/eventService";
 import { hapticNotification } from "@/shared/lib/haptics";
 import toast from "react-hot-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -511,4 +516,80 @@ export function useJoinEvent(
   );
 
   return { handleJoinEvent, joiningEvents, isJoining };
+}
+
+/**
+ * Custom hook for handling event bookmarking (hearting)
+ * @param profileId - The ID of the user's profile
+ * @returns Object with handleToggleBookmark function, savedEvents set, and isSaved helper
+ */
+export function useSaveEvent(profileId: string | undefined) {
+  const queryClient = useQueryClient();
+  const [savingEvents, setSavingEvents] = useState<Set<string>>(new Set());
+
+  // Fetch bookmarks for the user
+  const { data: bookmarkedEvents = [] } = useQuery({
+    queryKey: queryKeys.profile.bookmarks(profileId || ""),
+    queryFn: () =>
+      profileId ? fetchBookmarkedEvents(profileId) : Promise.resolve([]),
+    enabled: !!profileId,
+  });
+
+  const savedEventIds = useMemo(
+    () => new Set(bookmarkedEvents.map((e) => e.id)),
+    [bookmarkedEvents],
+  );
+
+  const handleToggleBookmark = useCallback(
+    async (event: EventWithAttendees) => {
+      if (!profileId) {
+        toast.error("Please sign in to save events");
+        return;
+      }
+
+      setSavingEvents((prev) => new Set(prev).add(event.id));
+
+      try {
+        const isCurrentlySaved = savedEventIds.has(event.id);
+        const { error } = await toggleBookmark(
+          event.id,
+          profileId,
+          !isCurrentlySaved,
+        );
+
+        if (error) throw error;
+
+        await hapticNotification(isCurrentlySaved ? "warning" : "success");
+        toast.success(
+          isCurrentlySaved ? "Removed from saved events" : "Saved for later!",
+        );
+
+        // Invalidate queries to refresh UI
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.profile.bookmarks(profileId),
+        });
+      } catch (error) {
+        console.error("Error toggling bookmark:", error);
+        toast.error("Failed to update saved events");
+      } finally {
+        setSavingEvents((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(event.id);
+          return newSet;
+        });
+      }
+    },
+    [profileId, savedEventIds, queryClient],
+  );
+
+  const isSaved = useCallback(
+    (eventId: string) => savedEventIds.has(eventId),
+    [savedEventIds],
+  );
+  const isSaving = useCallback(
+    (eventId: string) => savingEvents.has(eventId),
+    [savingEvents],
+  );
+
+  return { handleToggleBookmark, bookmarkedEvents, isSaved, isSaving };
 }

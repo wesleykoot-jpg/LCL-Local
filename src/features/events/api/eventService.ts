@@ -460,6 +460,81 @@ export async function fetchUserEvents(profileIdOrUserId: string) {
 }
 
 /**
+ * Toggles a bookmark for an event
+ * @param eventId - ID of the event
+ * @param profileId - ID of the user's profile
+ * @param shouldBookmark - Whether to bookmark or unbookmark
+ */
+export async function toggleBookmark(
+  eventId: string,
+  profileId: string,
+  shouldBookmark: boolean,
+) {
+  try {
+    if (shouldBookmark) {
+      const { error } = await supabase.from("event_bookmarks").insert({
+        event_id: eventId,
+        profile_id: profileId,
+      });
+      if (error && error.code !== "23505") throw error; // Ignore duplicate
+    } else {
+      const { error } = await supabase
+        .from("event_bookmarks")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("profile_id", profileId);
+      if (error) throw error;
+    }
+    return { error: null };
+  } catch (error) {
+    console.error("Error toggling bookmark:", error);
+    return { error: error as Error };
+  }
+}
+
+/**
+ * Fetches all bookmarked events for a user
+ * @param profileId - The user's profile ID
+ */
+export async function fetchBookmarkedEvents(profileId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("event_bookmarks")
+      .select(
+        `
+        *,
+        event:events(
+          *,
+          attendee_count:event_attendees(count)
+        )
+      `,
+      )
+      .eq("profile_id", profileId);
+
+    if (error) throw error;
+
+    return (data || [])
+      .map((b) => {
+        const event = b.event as any;
+        if (!event) return null;
+
+        const count = Array.isArray(event.attendee_count)
+          ? event.attendee_count[0]?.count || 0
+          : 0;
+
+        return {
+          ...event,
+          attendee_count: count,
+        };
+      })
+      .filter(Boolean) as EventWithAttendees[];
+  } catch (error) {
+    console.error("Error fetching bookmarked events:", error);
+    return [];
+  }
+}
+
+/**
  * Service object for event-related API calls
  */
 export const eventService = {
@@ -469,4 +544,6 @@ export const eventService = {
   fetchUserEvents,
   fetchDiscoveryRails,
   fetchMissionModeEvents,
+  toggleBookmark,
+  fetchBookmarkedEvents,
 };

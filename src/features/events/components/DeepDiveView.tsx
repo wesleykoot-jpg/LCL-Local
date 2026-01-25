@@ -25,6 +25,8 @@ interface DeepDiveViewProps {
   onEventClick?: (eventId: string) => void;
   onJoinEvent?: (eventId: string) => Promise<void>;
   isJoining: (eventId: string) => boolean;
+  isSaved: (eventId: string) => boolean;
+  onSave: (event: EventWithAttendees) => void;
   currentUserProfileId?: string;
   loading?: boolean;
   /** Callback when filter button is clicked */
@@ -124,6 +126,8 @@ const MasonryEventCard = memo(function MasonryEventCard({
   onClick,
   onJoin,
   isJoining,
+  isSaved,
+  onSave,
   hasJoined,
   tall = false,
 }: {
@@ -131,10 +135,11 @@ const MasonryEventCard = memo(function MasonryEventCard({
   onClick?: () => void;
   onJoin?: () => void;
   isJoining?: boolean;
+  isSaved?: boolean;
+  onSave?: () => void;
   hasJoined?: boolean;
   tall?: boolean;
 }) {
-  const [isSaved, setIsSaved] = useState(false);
   const { src: imageUrl, onError: handleImageError } = useImageFallback(
     event.image_url || "",
     event.category,
@@ -144,9 +149,9 @@ const MasonryEventCard = memo(function MasonryEventCard({
     async (e: React.MouseEvent) => {
       e.stopPropagation();
       await hapticImpact("light");
-      setIsSaved(!isSaved);
+      onSave?.();
     },
-    [isSaved],
+    [onSave],
   );
 
   const handleJoinClick = useCallback(
@@ -266,6 +271,8 @@ export const DeepDiveView = memo(function DeepDiveView({
   onEventClick,
   onJoinEvent,
   isJoining,
+  isSaved,
+  onSave,
   currentUserProfileId,
   loading,
   onFilterClick,
@@ -456,6 +463,8 @@ export const DeepDiveView = memo(function DeepDiveView({
                                   onClick={() => onEventClick?.(event.id)}
                                   onJoin={() => onJoinEvent?.(event.id)}
                                   isJoining={isJoining(event.id)}
+                                  isSaved={isSaved(event.id)}
+                                  onSave={() => onSave(event)}
                                   hasJoined={hasJoined}
                                 />
                               </div>

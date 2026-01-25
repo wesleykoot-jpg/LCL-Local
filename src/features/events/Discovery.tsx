@@ -9,7 +9,11 @@ import {
 import { useAuth } from "@/features/auth/index.ts";
 import { useLocation } from "@/features/location/index.ts";
 import { useEventsQuery } from "./hooks/useEventsQuery.ts";
-import { useJoinEvent, type EventWithAttendees } from "./hooks/hooks.ts";
+import {
+  useJoinEvent,
+  useSaveEvent,
+  type EventWithAttendees,
+} from "./hooks/hooks.ts";
 import { FeaturedEventHero } from "./components/FeaturedEventHero.tsx";
 import { SolidSearchBar } from "./components/SolidSearchBar.tsx";
 import { DeepDiveView } from "./components/DeepDiveView.tsx";
@@ -108,6 +112,7 @@ const Discovery = () => {
     enabled: mode === "browsing",
     // In the future, we can pass profile.interests or similar here
     selectedCategories: [],
+    bookmarkedEvents,
   });
 
   // Rails are "loading" if the source events are loading
@@ -138,6 +143,12 @@ const Discovery = () => {
     profile?.id,
     refetch,
   );
+
+  const {
+    handleToggleBookmark,
+    isSaved,
+    isSaving: isSavingBookmark,
+  } = useSaveEvent(profile?.id);
 
   // Featured event (top event with image) - Derived from allTokens or could be first rail item
   const featuredEvent = useMemo(() => {
@@ -365,6 +376,8 @@ const Discovery = () => {
                       onJoinEvent={handleJoinEvent}
                       isJoining={isJoining(featuredEvent.id)}
                       hasJoined={hasJoinedFeatured}
+                      isSaved={isSaved(featuredEvent.id)}
+                      onSave={() => handleToggleBookmark(featuredEvent)}
                     />
                   </motion.div>
                 )}
@@ -434,6 +447,8 @@ const Discovery = () => {
                     onEventClick={handleEventClick}
                     onJoinEvent={handleJoinEvent}
                     isJoining={isJoining}
+                    isSaved={isSaved}
+                    onSave={handleToggleBookmark}
                     onLoadMore={() => setOffset((prev) => prev + LIMIT)}
                     hasMore={allEvents.length >= LIMIT}
                   />
@@ -477,6 +492,11 @@ const Discovery = () => {
               onClose={handleCloseEventDetail}
               onJoin={() => handleJoinEvent(selectedEvent.id)}
               isJoining={isJoining(selectedEvent.id)}
+              hasJoined={selectedEvent.attendees?.some(
+                (a) => a.profile?.id === profile?.id,
+              )}
+              isSaved={isSaved(selectedEvent.id)}
+              onSave={() => handleToggleBookmark(selectedEvent)}
             />
           )}
 

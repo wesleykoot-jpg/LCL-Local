@@ -69,6 +69,16 @@ export const useUnifiedItinerary = () => {
     staleTime: 0, // Always fetch fresh
   });
 
+  // 1.5 Fetch bookmarked events (Saved for later)
+  const { data: bookmarkedEvents } = useQuery({
+    queryKey: queryKeys.profile.bookmarks(effectiveUserId || "anon"),
+    queryFn: () =>
+      effectiveUserId
+        ? eventService.fetchBookmarkedEvents(effectiveUserId)
+        : Promise.resolve([]),
+    enabled: !!effectiveUserId,
+  });
+
   // 2. Merge Real Events
   const timelineItems = useMemo(() => {
     const items: ItineraryItem[] = [];
@@ -113,6 +123,44 @@ export const useUnifiedItinerary = () => {
       });
     }
 
+    // Add Bookmarked Events (Saved)
+    if (bookmarkedEvents && Array.isArray(bookmarkedEvents)) {
+      bookmarkedEvents.forEach((event: any) => {
+        // Skip if already in myEvents (joined)
+        if (items.some((i) => i.id === event.id)) return;
+
+        let startTime: Date;
+        if (event.event_date) {
+          startTime = new Date(event.event_date);
+        } else {
+          return;
+        }
+
+        if (event.event_time && event.event_time !== "TBD") {
+          const timeMatch = event.event_time.match(/^(\d{1,2}):(\d{2})/);
+          if (timeMatch) {
+            startTime.setHours(
+              parseInt(timeMatch[1], 10),
+              parseInt(timeMatch[2], 10),
+            );
+          }
+        }
+
+        items.push({
+          id: event.id,
+          type: "LCL_EVENT",
+          title: event.title,
+          startTime,
+          location: event.venue_name || event.location,
+          image: event.image_url,
+          category: event.category,
+          attendeeCount: event.attendee_count,
+          status: "pending",
+          originalData: event,
+        });
+      });
+    }
+
     // Transform Google Calendar (Real)
     if (calendarEvents && Array.isArray(calendarEvents)) {
       calendarEvents.forEach((evt: any) => {
@@ -140,7 +188,7 @@ export const useUnifiedItinerary = () => {
     return itemsWithConflicts.sort(
       (a, b) => a.startTime.getTime() - b.startTime.getTime(),
     );
-  }, [myEvents, calendarEvents]);
+  }, [myEvents, calendarEvents, bookmarkedEvents]);
 
   // 4. Group by Day
   const groupedTimeline = useMemo(() => {
@@ -162,9 +210,13 @@ export const useUnifiedItinerary = () => {
     timelineItems,
     isLoading: false,
     isEmpty: timelineItems.length === 0,
-    refresh: () =>
+    refresh: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.profile.myEvents(effectiveUserId || ""),
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.profile.bookmarks(effectiveUserId || ""),
+      });
+    },
   };
 };
