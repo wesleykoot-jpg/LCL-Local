@@ -1,8 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 
-// Constants
-export const MAX_RETRY_ATTEMPTS = 3;
-
 export interface ScraperSource {
   id: string;
   name: string;
@@ -121,56 +118,6 @@ export async function triggerWorker(): Promise<{
   }
 
   return data ?? { success: false, error: "Unknown error" };
-}
-
-/**
- * Retry failed jobs
- */
-export async function retryFailedJobs(): Promise<{
-  success: boolean;
-  retriedCount: number;
-  error?: string;
-}> {
-  try {
-    // Get all failed jobs
-    const { data: failedJobs, error: fetchError } = await supabase
-      .from("scrape_jobs")
-      .select("id, source_id")
-      .eq("status", "failed")
-      .lt("attempts", MAX_RETRY_ATTEMPTS); // Only retry if attempts < MAX_RETRY_ATTEMPTS
-
-    if (fetchError) {
-      throw new Error(fetchError.message);
-    }
-
-    if (!failedJobs || failedJobs.length === 0) {
-      return { success: true, retriedCount: 0 };
-    }
-
-    // Reset them to pending
-    const { error: updateError } = await supabase
-      .from("scrape_jobs")
-      .update({
-        status: "pending",
-        error_message: null,
-      })
-      .in(
-        "id",
-        failedJobs.map((j) => j.id),
-      );
-
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
-
-    return { success: true, retriedCount: failedJobs.length };
-  } catch (error) {
-    return {
-      success: false,
-      retriedCount: 0,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
 }
 
 /**
