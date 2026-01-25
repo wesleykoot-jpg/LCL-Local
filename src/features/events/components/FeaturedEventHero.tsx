@@ -1,6 +1,6 @@
 import { memo, useCallback, type MouseEvent } from "react";
 import { motion } from "framer-motion";
-import { Heart, Clock, MapPin, Users, Loader2 } from "lucide-react";
+import { Heart, Clock, MapPin, Users, Loader2, GitFork } from "lucide-react";
 import { CategoryBadge } from "./CategoryBadge";
 import { CATEGORY_MAP } from "@/shared/lib/categories";
 import { hapticImpact } from "@/shared/lib/haptics";
@@ -10,6 +10,7 @@ interface FeaturedEventHeroProps {
   event: EventWithAttendees;
   onEventClick?: (eventId: string) => void;
   onJoinEvent?: (eventId: string) => Promise<void>;
+  onFork?: (eventId: string) => void;
   isJoining?: boolean;
   hasJoined?: boolean;
   isSaved?: boolean;
@@ -77,6 +78,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
   event,
   onEventClick,
   onJoinEvent,
+  onFork,
   isJoining,
   hasJoined,
   isSaved,
@@ -94,6 +96,15 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
       }
     },
     [hasJoined, onJoinEvent, event.id],
+  );
+
+  const handleFork = useCallback(
+    async (e: MouseEvent) => {
+      e.stopPropagation();
+      await hapticImpact("medium");
+      onFork?.(event.id);
+    },
+    [onFork, event.id],
   );
 
   const handleSave = useCallback(
@@ -174,24 +185,36 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
           </span>
         </div>
 
-        {/* Join button */}
-        <button
-          onClick={handleJoin}
-          disabled={isJoining || hasJoined}
-          className={`w-full h-touch rounded-button text-[15px] font-semibold transition-all active:scale-[0.98] ${
-            hasJoined
-              ? "bg-muted text-text-secondary"
-              : "bg-brand-primary text-white hover:bg-brand-secondary"
-          }`}
-        >
-          {isJoining ? (
-            <Loader2 size={18} className="animate-spin mx-auto" />
-          ) : hasJoined ? (
-            "✓ Joined"
-          ) : (
-            "Join Event"
-          )}
-        </button>
+        {/* Action Buttons: Split Layout (Fork 35% | Join 65%) */}
+        <div className="flex gap-3">
+          {/* Fork Button */}
+          <button
+            onClick={handleFork}
+            className="flex-none w-[35%] h-touch rounded-button border border-border bg-surface-base text-text-primary text-[15px] font-semibold flex items-center justify-center gap-2 hover:bg-muted transition-all active:scale-[0.98]"
+          >
+            <GitFork size={18} />
+            <span>Fork</span>
+          </button>
+
+          {/* Join Button */}
+          <button
+            onClick={handleJoin}
+            disabled={isJoining || hasJoined}
+            className={`flex-1 h-touch rounded-button text-[15px] font-semibold transition-all active:scale-[0.98] ${
+              hasJoined
+                ? "bg-muted text-text-secondary"
+                : "bg-brand-primary text-white hover:bg-brand-secondary"
+            }`}
+          >
+            {isJoining ? (
+              <Loader2 size={18} className="animate-spin mx-auto" />
+            ) : hasJoined ? (
+              "✓ Joined"
+            ) : (
+              "Join Event"
+            )}
+          </button>
+        </div>
       </div>
     </motion.div>
   );

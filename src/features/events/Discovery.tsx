@@ -81,6 +81,8 @@ const Discovery = () => {
   const [explicitEvent, setExplicitEvent] = useState<EventWithAttendees | null>(
     null,
   );
+  const [forkParentEvent, setForkParentEvent] =
+    useState<EventWithAttendees | null>(null);
 
   // Mission Mode state
   const [missionIntent, setMissionIntent] = useState<MissionIntent | null>(
@@ -89,11 +91,8 @@ const Discovery = () => {
   const [showMissionDrawer, setShowMissionDrawer] = useState(false);
 
   // Onboarding state for location change
-  const {
-    showOnboarding,
-    setShowOnboarding,
-    completeOnboarding,
-  } = useOnboarding();
+  const { showOnboarding, setShowOnboarding, completeOnboarding } =
+    useOnboarding();
 
   // 1. Fetch all events for Search/DeepDive (Client-side filtering for now)
   const {
@@ -120,7 +119,8 @@ const Discovery = () => {
     enabled: mode === "browsing",
     selectedCategories: [], // Will be populated from profile when available
     bookmarkedEvents,
-    locationCity: locationPrefs.manualZone || profile?.location_city || undefined,
+    locationCity:
+      locationPrefs.manualZone || profile?.location_city || undefined,
     country: "Netherlands", // Default for now, could be detected
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
@@ -206,6 +206,17 @@ const Discovery = () => {
       if (!eventId) setSelectedEventId(null);
     },
     [selectedEventId, joinEvent],
+  );
+
+  const handleForkEvent = useCallback(
+    (eventId: string) => {
+      const event = allEvents.find((e) => e.id === eventId);
+      if (event) {
+        setForkParentEvent(event);
+        setShowCreateModal(true);
+      }
+    },
+    [allEvents],
   );
 
   const handleNavigate = useCallback(
@@ -384,6 +395,7 @@ const Discovery = () => {
                       hasJoined={hasJoinedFeatured}
                       isSaved={isSaved(featuredEvent.id)}
                       onSave={() => handleToggleBookmark(featuredEvent)}
+                      onFork={handleForkEvent}
                     />
                   </motion.div>
                 )}
@@ -488,7 +500,11 @@ const Discovery = () => {
           {showCreateModal && (
             <CreateEventModal
               isOpen={showCreateModal}
-              onClose={() => setShowCreateModal(false)}
+              onClose={() => {
+                setShowCreateModal(false);
+                setForkParentEvent(null);
+              }}
+              initialParentEvent={forkParentEvent || undefined}
             />
           )}
 
