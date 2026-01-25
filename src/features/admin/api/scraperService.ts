@@ -104,23 +104,6 @@ export async function triggerCoordinator(): Promise<CoordinatorResult> {
 }
 
 /**
- * Trigger scrape worker to process queued jobs
- */
-export async function triggerWorker(): Promise<{
-  success: boolean;
-  processed?: number;
-  error?: string;
-}> {
-  const { data, error } = await supabase.functions.invoke("scrape-worker");
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return data ?? { success: false, error: "Unknown error" };
-}
-
-/**
  * Fetch recent Supabase logs (errors, jobs, discovery)
  */
 export async function fetchLogs(minutes: number = 60): Promise<LogsResult> {
