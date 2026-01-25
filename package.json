@@ -7,6 +7,7 @@
     "dev": "npx vite",
     "type-check": "tsc --noEmit",
     "build": "npm run type-check && npx vite build",
+    "build:ci": "npm run type-check && npx vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "test": "vitest run",
