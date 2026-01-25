@@ -316,6 +316,9 @@
   .mb-safe {
     margin-bottom: env(safe-area-inset-bottom, 0px);
   }
+  .top-safe {
+    top: env(safe-area-inset-top, 0px);
+  }
 
   /* Minimum touch target (44pt iOS HIG) */
   .min-touch {

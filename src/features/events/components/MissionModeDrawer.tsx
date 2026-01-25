@@ -103,7 +103,7 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
           }}
           onDragEnd={handleDragEnd}
           style={{ height: DRAWER_HEIGHT }}
-          className="fixed bottom-0 left-0 right-0 bg-background rounded-t-card shadow-2xl z-50 flex flex-col overflow-hidden border-t"
+          className="fixed bottom-0 left-0 right-0 bg-background rounded-t-card shadow-2xl z-50 flex flex-col overflow-hidden border-t pb-safe"
         >
           {/* Drag Handle */}
           <div className="flex justify-center pt-3 pb-1 shrink-0 touch-pan-y">

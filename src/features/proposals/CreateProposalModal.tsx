@@ -290,7 +290,7 @@ export const CreateProposalModal = memo(function CreateProposalModal({
           </div>
 
           {/* Action Button */}
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-border pb-safe">
             <button
               onClick={handleSubmit}
               disabled={!selectedTime || isSubmitting}
