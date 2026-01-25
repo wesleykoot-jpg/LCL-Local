@@ -9,7 +9,6 @@ import {
 } from "@/shared/components";
 import { OnboardingWizard } from "@/features/profile";
 import { FeaturedEventHero } from "./components/FeaturedEventHero";
-import { FriendsPulseRail } from "./components/FriendsPulseRail";
 import { HorizontalEventCarousel } from "./components/HorizontalEventCarousel";
 import { EventStackCard } from "./components/EventStackCard";
 import { TimeFilterPills, type TimeFilter } from "./components/TimeFilterPills";
@@ -174,20 +173,6 @@ const Feed = () => {
       (e) => e.image_url || (e.attendee_count && e.attendee_count > 2),
     );
   }, [rankedEvents]);
-
-  // Trending events for carousel
-  const trendingEvents = useMemo(() => {
-    return getTrendingEvents(
-      rankedEvents.filter((e) => e.id !== featuredEvent?.id),
-    );
-  }, [rankedEvents, featuredEvent]);
-
-  // Upcoming events for carousel
-  const upcomingEvents = useMemo(() => {
-    return getUpcomingEvents(
-      rankedEvents.filter((e) => e.id !== featuredEvent?.id),
-    );
-  }, [rankedEvents, featuredEvent]);
 
   // Remaining events as stacks
   const remainingStacks = useMemo(() => {
@@ -397,24 +382,6 @@ const Feed = () => {
               </motion.div>
             ) : (
               <>
-                {/* Featured Hero - Only on 'all' filter */}
-                {activeFilter === "all" && featuredEvent && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    <FeaturedEventHero
-                      event={featuredEvent}
-                      onEventClick={handleEventClick}
-                      onJoinEvent={handleJoinEvent}
-                      isJoining={isJoining(featuredEvent.id)}
-                      hasJoined={hasJoinedFeatured}
-                      onFork={handleForkEvent}
-                    />
-                  </motion.div>
-                )}
-
                 {/* Featured Hero - Only on 'all' filter */}
                 {activeFilter === "all" && featuredEvent && (
                   <motion.div
