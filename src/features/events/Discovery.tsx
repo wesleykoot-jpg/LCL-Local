@@ -110,9 +110,6 @@ const Discovery = () => {
   // Now uses synchronous calculation based on allEvents
   const discoveryLayout = useDiscoveryRails({
     allEvents,
-    userId: profile?.id,
-    userLocation: userLocation || undefined,
-    radiusKm: locationPrefs.radiusKm,
     enabled: mode === "browsing",
     // In the future, we can pass profile.interests or similar here
     selectedCategories: [],

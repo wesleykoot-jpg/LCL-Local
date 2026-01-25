@@ -86,7 +86,7 @@ function filterByTime(
 }
 
 // Format event time
-function formatTime(timeStr: string): string {
+function formatTime(timeStr: string | null): string {
   if (!timeStr) return "";
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
     const [hours, minutes] = timeStr.split(":").map(Number);
@@ -98,7 +98,8 @@ function formatTime(timeStr: string): string {
 }
 
 // Format event date
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return "";
   const datePart = dateStr.split("T")[0].split(" ")[0];
   const eventDate = new Date(datePart + "T00:00:00");
   const today = new Date();
@@ -368,7 +369,7 @@ export const DeepDiveView = memo(function DeepDiveView({
               variant="outline"
               size="icon"
               onClick={handleFilterClick}
-              className={`flex-shrink-0 rounded-full w-11 h-11 ${showMap ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+              className={`shrink-0 rounded-full w-11 h-11 ${showMap ? "opacity-0 pointer-events-none" : "opacity-100"}`}
               aria-label="Open filters"
             >
               <SlidersHorizontal size={18} />

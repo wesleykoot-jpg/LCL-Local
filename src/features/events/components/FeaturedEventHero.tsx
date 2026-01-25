@@ -112,7 +112,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
       whileTap={{ scale: 0.96 }}
     >
       {/* Image Section */}
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className="relative aspect-4/3 overflow-hidden">
         <img
           src={imageUrl}
           alt={event.title}
@@ -120,7 +120,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
           loading="eager"
         />
         {/* Netflix-style Scrim */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
 
         {/* Heart/Save button - Airbnb style top right */}
         <button
@@ -155,7 +155,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
 
         {/* Location */}
         <p className="text-[15px] text-text-secondary mb-2 flex items-center gap-1">
-          <MapPin size={14} className="flex-shrink-0" />
+          <MapPin size={14} className="shrink-0" />
           <span className="truncate">{event.venue_name}</span>
         </p>
 
@@ -177,7 +177,7 @@ export const FeaturedEventHero = memo(function FeaturedEventHero({
         <button
           onClick={handleJoin}
           disabled={isJoining || hasJoined}
-          className={`w-full h-[48px] rounded-button text-[15px] font-semibold transition-all active:scale-[0.98] ${
+          className={`w-full h-touch rounded-button text-[15px] font-semibold transition-all active:scale-[0.98] ${
             hasJoined
               ? "bg-muted text-text-secondary"
               : "bg-brand-primary text-white hover:bg-brand-secondary"
