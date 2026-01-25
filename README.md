@@ -204,6 +204,7 @@ npx cap open ios
 | [docs/core/FEED_ALGORITHM.md](docs/core/FEED_ALGORITHM.md)     | Feed ranking algorithm details                                |
 | [docs/core/BACKEND_SETUP.md](docs/core/BACKEND_SETUP.md)       | Database configuration                                        |
 | [docs/core/DEPLOYMENT_GUIDE.md](docs/core/DEPLOYMENT_GUIDE.md) | iOS App Store deployment                                      |
+| [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md)         | Vercel preview deployments for PRs                            |
 | [docs/design_system/README.md](docs/design_system/README.md)   | **Design System v4.0**                                        |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                             | Documentation & Contribution Guidelines                       |
 
