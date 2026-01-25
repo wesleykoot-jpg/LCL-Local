@@ -127,12 +127,28 @@ class RitualsRailProvider extends BaseRailProvider {
   ): EventWithAttendees[] {
     const ritualEvents = filterRitualEvents(events);
 
-    // Sort by upcoming date (filter out events without dates)
-    return [...ritualEvents]
-      .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
+    // Filter for future events with dates
+    const futureRituals = ritualEvents.filter(
+      (e) => e.event_date && new Date(e.event_date) >= new Date()
+    );
+
+    // Fallback: if no future rituals, show recurring events sorted by match
+    let resultEvents = futureRituals;
+    if (resultEvents.length === 0) {
+      // Show events sorted by match percentage as fallback
+      resultEvents = [...events]
+        .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
+        .slice(0, 10);
+    }
+
+    // Sort by upcoming date
+    return [...resultEvents]
       .sort(
-        (a, b) =>
-          new Date(a.event_date!).getTime() - new Date(b.event_date!).getTime(),
+        (a, b) => {
+          if (!a.event_date) return 1;
+          if (!b.event_date) return -1;
+          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+        }
       )
       .slice(0, 10);
   }
@@ -190,8 +206,20 @@ class ThisWeekendRailProvider extends BaseRailProvider {
       return eventDate >= weekendStart && eventDate <= weekendEnd;
     });
 
+    // Fallback: if no weekend events, show upcoming events within next 7 days
+    let resultEvents = weekendEvents;
+    if (resultEvents.length === 0) {
+      const nextWeek = new Date(now);
+      nextWeek.setDate(now.getDate() + 7);
+      resultEvents = events.filter((e) => {
+        if (!e.event_date) return false;
+        const eventDate = new Date(e.event_date);
+        return eventDate >= now && eventDate <= nextWeek;
+      });
+    }
+
     // Sort by attendee count (popular events first) then by date
-    return [...weekendEvents]
+    return [...resultEvents]
       .sort((a, b) => {
         const countDiff = (b.attendee_count || 0) - (a.attendee_count || 0);
         if (countDiff !== 0) return countDiff;
@@ -238,9 +266,16 @@ class LocationRailProvider extends BaseRailProvider {
       return true; // Include if no distance info
     });
 
-    // Sort by distance (closest first), filter out events without dates
-    return [...nearbyEvents]
-      .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
+    // Filter for future events with dates
+    const futureEvents = nearbyEvents.filter(
+      (e) => e.event_date && new Date(e.event_date) >= new Date()
+    );
+
+    // Fallback: if no future nearby events, show any nearby events
+    let resultEvents = futureEvents.length > 0 ? futureEvents : nearbyEvents;
+
+    // Sort by distance (closest first)
+    return [...resultEvents]
       .sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999))
       .slice(0, 10);
   }
@@ -280,8 +315,28 @@ class PulseRailProvider extends BaseRailProvider {
         new Date(e.event_date) >= new Date(),
     );
 
+    // Fallback: if no trending events, show events with any attendees or highest match
+    let resultEvents = trendingEvents;
+    if (resultEvents.length === 0) {
+      // Try events with at least 1 attendee
+      resultEvents = events.filter(
+        (e) =>
+          (e.attendee_count || 0) >= 1 &&
+          e.event_date &&
+          new Date(e.event_date) >= new Date(),
+      );
+      
+      // If still empty, just show top matched future events
+      if (resultEvents.length === 0) {
+        resultEvents = events
+          .filter((e) => !e.event_date || new Date(e.event_date) >= new Date())
+          .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
+          .slice(0, 10);
+      }
+    }
+
     // Sort by attendee count (highest first)
-    return [...trendingEvents]
+    return [...resultEvents]
       .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0))
       .slice(0, 10);
   }
