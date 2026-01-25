@@ -8,9 +8,6 @@ import { groupEventsIntoStacks } from "../api/feedGrouping.ts";
 
 interface UseDiscoveryRailsOptions {
   allEvents: EventWithAttendees[];
-  userId?: string;
-  userLocation?: { lat: number; lng: number };
-  radiusKm?: number;
   enabled?: boolean;
   selectedCategories?: string[];
   bookmarkedEvents?: EventWithAttendees[];
@@ -18,9 +15,6 @@ interface UseDiscoveryRailsOptions {
 
 export function useDiscoveryRails({
   allEvents,
-  userId,
-  userLocation,
-  radiusKm = 25,
   enabled = true,
   selectedCategories = [],
   bookmarkedEvents = [],
@@ -35,7 +29,7 @@ export function useDiscoveryRails({
     // --- Rail 0: "Saved for later" (Personalized) ---
     if (bookmarkedEvents.length > 0) {
       sections.push({
-        type: "traditional", // or social/personalized
+        type: "traditional",
         title: "Saved for later",
         description: "Your hearted events we thought you'd love",
         items: bookmarkedEvents,

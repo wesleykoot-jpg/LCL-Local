@@ -197,14 +197,14 @@ export function useEvents(options?: {
           : 0;
 
         const attendees = Array.isArray(event.attendees)
-          ? (event.attendees as EventAttendee[])
+          ? (event.attendees as unknown as EventAttendee[])
           : [];
 
         return {
           ...event,
           attendee_count: count,
           attendees,
-        };
+        } as EventWithAttendees;
       });
 
       // If currentUserProfileId is provided, fetch user's attendance for each event
@@ -258,7 +258,16 @@ export function useEvents(options?: {
     } finally {
       setLoading(false);
     }
-  }, [categoryKey, eventTypeKey, currentUserProfileId, parentEventId]);
+  }, [
+    categoryKey,
+    eventTypeKey,
+    currentUserProfileId,
+    parentEventId,
+    options?.category,
+    options?.eventType,
+    options?.currentUserProfileId,
+    options?.parentEventId,
+  ]);
 
   useEffect(() => {
     fetchEvents();
@@ -356,7 +365,7 @@ export function useAllUserCommitments(profileId: string) {
       // Process and sort by event date
       const commitmentsWithEvents = (attendanceData || [])
         .map((attendance) => {
-          const event = attendance.event as EventWithCount;
+          const event = attendance.event as unknown as EventWithCount;
           return {
             ...event,
             ticket_number: attendance.ticket_number,
@@ -369,7 +378,7 @@ export function useAllUserCommitments(profileId: string) {
 
       const createdByUser = (createdEvents || []).map((event) => ({
         ...event,
-        attendee_count: getAttendeeCount(event as EventWithCount),
+        attendee_count: getAttendeeCount(event as unknown as EventWithCount),
       })) as Array<EventWithAttendees & { ticket_number?: string }>;
 
       // Deduplicate by event ID: attendance records go first (keep ticket info), then add created events if absent
@@ -397,7 +406,8 @@ export function useAllUserCommitments(profileId: string) {
     refetchOnWindowFocus: true, // Refetch when user returns to the tab
   });
 
-  const commitments = query.data || [];
+  const commitmentsRaw = query.data || [];
+  const commitments = useMemo(() => commitmentsRaw, [commitmentsRaw]);
 
   // Group by month - memoized to avoid recalculation on every render
   const groupedByMonth = useMemo(() => {
