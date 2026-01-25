@@ -5,6 +5,24 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
+const redirectUrl = (() => {
+  const envUrl = import.meta.env.VITE_SITE_URL;
+
+  if (envUrl) {
+    try {
+      return new URL(envUrl).origin;
+    } catch (error) {
+      console.error('[Auth] Invalid VITE_SITE_URL, falling back to window origin', error);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  return '';
+})();
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -212,12 +230,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const redirectUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+
   const signInWithGoogle = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: redirectUrl,
         },
       });
       return { error };
@@ -231,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: redirectUrl,
         },
       });
       return { error };
