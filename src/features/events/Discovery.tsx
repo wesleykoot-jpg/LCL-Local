@@ -114,13 +114,17 @@ const Discovery = () => {
   );
 
   // 2. Fetch Discovery Rails (Client-side generation)
-  // Now uses synchronous calculation based on allEvents
+  // Now uses strategy-based registry system with psychological pillars
   const discoveryLayout = useDiscoveryRails({
     allEvents,
     enabled: mode === "browsing",
-    // In the future, we can pass profile.interests or similar here
-    selectedCategories: [],
+    selectedCategories: [], // Will be populated from profile when available
     bookmarkedEvents,
+    locationCity: locationPrefs.manualZone || profile?.location_city || undefined,
+    country: "Netherlands", // Default for now, could be detected
+    userLocation: userLocation || undefined,
+    radiusKm: locationPrefs.radiusKm,
+    profileId: profile?.id,
   });
 
   // Rails are "loading" if the source events are loading
