@@ -266,6 +266,22 @@ export interface NormalizedEvent {
   detail_url?: string | null;
   persona_tags?: string[];
   tags?: string[];
+  // Enhanced fields for improved data quality
+  end_time?: string;           // Event end time (HH:MM)
+  end_date?: string;           // Event end date (YYYY-MM-DD) for multi-day events
+  price?: string;              // Price info (e.g., "€15", "Gratis", "€10-€25")
+  price_currency?: string;     // ISO 4217 currency code (e.g., "EUR")
+  price_min?: number;          // Minimum price in cents
+  price_max?: number;          // Maximum price in cents
+  tickets_url?: string;        // Direct ticket purchase URL
+  organizer?: string;          // Event organizer name
+  organizer_url?: string;      // Organizer website
+  accessibility?: string;      // Accessibility info
+  age_restriction?: string;    // Age restriction (e.g., "18+", "All ages")
+  performer?: string;          // Main performer/artist name
+  event_status?: 'scheduled' | 'cancelled' | 'postponed' | 'rescheduled';
+  data_completeness?: number;  // 0-1 score indicating how complete the data is
+  data_source?: 'listing' | 'detail' | 'hybrid';  // Where the data came from
 }
 
 // ============================================================================

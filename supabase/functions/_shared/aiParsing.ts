@@ -204,11 +204,26 @@ ${rawEvent.rawHtml}`;
   };
 }
 
+/**
+ * Enhanced interface for detailed event parsing with AI.
+ * Includes additional fields for improved data quality.
+ */
 export interface ParsedDetailedEventAI extends ParsedEventAI {
     price?: string;
+    price_currency?: string;
+    price_min?: number;
+    price_max?: number;
     organizer?: string;
+    organizer_url?: string;
     tickets_url?: string;
+    end_time?: string;
+    end_date?: string;
+    performer?: string;
+    accessibility?: string;
+    age_restriction?: string;
+    event_status?: 'scheduled' | 'cancelled' | 'postponed' | 'rescheduled';
     image_user_prompt?: string; // Debug info
+    data_source?: 'listing' | 'detail' | 'hybrid';
 }
 
 export async function parseDetailedEventWithAI(
@@ -221,23 +236,54 @@ export async function parseDetailedEventWithAI(
   const { targetYear = new Date().getFullYear(), language = "nl" } = options;
   const today = new Date().toISOString().split("T")[0];
   
-  const systemPrompt = `Je bent een event data expert. Haal rijke evenementen-informatie uit de HTML Context.
-- Retourneer uitsluitend geldige JSON.
-- Weiger evenementen die niet in ${targetYear} plaatsvinden.
-- Houd tekst in originele taal (${language}).
-- Velden:
-  - title: string
-  - description: string (gebruik de volledige beschrijving van de detail pagina indien beschikbaar)
-  - event_date: YYYY-MM-DD
-  - event_time: HH:MM of "TBD"
-  - venue_name: string
-  - venue_address: string
-  - image_url: string (URL van de hoogste resolutie afbeelding)
-  - price: string (bijv. "€15,00", "Gratis")
-  - organizer: string
-  - tickets_url: string
-  - persona_tags: string[] (e.g. ['#Culture', '#Social', '#Nightlife', '#Family', '#Active'])
-- category_key: Kies uit [MUSIC, SOCIAL, ACTIVE, CULTURE, FOOD, NIGHTLIFE, FAMILY, CIVIC, COMMUNITY]. Retourneer in HOOFDLETTERS.`;
+  // Enhanced AI prompt for comprehensive data extraction
+  const systemPrompt = `Je bent een event data expert. Haal ALLE beschikbare evenementen-informatie uit de HTML Context.
+BELANGRIJK: Prioriteer detail page content boven listing content voor rijkere data.
+
+Retourneer uitsluitend geldige JSON met deze velden:
+
+VERPLICHTE VELDEN:
+- title: string (evenement titel)
+- description: string (VOLLEDIGE beschrijving van detail pagina, niet afkorten)
+- event_date: string (YYYY-MM-DD formaat)
+- event_time: string (HH:MM formaat of "TBD")
+- category_key: string (kies uit: MUSIC, SOCIAL, ACTIVE, CULTURE, FOOD, NIGHTLIFE, FAMILY, CIVIC, COMMUNITY)
+
+LOCATIE VELDEN:
+- venue_name: string (naam van de locatie/venue)
+- venue_address: string (volledig adres indien beschikbaar)
+
+MEDIA VELDEN:
+- image_url: string (URL van de HOOGSTE resolutie afbeelding, geen thumbnails)
+
+TIJD/DUUR VELDEN:
+- end_time: string (HH:MM formaat, indien beschikbaar)
+- end_date: string (YYYY-MM-DD, alleen bij meerdaagse events)
+
+PRIJS VELDEN (zoek naar ticket prijzen, entree kosten):
+- price: string (bijv. "€15,00", "Gratis", "€10 - €25", "Vanaf €12,50")
+- price_currency: string (ISO 4217 code, bijv. "EUR")
+- price_min: number (minimum prijs in euro's, bijv. 10.00)
+- price_max: number (maximum prijs in euro's)
+- tickets_url: string (directe link naar ticket aankoop)
+
+ORGANISATOR VELDEN:
+- organizer: string (naam van de organisator/producer)
+- organizer_url: string (website van organisator)
+- performer: string (naam van artiest/band/spreker indien van toepassing)
+
+EXTRA VELDEN:
+- accessibility: string (toegankelijkheid info, rolstoelvriendelijk etc.)
+- age_restriction: string (bijv. "18+", "Alle leeftijden", "12+")
+- event_status: string (kies uit: scheduled, cancelled, postponed, rescheduled)
+- persona_tags: string[] (bijv. ['#Culture', '#Social', '#Nightlife', '#Family', '#Active'])
+
+REGELS:
+- Weiger evenementen die niet in ${targetYear} plaatsvinden
+- Houd tekst in originele taal (${language})
+- Gebruik null voor velden die niet gevonden kunnen worden
+- Zoek ALTIJD naar prijs informatie (gratis, entree, tickets, kosten)
+- Geef voorkeur aan detail page content over listing content`;
 
   const userPrompt = `Vandaag is ${today}.
 Context:
@@ -310,15 +356,44 @@ ${detailHtml || ''}
         image_url: parsed.image_url || rawEvent.imageUrl || null,
         category: category,  // Uppercase CategoryKey
         detail_url: rawEvent.detailUrl,
+        // Enhanced pricing fields
         price: parsed.price,
+        price_currency: parsed.price_currency,
+        price_min: typeof parsed.price_min === 'number' ? parsed.price_min : undefined,
+        price_max: typeof parsed.price_max === 'number' ? parsed.price_max : undefined,
+        // Organizer fields
         organizer: parsed.organizer,
+        organizer_url: parsed.organizer_url,
+        // Time/duration fields
+        end_time: parsed.end_time,
+        end_date: parsed.end_date,
+        // Additional metadata
+        performer: parsed.performer,
+        accessibility: parsed.accessibility,
+        age_restriction: parsed.age_restriction,
+        event_status: parseEventStatus(parsed.event_status),
         tickets_url: parsed.tickets_url,
-        persona_tags: parsed.persona_tags
+        persona_tags: parsed.persona_tags,
+        // Track data source
+        data_source: detailHtml ? 'detail' : 'listing',
     };
   } catch (e) {
     console.warn("Detailed AI parsing failed:", e);
     return null;
   }
+}
+
+/**
+ * Helper to normalize event status strings to valid enum values.
+ */
+function parseEventStatus(status: string | undefined): ParsedDetailedEventAI['event_status'] {
+  if (!status) return undefined;
+  const normalized = status.toLowerCase();
+  if (normalized.includes('cancel')) return 'cancelled';
+  if (normalized.includes('postpone')) return 'postponed';
+  if (normalized.includes('reschedul')) return 'rescheduled';
+  if (normalized.includes('schedul')) return 'scheduled';
+  return undefined;
 }
 
 export async function healSelectors(
