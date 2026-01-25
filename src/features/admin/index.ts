@@ -6,8 +6,6 @@ export {
   getSources, 
   toggleSource, 
   triggerCoordinator,
-  triggerWorker,
-  retryFailedJobs,
   fetchLogs,
   type ScraperSource,
   type LogEntry,

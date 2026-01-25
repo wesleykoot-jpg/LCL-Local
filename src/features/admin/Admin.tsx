@@ -13,56 +13,29 @@ import {
   Zap,
   Settings,
   Activity,
-  Clock,
   Loader2,
-  ListChecks,
   FileText,
   Download,
   Play,
-  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Switch } from "@/shared/components/ui/switch";
 import { Badge } from "@/shared/components/ui/badge";
-import { Progress } from "@/shared/components/ui/progress";
 import { Input } from "@/shared/components/ui/input";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import {
   getSources,
   toggleSource,
   triggerCoordinator,
-  triggerWorker,
-  retryFailedJobs,
   fetchLogs,
-  MAX_RETRY_ATTEMPTS,
   type ScraperSource,
   type LogEntry,
 } from "./api/scraperService";
 
+// Constants
+const MAX_RETRY_ATTEMPTS = 3;
+
 // Types
-interface ScrapeJob {
-  id: string;
-  source_id: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  attempts: number;
-  events_scraped: number | null;
-  events_inserted: number | null;
-  error_message: string | null;
-  created_at: string;
-  completed_at: string | null;
-  source_name?: string;
-}
-
-interface JobStats {
-  pending: number;
-  processing: number;
-  completed: number;
-  failed: number;
-  total_scraped: number;
-  total_inserted: number;
-}
-
 interface LogsSummary {
   total: number;
   fatal: number;
@@ -144,17 +117,6 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Job queue state
-  const [jobs, setJobs] = useState<ScrapeJob[]>([]);
-  const [jobStats, setJobStats] = useState<JobStats>({
-    pending: 0,
-    processing: 0,
-    completed: 0,
-    failed: 0,
-    total_scraped: 0,
-    total_inserted: 0,
-  });
-
   // Logs state
   const [logsLoading, setLogsLoading] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -167,8 +129,6 @@ export default function Admin() {
     Record<string, boolean>
   >({
     coordinator: false,
-    worker: false,
-    retryFailed: false,
   });
 
   // Load functions
@@ -185,85 +145,10 @@ export default function Admin() {
     }
   }, []);
 
-  const loadJobs = useCallback(async () => {
-    try {
-      const { data: statsData } = await supabase
-        .from("scrape_jobs")
-        .select("status, events_scraped, events_inserted");
-
-      if (statsData) {
-        const stats: JobStats = {
-          pending: 0,
-          processing: 0,
-          completed: 0,
-          failed: 0,
-          total_scraped: 0,
-          total_inserted: 0,
-        };
-        statsData.forEach((job) => {
-          if (job.status === "pending") stats.pending++;
-          else if (job.status === "processing") stats.processing++;
-          else if (job.status === "completed") stats.completed++;
-          else if (job.status === "failed") stats.failed++;
-          stats.total_scraped += job.events_scraped || 0;
-          stats.total_inserted += job.events_inserted || 0;
-        });
-        setJobStats(stats);
-      }
-
-      const { data: jobsData } = await supabase
-        .from("scrape_jobs")
-        .select(
-          "id, source_id, status, attempts, events_scraped, events_inserted, error_message, created_at, completed_at",
-        )
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (jobsData) {
-        const sourceIds = [...new Set(jobsData.map((j) => j.source_id))];
-        const { data: sourcesData } = await supabase
-          .from("scraper_sources")
-          .select("id, name")
-          .in("id", sourceIds);
-
-        const sourceMap = new Map(
-          sourcesData?.map((s) => [s.id, s.name]) || [],
-        );
-
-        setJobs(
-          jobsData.map((j) => ({
-            id: j.id,
-            source_id: j.source_id,
-            status: j.status as ScrapeJob["status"],
-            attempts: j.attempts ?? 0,
-            events_scraped: j.events_scraped ?? 0,
-            events_inserted: j.events_inserted ?? 0,
-            error_message: j.error_message,
-            created_at: j.created_at ?? "",
-            completed_at: j.completed_at,
-            source_name: sourceMap.get(j.source_id) || "Unknown",
-          })),
-        );
-      }
-    } catch (error) {
-      console.error("Failed to load jobs:", error);
-    }
-  }, []);
-
-  // Initial load and polling
+  // Initial load
   useEffect(() => {
     loadSources();
-    loadJobs();
-  }, [loadSources, loadJobs]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (jobStats.pending > 0 || jobStats.processing > 0) {
-        loadJobs();
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [jobStats.pending, jobStats.processing, loadJobs]);
+  }, [loadSources]);
 
   // Handlers
   async function handleTriggerCoordinator() {
@@ -272,7 +157,6 @@ export default function Admin() {
       const result = await triggerCoordinator();
       if (result.success) {
         toast.success(`Queued ${result.jobsCreated ?? 0} scrape jobs`);
-        await loadJobs();
       } else {
         toast.error(result.error || "Failed to queue jobs");
       }
@@ -280,60 +164,6 @@ export default function Admin() {
       toast.error("Failed to trigger coordinator");
     } finally {
       setPipelineLoading((prev) => ({ ...prev, coordinator: false }));
-    }
-  }
-
-  async function handleTriggerWorker() {
-    setPipelineLoading((prev) => ({ ...prev, worker: true }));
-    try {
-      const result = await triggerWorker();
-      if (result.success) {
-        toast.success("Worker processing jobs...");
-        await loadJobs();
-      } else {
-        toast.error(result.error || "Failed to trigger worker");
-      }
-    } catch {
-      toast.error("Failed to trigger worker");
-    } finally {
-      setPipelineLoading((prev) => ({ ...prev, worker: false }));
-    }
-  }
-
-  async function handleRetryFailedJobs() {
-    setPipelineLoading((prev) => ({ ...prev, retryFailed: true }));
-    try {
-      const result = await retryFailedJobs();
-      if (result.success) {
-        if (result.retriedCount > 0) {
-          toast.success(`Retrying ${result.retriedCount} failed job(s)`);
-          await loadJobs();
-        } else {
-          toast.info("No failed jobs to retry");
-        }
-      } else {
-        toast.error(result.error || "Failed to retry jobs");
-      }
-    } catch (error) {
-      toast.error(
-        "Failed to retry jobs: " +
-          (error instanceof Error ? error.message : "Unknown error"),
-      );
-    } finally {
-      setPipelineLoading((prev) => ({ ...prev, retryFailed: false }));
-    }
-  }
-
-  async function clearCompletedJobs() {
-    try {
-      await supabase
-        .from("scrape_jobs")
-        .delete()
-        .in("status", ["completed", "failed"]);
-      toast.success("Cleared completed jobs");
-      await loadJobs();
-    } catch {
-      toast.error("Failed to clear jobs");
     }
   }
 
@@ -452,7 +282,7 @@ export default function Admin() {
               </p>
             </div>
           </div>
-          <Button onClick={loadJobs} variant="outline" className="gap-2">
+          <Button onClick={loadSources} variant="outline" className="gap-2">
             <RefreshCw size={16} />
             Refresh
           </Button>
@@ -470,272 +300,33 @@ export default function Admin() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Trigger Coordinator */}
-          <div className="p-3 bg-background/80 rounded-lg border border-border">
-            <div className="flex items-start gap-2 mb-2">
-              <Play size={16} className="text-primary mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm">Queue Jobs</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Trigger coordinator to create jobs for enabled sources
-                </p>
-              </div>
+        <div className="p-3 bg-background/80 rounded-lg border border-border max-w-md">
+          <div className="flex items-start gap-2 mb-2">
+            <Play size={16} className="text-primary mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm">Queue Jobs</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Trigger coordinator to create jobs for enabled sources
+              </p>
             </div>
-            <Button
-              onClick={handleTriggerCoordinator}
-              disabled={pipelineLoading.coordinator || jobStats.pending > 0}
-              className="w-full gap-2 mt-2"
-              variant="default"
-            >
-              {pipelineLoading.coordinator ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" /> Queueing...
-                </>
-              ) : (
-                <>
-                  <Play size={14} /> Trigger Coordinator
-                </>
-              )}
-            </Button>
           </div>
-
-          {/* Trigger Worker */}
-          <div className="p-3 bg-background/80 rounded-lg border border-border">
-            <div className="flex items-start gap-2 mb-2">
-              <Activity
-                size={16}
-                className="text-blue-600 mt-0.5 flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm">Process Queue</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Trigger worker to process pending jobs
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={handleTriggerWorker}
-              disabled={pipelineLoading.worker || jobStats.pending === 0}
-              className="w-full gap-2 mt-2"
-              variant="outline"
-            >
-              {pipelineLoading.worker ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" /> Processing...
-                </>
-              ) : (
-                <>
-                  <Activity size={14} /> Trigger Worker
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Retry Failed */}
-          <div className="p-3 bg-background/80 rounded-lg border border-border">
-            <div className="flex items-start gap-2 mb-2">
-              <RotateCcw
-                size={16}
-                className="text-amber-600 mt-0.5 flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm">Retry Failed</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Reset failed jobs to pending and retry
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={handleRetryFailedJobs}
-              disabled={jobStats.failed === 0 || pipelineLoading.retryFailed}
-              className="w-full gap-2 mt-2"
-              variant="outline"
-            >
-              {pipelineLoading.retryFailed ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" /> Retrying...
-                </>
-              ) : (
-                <>
-                  <RotateCcw size={14} /> Retry {jobStats.failed} Failed
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Job Queue */}
-      <section className="px-4 py-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <ListChecks size={18} /> Job Queue
-          </h2>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={loadJobs}
-              className="h-7 px-2"
-            >
-              <RefreshCw size={12} />
-            </Button>
-            {(jobStats.completed > 0 || jobStats.failed > 0) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearCompletedJobs}
-                className="h-7 px-2 text-muted-foreground"
-              >
-                Clear Done
-              </Button>
+          <Button
+            onClick={handleTriggerCoordinator}
+            disabled={pipelineLoading.coordinator}
+            className="w-full gap-2 mt-2"
+            variant="default"
+          >
+            {pipelineLoading.coordinator ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Queueing...
+              </>
+            ) : (
+              <>
+                <Play size={14} /> Trigger Coordinator
+              </>
             )}
-          </div>
+          </Button>
         </div>
-
-        {(jobStats.pending > 0 ||
-          jobStats.processing > 0 ||
-          jobStats.completed > 0) && (
-          <div className="mb-3">
-            <Progress
-              value={
-                ((jobStats.completed + jobStats.failed) /
-                  Math.max(
-                    1,
-                    jobStats.pending +
-                      jobStats.processing +
-                      jobStats.completed +
-                      jobStats.failed,
-                  )) *
-                100
-              }
-              className="h-2"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              {jobStats.completed + jobStats.failed} /{" "}
-              {jobStats.pending +
-                jobStats.processing +
-                jobStats.completed +
-                jobStats.failed}{" "}
-              jobs complete
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-4 gap-3 mb-3">
-          {[
-            {
-              label: "Pending",
-              value: jobStats.pending,
-              icon: Clock,
-              color: "text-amber-500",
-            },
-            {
-              label: "Processing",
-              value: jobStats.processing,
-              icon: Loader2,
-              color: "text-blue-500",
-              spin: jobStats.processing > 0,
-            },
-            {
-              label: "Completed",
-              value: jobStats.completed,
-              icon: CheckCircle2,
-              color: "text-green-500",
-            },
-            {
-              label: "Failed",
-              value: jobStats.failed,
-              icon: XCircle,
-              color: "text-red-500",
-            },
-          ].map(({ label, value, icon: Icon, color, spin }) => (
-            <div
-              key={label}
-              className="bg-background rounded-lg p-3 text-center border border-border"
-            >
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <Icon
-                  size={14}
-                  className={`${color} ${spin ? "animate-spin" : ""}`}
-                />
-                <span className="text-2xl font-bold">{value}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">{label}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-4 text-sm mb-3">
-          <span className="text-muted-foreground">
-            Total scraped: <strong>{jobStats.total_scraped}</strong>
-          </span>
-          <span className="text-green-600">
-            New events: <strong>{jobStats.total_inserted}</strong>
-          </span>
-        </div>
-
-        {jobs.length > 0 && (
-          <div className="space-y-1 max-h-48 overflow-y-auto">
-            {jobs.slice(0, 10).map((job) => (
-              <div
-                key={job.id}
-                className={`flex items-center justify-between py-1.5 px-2 rounded text-xs ${
-                  job.status === "processing"
-                    ? "bg-blue-500/10"
-                    : job.status === "completed"
-                      ? "bg-green-500/5"
-                      : job.status === "failed"
-                        ? "bg-red-500/10"
-                        : "bg-muted/50"
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {job.status === "pending" && (
-                    <Clock size={12} className="text-amber-500 flex-shrink-0" />
-                  )}
-                  {job.status === "processing" && (
-                    <Loader2
-                      size={12}
-                      className="text-blue-500 animate-spin flex-shrink-0"
-                    />
-                  )}
-                  {job.status === "completed" && (
-                    <CheckCircle2
-                      size={12}
-                      className="text-green-500 flex-shrink-0"
-                    />
-                  )}
-                  {job.status === "failed" && (
-                    <XCircle size={12} className="text-red-500 flex-shrink-0" />
-                  )}
-                  <span className="truncate">{job.source_name}</span>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {job.status === "completed" && (
-                    <span className="text-muted-foreground">
-                      {job.events_scraped} scraped, {job.events_inserted} new
-                    </span>
-                  )}
-                  {job.status === "failed" && job.error_message && (
-                    <span
-                      className="text-red-500 truncate max-w-32"
-                      title={job.error_message}
-                    >
-                      {job.error_message.slice(0, 30)}...
-                    </span>
-                  )}
-                  {job.attempts > 1 && (
-                    <Badge variant="outline" className="text-[10px] h-4">
-                      Attempt {job.attempts}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
 
       {/* Logs Section */}
