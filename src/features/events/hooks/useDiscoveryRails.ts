@@ -91,12 +91,13 @@ export function useDiscoveryRails({
     const railResults = railRegistry.generateRails(allEvents, context);
 
     for (const result of railResults) {
-      if (result.shouldShow && result.events.length > 0) {
+      // Always add rails, even if empty (for empty state display)
+      if (result.shouldShow) {
         sections.push({
           type: railTypeToSectionType[result.metadata.type] || "traditional",
           title: result.metadata.title,
           description: result.metadata.description,
-          items: result.events,
+          items: result.events, // Can be empty array
           layout: "carousel",
           // Store additional metadata for the renderer
           icon: undefined, // Will be rendered by DynamicRailRenderer based on type

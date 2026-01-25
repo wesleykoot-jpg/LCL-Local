@@ -142,6 +142,7 @@ export const DynamicRailRenderer = memo(function DynamicRailRenderer({
   const Icon = getIconForTitle(section.title, section.type);
   const colorScheme = getRailColorScheme(section.title, section.type);
   const hasSpecialStyling = colorScheme.text !== "";
+  const isEmpty = section.items.length === 0;
 
   return (
     <RailAnimation style={animationStyle}>
@@ -164,7 +165,7 @@ export const DynamicRailRenderer = memo(function DynamicRailRenderer({
             </span>
           </div>
         }
-        onSeeAll={onSeeAll}
+        onSeeAll={isEmpty ? undefined : onSeeAll}
       >
         {hasSpecialStyling && (
           <RailBackground style={animationStyle} />
@@ -176,12 +177,21 @@ export const DynamicRailRenderer = memo(function DynamicRailRenderer({
           </p>
         )}
 
-        <HorizontalEventCarousel
-          title="" // Header handled by DiscoveryRail
-          events={section.items.slice(0, 8)}
-          onEventClick={onEventClick}
-          onSeeAll={onSeeAll}
-        />
+        {isEmpty ? (
+          <div className="px-6 py-8 text-center bg-surface-card/30 rounded-2xl border border-dashed border-border/50">
+            <Icon className={`w-10 h-10 ${colorScheme.icon} opacity-40 mx-auto mb-3`} />
+            <p className="text-sm text-muted-foreground">
+              No events available for this category right now
+            </p>
+          </div>
+        ) : (
+          <HorizontalEventCarousel
+            title="" // Header handled by DiscoveryRail
+            events={section.items.slice(0, 8)}
+            onEventClick={onEventClick}
+            onSeeAll={onSeeAll}
+          />
+        )}
       </DiscoveryRail>
     </RailAnimation>
   );

@@ -127,29 +127,12 @@ class RitualsRailProvider extends BaseRailProvider {
   ): EventWithAttendees[] {
     const ritualEvents = filterRitualEvents(events);
 
-    // Filter for future events with dates
-    const futureRituals = ritualEvents.filter(
-      (e) => e.event_date && new Date(e.event_date) >= new Date()
-    );
-
-    // Fallback: if no future rituals, show events sorted by match percentage
-    let resultEvents = futureRituals;
-    if (resultEvents.length === 0) {
-      // Show future events with valid match percentages as fallback
-      resultEvents = [...events]
-        .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
-        .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
-        .slice(0, 10);
-    }
-
-    // Sort by upcoming date
-    return [...resultEvents]
+    // Sort by upcoming date (filter out events without dates)
+    return [...ritualEvents]
+      .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
       .sort(
-        (a, b) => {
-          if (!a.event_date) return 1;
-          if (!b.event_date) return -1;
-          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
-        }
+        (a, b) =>
+          new Date(a.event_date!).getTime() - new Date(b.event_date!).getTime(),
       )
       .slice(0, 10);
   }
@@ -207,20 +190,8 @@ class ThisWeekendRailProvider extends BaseRailProvider {
       return eventDate >= weekendStart && eventDate <= weekendEnd;
     });
 
-    // Fallback: if no weekend events, show upcoming events within next 7 days
-    let resultEvents = weekendEvents;
-    if (resultEvents.length === 0) {
-      const nextWeek = new Date(now);
-      nextWeek.setDate(now.getDate() + 7);
-      resultEvents = events.filter((e) => {
-        if (!e.event_date) return false;
-        const eventDate = new Date(e.event_date);
-        return eventDate >= now && eventDate <= nextWeek;
-      });
-    }
-
     // Sort by attendee count (popular events first) then by date
-    return [...resultEvents]
+    return [...weekendEvents]
       .sort((a, b) => {
         const countDiff = (b.attendee_count || 0) - (a.attendee_count || 0);
         if (countDiff !== 0) return countDiff;
@@ -267,16 +238,9 @@ class LocationRailProvider extends BaseRailProvider {
       return true; // Include if no distance info
     });
 
-    // Filter for future events with dates
-    const futureEvents = nearbyEvents.filter(
-      (e) => e.event_date && new Date(e.event_date) >= new Date()
-    );
-
-    // Fallback: if no future nearby events, show any nearby events
-    let resultEvents = futureEvents.length > 0 ? futureEvents : nearbyEvents;
-
-    // Sort by distance (closest first)
-    return [...resultEvents]
+    // Sort by distance (closest first), filter out events without dates
+    return [...nearbyEvents]
+      .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
       .sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999))
       .slice(0, 10);
   }
@@ -299,7 +263,6 @@ class LocationRailProvider extends BaseRailProvider {
 class PulseRailProvider extends BaseRailProvider {
   readonly type: RailType = "pulse";
   readonly priority = 5;
-  private readonly TOP_TRENDING_PERCENTAGE = 0.4; // Show top 40% of events by attendance
 
   protected getAnimationStyle(): RailMetadata["animationStyle"] {
     return "wave";
@@ -310,27 +273,17 @@ class PulseRailProvider extends BaseRailProvider {
     _context: RailContext,
   ): EventWithAttendees[] {
     // Filter for trending/popular events (high social proof)
-    // Sort all future events by attendance
-    const sortedByAttendance = [...events]
-      .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
-      .filter((e) => (e.attendee_count || 0) >= 2) // Minimum threshold
-      .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0));
+    const trendingEvents = events.filter(
+      (e) =>
+        (e.attendee_count || 0) >= 2 && // Lower threshold for testing/dev
+        e.event_date &&
+        new Date(e.event_date) >= new Date(),
+    );
 
-    // Show only top percentage by attendance to focus on truly trending events
-    const topCount = Math.max(1, Math.ceil(sortedByAttendance.length * this.TOP_TRENDING_PERCENTAGE));
-    const trendingEvents = sortedByAttendance.slice(0, topCount);
-
-    // Fallback: if no trending events, show top matched future events with dates
-    let resultEvents = trendingEvents;
-    if (resultEvents.length === 0) {
-      resultEvents = events
-        .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
-        .sort((a, b) => (b.match_percentage || 0) - (a.match_percentage || 0))
-        .slice(0, 10);
-    }
-
-    // Return up to 10 events
-    return resultEvents.slice(0, 10);
+    // Sort by attendee count (highest first)
+    return [...trendingEvents]
+      .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0))
+      .slice(0, 10);
   }
 
   getWeights(): ContextualWeights {
@@ -388,6 +341,7 @@ class RailProviderRegistry {
 
   /**
    * Generate all rail results for a set of events
+   * Returns all rails, even if they have no events (for empty state display)
    */
   generateRails(
     events: EventWithAttendees[],
@@ -397,7 +351,7 @@ class RailProviderRegistry {
 
     for (const provider of this.getAllSorted()) {
       const filteredEvents = provider.filterEvents(events, context);
-      const shouldShow = filteredEvents.length > 0;
+      const shouldShow = true; // Always show rails, even if empty
 
       results.push({
         metadata: provider.getMetadata(context),
@@ -406,7 +360,8 @@ class RailProviderRegistry {
       });
     }
 
-    return results.filter((r) => r.shouldShow);
+    // Return all rails to allow empty state display in UI
+    return results;
   }
 }
 
