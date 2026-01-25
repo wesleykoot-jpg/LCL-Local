@@ -492,6 +492,7 @@ const Discovery = () => {
               )}
               isSaved={isSaved(selectedEvent.id)}
               onSave={() => handleToggleBookmark(selectedEvent)}
+              currentUserProfileId={profile?.id}
             />
           )}
 
