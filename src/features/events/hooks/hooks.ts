@@ -20,7 +20,7 @@ type PersonaBadge = Database["public"]["Tables"]["persona_badges"]["Row"];
 export interface AttendeeProfile {
   id: string;
   avatar_url: string | null;
-  full_name: string;
+  full_name: string | null;
 }
 
 export interface EventAttendee {
@@ -32,6 +32,7 @@ export interface EventWithAttendees extends Event {
   attendees?: EventAttendee[];
   parent_event?: Event | null;
   distance_km?: number | null;
+  match_percentage?: number | null;
 }
 
 const ATTENDEE_LIMIT = 4;

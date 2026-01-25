@@ -164,14 +164,5 @@ export function useDiscoveryRails({
     }
 
     return { sections };
-  }, [
-    allEvents,
-    userId,
-    userLocation?.lat,
-    userLocation?.lng,
-    radiusKm,
-    enabled,
-    selectedCategories,
-    bookmarkedEvents,
-  ]);
+  }, [allEvents, enabled, selectedCategories, bookmarkedEvents]);
 }

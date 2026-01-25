@@ -102,6 +102,10 @@ const Discovery = () => {
     offset: mode === "searching" ? offset : 0,
   });
 
+  const { handleToggleBookmark, isSaved, bookmarkedEvents } = useSaveEvent(
+    profile?.id,
+  );
+
   // 2. Fetch Discovery Rails (Client-side generation)
   // Now uses synchronous calculation based on allEvents
   const discoveryLayout = useDiscoveryRails({
@@ -143,12 +147,6 @@ const Discovery = () => {
     profile?.id,
     refetch,
   );
-
-  const {
-    handleToggleBookmark,
-    isSaved,
-    isSaving: isSavingBookmark,
-  } = useSaveEvent(profile?.id);
 
   // Featured event (top event with image) - Derived from allTokens or could be first rail item
   const featuredEvent = useMemo(() => {
