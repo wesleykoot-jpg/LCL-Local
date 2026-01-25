@@ -211,22 +211,22 @@ function parseSchemaOrgEvent(obj: unknown): JsonLdEvent | null {
           priceMin = priceMin === undefined ? priceVal * 100 : Math.min(priceMin, priceVal * 100);
           priceMax = priceMax === undefined ? priceVal * 100 : Math.max(priceMax, priceVal * 100);
         } else if (typeof priceVal === 'string') {
-          const parsed = parseFloat(priceVal.replace(/[^0-9.,]/g, '').replace(',', '.'));
-          if (!isNaN(parsed)) {
-            priceMin = priceMin === undefined ? parsed * 100 : Math.min(priceMin, parsed * 100);
-            priceMax = priceMax === undefined ? parsed * 100 : Math.max(priceMax, parsed * 100);
+          const parsed = parseEuropeanPrice(priceVal);
+          if (parsed !== null) {
+            priceMin = priceMin === undefined ? parsed : Math.min(priceMin, parsed);
+            priceMax = priceMax === undefined ? parsed : Math.max(priceMax, parsed);
           }
         }
       }
       
       // Extract low/high price for ranges
       if (offerObj['lowPrice'] !== undefined) {
-        const low = parseFloat(String(offerObj['lowPrice']).replace(',', '.'));
-        if (!isNaN(low)) priceMin = low * 100;
+        const low = parseEuropeanPrice(String(offerObj['lowPrice']));
+        if (low !== null) priceMin = low;
       }
       if (offerObj['highPrice'] !== undefined) {
-        const high = parseFloat(String(offerObj['highPrice']).replace(',', '.'));
-        if (!isNaN(high)) priceMax = high * 100;
+        const high = parseEuropeanPrice(String(offerObj['highPrice']));
+        if (high !== null) priceMax = high;
       }
       
       // Extract currency
@@ -334,6 +334,38 @@ function getStringValue(value: unknown): string {
   return '';
 }
 
+/**
+ * Parses European-format price strings to cents.
+ * Handles both "1.250,50" (European) and "1,250.50" (US) formats.
+ * Returns price in cents or null if parsing fails.
+ */
+function parseEuropeanPrice(priceStr: string): number | null {
+  if (!priceStr) return null;
+  
+  // Remove currency symbols and whitespace
+  let cleaned = priceStr.replace(/[€$£¥₹\s]/g, '').trim();
+  
+  // Detect format: European uses comma as decimal separator
+  // European: "1.250,50" or "15,00"
+  // US: "1,250.50" or "15.00"
+  const hasEuropeanFormat = /\d+[.,]\d{3}[.,]\d{2}$/.test(cleaned) || 
+                            (/,\d{2}$/.test(cleaned) && !/\.\d{2}$/.test(cleaned));
+  
+  if (hasEuropeanFormat) {
+    // European format: remove thousand separators (dots), convert decimal comma to dot
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  } else {
+    // US format: remove thousand separators (commas)
+    cleaned = cleaned.replace(/,/g, '');
+  }
+  
+  const parsed = parseFloat(cleaned);
+  if (isNaN(parsed)) return null;
+  
+  // Return in cents
+  return Math.round(parsed * 100);
+}
+
 function parseIsoDateTime(str: string): { date: string; time: string | null } | null {
   if (!str) return null;
   
@@ -347,19 +379,23 @@ function parseIsoDateTime(str: string): { date: string; time: string | null } | 
   return { date, time };
 }
 
+/**
+ * Infers category from Schema.org event type.
+ * Returns CategoryKey (uppercase) for consistency.
+ */
 function inferCategory(type: string): string {
   switch (type) {
-    case 'MusicEvent': return 'music';
-    case 'SportsEvent': return 'active';
-    case 'TheaterEvent': return 'entertainment';
-    case 'DanceEvent': return 'entertainment';
-    case 'ComedyEvent': return 'entertainment';
-    case 'FoodEvent': return 'foodie';
-    case 'Festival': return 'community';
-    case 'ExhibitionEvent': return 'entertainment';
-    case 'SocialEvent': return 'social';
-    case 'EducationEvent': return 'workshops';
-    default: return 'community';
+    case 'MusicEvent': return 'MUSIC';
+    case 'SportsEvent': return 'ACTIVE';
+    case 'TheaterEvent': return 'CULTURE';
+    case 'DanceEvent': return 'CULTURE';
+    case 'ComedyEvent': return 'CULTURE';
+    case 'FoodEvent': return 'FOOD';
+    case 'Festival': return 'COMMUNITY';
+    case 'ExhibitionEvent': return 'CULTURE';
+    case 'SocialEvent': return 'SOCIAL';
+    case 'EducationEvent': return 'CULTURE';
+    default: return 'COMMUNITY';
   }
 }
 
