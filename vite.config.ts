@@ -23,37 +23,28 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes("node_modules")) {
-            if (
-              id.includes("react") ||
-              id.includes("react-dom") ||
-              id.includes("react-router-dom")
-            ) {
-              return "react-vendor";
-            }
-            if (id.includes("@supabase")) {
-              return "supabase-vendor";
-            }
-            if (id.includes("lucide-react")) {
-              return "icons-vendor";
-            }
-            if (id.includes("framer-motion")) {
-              return "animation-vendor";
-            }
-            if (id.includes("@tanstack/react-query")) {
-              return "query-vendor";
-            }
-            if (id.includes("leaflet") || id.includes("react-leaflet")) {
-              return "map-vendor";
-            }
-            if (id.includes("@radix-ui")) {
-              return "ui-vendor";
-            }
-
-            // Catch-all for other node_modules to prevent them from being bundled into entry
-            return "vendor";
-          }
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "supabase-vendor": ["@supabase/supabase-js"],
+          "icons-vendor": ["lucide-react"],
+          "animation-vendor": ["framer-motion"],
+          "query-vendor": ["@tanstack/react-query"],
+          "ui-vendor": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-select",
+            "@radix-ui/react-alert-dialog",
+            "@radix-ui/react-accordion",
+            "@radix-ui/react-slider",
+            "@radix-ui/react-switch",
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-radio-group",
+          ],
+          "map-vendor": ["leaflet", "react-leaflet"],
+          "form-vendor": ["react-hook-form", "@hookform/resolvers", "zod"],
         },
       },
     },
