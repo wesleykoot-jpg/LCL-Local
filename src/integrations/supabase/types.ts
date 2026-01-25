@@ -7,11 +7,6 @@ export type Json =
   | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.1";
-  };
   public: {
     Tables: {
       app_secrets: {
@@ -85,43 +80,34 @@ export type Database = {
       };
       content_reports: {
         Row: {
-          admin_notes: string | null;
-          created_at: string;
+          created_at: string | null;
+          details: string | null;
           event_id: string | null;
           id: string;
           reason: string;
-          reported_user_id: string | null;
-          reporter_id: string;
-          resolved_at: string | null;
-          resolved_by: string | null;
-          status: string;
-          updated_at: string;
+          reporter_id: string | null;
+          resolution_notes: string | null;
+          status: string | null;
         };
         Insert: {
-          admin_notes?: string | null;
-          created_at?: string;
+          created_at?: string | null;
+          details?: string | null;
           event_id?: string | null;
           id?: string;
           reason: string;
-          reported_user_id?: string | null;
-          reporter_id: string;
-          resolved_at?: string | null;
-          resolved_by?: string | null;
-          status?: string;
-          updated_at?: string;
+          reporter_id?: string | null;
+          resolution_notes?: string | null;
+          status?: string | null;
         };
         Update: {
-          admin_notes?: string | null;
-          created_at?: string;
+          created_at?: string | null;
+          details?: string | null;
           event_id?: string | null;
           id?: string;
           reason?: string;
-          reported_user_id?: string | null;
-          reporter_id?: string;
-          resolved_at?: string | null;
-          resolved_by?: string | null;
-          status?: string;
-          updated_at?: string;
+          reporter_id?: string | null;
+          resolution_notes?: string | null;
+          status?: string | null;
         };
         Relationships: [
           {
@@ -132,22 +118,8 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "content_reports_reported_user_id_fkey";
-            columns: ["reported_user_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "content_reports_reporter_id_fkey";
             columns: ["reporter_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "content_reports_resolved_by_fkey";
-            columns: ["resolved_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -156,141 +128,89 @@ export type Database = {
       };
       discovery_jobs: {
         Row: {
-          attempts: number | null;
-          batch_id: string | null;
+          city_id: string | null;
           completed_at: string | null;
-          coordinates: Json | null;
           created_at: string | null;
           error_message: string | null;
+          events_found: number | null;
           id: string;
-          max_attempts: number | null;
-          municipality: string;
-          population: number | null;
-          priority: number | null;
-          province: string | null;
-          sources_added: number | null;
-          sources_found: number | null;
           started_at: string | null;
           status: string | null;
-          updated_at: string | null;
         };
         Insert: {
-          attempts?: number | null;
-          batch_id?: string | null;
+          city_id?: string | null;
           completed_at?: string | null;
-          coordinates?: Json | null;
           created_at?: string | null;
           error_message?: string | null;
+          events_found?: number | null;
           id?: string;
-          max_attempts?: number | null;
-          municipality: string;
-          population?: number | null;
-          priority?: number | null;
-          province?: string | null;
-          sources_added?: number | null;
-          sources_found?: number | null;
           started_at?: string | null;
           status?: string | null;
-          updated_at?: string | null;
         };
         Update: {
-          attempts?: number | null;
-          batch_id?: string | null;
+          city_id?: string | null;
           completed_at?: string | null;
-          coordinates?: Json | null;
           created_at?: string | null;
           error_message?: string | null;
+          events_found?: number | null;
           id?: string;
-          max_attempts?: number | null;
-          municipality?: string;
-          population?: number | null;
-          priority?: number | null;
-          province?: string | null;
-          sources_added?: number | null;
-          sources_found?: number | null;
           started_at?: string | null;
           status?: string | null;
-          updated_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "discovery_jobs_city_id_fkey";
+            columns: ["city_id"];
+            isOneToOne: false;
+            referencedRelation: "cities";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       error_logs: {
         Row: {
-          context: Json | null;
-          created_at: string;
-          error_code: string | null;
-          error_type: string | null;
-          function_name: string | null;
+          created_at: string | null;
+          error_data: Json | null;
+          error_message: string;
           id: string;
-          level: string;
-          message: string;
-          request_id: string | null;
-          resolved: boolean | null;
-          resolved_at: string | null;
-          source: string;
-          stack_trace: string | null;
-          timestamp: string;
-          user_agent: string | null;
+          severity: string | null;
+          source: string | null;
         };
         Insert: {
-          context?: Json | null;
-          created_at?: string;
-          error_code?: string | null;
-          error_type?: string | null;
-          function_name?: string | null;
+          created_at?: string | null;
+          error_data?: Json | null;
+          error_message: string;
           id?: string;
-          level?: string;
-          message: string;
-          request_id?: string | null;
-          resolved?: boolean | null;
-          resolved_at?: string | null;
-          source: string;
-          stack_trace?: string | null;
-          timestamp?: string;
-          user_agent?: string | null;
+          severity?: string | null;
+          source?: string | null;
         };
         Update: {
-          context?: Json | null;
-          created_at?: string;
-          error_code?: string | null;
-          error_type?: string | null;
-          function_name?: string | null;
+          created_at?: string | null;
+          error_data?: Json | null;
+          error_message?: string;
           id?: string;
-          level?: string;
-          message?: string;
-          request_id?: string | null;
-          resolved?: boolean | null;
-          resolved_at?: string | null;
-          source: string;
-          stack_trace?: string | null;
-          timestamp?: string;
-          user_agent?: string | null;
+          severity?: string | null;
+          source?: string | null;
         };
         Relationships: [];
       };
       event_attendees: {
         Row: {
-          checked_in: boolean | null;
           event_id: string;
-          id: string;
           joined_at: string | null;
           profile_id: string;
           status: string | null;
           ticket_number: string | null;
         };
         Insert: {
-          checked_in?: boolean | null;
           event_id: string;
-          id?: string;
           joined_at?: string | null;
           profile_id: string;
           status?: string | null;
           ticket_number?: string | null;
         };
         Update: {
-          checked_in?: boolean | null;
           event_id?: string;
-          id?: string;
           joined_at?: string | null;
           profile_id?: string;
           status?: string | null;
@@ -313,33 +233,69 @@ export type Database = {
           },
         ];
       };
-      event_invites: {
+      event_bookmarks: {
         Row: {
-          created_at: string;
-          event_id: string;
+          created_at: string | null;
+          event_id: string | null;
           id: string;
-          invited_by: string;
-          invited_user_id: string;
-          status: string;
-          updated_at: string;
+          profile_id: string | null;
+          user_id: string | null;
         };
         Insert: {
-          created_at?: string;
-          event_id: string;
+          created_at?: string | null;
+          event_id?: string | null;
           id?: string;
-          invited_by: string;
-          invited_user_id: string;
-          status?: string;
-          updated_at?: string;
+          profile_id?: string | null;
+          user_id?: string | null;
         };
         Update: {
-          created_at?: string;
-          event_id?: string;
+          created_at?: string | null;
+          event_id?: string | null;
           id?: string;
-          invited_by?: string;
-          invited_user_id?: string;
-          status?: string;
-          updated_at?: string;
+          profile_id?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "event_bookmarks_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: false;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "event_bookmarks_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      event_invites: {
+        Row: {
+          created_at: string | null;
+          event_id: string | null;
+          id: string;
+          invite_code: string;
+          max_uses: number | null;
+          used_count: number | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          event_id?: string | null;
+          id?: string;
+          invite_code: string;
+          max_uses?: number | null;
+          used_count?: number | null;
+        };
+        Update: {
+          created_at?: string | null;
+          event_id?: string | null;
+          id?: string;
+          invite_code?: string;
+          max_uses?: number | null;
+          used_count?: number | null;
         };
         Relationships: [
           {
@@ -349,115 +305,56 @@ export type Database = {
             referencedRelation: "events";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "event_invites_invited_by_fkey";
-            columns: ["invited_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "event_invites_invited_user_id_fkey";
-            columns: ["invited_user_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
         ];
       };
       events: {
         Row: {
           category: string;
-          content_hash: string | null;
           created_at: string | null;
           created_by: string | null;
           description: string | null;
-          embedding: string | null;
-          embedding_generated_at: string | null;
-          embedding_model: string | null;
-          embedding_version: number | null;
           event_date: string;
-          event_fingerprint: string | null;
-          event_time: string;
-          event_type: string;
-          google_place_id: string | null;
+          event_time: string | null;
           id: string;
           image_url: string | null;
-          is_private: boolean;
-          location: unknown;
-          match_percentage: number | null;
-          max_attendees: number | null;
+          location: Database["public"]["CompositeTypes"]["geography"] | null;
           parent_event_id: string | null;
-          persona_tags: string[] | null;
           source_id: string | null;
           source_url: string | null;
-          status: string | null;
-          tags: string[] | null;
           title: string;
-          updated_at: string | null;
-          venue_name: string;
+          venue_name: string | null;
         };
         Insert: {
           category: string;
-          content_hash?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
-          embedding?: string | null;
-          embedding_generated_at?: string | null;
-          embedding_model?: string | null;
-          embedding_version?: number | null;
           event_date: string;
-          event_fingerprint?: string | null;
-          event_time: string;
-          event_type: string;
-          google_place_id?: string | null;
+          event_time?: string | null;
           id?: string;
           image_url?: string | null;
-          is_private?: boolean;
-          location: unknown;
-          match_percentage?: number | null;
-          max_attendees?: number | null;
+          location?: Database["public"]["CompositeTypes"]["geography"] | null;
           parent_event_id?: string | null;
-          persona_tags?: string[] | null;
           source_id?: string | null;
           source_url?: string | null;
-          status?: string | null;
-          tags?: string[] | null;
           title: string;
-          updated_at?: string | null;
-          venue_name: string;
+          venue_name?: string | null;
         };
         Update: {
           category?: string;
-          content_hash?: string | null;
           created_at?: string | null;
           created_by?: string | null;
           description?: string | null;
-          embedding?: string | null;
-          embedding_generated_at?: string | null;
-          embedding_model?: string | null;
-          embedding_version?: number | null;
           event_date?: string;
-          event_fingerprint?: string | null;
-          event_time?: string;
-          event_type?: string;
-          google_place_id?: string | null;
+          event_time?: string | null;
           id?: string;
           image_url?: string | null;
-          is_private?: boolean;
-          location?: unknown;
-          match_percentage?: number | null;
-          max_attendees?: number | null;
+          location?: Database["public"]["CompositeTypes"]["geography"] | null;
           parent_event_id?: string | null;
-          persona_tags?: string[] | null;
           source_id?: string | null;
           source_url?: string | null;
-          status?: string | null;
-          tags?: string[] | null;
           title?: string;
-          updated_at?: string | null;
-          venue_name?: string;
+          venue_name?: string | null;
         };
         Relationships: [
           {
@@ -481,187 +378,54 @@ export type Database = {
             referencedRelation: "scraper_sources";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "events_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "source_health_with_insights";
-            referencedColumns: ["id"];
-          },
         ];
       };
       geocode_cache: {
         Row: {
+          address: string;
+          coordinates: Database["public"]["CompositeTypes"]["geography"] | null;
           created_at: string | null;
-          display_name: string | null;
           id: string;
-          lat: number;
-          lng: number;
-          venue_key: string;
+          last_used_at: string | null;
         };
         Insert: {
+          address: string;
+          coordinates?:
+            | Database["public"]["CompositeTypes"]["geography"]
+            | null;
           created_at?: string | null;
-          display_name?: string | null;
           id?: string;
-          lat: number;
-          lng: number;
-          venue_key: string;
+          last_used_at?: string | null;
         };
         Update: {
+          address?: string;
+          coordinates?:
+            | Database["public"]["CompositeTypes"]["geography"]
+            | null;
           created_at?: string | null;
-          display_name?: string | null;
           id?: string;
-          lat?: number;
-          lng?: number;
-          venue_key?: string;
-        };
-        Relationships: [];
-      };
-      google_calendar_tokens: {
-        Row: {
-          id: string;
-          user_id: string;
-          access_token: string;
-          refresh_token: string | null;
-          token_expiry: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          access_token: string;
-          refresh_token?: string | null;
-          token_expiry: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          access_token?: string;
-          refresh_token?: string | null;
-          token_expiry?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "google_calendar_tokens_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: true;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      google_calendar_events: {
-        Row: {
-          id: string;
-          user_id: string;
-          google_event_id: string;
-          created_at: string;
-          updated_at: string;
-          status: string;
-          last_synced_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          google_event_id: string;
-          created_at?: string;
-          updated_at?: string;
-          status?: string;
-          last_synced_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          google_event_id?: string;
-          created_at?: string;
-          updated_at?: string;
-          status?: string;
-          last_synced_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "google_calendar_events_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      net_http_responses_audit: {
-        Row: {
-          body: Json | null;
-          completed_at: string | null;
-          created_at: string | null;
-          duration_ms: number | null;
-          headers: Json | null;
-          id: number;
-          method: string | null;
-          request_id: string | null;
-          started_at: string | null;
-          status: number | null;
-          url: string | null;
-        };
-        Insert: {
-          body?: Json | null;
-          completed_at?: string | null;
-          created_at?: string | null;
-          duration_ms?: number | null;
-          headers?: Json | null;
-          id?: number;
-          method?: string | null;
-          request_id?: string | null;
-          started_at?: string | null;
-          status?: number | null;
-          url?: string | null;
-        };
-        Update: {
-          body?: Json | null;
-          completed_at?: string | null;
-          created_at?: string | null;
-          duration_ms?: number | null;
-          headers?: Json | null;
-          id?: number;
-          method?: string | null;
-          request_id?: string | null;
-          started_at?: string | null;
-          status?: number | null;
-          url?: string | null;
+          last_used_at?: string | null;
         };
         Relationships: [];
       };
       persona_badges: {
         Row: {
-          badge_icon: string;
-          badge_level: string;
-          badge_name: string;
-          earned_at: string | null;
+          awarded_at: string | null;
+          badge_type: string;
           id: string;
-          persona_type: string;
-          profile_id: string;
+          profile_id: string | null;
         };
         Insert: {
-          badge_icon: string;
-          badge_level: string;
-          badge_name: string;
-          earned_at?: string | null;
+          awarded_at?: string | null;
+          badge_type: string;
           id?: string;
-          persona_type: string;
-          profile_id: string;
+          profile_id?: string | null;
         };
         Update: {
-          badge_icon?: string;
-          badge_level?: string;
-          badge_name?: string;
-          earned_at?: string | null;
+          awarded_at?: string | null;
+          badge_type?: string;
           id?: string;
-          persona_type?: string;
-          profile_id?: string;
+          profile_id?: string | null;
         };
         Relationships: [
           {
@@ -673,72 +437,30 @@ export type Database = {
           },
         ];
       };
-      user_blocks: {
-        Row: {
-          id: string;
-          blocker_id: string;
-          blocked_id: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          blocker_id: string;
-          blocked_id: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          blocker_id?: string;
-          blocked_id?: string;
-          created_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "user_blocks_blocker_id_fkey";
-            columns: ["blocker_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "user_blocks_blocked_id_fkey";
-            columns: ["blocked_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       persona_stats: {
         Row: {
-          created_at: string | null;
           host_rating: number | null;
           id: string;
+          last_updated: string | null;
           newcomers_welcomed: number | null;
-          persona_type: string;
-          profile_id: string;
+          profile_id: string | null;
           rallies_hosted: number | null;
-          updated_at: string | null;
         };
         Insert: {
-          created_at?: string | null;
           host_rating?: number | null;
           id?: string;
+          last_updated?: string | null;
           newcomers_welcomed?: number | null;
-          persona_type: string;
-          profile_id: string;
+          profile_id?: string | null;
           rallies_hosted?: number | null;
-          updated_at?: string | null;
         };
         Update: {
-          created_at?: string | null;
           host_rating?: number | null;
           id?: string;
+          last_updated?: string | null;
           newcomers_welcomed?: number | null;
-          persona_type?: string;
-          profile_id?: string;
+          profile_id?: string | null;
           rallies_hosted?: number | null;
-          updated_at?: string | null;
         };
         Relationships: [
           {
@@ -753,207 +475,122 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null;
-          created_at: string | null;
           current_persona: string | null;
           events_attended: number | null;
           events_committed: number | null;
-          full_name: string;
+          full_name: string | null;
           id: string;
           location_city: string | null;
-          location_coordinates: unknown;
+          location_coordinates:
+            | Database["public"]["CompositeTypes"]["geography"]
+            | null;
           location_country: string | null;
-          profile_complete: boolean | null;
           reliability_score: number | null;
-          updated_at: string | null;
-          user_id: string | null;
           verified_resident: boolean | null;
-          interest_scores: Json | null;
-          is_parent_detected: boolean | null;
         };
         Insert: {
           avatar_url?: string | null;
-          created_at?: string | null;
           current_persona?: string | null;
           events_attended?: number | null;
           events_committed?: number | null;
-          full_name: string;
-          id?: string;
+          full_name?: string | null;
+          id: string;
           location_city?: string | null;
-          location_coordinates?: unknown;
+          location_coordinates?:
+            | Database["public"]["CompositeTypes"]["geography"]
+            | null;
           location_country?: string | null;
-          profile_complete?: boolean | null;
           reliability_score?: number | null;
-          updated_at?: string | null;
-          user_id?: string | null;
           verified_resident?: boolean | null;
-          interest_scores?: Json | null;
-          is_parent_detected?: boolean | null;
         };
         Update: {
           avatar_url?: string | null;
-          created_at?: string | null;
           current_persona?: string | null;
           events_attended?: number | null;
           events_committed?: number | null;
-          full_name?: string;
+          full_name?: string | null;
           id?: string;
           location_city?: string | null;
-          location_coordinates?: unknown;
+          location_coordinates?:
+            | Database["public"]["CompositeTypes"]["geography"]
+            | null;
           location_country?: string | null;
-          profile_complete?: boolean | null;
           reliability_score?: number | null;
-          updated_at?: string | null;
-          user_id?: string | null;
           verified_resident?: boolean | null;
-          interest_scores?: Json | null;
-          is_parent_detected?: boolean | null;
         };
         Relationships: [];
       };
-      proposals: {
-        Row: {
-          created_at: string;
-          creator_id: string;
-          event_id: string;
-          id: string;
-          proposed_times: Json;
-          status: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          creator_id: string;
-          event_id: string;
-          id?: string;
-          proposed_times: Json;
-          status?: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          creator_id?: string;
-          event_id?: string;
-          id?: string;
-          proposed_times?: Json;
-          status?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "proposals_creator_id_fkey";
-            columns: ["creator_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "proposals_event_id_fkey";
-            columns: ["event_id"];
-            isOneToOne: false;
-            referencedRelation: "events";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      raw_event_staging: {
+      raw_events: {
         Row: {
           created_at: string | null;
           error_message: string | null;
           id: string;
-          last_health_check: string | null;
-          parsing_method: string | null;
-          processing_log: Json | null;
-          processing_started_at: string | null;
-          raw_html: string;
-          retry_count: number | null;
+          processed_at: string | null;
+          raw_content: Json | null;
           source_id: string | null;
           source_url: string;
-          status: Database["public"]["Enums"]["raw_event_status"] | null;
-          updated_at: string | null;
+          status: string | null;
         };
         Insert: {
           created_at?: string | null;
           error_message?: string | null;
           id?: string;
-          last_health_check?: string | null;
-          parsing_method?: string | null;
-          processing_log?: Json | null;
-          processing_started_at?: string | null;
-          raw_html: string;
-          retry_count?: number | null;
+          processed_at?: string | null;
+          raw_content?: Json | null;
           source_id?: string | null;
           source_url: string;
-          status?: Database["public"]["Enums"]["raw_event_status"] | null;
-          updated_at?: string | null;
+          status?: string | null;
         };
         Update: {
           created_at?: string | null;
           error_message?: string | null;
           id?: string;
-          last_health_check?: string | null;
-          parsing_method?: string | null;
-          processing_log?: Json | null;
-          processing_started_at?: string | null;
-          raw_html?: string;
-          retry_count?: number | null;
+          processed_at?: string | null;
+          raw_content?: Json | null;
           source_id?: string | null;
           source_url?: string;
-          status?: Database["public"]["Enums"]["raw_event_status"] | null;
-          updated_at?: string | null;
+          status?: string | null;
         };
         Relationships: [
           {
-            foreignKeyName: "raw_event_staging_source_id_fkey";
+            foreignKeyName: "raw_events_source_id_fkey";
             columns: ["source_id"];
             isOneToOne: false;
             referencedRelation: "scraper_sources";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "raw_event_staging_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "source_health_with_insights";
             referencedColumns: ["id"];
           },
         ];
       };
       scrape_jobs: {
         Row: {
-          attempts: number;
           completed_at: string | null;
-          created_at: string;
+          created_at: string | null;
           error_message: string | null;
-          events_inserted: number;
-          events_scraped: number;
+          events_found: number | null;
           id: string;
-          source_id: string;
-          status: string;
-          updated_at: string;
+          source_id: string | null;
+          started_at: string | null;
+          status: string | null;
         };
         Insert: {
-          attempts?: number;
           completed_at?: string | null;
-          created_at?: string;
+          created_at?: string | null;
           error_message?: string | null;
-          events_inserted?: number;
-          events_scraped?: number;
+          events_found?: number | null;
           id?: string;
-          source_id: string;
-          status?: string;
-          updated_at?: string;
+          source_id?: string | null;
+          started_at?: string | null;
+          status?: string | null;
         };
         Update: {
-          attempts?: number;
           completed_at?: string | null;
-          created_at?: string;
+          created_at?: string | null;
           error_message?: string | null;
-          events_inserted?: number;
-          events_scraped?: number;
+          events_found?: number | null;
           id?: string;
-          source_id?: string;
-          status?: string;
-          updated_at?: string;
+          source_id?: string | null;
+          started_at?: string | null;
+          status?: string | null;
         };
         Relationships: [
           {
@@ -967,89 +604,64 @@ export type Database = {
       };
       scraper_sources: {
         Row: {
-          auto_disabled: boolean | null;
-          city: string;
-          config: Json | null;
-          consecutive_failures: number | null;
-          content_selector: string | null;
           created_at: string | null;
-          description: string | null;
-          dynamic_rendering: boolean | null;
-          enabled: boolean;
-          event_card_selector: string | null;
-          fetcher_type: Database["public"]["Enums"]["fetcher_type_enum"] | null;
           id: string;
-          is_active: boolean;
-          last_error: string | null;
-          last_run_at: string | null;
-          last_scraped_at: string | null;
-          last_success: boolean | null;
+          is_active: boolean | null;
+          last_polled: string | null;
           name: string;
-          pagination_type: string | null;
-          scraping_schedule: string | null;
-          status: string | null;
-          total_events_scraped: number | null;
-          updated_at: string | null;
-          url: string;
-          wait_time: number | null;
+          polling_interval_mins: number | null;
+          source_url: string;
+          strategy: string | null;
         };
         Insert: {
-          auto_disabled?: boolean | null;
-          city: string;
-          config?: Json | null;
-          consecutive_failures?: number | null;
-          content_selector?: string | null;
           created_at?: string | null;
-          description?: string | null;
-          dynamic_rendering?: boolean | null;
-          enabled?: boolean;
-          event_card_selector?: string | null;
-          fetcher_type?:
-            | Database["public"]["Enums"]["fetcher_type_enum"]
-            | null;
           id?: string;
-          is_active?: boolean;
-          last_error?: string | null;
-          last_run_at?: string | null;
-          last_scraped_at?: string | null;
-          last_success?: boolean | null;
+          is_active?: boolean | null;
+          last_polled?: string | null;
           name: string;
-          pagination_type?: string | null;
-          scraping_schedule?: string | null;
-          status?: string | null;
-          total_events_scraped?: number | null;
-          updated_at?: string | null;
-          url: string;
-          wait_time?: number | null;
+          polling_interval_mins?: number | null;
+          source_url: string;
+          strategy?: string | null;
         };
         Update: {
-          auto_disabled?: boolean | null;
-          city?: string;
-          config?: Json | null;
-          consecutive_failures?: number | null;
-          content_selector?: string | null;
           created_at?: string | null;
-          description?: string | null;
-          dynamic_rendering?: boolean | null;
-          enabled?: boolean;
-          event_card_selector?: string | null;
-          fetcher_type?:
-            | Database["public"]["Enums"]["fetcher_type_enum"]
-            | null;
           id?: string;
-          is_active?: boolean;
-          last_error?: string | null;
-          last_run_at?: string | null;
-          last_scraped_at?: string | null;
-          last_success?: boolean | null;
+          is_active?: boolean | null;
+          last_polled?: string | null;
           name?: string;
-          pagination_type?: string | null;
-          scraping_schedule?: string | null;
-          status?: string | null;
-          total_events_scraped?: number | null;
-          updated_at?: string | null;
-          url?: string;
-          wait_time?: number | null;
+          polling_interval_mins?: number | null;
+          source_url?: string;
+          strategy?: string | null;
+        };
+        Relationships: [];
+      };
+      verified_venues: {
+        Row: {
+          address: string | null;
+          aliases: string[] | null;
+          created_at: string | null;
+          id: string;
+          is_verified: boolean | null;
+          location: Database["public"]["CompositeTypes"]["geography"] | null;
+          name: string;
+        };
+        Insert: {
+          address?: string | null;
+          aliases?: string[] | null;
+          created_at?: string | null;
+          id?: string;
+          is_verified?: boolean | null;
+          location?: Database["public"]["CompositeTypes"]["geography"] | null;
+          name: string;
+        };
+        Update: {
+          address?: string | null;
+          aliases?: string[] | null;
+          created_at?: string | null;
+          id?: string;
+          is_verified?: boolean | null;
+          location?: Database["public"]["CompositeTypes"]["geography"] | null;
+          name?: string;
         };
         Relationships: [];
       };
@@ -1057,152 +669,50 @@ export type Database = {
     Views: {
       source_health_with_insights: {
         Row: {
-          avg_processing_time_seconds: number | null;
-          avg_response_time_ms: number | null;
-          city: string | null;
-          days_since_last_event: number | null;
-          failed_events_last_30d: number | null;
-          id: string | null;
-          last_error_message: string | null;
-          last_success_at: string | null;
-          name: string | null;
-          pending_count: number | null;
-          status: string | null;
+          avg_events_per_run: number | null;
+          error_rate: number | null;
+          last_error: string | null;
+          last_run_at: string | null;
+          source_id: string | null;
+          source_name: string | null;
           success_rate: number | null;
-          total_events: number | null;
-          url: string | null;
+          total_runs: number | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "scrape_jobs_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "scraper_sources";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Functions: {
-      check_event_attendance: {
-        Args: {
-          p_event_id: string;
-          p_user_id: string;
-        };
-        Returns: boolean;
-      };
-      get_discovery_rails: {
-        Args: {
-          p_user_id: string;
-          p_user_lat: number;
-          p_user_long: number;
-          p_radius_km: number;
-          p_limit_per_rail?: number;
-        };
-        Returns: {
-          rail_title: string;
-          rail_type: string;
-          events: Json;
-        }[];
-      };
-      get_friends_pulse: {
-        Args: {
-          current_user_id: string;
-        };
-        Returns: {
-          event_id: string;
-          friend_count: number;
-          friends: Json;
-        }[];
-      };
-      get_mission_mode_events: {
-        Args: {
-          p_intent: string;
-          p_user_lat: number;
-          p_user_long: number;
-          p_max_distance_km: number;
-          p_limit?: number;
-        };
-        Returns: {
-          id: string;
-          title: string;
-          description: string;
-          category: string;
-          event_type: string;
-          venue_name: string;
-          location: unknown;
-          event_date: string;
-          event_time: string;
-          status: string;
-          image_url: string;
-          match_percentage: number;
-          attendee_count: number;
-          created_by: string;
-          created_at: string;
-          parent_event_id: string;
-          distance_km: number;
-        }[];
-      };
-      get_nearby_events: {
-        Args: {
-          user_lat: number;
-          user_long: number;
-          radius_km: number;
-          limit_count?: number;
-          offset_count?: number;
-          filter_category?: string;
-          filter_type?: string;
-        };
-        Returns: {
-          id: string;
-          title: string;
-          description: string;
-          category: string;
-          event_type: string;
-          venue_name: string;
-          location: unknown;
-          event_date: string;
-          event_time: string;
-          status: string;
-          image_url: string;
-          match_percentage: number;
-          attendee_count: number;
-          created_by: string;
-          created_at: string;
-          parent_event_id: string;
-          distance_km: number;
-        }[];
-      };
-      join_event_atomic: {
-        Args: {
-          p_event_id: string;
-          p_profile_id: string;
-          p_status: string;
-        };
-        Returns: {
-          status: "ok" | "exists" | "full" | "error";
-          message?: string;
-          event_id?: string;
-          profile_id?: string;
-        };
-      };
+      [_ in never]: never;
     };
     Enums: {
       fetcher_type_enum: "static" | "puppeteer" | "playwright" | "scrapingbee";
       raw_event_status: "pending" | "processing" | "completed" | "failed";
     };
     CompositeTypes: {
-      [_ in never]: never;
+      geography: string;
     };
   };
 };
 
 type PublicSchema = Database[Extract<keyof Database, "public">];
 
-type DatabaseSchema = Extract<keyof Database, string> &
-  Exclude<keyof Database, "__InternalSupabase">;
-
 export type Tables<
   PublicTableNameOrOptions extends
     | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: DatabaseSchema },
-  TableName extends PublicTableNameOrOptions extends { schema: DatabaseSchema }
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
         Database[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: DatabaseSchema }
+> = PublicTableNameOrOptions extends { schema: keyof Database }
   ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
       Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
@@ -1222,11 +732,11 @@ export type Tables<
 export type TablesInsert<
   PublicTableNameOrOptions extends
     | keyof PublicSchema["Tables"]
-    | { schema: DatabaseSchema },
-  TableName extends PublicTableNameOrOptions extends { schema: DatabaseSchema }
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: DatabaseSchema }
+> = PublicTableNameOrOptions extends { schema: keyof Database }
   ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I;
     }
@@ -1243,11 +753,11 @@ export type TablesInsert<
 export type TablesUpdate<
   PublicTableNameOrOptions extends
     | keyof PublicSchema["Tables"]
-    | { schema: DatabaseSchema },
-  TableName extends PublicTableNameOrOptions extends { schema: DatabaseSchema }
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: DatabaseSchema }
+> = PublicTableNameOrOptions extends { schema: keyof Database }
   ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U;
     }
@@ -1264,27 +774,12 @@ export type TablesUpdate<
 export type Enums<
   PublicEnumNameOrOptions extends
     | keyof PublicSchema["Enums"]
-    | { schema: DatabaseSchema },
-  EnumName extends PublicEnumNameOrOptions extends { schema: DatabaseSchema }
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: DatabaseSchema }
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
-    : never;
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: DatabaseSchema },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: DatabaseSchema;
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: DatabaseSchema }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never;

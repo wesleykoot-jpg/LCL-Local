@@ -13,6 +13,7 @@ interface UseDiscoveryRailsOptions {
   radiusKm?: number;
   enabled?: boolean;
   selectedCategories?: string[];
+  bookmarkedEvents?: EventWithAttendees[];
 }
 
 export function useDiscoveryRails({
@@ -22,6 +23,7 @@ export function useDiscoveryRails({
   radiusKm = 25,
   enabled = true,
   selectedCategories = [],
+  bookmarkedEvents = [],
 }: UseDiscoveryRailsOptions) {
   return useMemo<DiscoveryLayout>(() => {
     if (!enabled || !allEvents || allEvents.length === 0) {
@@ -29,6 +31,17 @@ export function useDiscoveryRails({
     }
 
     const sections: DiscoverySection[] = [];
+
+    // --- Rail 0: "Saved for later" (Personalized) ---
+    if (bookmarkedEvents.length > 0) {
+      sections.push({
+        type: "traditional", // or social/personalized
+        title: "Saved for later",
+        description: "Your hearted events we thought you'd love",
+        items: bookmarkedEvents,
+        layout: "carousel",
+      });
+    }
 
     // --- Rail 1: "Your Local Pulse" (Personalized/Engagement) ---
     let pulseEvents = allEvents;
@@ -159,5 +172,6 @@ export function useDiscoveryRails({
     radiusKm,
     enabled,
     selectedCategories,
+    bookmarkedEvents,
   ]);
 }
