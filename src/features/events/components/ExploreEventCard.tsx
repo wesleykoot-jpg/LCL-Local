@@ -65,7 +65,7 @@ export const ExploreEventCard = memo(function ExploreEventCard({
 
         {/* Date Overlays: Airbnb style bottom left */}
         <div className="absolute bottom-3 left-3 px-2 py-1 rounded-lg bg-white/95 text-[11px] font-bold text-[#1A1A1A] shadow-sm">
-          {formatEventDate(event.event_date)}
+          {formatEventDate(event.event_date || "")}
         </div>
       </div>
 

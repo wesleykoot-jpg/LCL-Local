@@ -127,7 +127,7 @@ export function IdentityCard() {
                   {displayProfile.avatar_url ? (
                     <img
                       src={displayProfile.avatar_url}
-                      alt={displayProfile.full_name}
+                      alt={displayProfile.full_name || "Profile"}
                       className="w-full h-full object-cover"
                     />
                   ) : (

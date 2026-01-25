@@ -393,8 +393,8 @@ export function useAllUserCommitments(profileId: string) {
       });
 
       merged.sort((a, b) => {
-        const dateA = new Date(a.event_date);
-        const dateB = new Date(b.event_date);
+        const dateA = new Date(a.event_date || "");
+        const dateB = new Date(b.event_date || "");
         return dateA.getTime() - dateB.getTime();
       });
 
@@ -412,6 +412,7 @@ export function useAllUserCommitments(profileId: string) {
   // Group by month - memoized to avoid recalculation on every render
   const groupedByMonth = useMemo(() => {
     return commitments.reduce((grouped: GroupedEvents, event) => {
+      if (!event.event_date) return grouped;
       const date = new Date(event.event_date);
       const monthYear = date.toLocaleDateString("en-US", {
         month: "long",

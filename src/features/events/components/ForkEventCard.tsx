@@ -82,7 +82,7 @@ export const ForkEventCard = memo(function ForkEventCard({
                             {event.title}
                         </h4>
                         <div className="flex items-center gap-2 mt-1 text-[13px] text-muted-foreground">
-                            <span>{formatEventTime(event.event_time)}</span>
+                            <span>{formatEventTime(event.event_time || "")}</span>
                             <span>•</span>
                             <span>{event.attendee_count || 0} going</span>
                         </div>

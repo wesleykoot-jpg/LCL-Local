@@ -5,8 +5,9 @@ import type {
   MissionIntent,
   MissionModeResponse,
 } from "../types/discoveryTypes";
+import type { EventWithAttendees } from "../hooks/hooks";
 
-type EventAttendee = Database["public"]["Tables"]["event_attendees"]["Insert"];
+type EventAttendeeInsert = Database["public"]["Tables"]["event_attendees"]["Insert"];
 type JoinEventRpcResult = {
   status: "ok" | "exists" | "full" | "error";
   message?: string;
@@ -14,7 +15,7 @@ type JoinEventRpcResult = {
   profile_id?: string;
 };
 type JoinEventResult = {
-  data: EventAttendee | null;
+  data: EventAttendeeInsert | null;
   rpcResult?: JoinEventRpcResult | null;
   error: Error | null;
   waitlisted: boolean;
@@ -105,7 +106,7 @@ export async function fetchDiscoveryRails(
                 ? userId
                 : "00000000-0000-0000-0000-000000000000";
 
-            const { data, error } = await supabase.rpc("get_discovery_rails", {
+            const { data, error } = await (supabase.rpc as any)("get_discovery_rails", {
               p_user_id: safeUserId,
               p_user_lat: userLocation.lat,
               p_user_long: userLocation.lng,
@@ -150,7 +151,7 @@ export async function fetchMissionModeEvents(
   maxDistanceKm: number = 1.0,
 ): Promise<MissionModeResponse> {
   try {
-    const { data, error } = await supabase.rpc("get_mission_mode_events", {
+    const { data, error } = await (supabase.rpc as any)("get_mission_mode_events", {
       p_intent: intent,
       p_user_lat: userLocation.lat,
       p_user_long: userLocation.lng,

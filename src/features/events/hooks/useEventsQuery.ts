@@ -164,7 +164,6 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
                 location: rpcEvent.location,
                 event_date: rpcEvent.event_date,
                 event_time: rpcEvent.event_time,
-                status: rpcEvent.status as Event["status"],
                 image_url: rpcEvent.image_url,
                 match_percentage: rpcEvent.match_percentage,
                 attendee_count: rpcEvent.attendee_count,
@@ -183,16 +182,13 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           );
 
         return combinedEvents;
-        return combinedEvents;
       }
 
       // NEW: Use location-based RPC if user has location but no personalized feed
       if (userLocation) {
-        // Prepare filters
-        const categoryFilter =
-          category && category.length > 0 ? category[0] : null;
-        const typeFilter =
-          eventType && eventType.length > 0 ? eventType[0] : null;
+        // Prepare filters - pass as arrays to match RPC parameter types
+        const categoryFilter = category && category.length > 0 ? category : [];
+        const typeFilter = eventType && eventType.length > 0 ? eventType : [];
 
         const { data, error } = await supabase.rpc("get_nearby_events", {
           user_lat: userLocation.lat,
@@ -200,8 +196,8 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           radius_km: radiusKm,
           limit_count: limit,
           offset_count: offset,
-          filter_category: categoryFilter || undefined,
-          filter_type: typeFilter || undefined,
+          filter_category: categoryFilter,
+          filter_type: typeFilter,
         });
 
         if (error) {
@@ -209,12 +205,12 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           throw error;
         }
 
-        if (!data || data.length === 0) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
           return [];
         }
 
         // Fetch attendees for these events separately
-        const eventIds = data.map((e) => e.id);
+        const eventIds = (data as any[]).map((e: any) => e.id);
         const { data: attendeesData } = await supabase
           .from("event_attendees")
           .select(
@@ -244,7 +240,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           });
         }
 
-        return data
+        return (data as any[])
           .filter(
             (e: any) => !e.created_by || !blockedUserIds.includes(e.created_by),
           )
@@ -259,7 +255,6 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
             location: e.location,
             event_date: e.event_date,
             event_time: e.event_time,
-            status: e.status as Event["status"],
             image_url: e.image_url,
             match_percentage: e.match_percentage,
             attendee_count: Number(e.attendee_count), // RPC returns bigint

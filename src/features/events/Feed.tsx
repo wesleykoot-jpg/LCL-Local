@@ -39,6 +39,7 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
   switch (filter) {
     case 'tonight':
       return events.filter(e => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === today.getTime();
       });
@@ -46,6 +47,7 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
       return events.filter(e => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return eventDay.getTime() === tomorrow.getTime();
       });
@@ -60,6 +62,7 @@ function filterEventsByTime(events: EventWithAttendees[], filter: TimeFilter): E
       sunday.setDate(friday.getDate() + 2);
       sunday.setHours(23, 59, 59, 999);
       return events.filter(e => {
+        if (!e.event_date) return false;
         const eventDay = parseLocalDate(e.event_date);
         return eventDay >= friday && eventDay <= sunday;
       });
@@ -86,6 +89,7 @@ function getUpcomingEvents(events: EventWithAttendees[], limit = 6): EventWithAt
 
   return events
     .filter(e => {
+      if (!e.event_date) return false;
       const eventDay = parseLocalDate(e.event_date);
       return eventDay >= today && eventDay <= twoDaysLater;
     })
