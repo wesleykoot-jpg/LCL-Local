@@ -284,6 +284,12 @@ const Feed = () => {
         if (event) {
           const result = await trackEventJoin(profile.id, event.category);
           if (result.isParentDetected && !isParentDetected) {
+            setIsParentDetected(true);
+          }
+        }
+      }
+    },
+    [
       selectedEventId,
       joinEvent,
       allEvents,
@@ -293,13 +299,16 @@ const Feed = () => {
     ],
   );
 
-  const handleForkEvent = useCallback((eventId: string) => {
-    const event = allEvents.find((e) => e.id === eventId);
-    if (event) {
-      setForkParentEvent(event);
-      setShowCreateModal(true);
-    }
-  }, [allEvents]);
+  const handleForkEvent = useCallback(
+    (eventId: string) => {
+      const event = allEvents.find((e) => e.id === eventId);
+      if (event) {
+        setForkParentEvent(event);
+        setShowCreateModal(true);
+      }
+    },
+    [allEvents],
+  );
 
   const hasJoinedFeatured = useMemo(() => {
     if (!featuredEvent || !profile?.id) return false;
@@ -554,7 +563,11 @@ const Feed = () => {
           <ErrorBoundary>
             <Suspense
               fallback={
-               <div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center"><LoadingSkeleton /></div>}>
+                <div className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center">
+                  <LoadingSkeleton />
+                </div>
+              }
+            >
               <CreateEventModal
                 onClose={() => {
                   setShowCreateModal(false);

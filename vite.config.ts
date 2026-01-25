@@ -1,50 +1,59 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/test/setup.ts',
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.ts",
     css: true,
   },
   build: {
-    target: 'es2020',
-    minify: 'terser',
+    target: "es2020",
+    minify: "terser",
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'supabase-vendor': ['@supabase/supabase-js'],
-          'icons-vendor': ['lucide-react'],
-          'animation-vendor': ['framer-motion'],
-          'query-vendor': ['@tanstack/react-query'],
-          'ui-vendor': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-select',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-slider',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-radio-group',
-          ],
-          'map-vendor': ['leaflet', 'react-leaflet'],
-          'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (
+              id.includes("react") ||
+              id.includes("react-dom") ||
+              id.includes("react-router-dom")
+            ) {
+              return "react-vendor";
+            }
+            if (id.includes("@supabase")) {
+              return "supabase-vendor";
+            }
+            if (id.includes("lucide-react")) {
+              return "icons-vendor";
+            }
+            if (id.includes("framer-motion")) {
+              return "animation-vendor";
+            }
+            if (id.includes("@tanstack/react-query")) {
+              return "query-vendor";
+            }
+            if (id.includes("leaflet") || id.includes("react-leaflet")) {
+              return "map-vendor";
+            }
+            if (id.includes("@radix-ui")) {
+              return "ui-vendor";
+            }
+
+            // Catch-all for other node_modules to prevent them from being bundled into entry
+            return "vendor";
+          }
         },
       },
     },
@@ -52,7 +61,7 @@ export default defineConfig({
     sourcemap: false,
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', '@supabase/supabase-js', 'lucide-react'],
+    include: ["react", "react-dom", "@supabase/supabase-js", "lucide-react"],
   },
   server: {
     host: "0.0.0.0",
@@ -63,4 +72,4 @@ export default defineConfig({
     port: 8080,
     strictPort: false,
   },
-})
+});
