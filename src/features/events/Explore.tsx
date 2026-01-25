@@ -88,8 +88,11 @@ export default function ExplorePage() {
 
   // Derived location text
   const locationText = useMemo(() => {
-    return locationPrefs?.manualZone || profile?.location_city || "Groningen";
-  }, [locationPrefs, profile]);
+    if (locationPrefs?.useGPS && userLocation) {
+      return "Current Location";
+    }
+    return locationPrefs?.manualZone || profile?.location_city || "Meppel, NL";
+  }, [locationPrefs, profile, userLocation]);
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-32">
