@@ -80,7 +80,6 @@ apply_*.cjs
 
 # Other project files
 .agent
-.github
 .git
 .gitignore
 antigravity

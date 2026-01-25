@@ -35,8 +35,6 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          # Use CI build to skip type checking (existing TS errors in repo)
-          npm_config_script: build:ci
 
       - name: Deploy to Vercel
         id: deploy

@@ -21,7 +21,7 @@ The repository is configured to automatically deploy preview environments to Ver
 3. Import the `wesleykoot-jpg/LCL-Local` repository
 4. Configure project settings:
    - **Framework Preset**: Vite
-   - **Build Command**: `npm run build`
+   - **Build Command**: `npm run build:ci`
    - **Output Directory**: `dist`
    - **Install Command**: `npm install`
 
