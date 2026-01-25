@@ -2,6 +2,8 @@
 
 This guide will help you set up Vercel deployments for PRs in the LCL-Local repository.
 
+> **Test Update**: Secrets configured - testing deployment workflow.
+
 ## What Has Been Set Up
 
 The following files have been added/modified to enable Vercel deployments:
