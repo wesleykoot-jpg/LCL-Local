@@ -287,3 +287,5 @@ npm run build-storybook  # Build Storybook
 ---
 
 Built with ❤️ using React, TypeScript, and Supabase (Updated: Jan 2026)
+
+# Vercel Trigger: Mon Jan 26 00:09:44 CET 2026
