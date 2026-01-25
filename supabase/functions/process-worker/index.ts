@@ -39,56 +39,122 @@ interface StagingRow {
 
 /**
  * Calculates a quality score for an event based on field completeness.
+ * Enhanced to account for additional data quality factors.
+ * 
+ * Score breakdown (total = 1.0):
+ * - Core fields (0.5): description, image, venue, location, date validity
+ * - Enhanced fields (0.3): price, end_time, tickets_url, organizer
+ * - Data richness (0.2): long description, performer, venue address
  */
 function calculateQualityScore(event: any): number {
   let score = 0;
 
-  // Weights: Title (mandatory), Date (mandatory) - handled by validation
-
-  // Description: +0.3
-  if (event.description && event.description.length > 50) {
-    score += 0.3;
-  } else if (event.description) {
+  // === CORE FIELDS (0.5 total) ===
+  
+  // Description: +0.15 (substantial) or +0.05 (minimal)
+  if (event.description && event.description.length > 100) {
     score += 0.15;
+  } else if (event.description && event.description.length > 30) {
+    score += 0.08;
+  } else if (event.description) {
+    score += 0.03;
   }
 
-  // Image URL: +0.2
-  // Check if it's a real image and not a placeholder or empty
+  // Image URL: +0.10
   if (
     event.image_url &&
     event.image_url.startsWith("http") &&
-    !event.image_url.includes("placeholder")
+    !event.image_url.includes("placeholder") &&
+    !event.image_url.includes("default")
   ) {
-    score += 0.2;
+    score += 0.10;
   }
 
-  // Venue Name: +0.2
+  // Venue Name: +0.10
   if (
     event.venue_name &&
     event.venue_name !== "TBD" &&
     event.venue_name.length > 2
   ) {
-    score += 0.2;
+    score += 0.10;
   }
 
-  // Coordinates (Location): +0.2
-  // If location is provided and it's not the default POINT(0 0)
+  // Coordinates (Location): +0.10
   if (event.location && event.location !== "POINT(0 0)") {
-    score += 0.2;
+    score += 0.10;
   }
 
-  // Correct Year / Metadata: +0.1
-  // If the event date is within the next 2 years (reasonable window)
+  // Date validity: +0.05
   const eventDate = new Date(event.event_date);
   const now = new Date();
   const twoYearsOut = new Date();
   twoYearsOut.setFullYear(now.getFullYear() + 2);
-
   if (eventDate >= now && eventDate <= twoYearsOut) {
-    score += 0.1;
+    score += 0.05;
   }
 
-  return score;
+  // === ENHANCED FIELDS (0.30 total) ===
+  
+  // Event time is specific (not TBD): +0.05
+  // Valid time format: HH:MM or H:MM, optionally with seconds
+  if (event.event_time && event.event_time !== "TBD" && /^\d{1,2}:\d{2}(:\d{2})?$/.test(event.event_time)) {
+    score += 0.05;
+  }
+
+  // Price information: +0.08
+  if (event.price && event.price.length > 0) {
+    score += 0.08;
+  }
+
+  // End time/duration: +0.05
+  if (event.end_time || event.end_date) {
+    score += 0.05;
+  }
+
+  // Tickets URL: +0.06
+  if (event.tickets_url && event.tickets_url.startsWith("http")) {
+    score += 0.06;
+  }
+
+  // Organizer: +0.06
+  if (event.organizer && event.organizer.length > 1) {
+    score += 0.06;
+  }
+
+  // === DATA RICHNESS (0.20 total) ===
+  
+  // Long, detailed description: +0.08
+  if (event.description && event.description.length > 300) {
+    score += 0.08;
+  }
+
+  // Venue address (full address, not just name): +0.06
+  if (event.venue_address && event.venue_address.length > 10) {
+    score += 0.06;
+  }
+
+  // Performer/artist name: +0.06
+  if (event.performer && event.performer.length > 1) {
+    score += 0.06;
+  }
+
+  // Cap at 1.0
+  return Math.min(score, 1.0);
+}
+
+/**
+ * Calculates whether an event has sufficient data quality for display.
+ * Events below the threshold may be hidden from the main feed.
+ */
+function hasMinimumQuality(event: any): boolean {
+  // Minimum requirements: title, date, and at least venue OR description
+  const hasTitle = event.title && event.title.length > 2;
+  const hasDate = event.event_date;
+  const hasVenueOrDescription = 
+    (event.venue_name && event.venue_name !== "TBD") ||
+    (event.description && event.description.length > 20);
+  
+  return hasTitle && hasDate && hasVenueOrDescription;
 }
 
 // Helper: Claim pending rows atomically using RPC
@@ -551,8 +617,9 @@ async function processRow(
       normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
     );
 
-    // Construct common payload
+    // Construct common payload with enhanced fields for improved data quality
     const eventPayload: any = {
+      // Core fields
       title: normalized.title,
       description: normalized.description || "",
       category: normalized.category || "COMMUNITY",
@@ -566,11 +633,34 @@ async function processRow(
       updated_at: new Date().toISOString(),
       image_url: normalized.image_url,
       venue_name: normalized.venue_name || "",
-      source_url: normalized.detail_url || raw.detailUrl || sourceUrl, // FIX: Mapped to source_url
+      venue_address: normalized.venue_address || null,
+      source_url: normalized.detail_url || raw.detailUrl || sourceUrl,
       tags: normalized.tags || [],
+      
+      // Enhanced pricing fields
+      price: normalized.price || null,
+      price_currency: normalized.price_currency || null,
+      price_min: normalized.price_min || null,
+      price_max: normalized.price_max || null,
+      tickets_url: normalized.tickets_url || null,
+      
+      // Enhanced time fields
+      end_time: normalized.end_time || null,
+      end_date: normalized.end_date || null,
+      
+      // Organizer and performer fields
+      organizer: normalized.organizer || null,
+      organizer_url: normalized.organizer_url || null,
+      performer: normalized.performer || null,
+      
+      // Event status
+      event_status: normalized.event_status || 'scheduled',
+      
+      // Data quality tracking
+      data_source: normalized.data_source || (row.detail_html ? 'detail' : 'listing'),
     };
 
-    // Calculate quality score
+    // Calculate quality score with enhanced fields
     const finalQualityScore = calculateQualityScore({
       ...eventPayload,
       location: eventPayload.location || "POINT(0 0)",
