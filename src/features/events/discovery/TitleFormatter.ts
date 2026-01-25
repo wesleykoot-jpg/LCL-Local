@@ -261,11 +261,22 @@ export function formatStreakText(streak: number): string | null {
 
 /**
  * Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
+ * 
+ * The algorithm handles English ordinal suffixes:
+ * - Numbers 11-13 always use "th" (11th, 12th, 13th)
+ * - Numbers ending in 1 use "st" (1st, 21st, 31st)
+ * - Numbers ending in 2 use "nd" (2nd, 22nd, 32nd)
+ * - Numbers ending in 3 use "rd" (3rd, 23rd, 33rd)
+ * - All other numbers use "th"
  */
 function getOrdinalSuffix(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return s[(v - 20) % 10] || s[v] || s[0];
+  const suffixes = ["th", "st", "nd", "rd"];
+  const remainder = n % 100;
+  
+  // Special case: 11, 12, 13 always use "th"
+  // For other numbers, use the last digit to determine suffix
+  // (v - 20) % 10 handles numbers > 20 by getting last digit
+  return suffixes[(remainder - 20) % 10] || suffixes[remainder] || suffixes[0];
 }
 
 /**

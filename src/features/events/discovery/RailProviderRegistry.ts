@@ -328,12 +328,7 @@ class RailProviderRegistry {
    */
   getAllSorted(): RailProvider[] {
     return Array.from(this.providers.values())
-      .sort((a, b) => {
-        // Access priority directly from providers (they all have it as a readonly property)
-        const priorityA = (a as BaseRailProvider).priority;
-        const priorityB = (b as BaseRailProvider).priority;
-        return priorityA - priorityB;
-      });
+      .sort((a, b) => a.priority - b.priority);
   }
   
   /**

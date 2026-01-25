@@ -148,6 +148,9 @@ export interface RailProvider {
   /** Unique type identifier */
   readonly type: RailType;
   
+  /** Priority for ordering (lower = higher priority) */
+  readonly priority: number;
+  
   /** Get the metadata for this rail (may depend on context) */
   getMetadata(context: RailContext): RailMetadata;
   

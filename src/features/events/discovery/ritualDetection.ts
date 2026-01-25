@@ -156,8 +156,11 @@ export function groupRecurringEvents(
     if (matchedGroup) {
       groups.get(matchedGroup)!.push(event);
     } else {
-      // Create new group with unique key
-      const groupKey = `${event.venue_name || "unknown"}_${event.title}_${Date.now()}_${Math.random()}`;
+      // Create new group with deterministic key based on venue, title, and day of week
+      const eventDay = event.event_date ? getEventDayOfWeek(event.event_date) : "unknown";
+      const normalizedVenue = (event.venue_name || "unknown").toLowerCase().trim();
+      const normalizedTitle = (event.title || "unknown").toLowerCase().trim();
+      const groupKey = `${normalizedVenue}_${normalizedTitle}_${eventDay}`;
       groups.set(groupKey, [event]);
     }
   }
