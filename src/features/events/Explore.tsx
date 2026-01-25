@@ -96,8 +96,8 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-32">
       {/* Search Header - Social Air 6.0 Style */}
-      <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
-        <div className="flex items-center gap-4 mb-4">
+      <header className="sticky top-0 z-30 bg-white border-b border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] px-6 pt-safe pb-4">
+        <div className="pt-4 flex items-center gap-4 mb-4">
           <button
             className="flex items-center gap-1.5 text-[#1A1A1A] font-bold text-lg active:scale-95 transition-transform"
             onClick={() => hapticImpact("light")}
@@ -253,7 +253,7 @@ export default function ExplorePage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-50 bg-[#F9FAFB] flex flex-col pt-[calc(env(safe-area-inset-top)+10px)]"
+            className="fixed inset-0 z-50 bg-[#F9FAFB] flex flex-col pt-safe"
           >
             {/* Header */}
             <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shrink-0 shadow-sm z-10 sticky top-0">

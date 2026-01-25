@@ -141,7 +141,7 @@ export function CreateEventModal({
   return (
     <div className="fixed inset-0 bg-black/50  z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* LCL 2.0: Enhanced bottom sheet with upward shadow */}
-      <div className="bg-white rounded-t-[2rem] sm:rounded-3xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto shadow-up-sheet">
+      <div className="bg-white rounded-t-[2rem] sm:rounded-3xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto shadow-up-sheet pb-safe">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-[2rem]">
           <h2 className="text-xl font-bold text-zinc-900">Create Event</h2>
           {/* LCL 2.0: Close button meets 44px touch target */}

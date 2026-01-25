@@ -144,7 +144,7 @@ export function MorphingHeader({ containerRef }: MorphingHeaderProps) {
 
       {/* Docked Navigation Bar - Fixed position at top when scrolled */}
       <motion.div
-        className="fixed top-0 left-0 right-0 z-50 bg-surface-card shadow-bottom-nav"
+        className="fixed top-0 left-0 right-0 z-50 bg-surface-card shadow-bottom-nav pt-safe"
         style={{
           opacity: motionPreset.prefersReducedMotion ? 0 : navOpacity,
           pointerEvents: 'auto',

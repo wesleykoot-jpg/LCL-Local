@@ -84,7 +84,7 @@ const MyPlanning = () => {
     return (
       <div className="min-h-screen bg-surface-base">
         {/* Sticky Solid Header - LCL Core 2026 */}
-        <header className="sticky top-0 z-30 bg-surface-card border-b border-border shadow-card px-6 py-4">
+        <header className="sticky top-0 z-30 bg-surface-card border-b border-border shadow-card pt-safe px-6 py-4">
           <h1 className="text-2xl font-bold text-foreground">My Planning</h1>
         </header>
         <div className="pt-4 px-4">
@@ -98,7 +98,7 @@ const MyPlanning = () => {
   return (
     <div className="min-h-screen bg-surface-base pb-24">
       {/* Sticky Solid Header - LCL Core 2026 */}
-      <header className="sticky top-0 z-30 bg-surface-card border-b border-border shadow-card">
+      <header className="sticky top-0 z-30 bg-surface-card border-b border-border shadow-card pt-safe">
         <div className="px-6 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
