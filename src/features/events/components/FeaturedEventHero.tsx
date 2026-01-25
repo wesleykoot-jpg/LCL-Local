@@ -16,7 +16,7 @@ interface FeaturedEventHeroProps {
   onSave?: () => void;
 }
 
-const formatTime = (timeStr: string) => {
+const formatTime = (timeStr: string | null) => {
   if (!timeStr) return "";
   if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
     const [hours, minutes] = timeStr.split(":").map(Number);
@@ -27,7 +27,8 @@ const formatTime = (timeStr: string) => {
   return timeStr;
 };
 
-const formatDatePill = (dateStr: string) => {
+const formatDatePill = (dateStr: string | null) => {
+  if (!dateStr) return "";
   const datePart = dateStr.split("T")[0].split(" ")[0];
   const eventDate = new Date(datePart + "T00:00:00");
   const today = new Date();
