@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useEventsQuery } from "./hooks/useEventsQuery";
 import { useJoinEvent, type EventWithAttendees } from "./hooks/hooks";
+import { useDiscoveryRails } from "./hooks/useDiscoveryRails";
 import { hapticImpact } from "@/shared/lib/haptics";
 import { groupEventsIntoStacks } from "./api/feedGrouping";
 import { rankEvents } from "./api/feedAlgorithm";
@@ -90,35 +91,6 @@ function filterEventsByTime(
     default:
       return events;
   }
-}
-
-// Get trending events (most attendees)
-function getTrendingEvents(
-  events: EventWithAttendees[],
-  limit = 6,
-): EventWithAttendees[] {
-  return [...events]
-    .sort((a, b) => (b.attendee_count || 0) - (a.attendee_count || 0))
-    .slice(0, limit);
-}
-
-// Get upcoming events (within 2 days)
-function getUpcomingEvents(
-  events: EventWithAttendees[],
-  limit = 6,
-): EventWithAttendees[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const twoDaysLater = new Date(today);
-  twoDaysLater.setDate(today.getDate() + 2);
-
-  return events
-    .filter((e) => {
-      if (!e.event_date) return false;
-      const eventDay = parseLocalDate(e.event_date);
-      return eventDay >= today && eventDay <= twoDaysLater;
-    })
-    .slice(0, limit);
 }
 
 const Feed = () => {
@@ -220,14 +192,26 @@ const Feed = () => {
   // Remaining events as stacks
   const remainingStacks = useMemo(() => {
     const excludeIds = new Set(
-      [featuredEvent?.id, ...trendingEvents.map((e) => e.id)].filter(
+      [featuredEvent?.id, ...rankedEvents.slice(0, 5).map((e) => e.id)].filter(
         Boolean,
       ) as string[],
     );
 
     const remaining = rankedEvents.filter((e) => !excludeIds.has(e.id));
     return groupEventsIntoStacks(remaining as any);
-  }, [rankedEvents, featuredEvent, trendingEvents]);
+  }, [rankedEvents, featuredEvent]);
+
+  // Use Discovery Rails Strategy
+  const { sections } = useDiscoveryRails({
+    allEvents: filteredEvents, // Use filtered events (based on time filter)
+    enabled: activeFilter === "all", // Only show rails on 'all' view
+    selectedCategories: preferences?.selectedCategories,
+    // bookmarkedEvents: [], // TODO: Add bookmark hook
+    locationCity: profile?.location_city || "Meppel",
+    userLocation: userLocation || undefined,
+    radiusKm: locationPrefs.radiusKm,
+    profileId: profile?.id,
+  });
 
   const handleNavigate = (view: "feed" | "planning" | "profile" | "now") => {
     if (view === "feed") navigate("/");
@@ -431,57 +415,64 @@ const Feed = () => {
                   </motion.div>
                 )}
 
-                {/* Friends Pulse Rail - Instagram Stories style */}
-                <FriendsPulseRail
-                  currentUserProfileId={profile?.id}
-                  onEventClick={handleEventClick}
-                />
-
-                {/* Trending Carousel */}
-                {activeFilter === "all" && trendingEvents.length > 0 && (
-                  <HorizontalEventCarousel
-                    title="🔥 Populair in Meppel"
-                    events={trendingEvents}
-                    onEventClick={handleEventClick}
-                    onJoinEvent={handleJoinEvent}
-                    joiningEventId={allEvents.find((e) => isJoining(e.id))?.id}
-                    currentUserProfileId={profile?.id}
-                  />
+                {/* Featured Hero - Only on 'all' filter */}
+                {activeFilter === "all" && featuredEvent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <FeaturedEventHero
+                      event={featuredEvent}
+                      onEventClick={handleEventClick}
+                      onJoinEvent={handleJoinEvent}
+                      isJoining={isJoining(featuredEvent.id)}
+                      hasJoined={hasJoinedFeatured}
+                      onFork={handleForkEvent}
+                    />
+                  </motion.div>
                 )}
 
-                {/* Upcoming Carousel */}
-                {activeFilter === "all" && upcomingEvents.length > 0 && (
-                  <HorizontalEventCarousel
-                    title="⚡ Binnenkort"
-                    events={upcomingEvents}
-                    onEventClick={handleEventClick}
-                    onJoinEvent={handleJoinEvent}
-                    joiningEventId={allEvents.find((e) => isJoining(e.id))?.id}
-                    currentUserProfileId={profile?.id}
-                  />
-                )}
+                {/* Discovery Rails (Dynamic Strategy) */}
+                {/* Rails include: Pulse, Location, Rituals, This Weekend, etc. */}
+                <div className="space-y-6 mt-6">
+                  {sections.map((section, index) => {
+                    if (section.items.length === 0) return null;
 
-                {/* All Events Section */}
-                {remainingStacks.length > 0 && (
-                  <div className="space-y-5">
-                    {activeFilter === "all" && (
+                    return (
+                      <motion.div
+                        key={section.title + index}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 }}
+                      >
+                        <HorizontalEventCarousel
+                          title={section.title}
+                          events={section.items}
+                          onEventClick={handleEventClick}
+                          onJoinEvent={handleJoinEvent}
+                          joiningEventId={
+                            allEvents.find((e) => isJoining(e.id))?.id
+                          }
+                          currentUserProfileId={profile?.id}
+                        />
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Fallback to Stacks for "All Events" after rails */}
+                  {remainingStacks.length > 0 && (
+                    <div className="space-y-5 pt-4">
                       <div className="flex items-center gap-2 px-1">
                         <Sparkles size={18} className="text-primary" />
                         <h2 className="text-[20px] font-semibold text-foreground tracking-tight">
                           Alle evenementen
                         </h2>
                       </div>
-                    )}
-
-                    <div className="max-w-md mx-auto w-full flex flex-col gap-6">
-                      {remainingStacks.map((stack) => (
-                        <motion.div
-                          key={stack.anchor.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
+                      <div className="max-w-md mx-auto w-full flex flex-col gap-6">
+                        {remainingStacks.map((stack) => (
                           <EventStackCard
+                            key={stack.anchor.id}
                             stack={stack}
                             onEventClick={handleEventClick}
                             onJoinEvent={handleJoinEvent}
@@ -495,11 +486,11 @@ const Feed = () => {
                               null
                             }
                           />
-                        </motion.div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             )}
           </main>
