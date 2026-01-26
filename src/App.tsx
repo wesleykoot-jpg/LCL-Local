@@ -102,7 +102,6 @@ const App = () => (
                   <Route path="/" element={<Explore />} />
                   <Route path="/explore" element={<Explore />} />
                   <Route path="/discovery" element={<DiscoveryPage />} />
-                  <Route path="/discovery" element={<DiscoveryPage />} />
                   <Route path="/now" element={<NowPage />} />
                   <Route path="/planning" element={<MyPlanningPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
@@ -164,7 +163,6 @@ const App = () => (
                   {/* Main app routes - accessible without login for dev */}
                   <Route path="/" element={<Explore />} />
                   <Route path="/explore" element={<Explore />} />
-                  <Route path="/discovery" element={<DiscoveryPage />} />
                   <Route path="/discovery" element={<DiscoveryPage />} />
                   <Route path="/now" element={<NowPage />} />
                   <Route path="/planning" element={<MyPlanningPage />} />
