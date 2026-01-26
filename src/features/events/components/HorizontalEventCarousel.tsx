@@ -120,7 +120,24 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
     onSeeAll?.();
   }, [onSeeAll]);
 
-  if (events.length === 0) return null;
+  if (events.length === 0) {
+    return (
+      <div className="space-y-3">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 mb-4">
+          <h2 className="text-[18px] font-semibold text-foreground">{title}</h2>
+        </div>
+        {/* Empty state */}
+        <div className="px-6">
+          <div className="flex items-center justify-center h-32 bg-muted/30 rounded-xl border border-dashed border-muted-foreground/20">
+            <p className="text-[14px] text-muted-foreground">
+              No events yet - check back soon!
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

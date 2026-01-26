@@ -1,6 +1,6 @@
 import { memo, useState, useCallback, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Clock, Loader2, MapPin, Heart, ChevronRight, Baby, Sparkles } from 'lucide-react';
+import { Users, Clock, Loader2, MapPin, Heart, ChevronRight, Baby, Sparkles, GitBranch } from 'lucide-react';
 import { CategoryBadge } from './CategoryBadge';
 import { EventActionsMenu } from './EventActionsMenu';
 import type { EventStack } from '../api/feedGrouping';
@@ -18,6 +18,7 @@ interface EventStackCardProps {
   stack: EventStack;
   onEventClick?: (eventId: string) => void;
   onJoinEvent?: (eventId: string) => Promise<void>;
+  onFork?: (eventId: string) => void;
   joiningEventId?: string;
   currentUserProfileId?: string;
   userLocation?: { lat: number; lng: number } | null;
@@ -42,6 +43,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   event,
   onClick,
   onJoin,
+  onFork,
   isJoining,
   hasForks,
   currentUserProfileId,
@@ -49,6 +51,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
   event: EventWithAttendees;
   onClick?: () => void;
   onJoin?: () => void;
+  onFork?: () => void;
   isJoining?: boolean;
   hasForks: boolean;
   currentUserProfileId?: string;
@@ -172,8 +175,23 @@ const AnchorEventCard = memo(function AnchorEventCard({
           </span>
         </div>
 
-        {/* Join button */}
-        <div className="pt-3">
+        {/* Action Buttons: Split Layout (Fork 35% | Join 65%) */}
+        <div className="pt-3 flex gap-3">
+          {/* Fork Button */}
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              await hapticImpact('medium');
+              onFork?.();
+            }}
+            aria-label="Fork this event to create a variation"
+            className="flex-none w-[35%] h-[48px] rounded-xl border border-border bg-card text-foreground text-[15px] font-semibold flex items-center justify-center gap-2 hover:bg-muted transition-all active:scale-[0.98]"
+          >
+            <GitBranch size={18} />
+            <span>Fork</span>
+          </button>
+
+          {/* Join Button */}
           <button
             onClick={async (e) => {
               e.stopPropagation();
@@ -183,7 +201,8 @@ const AnchorEventCard = memo(function AnchorEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
-            className={`w-full h-[48px] rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98] ${hasJoined
+            aria-label={hasJoined ? 'Already joined this event' : isJoining ? 'Joining event...' : 'Join this event'}
+            className={`flex-1 h-[48px] rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98] ${hasJoined
                 ? 'bg-muted text-muted-foreground'
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
               }`}
@@ -316,6 +335,7 @@ export const EventStackCard = memo(function EventStackCard({
   stack,
   onEventClick,
   onJoinEvent,
+  onFork,
   joiningEventId,
   currentUserProfileId,
   userLocation,
@@ -334,6 +354,7 @@ export const EventStackCard = memo(function EventStackCard({
         event={stack.anchor}
         onClick={() => onEventClick?.(stack.anchor.id)}
         onJoin={() => onJoinEvent?.(stack.anchor.id)}
+        onFork={() => onFork?.(stack.anchor.id)}
         isJoining={joiningEventId === stack.anchor.id}
         hasForks={hasForks}
         currentUserProfileId={currentUserProfileId}

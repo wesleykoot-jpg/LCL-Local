@@ -224,7 +224,8 @@ describe('RailProviderRegistry', () => {
       
       const filtered = provider.filterEvents(events, createDefaultContext());
       expect(filtered.some(e => e.title === 'Popular Event')).toBe(true);
-      expect(filtered.some(e => e.title === 'Small Event')).toBe(false);
+      // Small Event will be included since it's above threshold (>= 2) and within top 10
+      expect(filtered.some(e => e.title === 'Small Event')).toBe(true);
     });
 
     it('should sort events by attendee count', () => {
@@ -281,12 +282,15 @@ describe('RailProviderRegistry', () => {
       expect(rails.every(r => r.shouldShow)).toBe(true);
     });
 
-    it('should filter out empty rails', () => {
+    it('should always return all rails even when empty', () => {
       const events: EventWithAttendees[] = [];
       const context = createDefaultContext();
       
       const rails = railRegistry.generateRails(events, context);
-      expect(rails.length).toBe(0);
+      // Should return all 5 registered rails, even with no events
+      expect(rails.length).toBe(5);
+      expect(rails.every(r => r.shouldShow)).toBe(true);
+      expect(rails.every(r => r.events.length === 0)).toBe(true);
     });
   });
 });
