@@ -2,18 +2,18 @@
 
 /**
  * 10-City Scraper Pipeline
- * 
+ *
  * This script:
  * 1. Clears all old scraper data (events, staging, insights)
  * 2. Sets up sources for 10 medium Dutch cities including Meppel
  * 3. Runs the scraper pipeline (fetcher + processor)
  * 4. Generates a data quality summary per source
- * 
+ *
  * Target: 200-400 events per city (2000-4000 total)
- * 
+ *
  * Usage:
  *   deno run --allow-net --allow-env --allow-read scripts/run_10_city_pipeline.ts
- * 
+ *
  * Required env vars:
  *   - SUPABASE_URL or VITE_SUPABASE_URL
  *   - SUPABASE_SERVICE_ROLE_KEY
@@ -27,23 +27,87 @@ import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 
 // 10 medium Dutch cities including Meppel (population 25,000-100,000)
 const TARGET_CITIES = [
-  { name: "Meppel", population: 34893, lat: 52.6957, lng: 6.1944, province: "Drenthe" },
-  { name: "Assen", population: 68776, lat: 52.9925, lng: 6.5649, province: "Drenthe" },
-  { name: "Hoogeveen", population: 55756, lat: 52.7236, lng: 6.4756, province: "Drenthe" },
-  { name: "Kampen", population: 54696, lat: 52.5557, lng: 5.9096, province: "Overijssel" },
-  { name: "Hardenberg", population: 61259, lat: 52.5764, lng: 6.6208, province: "Overijssel" },
-  { name: "Steenwijkerland", population: 44530, lat: 52.7883, lng: 6.1192, province: "Overijssel" },
-  { name: "Coevorden", population: 35175, lat: 52.6617, lng: 6.7408, province: "Drenthe" },
-  { name: "Emmen", population: 107235, lat: 52.7792, lng: 6.8995, province: "Drenthe" },
-  { name: "Zwolle", population: 132397, lat: 52.5168, lng: 6.0830, province: "Overijssel" },
-  { name: "Deventer", population: 101514, lat: 52.2500, lng: 6.1640, province: "Overijssel" },
+  {
+    name: "Meppel",
+    population: 34893,
+    lat: 52.6957,
+    lng: 6.1944,
+    province: "Drenthe",
+  },
+  {
+    name: "Assen",
+    population: 68776,
+    lat: 52.9925,
+    lng: 6.5649,
+    province: "Drenthe",
+  },
+  {
+    name: "Hoogeveen",
+    population: 55756,
+    lat: 52.7236,
+    lng: 6.4756,
+    province: "Drenthe",
+  },
+  {
+    name: "Kampen",
+    population: 54696,
+    lat: 52.5557,
+    lng: 5.9096,
+    province: "Overijssel",
+  },
+  {
+    name: "Hardenberg",
+    population: 61259,
+    lat: 52.5764,
+    lng: 6.6208,
+    province: "Overijssel",
+  },
+  {
+    name: "Steenwijkerland",
+    population: 44530,
+    lat: 52.7883,
+    lng: 6.1192,
+    province: "Overijssel",
+  },
+  {
+    name: "Coevorden",
+    population: 35175,
+    lat: 52.6617,
+    lng: 6.7408,
+    province: "Drenthe",
+  },
+  {
+    name: "Emmen",
+    population: 107235,
+    lat: 52.7792,
+    lng: 6.8995,
+    province: "Drenthe",
+  },
+  {
+    name: "Zwolle",
+    population: 132397,
+    lat: 52.5168,
+    lng: 6.083,
+    province: "Overijssel",
+  },
+  {
+    name: "Deventer",
+    population: 101514,
+    lat: 52.25,
+    lng: 6.164,
+    province: "Overijssel",
+  },
 ];
 
 const COMMON_EVENT_URL_PATTERNS = [
-  (city: string) => `https://www.uitin${city.toLowerCase().replace(/[^a-z0-9]/g, '')}.nl`,
-  (city: string) => `https://www.visit${city.toLowerCase().replace(/[^a-z0-9]/g, '')}.nl/evenementen`,
-  (city: string) => `https://www.ontdek${city.toLowerCase().replace(/[^a-z0-9]/g, '')}.nl/agenda`,
-  (city: string) => `https://www.${city.toLowerCase().replace(/[\s']/g, '-')}.nl/evenementen`,
+  (city: string) =>
+    `https://www.uitin${city.toLowerCase().replace(/[^a-z0-9]/g, "")}.nl`,
+  (city: string) =>
+    `https://www.visit${city.toLowerCase().replace(/[^a-z0-9]/g, "")}.nl/evenementen`,
+  (city: string) =>
+    `https://www.ontdek${city.toLowerCase().replace(/[^a-z0-9]/g, "")}.nl/agenda`,
+  (city: string) =>
+    `https://www.${city.toLowerCase().replace(/[\s']/g, "-")}.nl/evenementen`,
 ];
 
 // ============================================================================
@@ -57,8 +121,10 @@ async function loadEnv() {
       const match = line.match(/^([^=]+)=(.*)$/);
       if (match) {
         let value = match[2].trim();
-        if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-        if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+        if (value.startsWith('"') && value.endsWith('"'))
+          value = value.slice(1, -1);
+        if (value.startsWith("'") && value.endsWith("'"))
+          value = value.slice(1, -1);
         Deno.env.set(match[1].trim(), value);
       }
     }
@@ -75,7 +141,8 @@ async function loadEnv() {
 async function main() {
   await loadEnv();
 
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
+  const SUPABASE_URL =
+    Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -88,7 +155,7 @@ async function main() {
   console.log("\n" + "=".repeat(60));
   console.log("🚀 10-CITY SCRAPER PIPELINE");
   console.log("=".repeat(60));
-  console.log(`Target cities: ${TARGET_CITIES.map(c => c.name).join(", ")}`);
+  console.log(`Target cities: ${TARGET_CITIES.map((c) => c.name).join(", ")}`);
   console.log();
 
   // =========================================================================
@@ -102,7 +169,7 @@ async function main() {
     .from("events")
     .select("*", { count: "exact", head: true })
     .in("event_type", ["anchor", "signal"]);
-  
+
   const { count: stagingCount } = await supabase
     .from("raw_event_staging")
     .select("*", { count: "exact", head: true });
@@ -122,26 +189,35 @@ async function main() {
     .from("events")
     .delete()
     .in("event_type", ["anchor", "signal"]);
-  if (deleteEventsError) console.error("    ⚠️  Delete events error:", deleteEventsError.message);
+  if (deleteEventsError)
+    console.error("    ⚠️  Delete events error:", deleteEventsError.message);
   else console.log("    ✓ Deleted old events");
 
   const { error: deleteStagingError } = await supabase
     .from("raw_event_staging")
     .delete()
     .neq("id", "00000000-0000-0000-0000-000000000000");
-  if (deleteStagingError) console.error("    ⚠️  Delete staging error:", deleteStagingError.message);
+  if (deleteStagingError)
+    console.error("    ⚠️  Delete staging error:", deleteStagingError.message);
   else console.log("    ✓ Cleared staging table");
 
   const { error: deleteInsightsError } = await supabase
     .from("scraper_insights")
     .delete()
     .neq("id", "00000000-0000-0000-0000-000000000000");
-  if (deleteInsightsError) console.error("    ⚠️  Delete insights error:", deleteInsightsError.message);
+  if (deleteInsightsError)
+    console.error(
+      "    ⚠️  Delete insights error:",
+      deleteInsightsError.message,
+    );
   else console.log("    ✓ Cleared insights table");
 
   // Try to clear scrape_jobs if it exists
   try {
-    await supabase.from("scrape_jobs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase
+      .from("scrape_jobs")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
     console.log("    ✓ Cleared scrape_jobs table");
   } catch (_e) {
     // Table may not exist
@@ -158,8 +234,8 @@ async function main() {
   const addedSourceIds: string[] = [];
 
   for (const city of TARGET_CITIES) {
-    const citySlug = city.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    
+    const citySlug = city.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
     // Check if source already exists for this city
     const { data: existing } = await supabase
       .from("scraper_sources")
@@ -168,17 +244,20 @@ async function main() {
       .limit(1);
 
     if (existing && existing.length > 0) {
-      console.log(`  ⏭️  ${city.name}: Source already exists (${existing[0].name})`);
+      console.log(
+        `  ⏭️  ${city.name}: Source already exists (${existing[0].name})`,
+      );
       addedSourceIds.push(existing[0].id);
       sourcesExisting++;
-      
+
       // Make sure it's enabled
       await supabase
         .from("scraper_sources")
-        .update({ 
+        .update({
           enabled: true,
+          next_scrape_at: null, // Reset schedule for immediate scrape
           last_scraped_at: null,
-          consecutive_failures: 0,
+          consecutive_errors: 0,
         })
         .eq("id", existing[0].id);
       continue;
@@ -186,7 +265,7 @@ async function main() {
 
     // Generate URL for the city (try common patterns)
     const url = `https://www.uitin${citySlug}.nl`;
-    
+
     const { data: insertedSource, error: insertError } = await supabase
       .from("scraper_sources")
       .insert({
@@ -196,9 +275,14 @@ async function main() {
         enabled: true,
         config: {
           selectors: [
-            ".event-item", ".agenda-item", "article.event",
-            ".card--event", ".activity-card", ".search-result",
-            "[class*='event']", "[class*='agenda']",
+            ".event-item",
+            ".agenda-item",
+            "article.event",
+            ".card--event",
+            ".activity-card",
+            ".search-result",
+            "[class*='event']",
+            "[class*='agenda']",
           ],
           match_patterns: [citySlug, "agenda", "evenement"],
           feed_discovery: true,
@@ -216,7 +300,9 @@ async function main() {
       .single();
 
     if (insertError) {
-      console.log(`  ⚠️  ${city.name}: Failed to add source - ${insertError.message}`);
+      console.log(
+        `  ⚠️  ${city.name}: Failed to add source - ${insertError.message}`,
+      );
     } else {
       console.log(`  ✅ ${city.name}: Added source (${url})`);
       addedSourceIds.push(insertedSource.id);
@@ -224,7 +310,9 @@ async function main() {
     }
   }
 
-  console.log(`\n  Summary: ${sourcesAdded} sources added, ${sourcesExisting} already existed`);
+  console.log(
+    `\n  Summary: ${sourcesAdded} sources added, ${sourcesExisting} already existed`,
+  );
   console.log(`  Total sources to process: ${addedSourceIds.length}`);
 
   // =========================================================================
@@ -239,23 +327,32 @@ async function main() {
   }
 
   // Trigger the coordinator with specific source IDs
-  console.log(`  🕷️  Triggering scrape-coordinator for ${addedSourceIds.length} sources...`);
-  
+  console.log(
+    `  🕷️  Triggering scrape-coordinator for ${addedSourceIds.length} sources...`,
+  );
+
   try {
-    const coordResponse = await fetch(`${SUPABASE_URL}/functions/v1/scrape-coordinator`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
+    const coordResponse = await fetch(
+      `${SUPABASE_URL}/functions/v1/scrape-coordinator`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sourceIds: addedSourceIds }),
       },
-      body: JSON.stringify({ sourceIds: addedSourceIds }),
-    });
+    );
 
     if (coordResponse.ok) {
       const result = await coordResponse.json();
-      console.log(`  ✅ Coordinator triggered: ${result.jobsCreated || 0} jobs created`);
+      console.log(
+        `  ✅ Coordinator triggered: ${result.jobsCreated || 0} jobs created`,
+      );
     } else {
-      console.log(`  ⚠️  Coordinator returned ${coordResponse.status}: ${await coordResponse.text()}`);
+      console.log(
+        `  ⚠️  Coordinator returned ${coordResponse.status}: ${await coordResponse.text()}`,
+      );
     }
   } catch (e) {
     console.error(`  ❌ Failed to trigger coordinator:`, e);
@@ -263,25 +360,30 @@ async function main() {
 
   // Wait for scraping to complete
   console.log("\n  ⏳ Waiting for scrapers to complete (30 seconds)...");
-  await new Promise(r => setTimeout(r, 30000));
+  await new Promise((r) => setTimeout(r, 30000));
 
   // Trigger processor multiple times to drain the queue
   console.log("  🏭 Triggering process-worker to process staged events...");
-  
+
   for (let i = 0; i < 5; i++) {
     console.log(`    Processor iteration ${i + 1}/5...`);
     try {
-      const procResponse = await fetch(`${SUPABASE_URL}/functions/v1/process-worker`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
+      const procResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/process-worker`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (procResponse.ok) {
         const result = await procResponse.json();
-        console.log(`    ✅ Processed: ${result.processed || 0} (success: ${result.succeeded || 0}, failed: ${result.failed || 0})`);
+        console.log(
+          `    ✅ Processed: ${result.processed || 0} (success: ${result.succeeded || 0}, failed: ${result.failed || 0})`,
+        );
       } else {
         console.log(`    ⚠️  Processor returned ${procResponse.status}`);
       }
@@ -290,7 +392,7 @@ async function main() {
     }
 
     // Wait between processor calls
-    await new Promise(r => setTimeout(r, 10000));
+    await new Promise((r) => setTimeout(r, 10000));
   }
 
   // =========================================================================
@@ -312,7 +414,7 @@ async function main() {
 
   const statusCounts: Record<string, number> = {};
   const methodCounts: Record<string, number> = {};
-  (stagingStats || []).forEach(s => {
+  (stagingStats || []).forEach((s) => {
     statusCounts[s.status] = (statusCounts[s.status] || 0) + 1;
     const method = s.parsing_method || "unknown";
     methodCounts[method] = (methodCounts[method] || 0) + 1;
@@ -324,21 +426,36 @@ async function main() {
     .select("source_id, category, quality_score")
     .in("event_type", ["anchor", "signal"]);
 
-  const sourceStats: Record<string, { count: number; categories: Record<string, number>; avgQuality: number; qualitySum: number }> = {};
-  (eventsBySource || []).forEach(e => {
+  const sourceStats: Record<
+    string,
+    {
+      count: number;
+      categories: Record<string, number>;
+      avgQuality: number;
+      qualitySum: number;
+    }
+  > = {};
+  (eventsBySource || []).forEach((e) => {
     if (!e.source_id) return;
     if (!sourceStats[e.source_id]) {
-      sourceStats[e.source_id] = { count: 0, categories: {}, avgQuality: 0, qualitySum: 0 };
+      sourceStats[e.source_id] = {
+        count: 0,
+        categories: {},
+        avgQuality: 0,
+        qualitySum: 0,
+      };
     }
     sourceStats[e.source_id].count++;
-    sourceStats[e.source_id].categories[e.category || "unknown"] = (sourceStats[e.source_id].categories[e.category || "unknown"] || 0) + 1;
+    sourceStats[e.source_id].categories[e.category || "unknown"] =
+      (sourceStats[e.source_id].categories[e.category || "unknown"] || 0) + 1;
     sourceStats[e.source_id].qualitySum += e.quality_score || 0;
   });
 
   // Calculate averages
-  Object.keys(sourceStats).forEach(sid => {
+  Object.keys(sourceStats).forEach((sid) => {
     if (sourceStats[sid].count > 0) {
-      sourceStats[sid].avgQuality = sourceStats[sid].qualitySum / sourceStats[sid].count;
+      sourceStats[sid].avgQuality =
+        sourceStats[sid].qualitySum / sourceStats[sid].count;
     }
   });
 
@@ -349,7 +466,7 @@ async function main() {
     .in("id", Object.keys(sourceStats));
 
   const sourceNameMap: Record<string, string> = {};
-  (sources || []).forEach(s => {
+  (sources || []).forEach((s) => {
     sourceNameMap[s.id] = s.location_name || s.name;
   });
 
@@ -370,7 +487,9 @@ async function main() {
 
   console.log("\n  🏙️ EVENTS PER CITY/SOURCE:");
   console.log("  " + "-".repeat(70));
-  console.log(`  ${"Source".padEnd(25)} | ${"Events".padStart(8)} | ${"Avg Quality".padStart(12)} | Top Categories`);
+  console.log(
+    `  ${"Source".padEnd(25)} | ${"Events".padStart(8)} | ${"Avg Quality".padStart(12)} | Top Categories`,
+  );
   console.log("  " + "-".repeat(70));
 
   Object.entries(sourceStats)
@@ -382,7 +501,9 @@ async function main() {
         .slice(0, 3)
         .map(([cat, cnt]) => `${cat}(${cnt})`)
         .join(", ");
-      console.log(`  ${name.padEnd(25)} | ${String(stats.count).padStart(8)} | ${stats.avgQuality.toFixed(2).padStart(12)} | ${topCats}`);
+      console.log(
+        `  ${name.padEnd(25)} | ${String(stats.count).padStart(8)} | ${stats.avgQuality.toFixed(2).padStart(12)} | ${topCats}`,
+      );
     });
 
   console.log("  " + "-".repeat(70));
@@ -412,17 +533,22 @@ async function main() {
   console.log(`\n  Total events scraped: ${finalEventCount || 0}`);
   console.log(`  Future events: ${futureEventCount || 0}`);
   console.log(`  Sources processed: ${Object.keys(sourceStats).length}`);
-  
-  const avgEventsPerCity = Object.keys(sourceStats).length > 0 
-    ? Math.round((finalEventCount || 0) / Object.keys(sourceStats).length) 
-    : 0;
+
+  const avgEventsPerCity =
+    Object.keys(sourceStats).length > 0
+      ? Math.round((finalEventCount || 0) / Object.keys(sourceStats).length)
+      : 0;
   console.log(`  Average events per city: ${avgEventsPerCity}`);
-  
+
   if (avgEventsPerCity < 200) {
     console.log("\n  ⚠️  Warning: Below target of 200-400 events per city");
-    console.log("     Consider running the pipeline again or checking source URLs");
+    console.log(
+      "     Consider running the pipeline again or checking source URLs",
+    );
   } else if (avgEventsPerCity > 400) {
-    console.log("\n  ✨ Excellent: Exceeded target of 200-400 events per city!");
+    console.log(
+      "\n  ✨ Excellent: Exceeded target of 200-400 events per city!",
+    );
   } else {
     console.log("\n  ✅ On target: 200-400 events per city achieved");
   }
