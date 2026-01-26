@@ -12,7 +12,7 @@
     "npm:@capacitor/local-notifications@8": "8.0.0_@capacitor+core@8.0.1",
     "npm:@capacitor/push-notifications@8": "8.0.0_@capacitor+core@8.0.1",
     "npm:@capacitor/status-bar@8": "8.0.0_@capacitor+core@8.0.1",
-    "npm:@chromatic-com/storybook@5": "5.0.0_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_react@19.2.3_react-dom@19.2.3__react@19.2.3",
+    "npm:@chromatic-com/storybook@5": "5.0.0_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1",
     "npm:@eslint/js@^9.39.2": "9.39.2",
     "npm:@hookform/resolvers@^5.2.2": "5.2.2_react-hook-form@7.71.1__react@19.2.3_react@19.2.3",
     "npm:@radix-ui/react-accordion@^1.2.12": "1.2.12_@types+react@19.2.9_@types+react-dom@19.2.3__@types+react@19.2.9_react@19.2.3_react-dom@19.2.3__react@19.2.3",
@@ -42,10 +42,10 @@
     "npm:@radix-ui/react-toggle-group@^1.1.11": "1.1.11_@types+react@19.2.9_@types+react-dom@19.2.3__@types+react@19.2.9_react@19.2.3_react-dom@19.2.3__react@19.2.3",
     "npm:@radix-ui/react-toggle@^1.1.10": "1.1.10_@types+react@19.2.9_@types+react-dom@19.2.3__@types+react@19.2.9_react@19.2.3_react-dom@19.2.3__react@19.2.3",
     "npm:@radix-ui/react-tooltip@^1.2.8": "1.2.8_@types+react@19.2.9_@types+react-dom@19.2.3__@types+react@19.2.9_react@19.2.3_react-dom@19.2.3__react@19.2.3",
-    "npm:@storybook/addon-a11y@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_react@19.2.3_react-dom@19.2.3__react@19.2.3",
-    "npm:@storybook/addon-docs@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_@types+react@19.2.9_react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_react-dom@19.2.3__react@19.2.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0",
-    "npm:@storybook/addon-onboarding@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_react@19.2.3_react-dom@19.2.3__react@19.2.3",
-    "npm:@storybook/react-vite@^10.1.11": "10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_typescript@5.9.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0",
+    "npm:@storybook/addon-a11y@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1",
+    "npm:@storybook/addon-docs@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_@types+react@19.2.9_react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_react-dom@19.2.3__react@19.2.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_@testing-library+dom@10.4.1",
+    "npm:@storybook/addon-onboarding@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1",
+    "npm:@storybook/react-vite@^10.1.11": "10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_typescript@5.9.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_@testing-library+dom@10.4.1",
     "npm:@supabase/supabase-js@2.39.3": "2.39.3",
     "npm:@supabase/supabase-js@2.49.1": "2.49.1",
     "npm:@supabase/supabase-js@^2.91.0": "2.91.0",
@@ -54,6 +54,7 @@
     "npm:@tanstack/react-query-persist-client@^5.90.21": "5.90.21_@tanstack+react-query@5.90.19__react@19.2.3_react@19.2.3",
     "npm:@tanstack/react-query@^5.90.19": "5.90.19_react@19.2.3",
     "npm:@tanstack/react-virtual@^3.13.18": "3.13.18_react@19.2.3_react-dom@19.2.3__react@19.2.3",
+    "npm:@testing-library/dom@^10.4.1": "10.4.1",
     "npm:@testing-library/jest-dom@^6.6.3": "6.9.1",
     "npm:@testing-library/react@^16.2.0": "16.3.1_@testing-library+dom@10.4.1_@types+react@19.2.9_@types+react-dom@19.2.3__@types+react@19.2.9_react@19.2.3_react-dom@19.2.3__react@19.2.3",
     "npm:@types/cheerio@~0.22.35": "0.22.35",
@@ -102,7 +103,7 @@
     "npm:react@19.2.3": "19.2.3",
     "npm:recharts@^3.7.0": "3.7.0_react@19.2.3_react-dom@19.2.3__react@19.2.3_react-is@19.2.3_react-redux@9.2.0__@types+react@19.2.9__react@19.2.3_@types+react@19.2.9",
     "npm:sonner@^2.0.7": "2.0.7_react@19.2.3_react-dom@19.2.3__react@19.2.3",
-    "npm:storybook@^10.1.11": "10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3",
+    "npm:storybook@^10.1.11": "10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1",
     "npm:supabase@0.5": "0.5.0",
     "npm:tailwind-merge@^3.4.0": "3.4.0",
     "npm:tailwindcss-animate@^1.0.7": "1.0.7_tailwindcss@4.1.18",
@@ -353,7 +354,7 @@
     "@capacitor/synapse@1.0.4": {
       "integrity": "sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw=="
     },
-    "@chromatic-com/storybook@5.0.0_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_react@19.2.3_react-dom@19.2.3__react@19.2.3": {
+    "@chromatic-com/storybook@5.0.0_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1": {
       "integrity": "sha512-8wUsqL8kg6R5ue8XNE7Jv/iD1SuE4+6EXMIGIuE+T2loBITEACLfC3V8W44NJviCLusZRMWbzICddz0nU0bFaw==",
       "dependencies": [
         "@neoconfetti/react",
@@ -1966,7 +1967,7 @@
     "@standard-schema/utils@0.3.0": {
       "integrity": "sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g=="
     },
-    "@storybook/addon-a11y@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_react@19.2.3_react-dom@19.2.3__react@19.2.3": {
+    "@storybook/addon-a11y@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1": {
       "integrity": "sha512-3sr6HmcDgW1+TQAV9QtWBE3HlGyfFXVZY3RECTNLNH6fRC+rYQCItisvQIVxQpyftLSQ8EAMN9JQzs495MjWNg==",
       "dependencies": [
         "@storybook/global",
@@ -1974,7 +1975,7 @@
         "storybook"
       ]
     },
-    "@storybook/addon-docs@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_@types+react@19.2.9_react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_react-dom@19.2.3__react@19.2.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0": {
+    "@storybook/addon-docs@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_@types+react@19.2.9_react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_react-dom@19.2.3__react@19.2.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_@testing-library+dom@10.4.1": {
       "integrity": "sha512-Jwm291Fhim2eVcZIVlkG1B2skb0ZI9oru6nqMbJxceQZlvZmcIa4oxvS1oaMTKw2DJnCv97gLm57P/YvRZ8eUg==",
       "dependencies": [
         "@mdx-js/react",
@@ -1987,13 +1988,13 @@
         "ts-dedent"
       ]
     },
-    "@storybook/addon-onboarding@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_react@19.2.3_react-dom@19.2.3__react@19.2.3": {
+    "@storybook/addon-onboarding@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1": {
       "integrity": "sha512-DNJv0IDl5XBrY+PPgwnMXLyp3omPkMOS6xe8ejG3csT71B6+3VueL6m7Qivh6739SnAV0QBU5SQlpMA0gQUcSA==",
       "dependencies": [
         "storybook"
       ]
     },
-    "@storybook/builder-vite@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_react@19.2.3_react-dom@19.2.3__react@19.2.3": {
+    "@storybook/builder-vite@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1": {
       "integrity": "sha512-MMD09Ap7FyzDfWG961pkIMv/w684XXe1bBEi+wCEpHxvrgAd3j3A9w/Rqp9Am2uRDPCEdi1QgSzS3SGW3aGThQ==",
       "dependencies": [
         "@storybook/csf-plugin",
@@ -2003,7 +2004,7 @@
         "vite"
       ]
     },
-    "@storybook/csf-plugin@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_react@19.2.3_react-dom@19.2.3__react@19.2.3": {
+    "@storybook/csf-plugin@10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1": {
       "integrity": "sha512-Ant0NhgqHKzQsseeVTSetZCuDHHs0W2HRkHt51Kg/sUl0T/sDtfVA+fWZT8nGzGZqYSFkxqYPWjauPmIhPtaRw==",
       "dependencies": [
         "storybook",
@@ -2024,7 +2025,7 @@
         "react-dom"
       ]
     },
-    "@storybook/react-dom-shim@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3": {
+    "@storybook/react-dom-shim@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_@testing-library+dom@10.4.1": {
       "integrity": "sha512-o8WPhRlZbORUWG9lAgDgJP0pi905VHJUFJr1Kp8980gHqtlemtnzjPxKy5vFwj6glNhAlK8SS8OOYzWP7hloTQ==",
       "dependencies": [
         "react",
@@ -2032,7 +2033,7 @@
         "storybook"
       ]
     },
-    "@storybook/react-vite@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_typescript@5.9.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0": {
+    "@storybook/react-vite@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_typescript@5.9.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_@testing-library+dom@10.4.1": {
       "integrity": "sha512-qh1BCD25nIoiDfqwha+qBkl7pcG4WuzM+c8tsE63YEm8AFIbNKg5K8lVUoclF+4CpFz7IwBpWe61YUTDfp+91w==",
       "dependencies": [
         "@joshwooding/vite-plugin-react-docgen-typescript",
@@ -2050,7 +2051,7 @@
         "vite"
       ]
     },
-    "@storybook/react@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3_typescript@5.9.3": {
+    "@storybook/react@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_typescript@5.9.3_@testing-library+dom@10.4.1": {
       "integrity": "sha512-rmMGmEwBaM2YpB8oDk2moM0MNjNMqtwyoPPZxjyruY9WVhYca8EDPGKEdRzUlb4qZJsTgLi7VU4eqg6LD/mL3Q==",
       "dependencies": [
         "@storybook/global",
@@ -5759,7 +5760,7 @@
     "std-env@3.10.0": {
       "integrity": "sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg=="
     },
-    "storybook@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3": {
+    "storybook@10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1": {
       "integrity": "sha512-pKP5jXJYM4OjvNklGuHKO53wOCAwfx79KvZyOWHoi9zXUH5WVMFUe/ZfWyxXG/GTcj0maRgHGUjq/0I43r0dDQ==",
       "dependencies": [
         "@storybook/global",
@@ -6553,6 +6554,7 @@
         "npm:@tanstack/react-query-persist-client@^5.90.21",
         "npm:@tanstack/react-query@^5.90.19",
         "npm:@tanstack/react-virtual@^3.13.18",
+        "npm:@testing-library/dom@^10.4.1",
         "npm:@testing-library/jest-dom@^6.6.3",
         "npm:@testing-library/react@^16.2.0",
         "npm:@types/cheerio@~0.22.35",
