@@ -41,3 +41,4 @@ storybook-static
 
 # IDE
 .antigravity/
+.vercel
