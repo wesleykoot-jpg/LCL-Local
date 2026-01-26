@@ -443,6 +443,7 @@ const Feed = () => {
                             stack={stack}
                             onEventClick={handleEventClick}
                             onJoinEvent={handleJoinEvent}
+                            onFork={handleForkEvent}
                             joiningEventId={
                               allEvents.find((e) => isJoining(e.id))?.id
                             }
