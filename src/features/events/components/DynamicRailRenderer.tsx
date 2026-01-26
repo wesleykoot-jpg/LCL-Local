@@ -52,9 +52,9 @@ const getRailTheme = (
       animation: "glow",
       icon: Heart,
       colors: {
-        icon: "text-indigo-600",
-        text: "from-indigo-600 to-violet-600",
-        bg: "from-indigo-500/5 to-violet-500/5",
+        icon: "text-indigo-500",
+        text: "from-indigo-500 to-violet-500",
+        bg: "from-indigo-500/15 to-violet-500/15",
       },
     };
   }
@@ -69,9 +69,9 @@ const getRailTheme = (
       animation: "rhythm",
       icon: Clock,
       colors: {
-        icon: "text-amber-600",
-        text: "from-amber-600 to-orange-600",
-        bg: "from-amber-500/5 to-orange-500/5",
+        icon: "text-amber-500",
+        text: "from-amber-500 to-orange-500",
+        bg: "from-amber-500/15 to-orange-500/15",
       },
     };
   }
@@ -86,9 +86,9 @@ const getRailTheme = (
       animation: "sparkle",
       icon: Zap,
       colors: {
-        icon: "text-pink-600",
-        text: "from-pink-600 to-purple-600",
-        bg: "from-pink-500/5 to-purple-500/5",
+        icon: "text-pink-500",
+        text: "from-pink-500 to-purple-500",
+        bg: "from-pink-500/15 to-purple-500/15",
       },
     };
   }
@@ -106,9 +106,9 @@ const getRailTheme = (
       animation: "pulse",
       icon: MapPin,
       colors: {
-        icon: "text-blue-600",
-        text: "from-blue-600 to-cyan-600",
-        bg: "from-blue-500/5 to-cyan-500/5",
+        icon: "text-blue-500",
+        text: "from-blue-500 to-cyan-500",
+        bg: "from-blue-500/15 to-cyan-500/15",
       },
     };
   }
@@ -119,9 +119,9 @@ const getRailTheme = (
       animation: "wave",
       icon: Flame,
       colors: {
-        icon: "text-emerald-600",
-        text: "from-emerald-600 to-teal-600",
-        bg: "from-emerald-500/5 to-teal-500/5",
+        icon: "text-emerald-500",
+        text: "from-emerald-500 to-teal-500",
+        bg: "from-emerald-500/15 to-teal-500/15",
       },
     };
   }
@@ -132,9 +132,9 @@ const getRailTheme = (
       animation: "glow",
       icon: Sparkles,
       colors: {
-        icon: "text-purple-600",
-        text: "from-purple-600 to-blue-600",
-        bg: "from-purple-500/5 to-blue-500/5",
+        icon: "text-purple-500",
+        text: "from-purple-500 to-blue-500",
+        bg: "from-purple-500/15 to-blue-500/15",
       },
     };
   }
@@ -168,7 +168,7 @@ export const DynamicRailRenderer = memo(function DynamicRailRenderer({
           <div className="flex items-center gap-2">
             {hasSpecialStyling && (
               <RailIconAnimation style={animationStyle}>
-                <Icon className={`w-5 h-5 ${colorScheme.icon}`} />
+                <Icon className={`w-7 h-7 ${colorScheme.icon}`} />
               </RailIconAnimation>
             )}
             <span

@@ -30,8 +30,8 @@ export const DiscoveryRail = memo(function DiscoveryRail({
     >
       {/* Section Header */}
       {title && (
-        <div className="flex items-center justify-between px-6 mb-6">
-          <h2 className="text-xl font-bold tracking-tight text-text-primary">
+        <div className="flex items-center justify-between px-6 mb-8">
+          <h2 className="text-3xl font-bold tracking-tight text-text-primary">
             {title}
           </h2>
           {onSeeAll && (
