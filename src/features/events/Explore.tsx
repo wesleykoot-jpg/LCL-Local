@@ -24,6 +24,11 @@ import { TimelineEventCard } from "./components/TimelineEventCard";
 import { ChevronDown } from "lucide-react";
 
 const EventDetailModal = lazy(() => import("./components/EventDetailModal"));
+const CreateEventModal = lazy(() =>
+  import("./components/CreateEventModal").then((m) => ({
+    default: m.CreateEventModal,
+  })),
+);
 
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,6 +37,8 @@ export default function ExplorePage() {
     title: string;
     items: any[];
   } | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [forkParentEvent, setForkParentEvent] = useState<any>(null);
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs } = useLocation();
 
@@ -75,6 +82,14 @@ export default function ExplorePage() {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
+  };
+
+  const handleForkEvent = (eventId: string) => {
+    const event = allEvents.find((e) => e.id === eventId);
+    if (event) {
+      setForkParentEvent(event);
+      setShowCreateModal(true);
+    }
   };
 
   const featuredEvent = useMemo(() => {
@@ -290,7 +305,10 @@ export default function ExplorePage() {
                       // Don't close section view, just show modal on top
                     }}
                   >
-                    <TimelineEventCard event={event} />
+                    <TimelineEventCard 
+                      event={event} 
+                      onFork={handleForkEvent}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -298,6 +316,20 @@ export default function ExplorePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Create Event Modal */}
+      {showCreateModal && (
+        <Suspense fallback={null}>
+          <CreateEventModal
+            onClose={() => {
+              setShowCreateModal(false);
+              setForkParentEvent(null);
+            }}
+            defaultEventType="anchor"
+            initialParentEvent={forkParentEvent || undefined}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

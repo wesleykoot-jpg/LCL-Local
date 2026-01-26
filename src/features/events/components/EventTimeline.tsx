@@ -6,6 +6,7 @@ import { Calendar } from 'lucide-react';
 interface EventTimelineProps {
   events: EventWithAttendees[];
   showJoinButton?: boolean;
+  onFork?: (eventId: string) => void;
 }
 
 /**
@@ -13,7 +14,8 @@ interface EventTimelineProps {
  */
 export const EventTimeline: React.FC<EventTimelineProps> = ({ 
   events, 
-  showJoinButton = false 
+  showJoinButton = false,
+  onFork,
 }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -113,6 +115,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
                       event={event} 
                       isPast={isPastEvent(event)}
                       showJoinButton={showJoinButton}
+                      onFork={onFork}
                     />
                   </div>
                 </div>
