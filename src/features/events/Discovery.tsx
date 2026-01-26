@@ -531,6 +531,7 @@ const Discovery = () => {
               intent={missionIntent}
               userLocation={userLocation}
               onEventClick={handleEventClick}
+              onFork={handleForkEvent}
             />
           )}
         </Suspense>

@@ -14,6 +14,7 @@ interface MissionModeDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onEventClick: (eventId: string) => void;
+  onFork?: (eventId: string) => void;
 }
 
 const DRAWER_HEIGHT = "85vh";
@@ -24,6 +25,7 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
   isOpen,
   onClose,
   onEventClick,
+  onFork,
 }: MissionModeDrawerProps) {
   const controls = useAnimation();
   const dragging = useRef(false);
@@ -174,6 +176,7 @@ export const MissionModeDrawer = memo(function MissionModeDrawer({
                     {/* Using simplified card for mission mode */}
                     <TimelineEventCard
                       event={event as any}
+                      onFork={onFork}
                     />
 
                     {/* Extra context overlay for mission mode */}
