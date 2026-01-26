@@ -11,7 +11,6 @@ interface HorizontalEventCarouselProps {
   events: EventWithAttendees[];
   onEventClick?: (eventId: string) => void;
   onJoinEvent?: (eventId: string) => Promise<void>;
-  onFork?: (eventId: string) => void;
   joiningEventId?: string;
   currentUserProfileId?: string;
   onSeeAll?: () => void;
@@ -110,7 +109,6 @@ export const HorizontalEventCarousel = memo(function HorizontalEventCarousel({
   events,
   onEventClick,
   onJoinEvent,
-  onFork,
   joiningEventId,
   currentUserProfileId,
   onSeeAll,
