@@ -62,43 +62,6 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
       className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#E5E7EB] pb-safe shadow-[0_-8px_24px_rgba(0,0,0,0.05)]"
     >
       <div className="flex items-center justify-around h-[56px] max-w-lg mx-auto px-2">
-        {/* Planning button */}
-        <button
-          onClick={() => handleNav("planning", "/planning")}
-          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#6366F1] focus-visible:outline-none"
-          aria-label="Navigate to planning page"
-        >
-          <motion.div
-            animate={{
-              scale:
-                derivedActiveView === "planning"
-                  ? ICON_SCALE_ACTIVE
-                  : ICON_SCALE_INACTIVE,
-            }}
-            transition={ICON_ANIMATION_CONFIG}
-            className="flex flex-col items-center gap-0.5"
-          >
-            <Map
-              size={24}
-              strokeWidth={derivedActiveView === "planning" ? 2.5 : 1.5}
-              className={`transition-colors ${
-                derivedActiveView === "planning"
-                  ? "text-[#6366F1]"
-                  : "text-[#4B5563]"
-              }`}
-            />
-            <span
-              className={`text-[10px] font-medium transition-colors ${
-                derivedActiveView === "planning"
-                  ? "text-[#6366F1]"
-                  : "text-[#4B5563]"
-              }`}
-            >
-              Planning
-            </span>
-          </motion.div>
-        </button>
-
         {/* Discover button */}
         <button
           onClick={() => handleNav("feed", "/explore")}
@@ -162,6 +125,43 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
               }`}
             >
               Now
+            </span>
+          </motion.div>
+        </button>
+
+        {/* Planning button */}
+        <button
+          onClick={() => handleNav("planning", "/planning")}
+          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] min-w-[44px] gap-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#6366F1] focus-visible:outline-none"
+          aria-label="Navigate to planning page"
+        >
+          <motion.div
+            animate={{
+              scale:
+                derivedActiveView === "planning"
+                  ? ICON_SCALE_ACTIVE
+                  : ICON_SCALE_INACTIVE,
+            }}
+            transition={ICON_ANIMATION_CONFIG}
+            className="flex flex-col items-center gap-0.5"
+          >
+            <Map
+              size={24}
+              strokeWidth={derivedActiveView === "planning" ? 2.5 : 1.5}
+              className={`transition-colors ${
+                derivedActiveView === "planning"
+                  ? "text-[#6366F1]"
+                  : "text-[#4B5563]"
+              }`}
+            />
+            <span
+              className={`text-[10px] font-medium transition-colors ${
+                derivedActiveView === "planning"
+                  ? "text-[#6366F1]"
+                  : "text-[#4B5563]"
+              }`}
+            >
+              Planning
             </span>
           </motion.div>
         </button>

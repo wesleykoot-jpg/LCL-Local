@@ -1,25 +1,28 @@
-import { useState, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin } from 'lucide-react';
-import { FloatingNav } from '@/shared/components';
-import { useAuth } from '@/features/auth';
-import { useLocation } from '@/features/location';
-import { hapticImpact } from '@/shared/lib/haptics';
-import { LiveEventCard } from './components/LiveEventCard';
-import { EventMap } from './components/EventMap';
-import { useLiveEventsQuery, getDaypartGreeting } from './hooks/useLiveEventsQuery';
-import type { EventWithAttendees } from './hooks/hooks';
+import { useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MapPin } from "lucide-react";
+import { FloatingNav } from "@/shared/components";
+import { useAuth } from "@/features/auth";
+import { useLocation } from "@/features/location";
+import { hapticImpact } from "@/shared/lib/haptics";
+import { LiveEventCard } from "./components/LiveEventCard";
+import { EventMap } from "./components/EventMap";
+import {
+  useLiveEventsQuery,
+  getDaypartGreeting,
+} from "./hooks/useLiveEventsQuery";
+import type { EventWithAttendees } from "./hooks/hooks";
 
 /**
  * Now Page - The Social Concierge
- * 
+ *
  * A map-forward, time-aware utility for immediate action and spontaneity.
  * Visual: Light/Glass Theme (matches io26-glass.css and rest of the app)
- * 
+ *
  * Layout: Split View (Airbnb Mobile style)
  * - Top 60%: Map View with user location dot and venue pins
  * - Bottom 40%: Draggable/Scrollable Sheet with event list
- * 
+ *
  * Key Features:
  * - Smart Context (Dayparting): Categories change based on time of day
  * - Dynamic Greeting: "Good Morning/Afternoon/Evening, [Name]"
@@ -28,9 +31,9 @@ import type { EventWithAttendees } from './hooks/hooks';
 const Now = () => {
   const { profile } = useAuth();
   const { location: userLocation, preferences: locationPrefs } = useLocation();
-  
+
   // Time offset for live events (0-240 minutes)
-  const [timeOffset] = useState(120); // Default 2 hours for concierge mode
+  const timeOffset = 120; // Default 2 hours for concierge mode
 
   // Fetch live events with dayparting
   const { events, loading, daypartMode } = useLiveEventsQuery({
@@ -43,17 +46,17 @@ const Now = () => {
 
   // Dynamic greeting based on time of day
   const greeting = useMemo(() => {
-    const firstName = profile?.full_name?.split(' ')[0];
+    const firstName = profile?.full_name?.split(" ")[0];
     return getDaypartGreeting(daypartMode, firstName);
   }, [daypartMode, profile?.full_name]);
 
   // Handle event click - open in maps or detail
   const handleEventClick = useCallback(async (event: EventWithAttendees) => {
-    await hapticImpact('light');
+    await hapticImpact("light");
     // Open in maps app for navigation
     const query = encodeURIComponent(event.venue_name || event.title);
     const mapsUrl = `https://maps.google.com/maps?q=${query}`;
-    window.open(mapsUrl, '_blank');
+    window.open(mapsUrl, "_blank");
   }, []);
 
   return (
@@ -76,11 +79,11 @@ const Now = () => {
           />
 
           {/* Location indicator overlay */}
-          <div className="absolute top-safe left-4 right-4 pt-4 z-[1000]">
+          <div className="absolute top-safe left-4 right-4 pt-4 z-1000">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-card rounded-full shadow-floating border border-border">
               <MapPin size={16} className="text-primary" />
               <span className="text-[14px] font-medium text-foreground">
-                {locationPrefs.manualZone || 'Current Location'}
+                {locationPrefs.manualZone || "Current Location"}
               </span>
             </div>
           </div>
@@ -101,7 +104,8 @@ const Now = () => {
                 {greeting}
               </h1>
               <p className="text-[14px] text-muted-foreground mt-1">
-                {events.length} {events.length === 1 ? 'place' : 'places'} open nearby
+                {events.length} {events.length === 1 ? "place" : "places"} open
+                nearby
               </p>
             </div>
 
