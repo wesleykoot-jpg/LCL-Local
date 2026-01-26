@@ -184,6 +184,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
               await hapticImpact('medium');
               onFork?.();
             }}
+            aria-label="Fork this event to create a variation"
             className="flex-none w-[35%] h-[48px] rounded-xl border border-border bg-card text-foreground text-[15px] font-semibold flex items-center justify-center gap-2 hover:bg-muted transition-all active:scale-[0.98]"
           >
             <GitBranch size={18} />
@@ -200,6 +201,7 @@ const AnchorEventCard = memo(function AnchorEventCard({
               }
             }}
             disabled={isJoining || hasJoined}
+            aria-label={hasJoined ? 'Already joined this event' : isJoining ? 'Joining event...' : 'Join this event'}
             className={`flex-1 h-[48px] rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98] ${hasJoined
                 ? 'bg-muted text-muted-foreground'
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
