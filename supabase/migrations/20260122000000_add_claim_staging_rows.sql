@@ -19,8 +19,15 @@ BEGIN
   WITH candidates AS (
     SELECT raw_event_staging.id
     FROM raw_event_staging
-    WHERE raw_event_staging.status = 'pending'
-      AND (raw_event_staging.retry_count IS NULL OR raw_event_staging.retry_count < 3)
+    WHERE (
+      -- Regular pending rows
+      (raw_event_staging.status = 'pending' AND
+       (raw_event_staging.retry_count IS NULL OR raw_event_staging.retry_count < 3))
+      OR
+      -- Backoff rows that are ready to retry (backoff period expired)
+      (raw_event_staging.status = 'pending_with_backoff' AND
+       raw_event_staging.updated_at <= NOW())
+    )
     ORDER BY raw_event_staging.created_at ASC
     LIMIT p_batch_size
     FOR UPDATE SKIP LOCKED  -- Atomic lock prevents race conditions

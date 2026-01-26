@@ -5,8 +5,12 @@ import {
   resolveStrategy,
   createFetcherForSource,
 } from "../_shared/strategies.ts";
+import { withAuth } from "../_shared/auth.ts";
+import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
+import { withAuth } from "../_shared/auth.ts";
+import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
 
-export const handler = async (req: Request): Promise<Response> => {
+export const handler = withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
   // Parse payload (handle both cron GET and manual POST)
@@ -189,4 +193,6 @@ export const handler = async (req: Request): Promise<Response> => {
       status: 500,
     });
   }
-};
+}, {
+  allowedKeyTypes: ['service', 'worker'], // Only service and worker keys can trigger fetcher
+}), 'scrape-events'); // Apply rate limiting with default config for fetcher

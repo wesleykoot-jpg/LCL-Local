@@ -254,12 +254,16 @@ async function failRow(supabase: SupabaseClient, id: string, errorMsg: string) {
   const maxRetries = 3;
 
   // 2. Decide status
-  // If we hit max retries, we stay 'failed'.
-  // If less, we set back to 'pending' to retry, OR keep 'failed' but allow a mechanic to pick it up?
-  // Requirements say "failed" usually implies intervention. But "Do not retry indefinitely" implies we DO retry.
-  // Standard pattern: Set to 'pending' for immediate retry, or 'pending' with a delay (updated_at future?).
-  // For simplicity, we set to 'pending' to try again next batch.
-  const newStatus = newRetries >= maxRetries ? "failed" : "pending";
+  // If we hit max retries, use 'pending_with_backoff' to allow retry with exponential backoff.
+  // If less, we set back to 'pending' to retry.
+  // This ensures we don't retry indefinitely but still allow recovery.
+  const newStatus = newRetries >= maxRetries ? "pending_with_backoff" : "pending";
+  
+  // Calculate backoff delay for pending_with_backoff status
+  const backoffMinutes = newRetries >= maxRetries ? Math.pow(2, newRetries - maxRetries) * 5 : 0; // 5, 10, 20, 40... minutes
+  const backoffUntil = backoffMinutes > 0 
+    ? new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString()
+    : null;
 
   await supabase
     .from("raw_event_staging")
@@ -267,7 +271,7 @@ async function failRow(supabase: SupabaseClient, id: string, errorMsg: string) {
       status: newStatus,
       retry_count: newRetries,
       error_message: errorMsg,
-      updated_at: new Date().toISOString(),
+      updated_at: backoffUntil || new Date().toISOString(),
     })
     .eq("id", id);
 

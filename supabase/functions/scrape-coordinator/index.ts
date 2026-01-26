@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { sendSlackNotification } from "../_shared/slack.ts";
 import { withErrorLogging, logSupabaseError } from "../_shared/errorLogging.ts";
+import { withAuth } from "../_shared/auth.ts";
+import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
 import type { ScrapeJobPayload } from "../_shared/types.ts";
 
 const corsHeaders = {
@@ -29,7 +31,7 @@ const CIRCUIT_BREAKER_THRESHOLD = 3;
  * POST /functions/v1/scrape-coordinator
  * Body (optional): { "sourceIds": ["uuid1", "uuid2"], "triggerWorker": true }
  */
-serve(async (req: Request): Promise<Response> => {
+serve(withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -163,6 +165,7 @@ serve(async (req: Request): Promise<Response> => {
 
       // Use Promise.all with a small delay between triggers to prevent sudden CPU spikes
       // Fetch is asynchronous and non-blocking here as we don't await the body
+      const failedSourceIds: string[] = [];
       eligibleSources.forEach((source, index) => {
         // Small staggered delay (100ms) between triggers
         setTimeout(() => {
@@ -178,20 +181,58 @@ serve(async (req: Request): Promise<Response> => {
               `Failed to trigger fetcher for source ${source.id}:`,
               err,
             ),
-          );
+            // Track failed source for consecutive_errors update
+            failedSourceIds.push(source.id);
+          });
         }, index * 100);
       });
 
       console.log(
         "Coordinator: Triggering Data-First Processor (process-worker)...",
       );
+      let processorFailed = false;
       fetch(`${supabaseUrl}/functions/v1/process-worker`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${supabaseKey}`,
           "Content-Type": "application/json",
         },
-      }).catch((err) => console.error("Failed to trigger processor:", err));
+      }).catch((err) => {
+        console.error("Failed to trigger processor:", err);
+        processorFailed = true;
+      });
+
+      // Update consecutive_errors for sources that failed to trigger
+      // Use a small delay to allow fetch errors to be captured
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (failedSourceIds.length > 0) {
+        console.log(
+          `Coordinator: Updating consecutive_errors for ${failedSourceIds.length} failed sources`,
+        );
+        const { error: updateError } = await supabase.rpc(
+          "increment_source_errors",
+          { p_source_ids: failedSourceIds }
+        );
+        
+        if (updateError) {
+          console.error("Failed to update consecutive_errors:", updateError);
+          // Fallback to direct update if RPC doesn't exist
+          for (const sourceId of failedSourceIds) {
+            const { data: sourceData } = await supabase
+              .from("scraper_sources")
+              .select("consecutive_errors")
+              .eq("id", sourceId)
+              .single();
+            
+            const currentErrors = sourceData?.consecutive_errors || 0;
+            await supabase
+              .from("scraper_sources")
+              .update({ consecutive_errors: currentErrors + 1 })
+              .eq("id", sourceId);
+          }
+        }
+      }
 
       return new Response(
         JSON.stringify({
@@ -216,7 +257,9 @@ serve(async (req: Request): Promise<Response> => {
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      );
     );
-  });
+  }, {
+    allowedKeyTypes: ['service', 'admin'], // Only service and admin keys can trigger coordinator
+  }, 'scrape-coordinator'); // Apply rate limiting with default config for coordinator
 });

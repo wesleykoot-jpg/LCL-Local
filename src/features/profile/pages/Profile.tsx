@@ -113,11 +113,11 @@ const Profile = () => {
             aria-label="Profile sections"
           >
             <button
-              onClick={() => handleTabChange('passport')}
-              onKeyDown={(e) => handleKeyDown(e, 'passport')}
+              onClick={() => handleTabChange('plans')}
+              onKeyDown={(e) => handleKeyDown(e, 'plans')}
               role="tab"
-              aria-selected={activeTab === 'passport'}
-              aria-controls="passport-panel"
+              aria-selected={activeTab === 'plans'}
+              aria-controls="plans-panel"
               id="plans-tab"
               className={`flex-1 py-2.5 px-4 rounded-pill text-sm font-semibold transition-all min-h-[44px] ${activeTab === 'plans'
                 ? 'bg-brand-primary text-white shadow-sm'
