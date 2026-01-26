@@ -2,61 +2,60 @@
 // Contains event feed, details, creation, and attendance functionality
 
 // API / Services
-export { joinEvent, checkEventAttendance, createEvent } from './api/eventService';
-export type { JoinEventParams, CreateEventParams } from './api/eventService';
+export {
+  joinEvent,
+  checkEventAttendance,
+  createEvent,
+} from "./api/eventService";
+export type { JoinEventParams, CreateEventParams } from "./api/eventService";
 
-export { rankEvents } from './api/feedAlgorithm';
-export type { EventForRanking, UserPreferences } from './api/feedAlgorithm';
+export { rankEvents } from "./api/feedAlgorithm";
+export type { EventForRanking, UserPreferences } from "./api/feedAlgorithm";
 
-export { groupEventsIntoStacks } from './api/feedGrouping';
-export type { EventStack } from './api/feedGrouping';
+export { groupEventsIntoStacks } from "./api/feedGrouping";
+export type { EventStack } from "./api/feedGrouping";
 
 // Hooks
-export { 
-  useEvents, 
-  useJoinEvent, 
-  useUserCommitments, 
-  useAllUserCommitments,
-  usePersonaStats,
-  usePersonaBadges
-} from './hooks/hooks';
-export type { EventWithAttendees, EventAttendee, AttendeeProfile } from './hooks/hooks';
+export { useEvents, useJoinEvent, useUserCommitments } from "./hooks/hooks";
+export type {
+  EventWithAttendees,
+  EventAttendee,
+  AttendeeProfile,
+} from "./hooks/hooks";
 
-export { useUnifiedItinerary } from './hooks/useUnifiedItinerary';
+export { useUnifiedItinerary } from "./hooks/useUnifiedItinerary";
 export type {
   ItineraryItem,
   ItineraryItemType,
-} from './hooks/useUnifiedItinerary';
+} from "./hooks/useUnifiedItinerary";
 
-export { useImageFallback, getEventImage } from './hooks/useImageFallback';
-export { useLiveEventsQuery } from './hooks/useLiveEventsQuery';
+export { useImageFallback, getEventImage } from "./hooks/useImageFallback";
+export { useLiveEventsQuery } from "./hooks/useLiveEventsQuery";
 
 // Components
-export { EventStackCard } from './components/EventStackCard';
 // Note: EventDetailModal and CreateEventModal are lazy-loaded in pages, not exported here
-export { EventTimeline } from './components/EventTimeline';
-export { TimelineEventCard } from './components/TimelineEventCard';
-export { ItineraryTimeline } from './components/ItineraryTimeline';
-export { ShadowEventCard } from './components/ShadowEventCard';
-export { TimeFilterPills } from './components/TimeFilterPills';
-export type { TimeFilter } from './components/TimeFilterPills';
-export { CategoryBadge } from './components/CategoryBadge';
-export { DistanceBadge } from './components/DistanceBadge';
-export { FeaturedEventHero } from './components/FeaturedEventHero';
-export { HorizontalEventCarousel } from './components/HorizontalEventCarousel';
-export { Facepile } from './components/Facepile';
-export { CategorySubscribeCard } from './components/CategorySubscribeCard';
-export { DiscoveryRail } from './components/DiscoveryRail';
-export { SolidSearchBar } from './components/SolidSearchBar';
-export { DeepDiveView } from './components/DeepDiveView';
+export { EventTimeline } from "./components/EventTimeline";
+export { TimelineEventCard } from "./components/TimelineEventCard";
+export { ItineraryTimeline } from "./components/ItineraryTimeline";
+export { ShadowEventCard } from "./components/ShadowEventCard";
+export { TimeFilterPills } from "./components/TimeFilterPills";
+export type { TimeFilter } from "./components/TimeFilterPills";
+export { CategoryBadge } from "./components/CategoryBadge";
+export { DistanceBadge } from "./components/DistanceBadge";
+export { FeaturedEventHero } from "./components/FeaturedEventHero";
+export { HorizontalEventCarousel } from "./components/HorizontalEventCarousel";
+export { Facepile } from "./components/Facepile";
+export { CategorySubscribeCard } from "./components/CategorySubscribeCard";
+export { DiscoveryRail } from "./components/DiscoveryRail";
+export { SolidSearchBar } from "./components/SolidSearchBar";
+export { DeepDiveView } from "./components/DeepDiveView";
 
 // Now Mode Components
-export { TimeDial } from './components/TimeDial';
-export { LiveEventCard } from './components/LiveEventCard';
-export { WhosOutRail } from './components/WhosOutRail';
+export { TimeDial } from "./components/TimeDial";
+export { LiveEventCard } from "./components/LiveEventCard";
+export { WhosOutRail } from "./components/WhosOutRail";
 
 // Pages (for route usage)
-export { default as FeedPage } from './Feed';
-export { default as DiscoveryPage } from './Discovery';
-export { default as MyPlanningPage } from './MyPlanning';
-export { default as NowPage } from './Now';
+export { default as DiscoveryPage } from "./Discovery";
+export { default as MyPlanningPage } from "./MyPlanning";
+export { default as NowPage } from "./Now";

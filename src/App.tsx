@@ -7,16 +7,10 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/features/auth";
 import { LocationProvider } from "@/features/location";
-import { FeedProvider } from "@/contexts/FeedContext";
 import { ErrorBoundary } from "@/shared/components";
 
 // Feature-based page imports
-import {
-  FeedPage,
-  DiscoveryPage,
-  MyPlanningPage,
-  NowPage,
-} from "@/features/events";
+import { DiscoveryPage, MyPlanningPage, NowPage } from "@/features/events";
 import Explore from "@/features/events/Explore";
 import {
   ProfilePage,
@@ -100,62 +94,57 @@ const App = () => (
         <TooltipProvider>
           <AuthProvider>
             <LocationProvider>
-              <FeedProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    {/* Main app routes - accessible without login for dev */}
-                    <Route path="/" element={<Explore />} />
-                    <Route path="/explore" element={<Explore />} />
-                    <Route path="/discovery" element={<DiscoveryPage />} />
-                    <Route path="/feed" element={<FeedPage />} />
-                    <Route path="/now" element={<NowPage />} />
-                    <Route path="/planning" element={<MyPlanningPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Main app routes - accessible without login for dev */}
+                  <Route path="/" element={<Explore />} />
+                  <Route path="/explore" element={<Explore />} />
+                  <Route path="/discovery" element={<DiscoveryPage />} />
+                  <Route path="/discovery" element={<DiscoveryPage />} />
+                  <Route path="/now" element={<NowPage />} />
+                  <Route path="/planning" element={<MyPlanningPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
 
-                    {/* Profile Settings routes */}
-                    <Route
-                      path="/profile/privacy-settings"
-                      element={<PrivacySettingsPage />}
-                    />
-                    <Route
-                      path="/profile/personal-information"
-                      element={<PersonalInformationPage />}
-                    />
-                    <Route
-                      path="/profile/verification-safety"
-                      element={<VerificationSafetyPage />}
-                    />
-                    <Route
-                      path="/profile/notification-preferences"
-                      element={<NotificationPreferencesPage />}
-                    />
-                    <Route
-                      path="/profile/share"
-                      element={<ShareProfilePage />}
-                    />
-                    <Route
-                      path="/profile/calendar"
-                      element={<GoogleCalendarSettingsPage />}
-                    />
+                  {/* Profile Settings routes */}
+                  <Route
+                    path="/profile/privacy-settings"
+                    element={<PrivacySettingsPage />}
+                  />
+                  <Route
+                    path="/profile/personal-information"
+                    element={<PersonalInformationPage />}
+                  />
+                  <Route
+                    path="/profile/verification-safety"
+                    element={<VerificationSafetyPage />}
+                  />
+                  <Route
+                    path="/profile/notification-preferences"
+                    element={<NotificationPreferencesPage />}
+                  />
+                  <Route path="/profile/share" element={<ShareProfilePage />} />
+                  <Route
+                    path="/profile/calendar"
+                    element={<GoogleCalendarSettingsPage />}
+                  />
 
-                    {/* Admin routes (dev mode only) */}
-                    {import.meta.env.DEV && (
-                      <>
-                        <Route path="/admin" element={<AdminPage />} />
-                        <Route path="/scraper-admin" element={<AdminPage />} />
-                      </>
-                    )}
+                  {/* Admin routes (dev mode only) */}
+                  {import.meta.env.DEV && (
+                    <>
+                      <Route path="/admin" element={<AdminPage />} />
+                      <Route path="/scraper-admin" element={<AdminPage />} />
+                    </>
+                  )}
 
-                    {/* Auth routes */}
-                    <Route path="/login" element={<LoginPage />} />
+                  {/* Auth routes */}
+                  <Route path="/login" element={<LoginPage />} />
 
-                    {/* Catch-all */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </FeedProvider>
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
             </LocationProvider>
           </AuthProvider>
         </TooltipProvider>
@@ -168,62 +157,57 @@ const App = () => (
         <TooltipProvider>
           <AuthProvider>
             <LocationProvider>
-              <FeedProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    {/* Main app routes - accessible without login for dev */}
-                    <Route path="/" element={<Explore />} />
-                    <Route path="/explore" element={<Explore />} />
-                    <Route path="/discovery" element={<DiscoveryPage />} />
-                    <Route path="/feed" element={<FeedPage />} />
-                    <Route path="/now" element={<NowPage />} />
-                    <Route path="/planning" element={<MyPlanningPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Main app routes - accessible without login for dev */}
+                  <Route path="/" element={<Explore />} />
+                  <Route path="/explore" element={<Explore />} />
+                  <Route path="/discovery" element={<DiscoveryPage />} />
+                  <Route path="/discovery" element={<DiscoveryPage />} />
+                  <Route path="/now" element={<NowPage />} />
+                  <Route path="/planning" element={<MyPlanningPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
 
-                    {/* Profile Settings routes */}
-                    <Route
-                      path="/profile/privacy-settings"
-                      element={<PrivacySettingsPage />}
-                    />
-                    <Route
-                      path="/profile/personal-information"
-                      element={<PersonalInformationPage />}
-                    />
-                    <Route
-                      path="/profile/verification-safety"
-                      element={<VerificationSafetyPage />}
-                    />
-                    <Route
-                      path="/profile/notification-preferences"
-                      element={<NotificationPreferencesPage />}
-                    />
-                    <Route
-                      path="/profile/share"
-                      element={<ShareProfilePage />}
-                    />
-                    <Route
-                      path="/profile/calendar"
-                      element={<GoogleCalendarSettingsPage />}
-                    />
+                  {/* Profile Settings routes */}
+                  <Route
+                    path="/profile/privacy-settings"
+                    element={<PrivacySettingsPage />}
+                  />
+                  <Route
+                    path="/profile/personal-information"
+                    element={<PersonalInformationPage />}
+                  />
+                  <Route
+                    path="/profile/verification-safety"
+                    element={<VerificationSafetyPage />}
+                  />
+                  <Route
+                    path="/profile/notification-preferences"
+                    element={<NotificationPreferencesPage />}
+                  />
+                  <Route path="/profile/share" element={<ShareProfilePage />} />
+                  <Route
+                    path="/profile/calendar"
+                    element={<GoogleCalendarSettingsPage />}
+                  />
 
-                    {/* Admin routes (dev mode only) */}
-                    {import.meta.env.DEV && (
-                      <>
-                        <Route path="/admin" element={<AdminPage />} />
-                        <Route path="/scraper-admin" element={<AdminPage />} />
-                      </>
-                    )}
+                  {/* Admin routes (dev mode only) */}
+                  {import.meta.env.DEV && (
+                    <>
+                      <Route path="/admin" element={<AdminPage />} />
+                      <Route path="/scraper-admin" element={<AdminPage />} />
+                    </>
+                  )}
 
-                    {/* Auth routes */}
-                    <Route path="/login" element={<LoginPage />} />
+                  {/* Auth routes */}
+                  <Route path="/login" element={<LoginPage />} />
 
-                    {/* Catch-all */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </FeedProvider>
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
             </LocationProvider>
           </AuthProvider>
         </TooltipProvider>
