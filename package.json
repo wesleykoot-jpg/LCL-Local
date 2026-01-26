@@ -14,7 +14,9 @@
     "preview": "npx vite preview",
     "backfill": "node scripts/invoke-backfill.js",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "scrape:10cities": "deno run --allow-net --allow-env --allow-read scripts/run_10_city_pipeline.ts",
+    "scrape:clear": "node scripts/clear_scraper_tables.cjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.0",
