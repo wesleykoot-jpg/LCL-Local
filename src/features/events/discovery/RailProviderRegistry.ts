@@ -341,6 +341,7 @@ class RailProviderRegistry {
 
   /**
    * Generate all rail results for a set of events
+   * Returns all rails, even if they have no events (for empty state display)
    */
   generateRails(
     events: EventWithAttendees[],
@@ -350,7 +351,7 @@ class RailProviderRegistry {
 
     for (const provider of this.getAllSorted()) {
       const filteredEvents = provider.filterEvents(events, context);
-      const shouldShow = filteredEvents.length > 0;
+      const shouldShow = true; // Always show rails, even if empty
 
       results.push({
         metadata: provider.getMetadata(context),
@@ -359,7 +360,8 @@ class RailProviderRegistry {
       });
     }
 
-    return results.filter((r) => r.shouldShow);
+    // Return all rails to allow empty state display in UI
+    return results;
   }
 }
 
