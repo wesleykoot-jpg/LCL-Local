@@ -66,7 +66,6 @@ export function CreateEventModal({
   }, [initialParentEvent, defaultCategory, defaultEventType]);
 
   // Don't render if not open
-  if (!isOpen) return null;
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,6 +94,9 @@ export function CreateEventModal({
       }
     };
   }, [imagePreview]);
+
+  // Don't render if not open
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

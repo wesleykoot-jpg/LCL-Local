@@ -1,9 +1,9 @@
 /**
  * HTML/JSON Parsing Utilities for Event Scraping
- * 
+ *
  * This module provides utilities for extracting and parsing event data
  * from HTML content, with special handling for Dutch date formats.
- * 
+ *
  * @module utils/parser
  */
 
@@ -15,10 +15,30 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 
 const DUTCH_MONTHS: Record<string, number> = {
   // Full names
-  januari: 0, februari: 1, maart: 2, april: 3, mei: 4, juni: 5,
-  juli: 6, augustus: 7, september: 8, oktober: 9, november: 10, december: 11,
+  januari: 0,
+  februari: 1,
+  maart: 2,
+  april: 3,
+  mei: 4,
+  juni: 5,
+  juli: 6,
+  augustus: 7,
+  september: 8,
+  oktober: 9,
+  november: 10,
+  december: 11,
   // Abbreviations
-  jan: 0, feb: 1, mrt: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, okt: 9, nov: 10, dec: 11,
+  jan: 0,
+  feb: 1,
+  mrt: 2,
+  apr: 3,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  okt: 9,
+  nov: 10,
+  dec: 11,
 };
 
 const DUTCH_RELATIVE_DAYS: Record<string, number> = {
@@ -30,9 +50,20 @@ const DUTCH_RELATIVE_DAYS: Record<string, number> = {
 };
 
 const DUTCH_WEEKDAYS: Record<string, number> = {
-  maandag: 1, dinsdag: 2, woensdag: 3, donderdag: 4,
-  vrijdag: 5, zaterdag: 6, zondag: 0,
-  ma: 1, di: 2, wo: 3, do: 4, vr: 5, za: 6, zo: 0,
+  maandag: 1,
+  dinsdag: 2,
+  woensdag: 3,
+  donderdag: 4,
+  vrijdag: 5,
+  zaterdag: 6,
+  zondag: 0,
+  ma: 1,
+  di: 2,
+  wo: 3,
+  do: 4,
+  vr: 5,
+  za: 6,
+  zo: 0,
 };
 
 // ============================================================================
@@ -64,7 +95,11 @@ export class HTMLParser {
    * @param defaultValue - Default value if not found
    * @returns Attribute value
    */
-  extractAttribute(selector: string, attribute: string, defaultValue = ""): string {
+  extractAttribute(
+    selector: string,
+    attribute: string,
+    defaultValue = "",
+  ): string {
     const element = this.$(selector).first();
     return element.attr(attribute)?.trim() || defaultValue;
   }
@@ -76,11 +111,12 @@ export class HTMLParser {
    * @returns Full URL or empty string
    */
   extractLink(selector: string, baseUrl?: string): string {
-    const href = this.$(selector).find("a").first().attr("href") ||
-                 this.$(selector).first().attr("href");
-    
+    const href =
+      this.$(selector).find("a").first().attr("href") ||
+      this.$(selector).first().attr("href");
+
     if (!href) return "";
-    
+
     if (href.startsWith("http")) return href;
     if (baseUrl && href.startsWith("/")) {
       const url = new URL(baseUrl);
@@ -97,17 +133,18 @@ export class HTMLParser {
    */
   extractImage(selector: string, baseUrl?: string): string | null {
     const img = this.$(selector).find("img").first();
-    let src = img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src");
-    
+    let src =
+      img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src");
+
     // Check for background-image in style
     if (!src) {
       const style = this.$(selector).attr("style") || "";
       const bgMatch = style.match(/url\(['"]?([^'"]+)['"]?\)/);
       src = bgMatch?.[1];
     }
-    
+
     if (!src) return null;
-    
+
     if (src.startsWith("http")) return src;
     if (baseUrl && src.startsWith("/")) {
       const url = new URL(baseUrl);
@@ -151,18 +188,23 @@ export class HTMLParser {
  * - "vandaag" -> current date
  * - "zaterdag 12 oktober" -> date of that Saturday
  * - "za 18 mei 2026" -> "2026-05-18"
- * 
+ *
  * @param dateStr - Raw date string
  * @param referenceDate - Reference date for relative calculations (default: now)
  * @returns ISO date string (YYYY-MM-DD) or null if parsing fails
  */
-export function parseDate(dateStr: string, referenceDate: Date = new Date()): string | null {
+export function parseDate(
+  dateStr: string,
+  referenceDate: Date = new Date(),
+): string | null {
   if (!dateStr) return null;
-  
-  const cleaned = dateStr.toLowerCase().trim()
+
+  const cleaned = dateStr
+    .toLowerCase()
+    .trim()
     .replace(/,/g, " ")
     .replace(/\s+/g, " ");
-  
+
   // Check relative days first
   for (const [word, offset] of Object.entries(DUTCH_RELATIVE_DAYS)) {
     if (cleaned === word || cleaned.includes(word)) {
@@ -206,10 +248,12 @@ export function parseDate(dateStr: string, referenceDate: Date = new Date()): st
     const day = parseInt(textMatch[1], 10);
     const monthStr = textMatch[2].toLowerCase();
     const month = DUTCH_MONTHS[monthStr] ?? DUTCH_MONTHS[monthStr.slice(0, 3)];
-    
+
     if (month !== undefined) {
-      let year = textMatch[3] ? parseInt(textMatch[3], 10) : referenceDate.getFullYear();
-      
+      let year = textMatch[3]
+        ? parseInt(textMatch[3], 10)
+        : referenceDate.getFullYear();
+
       // If no year specified and month is in the past, assume next year
       if (!textMatch[3]) {
         const candidateDate = new Date(year, month, day);
@@ -217,7 +261,7 @@ export function parseDate(dateStr: string, referenceDate: Date = new Date()): st
           year++;
         }
       }
-      
+
       return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
   }
@@ -234,32 +278,34 @@ export function parseDate(dateStr: string, referenceDate: Date = new Date()): st
  * - "8 PM" -> "20:00"
  * - "aanvang 20:00" -> "20:00"
  * - "doors: 19:00, start: 20:00" -> "20:00" (prefers start over doors)
- * 
+ *
  * @param timeStr - Raw time string
  * @returns Normalized time string (HH:MM) or null
  */
 export function parseTime(timeStr: string): string | null {
   if (!timeStr) return null;
-  
+
   const cleaned = timeStr.toLowerCase().trim();
-  
+
   // Check for TBD / whole day
   if (cleaned === "tbd" || cleaned === "hele dag" || cleaned === "all day") {
     return null;
   }
 
   // Try to find start time specifically (prefer over doors)
-  const startMatch = cleaned.match(/(?:start|aanvang|beginn?)[:\s]+(\d{1,2})[:.\h](\d{2})/i);
+  const startMatch = cleaned.match(
+    /(?:start|aanvang|beginn?)[:\s]+(\d{1,2})[:.h](\d{2})/i,
+  );
   if (startMatch) {
     return normalizeTime(startMatch[1], startMatch[2]);
   }
 
   // Generic time patterns
   const timePatterns = [
-    /(\d{1,2})[:.](\d{2})(?:\s*(am|pm))?/i,       // 20:00, 8.30, 8:30 PM
-    /(\d{1,2})h(\d{2})/i,                          // 20h00
-    /(\d{1,2})\s*uhr/i,                            // 20 uhr (German)
-    /(\d{1,2})\s*u(?:ur)?(?:[^\d]|$)/i,           // 20u, 20 uur (Dutch)
+    /(\d{1,2})[:.](\d{2})(?:\s*(am|pm))?/i, // 20:00, 8.30, 8:30 PM
+    /(\d{1,2})h(\d{2})/i, // 20h00
+    /(\d{1,2})\s*uhr/i, // 20 uhr (German)
+    /(\d{1,2})\s*u(?:ur)?(?:[^\d]|$)/i, // 20u, 20 uur (Dutch)
   ];
 
   for (const pattern of timePatterns) {
@@ -278,7 +324,11 @@ export function parseTime(timeStr: string): string | null {
 /**
  * Normalize hours and minutes to HH:MM format
  */
-function normalizeTime(hours: string, minutes: string, ampm?: string): string | null {
+function normalizeTime(
+  hours: string,
+  minutes: string,
+  ampm?: string,
+): string | null {
   let hourNum = parseInt(hours, 10);
   const minuteNum = parseInt(minutes, 10);
 
@@ -307,15 +357,19 @@ function formatISODate(date: Date): string {
  * @param timezone - IANA timezone (default: Europe/Amsterdam)
  * @returns ISO 8601 timestamp
  */
-export function combineDateTime(dateStr: string, timeStr: string | null, timezone = "Europe/Amsterdam"): string {
+export function combineDateTime(
+  dateStr: string,
+  timeStr: string | null,
+  timezone = "Europe/Amsterdam",
+): string {
   const time = timeStr || "12:00";
   const [hours, minutes] = time.split(":").map(Number);
   const [year, month, day] = dateStr.split("-").map(Number);
-  
+
   // Create date in UTC (treating input as local timezone)
   // Note: In production, you'd use proper timezone handling
   const date = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-  
+
   return date.toISOString();
 }
 
@@ -325,7 +379,10 @@ export function combineDateTime(dateStr: string, timeStr: string | null, timezon
  * @param durationMinutes - Duration in minutes
  * @returns ISO timestamp for end time
  */
-export function calculateEndTime(startTime: string, durationMinutes: number): string {
+export function calculateEndTime(
+  startTime: string,
+  durationMinutes: number,
+): string {
   const start = new Date(startTime);
   const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
   return end.toISOString();
@@ -335,20 +392,23 @@ export function calculateEndTime(startTime: string, durationMinutes: number): st
  * Handle late-night event logic
  * If event starts late (after 22:00) and ends early (before 08:00),
  * the end date should be the next day.
- * 
+ *
  * @param startTime - ISO timestamp
  * @param endTimeStr - Time string (HH:MM) for end time
  * @returns ISO timestamp for end time with correct date
  */
-export function handleLateNightEvent(startTime: string, endTimeStr: string): string {
+export function handleLateNightEvent(
+  startTime: string,
+  endTimeStr: string,
+): string {
   const start = new Date(startTime);
   const startHours = start.getUTCHours();
-  
+
   const [endHours, endMinutes] = endTimeStr.split(":").map(Number);
-  
+
   const end = new Date(start);
   end.setUTCHours(endHours, endMinutes, 0, 0);
-  
+
   // If start is late night (>=22) and end is early morning (<8), add a day
   if (startHours >= 22 && endHours < 8) {
     end.setUTCDate(end.getUTCDate() + 1);
@@ -357,7 +417,7 @@ export function handleLateNightEvent(startTime: string, endTimeStr: string): str
   else if (startHours < 8 && endHours < 8 && endHours < startHours) {
     end.setUTCDate(end.getUTCDate() + 1);
   }
-  
+
   return end.toISOString();
 }
 
@@ -368,28 +428,28 @@ export function handleLateNightEvent(startTime: string, endTimeStr: string): str
  * - "1 uur 45 minuten" -> 105
  * - "90 min" -> 90
  * - "2 hours" -> 120
- * 
+ *
  * @param durationStr - Raw duration string
  * @returns Duration in minutes or null
  */
 export function parseDuration(durationStr: string): number | null {
   if (!durationStr) return null;
-  
+
   const cleaned = durationStr.toLowerCase().trim();
   let totalMinutes = 0;
-  
+
   // Match hours
   const hoursMatch = cleaned.match(/(\d+)\s*(?:h|hour|hours|uur|uren)/);
   if (hoursMatch) {
     totalMinutes += parseInt(hoursMatch[1], 10) * 60;
   }
-  
+
   // Match minutes
   const minutesMatch = cleaned.match(/(\d+)\s*(?:m|min|mins|minutes|minuten)/);
   if (minutesMatch) {
     totalMinutes += parseInt(minutesMatch[1], 10);
   }
-  
+
   // If no match found, try plain number (assume minutes)
   if (totalMinutes === 0) {
     const plainMatch = cleaned.match(/^(\d+)$/);
@@ -397,7 +457,7 @@ export function parseDuration(durationStr: string): number | null {
       totalMinutes = parseInt(plainMatch[1], 10);
     }
   }
-  
+
   return totalMinutes > 0 ? totalMinutes : null;
 }
 
@@ -408,19 +468,21 @@ export function parseDuration(durationStr: string): number | null {
  */
 export function normalizePriceRange(priceStr: string): string {
   if (!priceStr) return "";
-  
+
   const cleaned = priceStr.trim();
-  
+
   // Already normalized
   if (/^€{1,4}$/.test(cleaned)) return cleaned;
-  
+
   // Extract numeric values
   const prices = cleaned.match(/(\d+(?:[.,]\d+)?)/g);
   if (!prices || prices.length === 0) return cleaned;
-  
+
   // Use the highest price for categorization
-  const maxPrice = Math.max(...prices.map(p => parseFloat(p.replace(",", "."))));
-  
+  const maxPrice = Math.max(
+    ...prices.map((p) => parseFloat(p.replace(",", "."))),
+  );
+
   if (maxPrice <= 15) return "€";
   if (maxPrice <= 40) return "€€";
   if (maxPrice <= 100) return "€€€";
