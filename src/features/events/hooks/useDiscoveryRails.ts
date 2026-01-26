@@ -5,10 +5,10 @@ import type {
   DiscoverySectionType,
 } from "../types/discoveryTypes.ts";
 import type { EventWithAttendees } from "./hooks.ts";
-import { 
-  railRegistry, 
-  type RailContext, 
-  type RailType 
+import {
+  railRegistry,
+  type RailContext,
+  type RailType,
 } from "../discovery/index.ts";
 
 interface UseDiscoveryRailsOptions {
@@ -29,15 +29,15 @@ interface UseDiscoveryRailsOptions {
  */
 const railTypeToSectionType: Record<RailType, DiscoverySectionType> = {
   "for-you": "traditional",
-  "rituals": "social",
+  rituals: "social",
   "this-weekend": "traditional",
-  "location": "utility",
-  "pulse": "traditional",
+  location: "utility",
+  pulse: "traditional",
 };
 
 /**
  * useDiscoveryRails - Strategy-based Discovery Rails Hook
- * 
+ *
  * Implements the 5 Psychological Pillars:
  * 1. "For You" (The Ego) - Validation through personalization
  * 2. "Rituals" (The Habit) - Stability through recurring events
@@ -58,9 +58,14 @@ export function useDiscoveryRails({
   attendedEventIds = new Set(),
 }: UseDiscoveryRailsOptions) {
   return useMemo<DiscoveryLayout>(() => {
-    if (!enabled || !allEvents || allEvents.length === 0) {
+    // if (!enabled || !allEvents || allEvents.length === 0) {
+    if (!enabled) {
       return { sections: [] };
     }
+
+    // Default to empty array if undefined
+    const safeHasEvents = allEvents && allEvents.length > 0;
+    const eventsToProcess = safeHasEvents ? allEvents : [];
 
     const sections: DiscoverySection[] = [];
 
@@ -72,7 +77,7 @@ export function useDiscoveryRails({
       userLocation,
       radiusKm,
       profileId,
-      bookmarkedEventIds: new Set(bookmarkedEvents.map(e => e.id)),
+      bookmarkedEventIds: new Set(bookmarkedEvents.map((e) => e.id)),
       attendedEventIds,
     };
 
@@ -88,25 +93,25 @@ export function useDiscoveryRails({
     }
 
     // --- Generate rails from the registry ---
-    const railResults = railRegistry.generateRails(allEvents, context);
+    const railResults = railRegistry.generateRails(eventsToProcess, context);
 
     for (const result of railResults) {
       // Always add rails, even if empty (for empty state display)
-      if (result.shouldShow) {
-        sections.push({
-          type: railTypeToSectionType[result.metadata.type] || "traditional",
-          title: result.metadata.title,
-          description: result.metadata.description,
-          items: result.events, // Can be empty array
-          layout: "carousel",
-          // Store additional metadata for the renderer
-          icon: undefined, // Will be rendered by DynamicRailRenderer based on type
-        });
-      }
+      // if (result.shouldShow) {
+      sections.push({
+        type: railTypeToSectionType[result.metadata.type] || "traditional",
+        title: result.metadata.title,
+        description: result.metadata.description,
+        items: result.events, // Can be empty array
+        layout: "carousel",
+        // Store additional metadata for the renderer
+        icon: undefined, // Will be rendered by DynamicRailRenderer based on type
+      });
+      // }
     }
 
     // --- Bonus Rail: "Hidden Gems" (Generative) ---
-    const hiddenEvents = allEvents
+    const hiddenEvents = eventsToProcess
       .filter((e) => (e.attendee_count || 0) < 5)
       .filter((e) => !!e.image_url)
       .filter((e) => e.event_date && new Date(e.event_date) >= new Date())
@@ -125,9 +130,9 @@ export function useDiscoveryRails({
 
     return { sections };
   }, [
-    allEvents, 
-    enabled, 
-    selectedCategories, 
+    allEvents,
+    enabled,
+    selectedCategories,
     bookmarkedEvents,
     locationCity,
     country,
