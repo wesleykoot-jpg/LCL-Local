@@ -1,7 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { MapPin, Users, Loader2, Check, Share2, Calendar } from 'lucide-react';
+import { MapPin, Users, Loader2, Check, Share2, Calendar, GitBranch } from 'lucide-react';
 import { getCategoryConfig } from '@/shared/lib/categories';
 import type { EventWithAttendees } from '../hooks/hooks';
 import { useJoinEvent } from '../hooks/hooks';
@@ -17,6 +17,7 @@ interface TimelineEventCardProps {
   isPast?: boolean;
   showJoinButton?: boolean;
   variant?: 'default' | 'minimal' | 'trip-card';
+  onFork?: (eventId: string) => void;
 }
 
 // Format time like "7:00 PM"
@@ -41,6 +42,7 @@ export const TimelineEventCard = memo(function TimelineEventCard({
   isPast = false,
   showJoinButton = false,
   variant = 'default',
+  onFork,
 }: TimelineEventCardProps) {
   const categoryConfig = getCategoryConfig(event.category);
   const categoryLabel = categoryConfig.label;
@@ -131,6 +133,13 @@ export const TimelineEventCard = memo(function TimelineEventCard({
       }
     }
   }, [event.title, event.venue_name]);
+  
+  // Handle fork event
+  const handleFork = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await hapticImpact('medium');
+    onFork?.(event.id);
+  }, [onFork, event.id]);
   
   // Optimistic join handler with immediate UI feedback
   const handleOptimisticJoin = useCallback(async (e: React.MouseEvent) => {
@@ -242,8 +251,52 @@ export const TimelineEventCard = memo(function TimelineEventCard({
             </div>
           )}
 
-          {/* Join Button - Only show if not past and showJoinButton is true */}
-          {!isPast && showJoinButton && !hasJoined && (
+          {/* Action Buttons - Fork and Join side by side (only if not past) */}
+          {!isPast && showJoinButton && onFork && (
+            <div className="mt-3 pt-3 border-t border-border flex gap-3">
+              {/* Fork Button */}
+              <button
+                onClick={handleFork}
+                className="flex-none w-[35%] h-[44px] rounded-xl border border-border bg-card text-foreground text-[14px] font-semibold flex items-center justify-center gap-2 hover:bg-muted transition-all active:scale-[0.98]"
+              >
+                <GitBranch size={16} />
+                <span>Fork</span>
+              </button>
+
+              {/* Join Button */}
+              {!hasJoined && (
+                <button
+                  onClick={handleOptimisticJoin}
+                  disabled={isCurrentEventJoining}
+                  className={`flex-1 h-[44px] rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98] ${
+                    isCurrentEventJoining
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  }`}
+                >
+                  {isCurrentEventJoining ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Joining...</span>
+                    </div>
+                  ) : (
+                    'Join Event'
+                  )}
+                </button>
+              )}
+
+              {/* Already Joined Badge */}
+              {hasJoined && (
+                <div className="flex-1 h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
+                  <Check size={16} className="text-brand-primary" />
+                  <span>Going</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Join Button Only (if no onFork provided) - Only show if not past and showJoinButton is true */}
+          {!isPast && showJoinButton && !onFork && !hasJoined && (
             <div className="mt-3 pt-3 border-t border-border">
               <button
                 onClick={handleOptimisticJoin}
@@ -266,8 +319,8 @@ export const TimelineEventCard = memo(function TimelineEventCard({
             </div>
           )}
 
-          {/* Already Joined Badge */}
-          {!isPast && showJoinButton && hasJoined && (
+          {/* Already Joined Badge (if no onFork provided) */}
+          {!isPast && showJoinButton && !onFork && hasJoined && (
             <div className="mt-3 pt-3 border-t border-border">
               <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
                 <Check size={16} className="text-brand-primary" />
@@ -383,8 +436,52 @@ export const TimelineEventCard = memo(function TimelineEventCard({
       )}
 
 
-      {/* Join Button - Only show if not past and showJoinButton is true */}
-      {!isPast && showJoinButton && !hasJoined && (
+      {/* Action Buttons - Fork and Join side by side (only if not past and onFork is provided) */}
+      {!isPast && showJoinButton && onFork && (
+        <div className="mt-3 pt-3 border-t border-border flex gap-3">
+          {/* Fork Button */}
+          <button
+            onClick={handleFork}
+            className="flex-none w-[35%] h-[44px] rounded-xl border border-border bg-card text-foreground text-[14px] font-semibold flex items-center justify-center gap-2 hover:bg-muted transition-all active:scale-[0.98]"
+          >
+            <GitBranch size={16} />
+            <span>Fork</span>
+          </button>
+
+          {/* Join Button */}
+          {!hasJoined && (
+            <button
+              onClick={handleOptimisticJoin}
+              disabled={isCurrentEventJoining}
+              className={`flex-1 h-[44px] rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98] ${
+                isCurrentEventJoining
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              }`}
+            >
+              {isCurrentEventJoining ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Joining...</span>
+                </div>
+              ) : (
+                'Join Event'
+              )}
+            </button>
+          )}
+
+          {/* Already Joined Badge */}
+          {hasJoined && (
+            <div className="flex-1 h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
+              <Check size={16} className="text-brand-primary" />
+              <span>Going</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Join Button Only (if no onFork provided) - Only show if not past and showJoinButton is true */}
+      {!isPast && showJoinButton && !onFork && !hasJoined && (
         <div className="mt-3 pt-3 border-t border-border">
           <button
             onClick={handleOptimisticJoin}
@@ -407,8 +504,8 @@ export const TimelineEventCard = memo(function TimelineEventCard({
         </div>
       )}
 
-      {/* Already Joined Badge - Shows immediately via optimistic update */}
-      {!isPast && showJoinButton && hasJoined && (
+      {/* Already Joined Badge - Shows immediately via optimistic update (if no onFork provided) */}
+      {!isPast && showJoinButton && !onFork && hasJoined && (
         <div className="mt-3 pt-3 border-t border-border">
           <div className="w-full h-[44px] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-secondary text-foreground border-2 border-primary/20">
             <Check size={16} className="text-brand-primary" />
