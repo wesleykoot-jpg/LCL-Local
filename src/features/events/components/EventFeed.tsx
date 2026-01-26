@@ -190,6 +190,7 @@ function groupStacksByVibe(stacks: EventStack[]): VibeGroup[] {
 interface EventFeedProps {
   events: EventWithAttendees[];
   onEventClick?: (eventId: string) => void;
+  onFork?: (eventId: string) => void;
   userPreferences?: UserPreferences | null;
   showVibeHeaders?: boolean;
   profileId?: string;
@@ -219,6 +220,7 @@ const VibeHeaderSection = memo(function VibeHeaderSection({ vibe }: { vibe: Vibe
 export const EventFeed = memo(function EventFeed({
   events,
   onEventClick,
+  onFork,
   userPreferences,
   showVibeHeaders = false,
   profileId,
@@ -388,6 +390,7 @@ export const EventFeed = memo(function EventFeed({
                                 stack={item.stack}
                                 onEventClick={onEventClick}
                                 onJoinEvent={handleJoinEvent}
+                                onFork={onFork}
                                 joiningEventId={isJoining(item.stack.anchor.id) 
                                   ? item.stack.anchor.id 
                                   : item.stack.forks.find(fork => isJoining(fork.id))?.id}
