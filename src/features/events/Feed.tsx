@@ -404,8 +404,7 @@ const Feed = () => {
                 {/* Rails include: Pulse, Location, Rituals, This Weekend, etc. */}
                 <div className="space-y-6 mt-6">
                   {sections.map((section, index) => {
-                    if (section.items.length === 0) return null;
-
+                    // Show all rails, even if empty, for better discovery
                     return (
                       <motion.div
                         key={section.title + index}
