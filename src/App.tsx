@@ -11,7 +11,6 @@ import { ErrorBoundary } from "@/shared/components";
 
 // Feature-based page imports
 import { DiscoveryPage, MyPlanningPage, NowPage } from "@/features/events";
-import Explore from "@/features/events/Explore";
 import {
   ProfilePage,
   PrivacySettingsPage,
@@ -99,9 +98,8 @@ const App = () => (
               <BrowserRouter>
                 <Routes>
                   {/* Main app routes - accessible without login for dev */}
-                  <Route path="/" element={<Explore />} />
-                  <Route path="/explore" element={<Explore />} />
-                  <Route path="/discovery" element={<DiscoveryPage />} />
+                  <Route path="/" element={<DiscoveryPage />} />
+                  <Route path="/explore" element={<DiscoveryPage />} />
                   <Route path="/now" element={<NowPage />} />
                   <Route path="/planning" element={<MyPlanningPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
@@ -161,9 +159,8 @@ const App = () => (
               <BrowserRouter>
                 <Routes>
                   {/* Main app routes - accessible without login for dev */}
-                  <Route path="/" element={<Explore />} />
-                  <Route path="/explore" element={<Explore />} />
-                  <Route path="/discovery" element={<DiscoveryPage />} />
+                  <Route path="/" element={<DiscoveryPage />} />
+                  <Route path="/explore" element={<DiscoveryPage />} />
                   <Route path="/now" element={<NowPage />} />
                   <Route path="/planning" element={<MyPlanningPage />} />
                   <Route path="/profile" element={<ProfilePage />} />

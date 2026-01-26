@@ -31,11 +31,15 @@ export function FloatingNav({ activeView, onNavigate }: FloatingNavProps) {
     activeView ||
     (currentPath === "/now"
       ? "now"
-      : currentPath.includes("planning")
-        ? "planning"
-        : currentPath.includes("profile")
-          ? "profile"
-          : "feed");
+      : currentPath === "/" ||
+          currentPath.includes("explore") ||
+          currentPath.includes("discovery")
+        ? "feed"
+        : currentPath.includes("planning")
+          ? "planning"
+          : currentPath.includes("profile")
+            ? "profile"
+            : "feed");
 
   const isNowActive = derivedActiveView === "now";
   const isHidden = scrollDirection === "down";
