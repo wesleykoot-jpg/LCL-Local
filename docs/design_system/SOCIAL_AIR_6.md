@@ -66,3 +66,40 @@ The UI must feel "alive" through physics-based interactions.
   active.
 - **Cards**: Solid gradient scrims for text over images (Netflix style).
   `bg-gradient-to-t from-black/70 via-black/20 to-transparent`.
+
+## 5. High-Impact Vibrancy (Max Interaction)
+
+For discovery and exploration surfaces, we employ "Max Vibrancy" to create energy and movement. This is reserved for headers and major section landmarks.
+
+### A. Typography Scale
+
+Deeply impactful sections use **Extra Large** typography to anchor the view.
+
+- **Header Token**: `text-3xl` (30px)
+- **Weight**: `font-bold`
+- **Tracking**: `tight`
+
+### B. Color Saturation & Gradients
+
+We shift from functional neutral colors to high-energy 500-level saturated gradients.
+
+- **Level**: Tailwind `500` (e.g., `indigo-500`, `amber-500`, `rose-500`)
+- **Visual Mapping**:
+  - **Personalized**: Indigo/Violet (Trust & Magic)
+  - **Ritual/Weekly**: Amber/Orange (Warmth & Continuity)
+  - **Urgent/Weekend**: Rose/Pink (Excitement & Action)
+  - **Location**: Blue/Cyan (Clarity & Freshness)
+
+### C. Thematic Depth (Atmospheric Glow)
+
+Surfaces should feel "atmospheric" through soft color leakage.
+
+- **Backdrop Intensity**: `/15` (15% opacity) matching the theme color.
+- **Application**: Applied as a background tint to the rail container to fill the space and add "life" even in empty states.
+
+### D. Enhanced Iconography
+
+Icons accompanying vibrant headers must match the visual weight.
+
+- **Size**: `w-7 h-7`
+- **Coloring**: Direct match to the header's primary gradient color.
