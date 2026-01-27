@@ -97,7 +97,7 @@ function calculateQualityScore(event: any): number {
   
   // Event time is specific (not TBD): +0.05
   // Valid time format: HH:MM or H:MM, optionally with seconds
-  if (event.event_time && event.event_time !== "TBD" && /^\d{1,2}:\d{2}(:\d{2})?$/.test(event.event_time)) {
+  if (event.event_time && event.event_time !== "TBD" && /^([0-9]|[0-1][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/.test(event.event_time)) {
     score += 0.05;
   }
 
