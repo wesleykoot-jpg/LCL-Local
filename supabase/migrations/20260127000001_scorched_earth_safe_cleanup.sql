@@ -1,7 +1,16 @@
--- Safe cleanup: conditional and dynamic drops for scraper artifacts
+-- ============================================================================
+-- SCORCHED EARTH CLEANUP: Remove All Legacy Scraping Infrastructure
+-- ============================================================================
+-- Migration Date: 2026-01-27
+-- Purpose: Complete removal of all scraping-related database objects to 
+--          prepare for new architecture. This is a DESTRUCTIVE migration.
+-- 
 -- This script is idempotent and will attempt to remove known
 -- scraper tables, functions, triggers and the `scraper` schema.
 -- It uses dynamic SQL to safely drop functions by signature.
+--
+-- WARNING: This will permanently delete all scraping data!
+-- ============================================================================
 
 -- Drop tables (public + schema-qualified)
 DROP TABLE IF EXISTS public.scraper_sources CASCADE;
@@ -105,3 +114,38 @@ END$$;
 
 -- Final check: list remaining scraper-like tables (for manual review)
 -- SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema') AND (table_name ILIKE '%scrap%' OR table_name ILIKE '%pipeline%' OR table_name ILIKE '%scraper%');
+
+-- ============================================================================
+-- Drop any remaining scraper-related types and enums
+-- ============================================================================
+DROP TYPE IF EXISTS public.fetcher_type_enum CASCADE;
+DROP TYPE IF EXISTS scraper.fetcher_type_enum CASCADE;
+DROP TYPE IF EXISTS scraper.event_category_key CASCADE;
+DROP TYPE IF EXISTS public.scraper_status CASCADE;
+DROP TYPE IF EXISTS public.pipeline_stage CASCADE;
+DROP TYPE IF EXISTS public.scrape_status CASCADE;
+
+-- ============================================================================
+-- VERIFICATION: Report on cleanup success
+-- ============================================================================
+DO $$ 
+DECLARE
+    remaining_tables INTEGER;
+    remaining_funcs INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO remaining_tables
+    FROM information_schema.tables 
+    WHERE (table_name ILIKE '%scrap%' OR table_name ILIKE '%pipeline%' OR table_name ILIKE '%scraper%')
+      AND table_schema NOT IN ('pg_catalog', 'information_schema');
+      
+    SELECT COUNT(*) INTO remaining_funcs
+    FROM information_schema.routines
+    WHERE (routine_name ILIKE '%scrap%' OR routine_name ILIKE '%pipeline%' OR routine_name ILIKE '%scraper%')
+      AND routine_schema NOT IN ('pg_catalog', 'information_schema');
+    
+    IF remaining_tables > 0 OR remaining_funcs > 0 THEN
+        RAISE WARNING 'Remaining objects: % tables, % functions - may need manual cleanup', remaining_tables, remaining_funcs;
+    ELSE
+        RAISE NOTICE '✓ SCORCHED EARTH CLEANUP COMPLETE: All scraper artifacts removed successfully';
+    END IF;
+END $$;
