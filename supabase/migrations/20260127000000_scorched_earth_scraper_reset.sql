@@ -5,9 +5,8 @@
 -- and pipeline-related database objects to prepare for a new architecture.
 -- 
 -- WARNING: This is IRREVERSIBLE. All scraper data will be permanently deleted.
+-- NOTE: This migration does NOT use transactions to allow partial cleanup
 -- =============================================================================
-
-BEGIN;
 
 -- =============================================================================
 -- PHASE 1: Drop Triggers (must come before functions they depend on)
