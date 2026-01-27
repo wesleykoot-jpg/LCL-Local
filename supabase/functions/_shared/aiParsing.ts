@@ -235,12 +235,31 @@ export async function generateExtractionRecipe(
   fetcher: typeof fetch = fetch
 ): Promise<ExtractionRecipe | null> {
   // Clean HTML: remove scripts, styles, and excessive whitespace
-  const cleanedHtml = htmlSample
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/\s+/g, ' ')
-    .slice(0, 50000); // Limit to 50k chars for token efficiency
+  // Use loop-based sanitization to handle nested/malformed tags
+  let cleanedHtml = htmlSample;
+  
+  // Remove script tags (loop until no more found to handle nested cases)
+  // Use [\s\S] for content matching, handle closing tags with optional whitespace/attributes
+  let prevLength: number;
+  do {
+    prevLength = cleanedHtml.length;
+    cleanedHtml = cleanedHtml.replace(/<script\b[^>]*>[\s\S]*?<\/\s*script[\s>]/gi, '');
+  } while (cleanedHtml.length < prevLength);
+  
+  // Remove style tags (loop until no more found)
+  do {
+    prevLength = cleanedHtml.length;
+    cleanedHtml = cleanedHtml.replace(/<style\b[^>]*>[\s\S]*?<\/\s*style[\s>]/gi, '');
+  } while (cleanedHtml.length < prevLength);
+  
+  // Remove HTML comments (loop until no more found)
+  do {
+    prevLength = cleanedHtml.length;
+    cleanedHtml = cleanedHtml.replace(/<!--[\s\S]*?-->/g, '');
+  } while (cleanedHtml.length < prevLength);
+  
+  // Normalize whitespace and limit size
+  cleanedHtml = cleanedHtml.replace(/\s+/g, ' ').slice(0, 50000);
 
   const tier = sourceContext.tier || 3;
   const tierDescription = tier === 1 ? '>100k' : tier === 2 ? '20k-100k' : '<20k';
