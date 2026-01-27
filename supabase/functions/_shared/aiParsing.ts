@@ -97,6 +97,267 @@ export async function callGemini(
   return null;
 }
 
+/**
+ * Call GLM-4 (ZhipuAI BigModel API) for high-reasoning tasks like Scout.
+ * GLM-4.7 is used for analyzing website structure and generating extraction recipes.
+ * 
+ * @param apiKey - ZhipuAI API key
+ * @param payload - Request payload with model, messages, temperature, etc.
+ * @param fetcher - Fetch implementation
+ * @param maxRetries - Maximum retry attempts
+ * @returns Generated text response or null on failure
+ */
+export async function callGLM(
+  apiKey: string,
+  payload: {
+    model?: string;
+    messages: Array<{ role: string; content: string }>;
+    temperature?: number;
+    max_tokens?: number;
+    response_format?: { type: string };
+  },
+  fetcher: typeof fetch,
+  maxRetries: number = 3
+): Promise<string | null> {
+  const model = payload.model || "glm-4";
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      await exponentialBackoff(attempt);
+    }
+
+    try {
+      const response = await fetcher("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: payload.messages,
+          temperature: payload.temperature ?? 0.1,
+          max_tokens: payload.max_tokens ?? 4096,
+          ...(payload.response_format && { response_format: payload.response_format }),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || null;
+      }
+
+      const text = await response.text();
+      
+      if (response.status === 429) {
+        console.warn(`GLM 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`);
+        if (attempt < maxRetries) {
+          continue;
+        }
+      }
+
+      console.error("GLM error", response.status, text);
+      
+      if (response.status !== 429) {
+        return null;
+      }
+    } catch (error) {
+      console.error(`GLM request failed (attempt ${attempt + 1}):`, error);
+      if (attempt === maxRetries) {
+        return null;
+      }
+    }
+  }
+  
+  console.error("GLM: max retries exceeded");
+  return null;
+}
+
+/**
+ * Extraction Recipe Schema for Scout-generated deterministic extraction.
+ * This is the output format that Scout produces and Executor consumes.
+ */
+export interface ExtractionRecipe {
+  /** Extraction mode: CSS_SELECTOR (most common) or JSON_LD (if structured data present) */
+  mode: 'CSS_SELECTOR' | 'JSON_LD';
+  /** Whether the site requires JavaScript rendering (SPA) */
+  requires_render: boolean;
+  /** CSS selector configuration for extraction */
+  config: {
+    /** Container selector for the event list (e.g., '.agenda-list', '#events') */
+    container: string;
+    /** Selector for individual event items relative to container */
+    item: string;
+    /** Field mappings - CSS selectors relative to each item */
+    mapping: {
+      title: string;
+      date: string;
+      link: string;
+      image: string;
+      description?: string;
+      location?: string;
+      time?: string;
+    };
+  };
+  /** Extraction hints for the executor */
+  hints: {
+    /** Date locale for parsing (e.g., 'nl' for Dutch) */
+    date_locale: string;
+    /** Pagination type */
+    pagination: 'load_more' | 'pages' | 'none' | 'infinite_scroll';
+    /** Whether detail page fetch is needed for full data */
+    must_follow_link: boolean;
+    /** Detected date format patterns */
+    date_patterns?: string[];
+  };
+  /** Metadata about recipe generation */
+  metadata?: {
+    generated_at: string;
+    model: string;
+    confidence: number;
+  };
+}
+
+/**
+ * Scraper Architect prompt for GLM-4.7.
+ * Analyzes HTML structure and generates deterministic extraction recipe.
+ */
+export async function generateExtractionRecipe(
+  apiKey: string,
+  htmlSample: string,
+  sourceContext: {
+    cityName?: string;
+    population?: number;
+    tier?: 1 | 2 | 3;
+    sourceUrl: string;
+    sourceName: string;
+  },
+  fetcher: typeof fetch = fetch
+): Promise<ExtractionRecipe | null> {
+  // Clean HTML: remove scripts, styles, and excessive whitespace
+  const cleanedHtml = htmlSample
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\s+/g, ' ')
+    .slice(0, 50000); // Limit to 50k chars for token efficiency
+
+  const tier = sourceContext.tier || 3;
+  const tierDescription = tier === 1 ? '>100k' : tier === 2 ? '20k-100k' : '<20k';
+
+  const systemPrompt = `You are the "LCL-Local Scraper Architect." Your job is to analyze the HTML of Dutch city agenda websites and generate a deterministic extraction recipe.
+
+Context:
+Target City: ${sourceContext.cityName || 'Unknown'}
+Population: ${sourceContext.population || 'Unknown'}
+Tier: ${tier} (${tierDescription})
+Source URL: ${sourceContext.sourceUrl}
+Source Name: ${sourceContext.sourceName}
+
+Objective: Output a JSON "Recipe" that allows a simple Deno/Cheerio script to extract events without further AI reasoning.
+
+Analysis Requirements:
+
+1. Extraction Mode: Determine if the site uses JSON_LD (preferred) or CSS_SELECTORS.
+   - Check for <script type="application/ld+json"> with Event schema
+   - If present and complete, use JSON_LD mode
+   - Otherwise, use CSS_SELECTOR mode
+
+2. Selectors: Identify the unique container for the event list and the relative paths for:
+   - Title (look for h1, h2, h3, .title, .event-title, etc.)
+   - Date (look for datetime attributes, time elements, or Dutch text like '12 mei', '15 januari')
+   - Detail URL (the link to the full event page, usually an <a> tag)
+   - Image URL (look for img tags, data-src, lazy-loading patterns)
+   - Optional: description, location, time
+
+3. Dutch Nuances: Note if the site uses:
+   - Standard Dutch month names (januari, februari, maart, etc.)
+   - Relative formats (morgen, volgende week, vandaag)
+   - Time formats (14:00, 14.00, 14u00)
+
+4. Discovery Depth:
+   - For Tier 1 (>100k): Look for specific sub-categories (e.g., /agenda/muziek, /agenda/sport)
+   - For Tier 2 & 3: Focus on the primary central agenda
+
+Output Schema (Strict JSON only):
+{
+  "mode": "CSS_SELECTOR" | "JSON_LD",
+  "requires_render": boolean,
+  "config": {
+    "container": "string - CSS selector for event list container",
+    "item": "string - CSS selector for individual event items",
+    "mapping": {
+      "title": "string - CSS selector for title within item",
+      "date": "string - CSS selector for date within item",
+      "link": "string - CSS selector for link within item (use 'a' or 'a[href]')",
+      "image": "string - CSS selector for image within item",
+      "description": "string - optional CSS selector for description",
+      "location": "string - optional CSS selector for location",
+      "time": "string - optional CSS selector for time"
+    }
+  },
+  "hints": {
+    "date_locale": "nl",
+    "pagination": "load_more" | "pages" | "none" | "infinite_scroll",
+    "must_follow_link": boolean,
+    "date_patterns": ["array of detected date format patterns"]
+  }
+}
+
+IMPORTANT:
+- Return ONLY the JSON object, no markdown code blocks
+- Use specific, robust CSS selectors that won't break easily
+- Prefer class-based selectors over position-based ones
+- If no clear structure is found, still provide best-effort selectors`;
+
+  const userPrompt = `Analyze this HTML and generate an extraction recipe:
+
+${cleanedHtml}`;
+
+  const payload = {
+    model: "glm-4",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ],
+    temperature: 0.1,
+    max_tokens: 2048,
+  };
+
+  const response = await callGLM(apiKey, payload, fetcher);
+  
+  if (!response) {
+    console.error("GLM returned no response for recipe generation");
+    return null;
+  }
+
+  try {
+    // Clean up response (remove markdown code blocks if present)
+    let cleaned = response.trim();
+    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    
+    const recipe = JSON.parse(cleaned) as ExtractionRecipe;
+    
+    // Validate required fields
+    if (!recipe.mode || !recipe.config || !recipe.config.container || !recipe.config.item) {
+      console.error("Recipe missing required fields:", recipe);
+      return null;
+    }
+    
+    // Add metadata
+    recipe.metadata = {
+      generated_at: new Date().toISOString(),
+      model: "glm-4",
+      confidence: 0.8, // Default confidence, can be refined
+    };
+    
+    return recipe;
+  } catch (e) {
+    console.error("Failed to parse extraction recipe:", e, response);
+    return null;
+  }
+}
+
 export interface ParseEventOptions {
     targetYear?: number;
     language?: string;
