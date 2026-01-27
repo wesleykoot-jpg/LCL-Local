@@ -1,12 +1,18 @@
 import { memo, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, MapPin, ChevronRight, Loader2 } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, ChevronRight, Loader2, Sparkles, Users } from 'lucide-react';
 import { useAuth } from '@/features/auth';
 import { createProposal } from '@/lib/proposalService';
 import { createEvent } from '@/lib/eventService';
 import { type OpeningHours } from '@/lib/openingHours';
+import {
+  getCommonAvailability,
+  formatTimeSlotSuggestion,
+  type UserAvailability,
+  type TimeSlot,
+} from '@/lib/availabilityEngine';
 import toast from 'react-hot-toast';
-import { hapticNotification } from '@/shared/lib/haptics';
+import { hapticNotification, hapticSelection } from '@/shared/lib/haptics';
 
 interface CreateProposalModalProps {
   isOpen: boolean;
@@ -20,6 +26,10 @@ interface CreateProposalModalProps {
     time_mode: 'window' | 'anytime';
     location?: unknown;
   };
+  /** Optional array of invited participant IDs for smart time suggestions */
+  participantIds?: string[];
+  /** Optional participant availability data for smart suggestions */
+  participantAvailability?: UserAvailability[];
   onSuccess?: () => void;
 }
 
@@ -34,11 +44,14 @@ interface SuggestedTime {
  * 
  * Opens when user clicks "Plan Here" on a window/anytime venue.
  * Prefills with venue info and suggests times based on opening hours.
+ * Supports "Smart Suggest" for showing common availability when participants are invited.
  */
 export const CreateProposalModal = memo(function CreateProposalModal({
   isOpen,
   onClose,
   venue,
+  participantIds: _participantIds,
+  participantAvailability,
   onSuccess,
 }: CreateProposalModalProps) {
   const { profile } = useAuth();
@@ -46,6 +59,29 @@ export const CreateProposalModal = memo(function CreateProposalModal({
   const [customTitle, setCustomTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode] = useState<'proposal' | 'direct'>('direct'); // Start with direct creation
+
+  // Smart Suggest: Calculate common availability if participant data is available
+  const smartSuggestion = useMemo((): TimeSlot | null => {
+    if (!participantAvailability || participantAvailability.length < 2) {
+      return null;
+    }
+
+    const result = getCommonAvailability(participantAvailability, {
+      minDurationMinutes: 60,
+      requireUniversal: true,
+      maxSlots: 1,
+    });
+
+    return result.bestSlot;
+  }, [participantAvailability]);
+
+  // Handle smart suggestion selection
+  const handleSmartSuggestionSelect = useCallback(async () => {
+    if (smartSuggestion) {
+      setSelectedTime(smartSuggestion.start.toISOString());
+      await hapticSelection();
+    }
+  }, [smartSuggestion]);
 
   // Generate suggested times based on venue opening hours
   const suggestedTimes = useMemo((): SuggestedTime[] => {
@@ -255,6 +291,45 @@ export const CreateProposalModal = memo(function CreateProposalModal({
               className="w-full px-4 py-3 rounded-xl bg-muted border border-border focus:border-primary focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground"
             />
           </div>
+
+          {/* Smart Suggest Section - Shows when participants have common availability */}
+          {smartSuggestion && (
+            <div className="p-4 border-b border-border bg-emerald-50 dark:bg-emerald-950/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={16} className="text-emerald-600" />
+                <label className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  Smart Suggest
+                </label>
+              </div>
+              <button
+                onClick={handleSmartSuggestionSelect}
+                className={`w-full p-4 rounded-xl text-left transition-all border-2 ${
+                  selectedTime === smartSuggestion.start.toISOString()
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white dark:bg-card border-emerald-200 dark:border-emerald-800 hover:border-emerald-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Users size={14} className={selectedTime === smartSuggestion.start.toISOString() ? 'text-emerald-100' : 'text-emerald-600'} />
+                      <span className={`text-xs font-medium ${selectedTime === smartSuggestion.start.toISOString() ? 'text-emerald-100' : 'text-emerald-600'}`}>
+                        Best Time
+                      </span>
+                    </div>
+                    <p className={`font-semibold ${selectedTime === smartSuggestion.start.toISOString() ? 'text-white' : 'text-foreground'}`}>
+                      {formatTimeSlotSuggestion(smartSuggestion, participantAvailability?.length)}
+                    </p>
+                  </div>
+                  {selectedTime === smartSuggestion.start.toISOString() && (
+                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                      <ChevronRight size={16} className="text-white" />
+                    </div>
+                  )}
+                </div>
+              </button>
+            </div>
+          )}
 
           {/* Time Selection */}
           <div className="p-4">

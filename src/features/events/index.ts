@@ -55,6 +55,15 @@ export { TimeDial } from "./components/TimeDial";
 export { LiveEventCard } from "./components/LiveEventCard";
 export { WhosOutRail } from "./components/WhosOutRail";
 
+// Mission Control 2.0 Components
+export { MissionControlDrawer, useMockParticipants, useMockWeather } from "./components/MissionControlDrawer";
+export type {
+  ParticipantStatus,
+  ParticipantArrival,
+  VenueWeather,
+  MissionControlEvent,
+} from "./components/MissionControlDrawer";
+
 // Pages (for route usage)
 export { default as DiscoveryPage } from "./Discovery";
 export { default as MyPlanningPage } from "./MyPlanning";
