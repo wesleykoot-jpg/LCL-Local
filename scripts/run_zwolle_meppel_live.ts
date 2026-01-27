@@ -67,6 +67,7 @@ const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
     description: "Official Zwolle tourism agenda",
     selectors: ["article.agendabox", ".event-item", ".agenda-item"],
   },
+  /* INVALID SSL CERTIFICATE prevents scraping
   {
     id: "zwolle-inzwolle",
     name: "InZwolle Agenda",
@@ -77,6 +78,7 @@ const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
     description: "InZwolle events portal",
     selectors: [".event-item", ".agenda-item", "[class*='event']"],
   },
+  */
   {
     id: "zwolle-gemeente",
     name: "Gemeente Zwolle Agenda",
