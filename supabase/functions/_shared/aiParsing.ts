@@ -6,10 +6,15 @@ import { normalizeWhitespace, mapToInternalCategory } from "./scraperUtils.ts";
 /**
  * Exponential backoff with jitter for retries
  */
-async function exponentialBackoff(attempt: number, baseMs: number = 1000): Promise<void> {
+async function exponentialBackoff(
+  attempt: number,
+  baseMs: number = 1000,
+): Promise<void> {
   const delay = Math.min(baseMs * Math.pow(2, attempt), 30000);
   const jitter = delay * 0.2 * Math.random();
-  console.log(`Backoff: waiting ${Math.round(delay + jitter)}ms before retry ${attempt + 1}`);
+  console.log(
+    `Backoff: waiting ${Math.round(delay + jitter)}ms before retry ${attempt + 1}`,
+  );
   await new Promise((resolve) => setTimeout(resolve, delay + jitter));
 }
 
@@ -17,28 +22,33 @@ export async function callOpenAI(
   apiKey: string,
   payload: any,
   fetcher: typeof fetch,
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<string | null> {
   const _model = payload.model || "gpt-4o-mini";
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetcher("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+    const response = await fetcher(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
     if (response.ok) {
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || null;
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || null;
     }
 
     const text = await response.text();
     if (response.status === 429) {
-      console.warn(`OpenAI 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`);
+      console.warn(
+        `OpenAI 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`,
+      );
       if (attempt < maxRetries) {
         await exponentialBackoff(attempt);
         continue;
@@ -55,7 +65,7 @@ export async function callGemini(
   apiKey: string,
   body: unknown,
   fetcher: typeof fetch,
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<string | null> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt === 0) {
@@ -68,18 +78,20 @@ export async function callGemini(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      }
+      },
     );
 
     if (response.ok) {
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
     }
 
     const text = await response.text();
 
     if (response.status === 429) {
-      console.warn(`Gemini 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`);
+      console.warn(
+        `Gemini 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`,
+      );
       if (attempt < maxRetries) {
         await exponentialBackoff(attempt);
         continue;
@@ -100,86 +112,13 @@ export async function callGemini(
 /**
  * Call GLM-4 (ZhipuAI BigModel API) for high-reasoning tasks like Scout.
  * GLM-4.7 is used for analyzing website structure and generating extraction recipes.
- * 
- * @param apiKey - ZhipuAI API key
- * @param payload - Request payload with model, messages, temperature, etc.
- * @param fetcher - Fetch implementation
- * @param maxRetries - Maximum retry attempts
- * @returns Generated text response or null on failure
- */
-export async function callGLM(
-  apiKey: string,
-  payload: {
-    model?: string;
-    messages: Array<{ role: string; content: string }>;
-    temperature?: number;
-    max_tokens?: number;
-    response_format?: { type: string };
-  },
-  fetcher: typeof fetch,
-  maxRetries: number = 3
-): Promise<string | null> {
-  const model = payload.model || "glm-4";
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0) {
-      await exponentialBackoff(attempt);
-    }
-
-    try {
-      const response = await fetcher("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: payload.messages,
-          temperature: payload.temperature ?? 0.1,
-          max_tokens: payload.max_tokens ?? 4096,
-          ...(payload.response_format && { response_format: payload.response_format }),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || null;
-      }
-
-      const text = await response.text();
-      
-      if (response.status === 429) {
-        console.warn(`GLM 429 rate limit hit (attempt ${attempt + 1}/${maxRetries + 1})`);
-        if (attempt < maxRetries) {
-          continue;
-        }
-      }
-
-      console.error("GLM error", response.status, text);
-      
-      if (response.status !== 429) {
-        return null;
-      }
-    } catch (error) {
-      console.error(`GLM request failed (attempt ${attempt + 1}):`, error);
-      if (attempt === maxRetries) {
-        return null;
-      }
-    }
-  }
-  
-  console.error("GLM: max retries exceeded");
-  return null;
-}
-
-/**
+ *
  * Extraction Recipe Schema for Scout-generated deterministic extraction.
  * This is the output format that Scout produces and Executor consumes.
  */
 export interface ExtractionRecipe {
   /** Extraction mode: CSS_SELECTOR (most common) or JSON_LD (if structured data present) */
-  mode: 'CSS_SELECTOR' | 'JSON_LD';
+  mode: "CSS_SELECTOR" | "JSON_LD";
   /** Whether the site requires JavaScript rendering (SPA) */
   requires_render: boolean;
   /** CSS selector configuration for extraction */
@@ -204,7 +143,7 @@ export interface ExtractionRecipe {
     /** Date locale for parsing (e.g., 'nl' for Dutch) */
     date_locale: string;
     /** Pagination type */
-    pagination: 'load_more' | 'pages' | 'none' | 'infinite_scroll';
+    pagination: "load_more" | "pages" | "none" | "infinite_scroll";
     /** Whether detail page fetch is needed for full data */
     must_follow_link: boolean;
     /** Detected date format patterns */
@@ -221,6 +160,12 @@ export interface ExtractionRecipe {
 /**
  * Scraper Architect prompt for GLM-4.7.
  * Analyzes HTML structure and generates deterministic extraction recipe.
+ *
+ * @param apiKey - ZhipuAI API key
+ * @param htmlSample - HTML content to analyze
+ * @param sourceContext - Context about the source website
+ * @param fetcher - Fetch implementation
+ * @returns Generated ExtractionRecipe or null on failure
  */
 export async function generateExtractionRecipe(
   apiKey: string,
@@ -232,43 +177,50 @@ export async function generateExtractionRecipe(
     sourceUrl: string;
     sourceName: string;
   },
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch = fetch,
 ): Promise<ExtractionRecipe | null> {
   // Clean HTML: remove scripts, styles, and excessive whitespace
   // Use loop-based sanitization to handle nested/malformed tags
   let cleanedHtml = htmlSample;
-  
+
   // Remove script tags (loop until no more found to handle nested cases)
   // Use [\s\S] for content matching, handle closing tags with optional whitespace/attributes
   let prevLength: number;
   do {
     prevLength = cleanedHtml.length;
-    cleanedHtml = cleanedHtml.replace(/<script\b[^>]*>[\s\S]*?<\/\s*script[\s>]/gi, '');
+    cleanedHtml = cleanedHtml.replace(
+      /<script\b[^>]*>[\s\S]*?<\/\s*script[\s>]/gi,
+      "",
+    );
   } while (cleanedHtml.length < prevLength);
-  
+
   // Remove style tags (loop until no more found)
   do {
     prevLength = cleanedHtml.length;
-    cleanedHtml = cleanedHtml.replace(/<style\b[^>]*>[\s\S]*?<\/\s*style[\s>]/gi, '');
+    cleanedHtml = cleanedHtml.replace(
+      /<style\b[^>]*>[\s\S]*?<\/\s*style[\s>]/gi,
+      "",
+    );
   } while (cleanedHtml.length < prevLength);
-  
+
   // Remove HTML comments (loop until no more found)
   do {
     prevLength = cleanedHtml.length;
-    cleanedHtml = cleanedHtml.replace(/<!--[\s\S]*?-->/g, '');
+    cleanedHtml = cleanedHtml.replace(/<!--[\s\S]*?-->/g, "");
   } while (cleanedHtml.length < prevLength);
-  
+
   // Normalize whitespace and limit size
-  cleanedHtml = cleanedHtml.replace(/\s+/g, ' ').slice(0, 50000);
+  cleanedHtml = cleanedHtml.replace(/\s+/g, " ").slice(0, 50000);
 
   const tier = sourceContext.tier || 3;
-  const tierDescription = tier === 1 ? '>100k' : tier === 2 ? '20k-100k' : '<20k';
+  const tierDescription =
+    tier === 1 ? ">100k" : tier === 2 ? "20k-100k" : "<20k";
 
   const systemPrompt = `You are the "LCL-Local Scraper Architect." Your job is to analyze the HTML of Dutch city agenda websites and generate a deterministic extraction recipe.
 
 Context:
-Target City: ${sourceContext.cityName || 'Unknown'}
-Population: ${sourceContext.population || 'Unknown'}
+Target City: ${sourceContext.cityName || "Unknown"}
+Population: ${sourceContext.population || "Unknown"}
 Tier: ${tier} (${tierDescription})
 Source URL: ${sourceContext.sourceUrl}
 Source Name: ${sourceContext.sourceName}
@@ -333,18 +285,19 @@ IMPORTANT:
 
 ${cleanedHtml}`;
 
-  const payload = {
-    model: "glm-4",
+  const openAiPayload = {
+    model: "gpt-4o",
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
+      { role: "user", content: userPrompt },
     ],
     temperature: 0.1,
     max_tokens: 2048,
+    response_format: { type: "json_object" },
   };
 
-  const response = await callGLM(apiKey, payload, fetcher);
-  
+  const response = await callOpenAI(apiKey, openAiPayload, fetcher);
+
   if (!response) {
     console.error("GLM returned no response for recipe generation");
     return null;
@@ -353,53 +306,69 @@ ${cleanedHtml}`;
   try {
     // Clean up response (remove markdown code blocks if present)
     let cleaned = response.trim();
-    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-    
+    cleaned = cleaned
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
     const parsed = JSON.parse(cleaned);
-    
+
     // Runtime validation of required fields before type assertion
-    if (!parsed || typeof parsed !== 'object') {
+    if (!parsed || typeof parsed !== "object") {
       console.error("Recipe is not a valid object:", parsed);
       return null;
     }
-    
-    if (!parsed.mode || (parsed.mode !== 'CSS_SELECTOR' && parsed.mode !== 'JSON_LD')) {
+
+    if (
+      !parsed.mode ||
+      (parsed.mode !== "CSS_SELECTOR" && parsed.mode !== "JSON_LD")
+    ) {
       console.error("Recipe has invalid mode:", parsed.mode);
       return null;
     }
-    
-    if (!parsed.config || typeof parsed.config !== 'object') {
+
+    if (!parsed.config || typeof parsed.config !== "object") {
       console.error("Recipe missing config object:", parsed);
       return null;
     }
-    
-    if (!parsed.config.container || typeof parsed.config.container !== 'string') {
-      console.error("Recipe missing or invalid container selector:", parsed.config.container);
+
+    if (
+      !parsed.config.container ||
+      typeof parsed.config.container !== "string"
+    ) {
+      console.error(
+        "Recipe missing or invalid container selector:",
+        parsed.config.container,
+      );
       return null;
     }
-    
-    if (!parsed.config.item || typeof parsed.config.item !== 'string') {
-      console.error("Recipe missing or invalid item selector:", parsed.config.item);
+
+    if (!parsed.config.item || typeof parsed.config.item !== "string") {
+      console.error(
+        "Recipe missing or invalid item selector:",
+        parsed.config.item,
+      );
       return null;
     }
-    
-    if (!parsed.config.mapping || typeof parsed.config.mapping !== 'object') {
+
+    if (!parsed.config.mapping || typeof parsed.config.mapping !== "object") {
       console.error("Recipe missing mapping object:", parsed.config);
       return null;
     }
-    
+
     // Validated - safe to cast
     const recipe = parsed as ExtractionRecipe;
-    
+
     // Add metadata with documented default confidence
     // 0.8 confidence is assigned as a baseline for newly generated recipes
     // This value can be adjusted based on real-world extraction success rates
     recipe.metadata = {
       generated_at: new Date().toISOString(),
-      model: "glm-4",
+      model: "gpt-4o",
       confidence: 0.8,
     };
-    
+
     return recipe;
   } catch (e) {
     console.error("Failed to parse extraction recipe:", e, response);
@@ -408,32 +377,32 @@ ${cleanedHtml}`;
 }
 
 export interface ParseEventOptions {
-    targetYear?: number;
-    language?: string;
+  targetYear?: number;
+  language?: string;
 }
 
 export interface ParsedEventAI {
-    title: string;
-    description: string;
-    event_date: string;
-    event_time: string;
-    venue_name: string;
-    venue_address?: string;
-    image_url: string | null;
-    category: CategoryKey;  // Uppercase keys
-    detail_url?: string;
-    persona_tags?: string[];
+  title: string;
+  description: string;
+  event_date: string;
+  event_time: string;
+  venue_name: string;
+  venue_address?: string;
+  image_url: string | null;
+  category: CategoryKey; // Uppercase keys
+  detail_url?: string;
+  persona_tags?: string[];
 }
 
 export async function parseEventWithAI(
   apiKey: string,
   rawEvent: RawEventCard,
   fetcher: typeof fetch,
-  options: ParseEventOptions = {}
+  options: ParseEventOptions = {},
 ): Promise<ParsedEventAI | null> {
   const { targetYear = new Date().getFullYear(), language = "nl" } = options;
   const today = new Date().toISOString().split("T")[0];
-  
+
   const systemPrompt = `Je bent een datacleaner. Haal evenementen-informatie uit ruwe HTML.
 - Retourneer uitsluitend geldige JSON.
 - Weiger evenementen die niet in ${targetYear} plaatsvinden.
@@ -460,24 +429,28 @@ ${rawEvent.rawHtml}`;
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
+      { role: "user", content: userPrompt },
     ],
     temperature: 0.1,
     max_tokens: 768,
-    response_format: { type: "json_object" }
+    response_format: { type: "json_object" },
   };
 
   let text: string | null = null;
   if (apiKey.startsWith("sk-")) {
-      text = await callOpenAI(apiKey, openAiPayload, fetcher);
+    text = await callOpenAI(apiKey, openAiPayload, fetcher);
   } else {
-      text = await callGemini(apiKey, payload, fetcher);
+    text = await callGemini(apiKey, payload, fetcher);
   }
-  
+
   if (!text) return null;
 
   let cleaned = text.trim();
-  cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+  cleaned = cleaned
+    .replace(/^```json/i, "")
+    .replace(/^```/, "")
+    .replace(/```$/, "")
+    .trim();
 
   let parsed: Partial<ParsedEventAI>;
   try {
@@ -488,28 +461,30 @@ ${rawEvent.rawHtml}`;
   }
 
   if (!parsed || !parsed.title || !parsed.event_date) return null;
-  
+
   const isoDate = parseToISODate(parsed.event_date);
-  
+
   // Validate year
   if (!isoDate || !isoDate.startsWith(`${targetYear}-`)) return null;
 
   const category = mapToInternalCategory(
-      ((parsed as unknown as { category_key: string }).category_key) || 
-      ((parsed as unknown as { category: string }).category)  || 
-      parsed.description || 
-      rawEvent.title
+    (parsed as unknown as { category_key: string }).category_key ||
+      (parsed as unknown as { category: string }).category ||
+      parsed.description ||
+      rawEvent.title,
   );
 
   return {
     title: normalizeWhitespace(parsed.title || ""),
-    description: parsed.description ? normalizeWhitespace(parsed.description) : "",
+    description: parsed.description
+      ? normalizeWhitespace(parsed.description)
+      : "",
     event_date: isoDate,
     event_time: parsed.event_time || "TBD",
     venue_name: parsed.venue_name || rawEvent.location || "",
     venue_address: parsed.venue_address,
     image_url: rawEvent.imageUrl ?? parsed.image_url ?? null,
-    category: category,  // Uppercase CategoryKey
+    category: category, // Uppercase CategoryKey
     detail_url: rawEvent.detailUrl,
   };
 }
@@ -519,21 +494,21 @@ ${rawEvent.rawHtml}`;
  * Includes additional fields for improved data quality.
  */
 export interface ParsedDetailedEventAI extends ParsedEventAI {
-    price?: string;
-    price_currency?: string;
-    price_min?: number;
-    price_max?: number;
-    organizer?: string;
-    organizer_url?: string;
-    tickets_url?: string;
-    end_time?: string;
-    end_date?: string;
-    performer?: string;
-    accessibility?: string;
-    age_restriction?: string;
-    event_status?: 'scheduled' | 'cancelled' | 'postponed' | 'rescheduled';
-    image_user_prompt?: string; // Debug info
-    data_source?: 'listing' | 'detail' | 'hybrid';
+  price?: string;
+  price_currency?: string;
+  price_min?: number;
+  price_max?: number;
+  organizer?: string;
+  organizer_url?: string;
+  tickets_url?: string;
+  end_time?: string;
+  end_date?: string;
+  performer?: string;
+  accessibility?: string;
+  age_restriction?: string;
+  event_status?: "scheduled" | "cancelled" | "postponed" | "rescheduled";
+  image_user_prompt?: string; // Debug info
+  data_source?: "listing" | "detail" | "hybrid";
 }
 
 export async function parseDetailedEventWithAI(
@@ -541,11 +516,11 @@ export async function parseDetailedEventWithAI(
   rawEvent: RawEventCard,
   detailHtml: string | null,
   fetcher: typeof fetch,
-  options: ParseEventOptions = {}
+  options: ParseEventOptions = {},
 ): Promise<ParsedDetailedEventAI | null> {
   const { targetYear = new Date().getFullYear(), language = "nl" } = options;
   const today = new Date().toISOString().split("T")[0];
-  
+
   // Enhanced AI prompt for comprehensive data extraction
   const systemPrompt = `Je bent een event data expert. Haal ALLE beschikbare evenementen-informatie uit de HTML Context.
 BELANGRIJK: Prioriteer detail page content boven listing content voor rijkere data.
@@ -602,90 +577,101 @@ Datum: ${rawEvent.date}
 Listing URL: ${rawEvent.detailUrl}
 
 HTML Content (Listing + Detail):
-${rawEvent.rawHtml || ''}
-${detailHtml || ''}
+${rawEvent.rawHtml || ""}
+${detailHtml || ""}
 `;
 
-   // Truncate user prompt to safe limit (~60k chars for 128k context models, but keeping it efficient)
-   const truncatedPrompt = userPrompt.slice(0, 40000);
+  // Truncate user prompt to safe limit (~60k chars for 128k context models, but keeping it efficient)
+  const truncatedPrompt = userPrompt.slice(0, 40000);
 
   const openAiPayload = {
     model: "gpt-4o-mini", // Efficient model for batch processing
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: truncatedPrompt }
+      { role: "user", content: truncatedPrompt },
     ],
     temperature: 0.1,
     // max_tokens: 1000, // Let model decide, JSON object enforcement handles structure
-    response_format: { type: "json_object" }
+    response_format: { type: "json_object" },
   };
 
   let text: string | null = null;
   // Support both wrappers
   if (apiKey.startsWith("sk-")) {
-      text = await callOpenAI(apiKey, openAiPayload, fetcher);
+    text = await callOpenAI(apiKey, openAiPayload, fetcher);
   } else {
-      // Gemini fallback if needed, though structure logic implies OpenAI preferred per plan
-      const geminiPayload = {
-        contents: [
-            { role: "user", parts: [{ text: systemPrompt }] },
-            { role: "user", parts: [{ text: truncatedPrompt }] }
-        ],
-        generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
-      };
-      text = await callGemini(apiKey, geminiPayload, fetcher);
+    // Gemini fallback if needed, though structure logic implies OpenAI preferred per plan
+    const geminiPayload = {
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        { role: "user", parts: [{ text: truncatedPrompt }] },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: "application/json",
+      },
+    };
+    text = await callGemini(apiKey, geminiPayload, fetcher);
   }
-  
+
   if (!text) return null;
 
   try {
     let cleaned = text.trim();
-    cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+    cleaned = cleaned
+      .replace(/^```json/i, "")
+      .replace(/^```/, "")
+      .replace(/```$/, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
 
     if (!parsed.title || !parsed.event_date) return null;
-    
+
     // Validate year
     const isoDate = parseToISODate(parsed.event_date);
     if (!isoDate || !isoDate.startsWith(`${targetYear}-`)) return null;
 
     const category = mapToInternalCategory(
-        ((parsed as unknown as { category_key: string }).category_key) || 
-        ((parsed as unknown as { category: string }).category) || 
-        parsed.description || 
-        rawEvent.title
+      (parsed as unknown as { category_key: string }).category_key ||
+        (parsed as unknown as { category: string }).category ||
+        parsed.description ||
+        rawEvent.title,
     );
 
     return {
-        title: normalizeWhitespace(parsed.title || ""),
-        description: parsed.description ? normalizeWhitespace(parsed.description) : "",
-        event_date: isoDate,
-        event_time: parsed.event_time || "TBD",
-        venue_name: parsed.venue_name || rawEvent.location || "",
-        venue_address: parsed.venue_address,
-        image_url: parsed.image_url || rawEvent.imageUrl || null,
-        category: category,  // Uppercase CategoryKey
-        detail_url: rawEvent.detailUrl,
-        // Enhanced pricing fields
-        price: parsed.price,
-        price_currency: parsed.price_currency,
-        price_min: typeof parsed.price_min === 'number' ? parsed.price_min : undefined,
-        price_max: typeof parsed.price_max === 'number' ? parsed.price_max : undefined,
-        // Organizer fields
-        organizer: parsed.organizer,
-        organizer_url: parsed.organizer_url,
-        // Time/duration fields
-        end_time: parsed.end_time,
-        end_date: parsed.end_date,
-        // Additional metadata
-        performer: parsed.performer,
-        accessibility: parsed.accessibility,
-        age_restriction: parsed.age_restriction,
-        event_status: parseEventStatus(parsed.event_status),
-        tickets_url: parsed.tickets_url,
-        persona_tags: parsed.persona_tags,
-        // Track data source
-        data_source: detailHtml ? 'detail' : 'listing',
+      title: normalizeWhitespace(parsed.title || ""),
+      description: parsed.description
+        ? normalizeWhitespace(parsed.description)
+        : "",
+      event_date: isoDate,
+      event_time: parsed.event_time || "TBD",
+      venue_name: parsed.venue_name || rawEvent.location || "",
+      venue_address: parsed.venue_address,
+      image_url: parsed.image_url || rawEvent.imageUrl || null,
+      category: category, // Uppercase CategoryKey
+      detail_url: rawEvent.detailUrl,
+      // Enhanced pricing fields
+      price: parsed.price,
+      price_currency: parsed.price_currency,
+      price_min:
+        typeof parsed.price_min === "number" ? parsed.price_min : undefined,
+      price_max:
+        typeof parsed.price_max === "number" ? parsed.price_max : undefined,
+      // Organizer fields
+      organizer: parsed.organizer,
+      organizer_url: parsed.organizer_url,
+      // Time/duration fields
+      end_time: parsed.end_time,
+      end_date: parsed.end_date,
+      // Additional metadata
+      performer: parsed.performer,
+      accessibility: parsed.accessibility,
+      age_restriction: parsed.age_restriction,
+      event_status: parseEventStatus(parsed.event_status),
+      tickets_url: parsed.tickets_url,
+      persona_tags: parsed.persona_tags,
+      // Track data source
+      data_source: detailHtml ? "detail" : "listing",
     };
   } catch (e) {
     console.warn("Detailed AI parsing failed:", e);
@@ -696,20 +682,22 @@ ${detailHtml || ''}
 /**
  * Helper to normalize event status strings to valid enum values.
  */
-function parseEventStatus(status: string | undefined): ParsedDetailedEventAI['event_status'] {
+function parseEventStatus(
+  status: string | undefined,
+): ParsedDetailedEventAI["event_status"] {
   if (!status) return undefined;
   const normalized = status.toLowerCase();
-  if (normalized.includes('cancel')) return 'cancelled';
-  if (normalized.includes('postpone')) return 'postponed';
-  if (normalized.includes('reschedul')) return 'rescheduled';
-  if (normalized.includes('schedul')) return 'scheduled';
+  if (normalized.includes("cancel")) return "cancelled";
+  if (normalized.includes("postpone")) return "postponed";
+  if (normalized.includes("reschedul")) return "rescheduled";
+  if (normalized.includes("schedul")) return "scheduled";
   return undefined;
 }
 
 export async function healSelectors(
   apiKey: string,
   html: string,
-  fetcher: typeof fetch
+  fetcher: typeof fetch,
 ): Promise<string[] | null> {
   // Truncate HTML to avoid token limits, but keep enough structure
   // Focus on the body content, usually up to 15000 chars is enough for a sample
@@ -726,36 +714,40 @@ export async function healSelectors(
       ${sampleHtml}`;
 
   const payload = {
-      contents: [
-        { role: "user", parts: [{ text: systemPrompt }] },
-        { role: "user", parts: [{ text: userPrompt }] },
-      ],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
+    contents: [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: userPrompt }] },
+    ],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
   };
 
   const openAiPayload = {
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
+      { role: "user", content: userPrompt },
     ],
     temperature: 0.2,
     max_tokens: 256,
-    response_format: { type: "json_object" }
+    response_format: { type: "json_object" },
   };
 
   let text: string | null = null;
   if (apiKey.startsWith("sk-")) {
-      text = await callOpenAI(apiKey, openAiPayload, fetcher);
+    text = await callOpenAI(apiKey, openAiPayload, fetcher);
   } else {
-      text = await callGemini(apiKey, payload, fetcher);
+    text = await callGemini(apiKey, payload, fetcher);
   }
-  
+
   if (!text) return null;
 
   try {
     let cleaned = text.trim();
-    cleaned = cleaned.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+    cleaned = cleaned
+      .replace(/^```json/i, "")
+      .replace(/^```/, "")
+      .replace(/```$/, "")
+      .trim();
     const result = JSON.parse(cleaned);
     if (result.selectors && Array.isArray(result.selectors)) {
       return result.selectors;
@@ -774,73 +766,80 @@ export interface EmbeddingResponse {
 export async function generateEmbedding(
   apiKey: string,
   text: string,
-  fetcher: typeof fetch
+  fetcher: typeof fetch,
 ): Promise<EmbeddingResponse | null> {
-    try {
-        if (apiKey.startsWith("sk-")) {
-            // OpenAI Embedding
-            const response = await fetcher("https://api.openai.com/v1/embeddings", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
-              },
-              body: JSON.stringify({
-                model: "text-embedding-3-small",
-                input: text,
-                dimensions: 1536,
-              }),
-            });
+  try {
+    if (apiKey.startsWith("sk-")) {
+      // OpenAI Embedding
+      const response = await fetcher("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "text-embedding-3-small",
+          input: text,
+          dimensions: 1536,
+        }),
+      });
 
-            if (!response.ok) {
-                console.error("OpenAI Embedding error:", response.status, await response.text());
-                return null;
-            }
-
-            const data = await response.json();
-            return {
-                embedding: data.data[0].embedding,
-                model: "openai-text-embedding-3-small"
-            };
-        }
-
-        // Gemini Embedding
-        const response = await fetcher(
-        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-            model: "models/text-embedding-004",
-            content: {
-                parts: [{ text }],
-            },
-            }),
-        }
+      if (!response.ok) {
+        console.error(
+          "OpenAI Embedding error:",
+          response.status,
+          await response.text(),
         );
-
-        if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Gemini API error:", response.status, errorText);
         return null;
-        }
+      }
 
-        const data = await response.json();
-        const embedding = data.embedding?.values;
-
-        if (!embedding || !Array.isArray(embedding)) {
-        console.error("Invalid embedding response from Gemini");
-        return null;
-        }
-
-        const paddedEmbedding = [...embedding, ...new Array(1536 - embedding.length).fill(0)];
-
-        return {
-        embedding: paddedEmbedding,
-        model: "gemini-text-embedding-004",
-        };
-    } catch (error) {
-        console.error("Error generating AI embedding:", error);
-        return null;
+      const data = await response.json();
+      return {
+        embedding: data.data[0].embedding,
+        model: "openai-text-embedding-3-small",
+      };
     }
+
+    // Gemini Embedding
+    const response = await fetcher(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "models/text-embedding-004",
+          content: {
+            parts: [{ text }],
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini API error:", response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const embedding = data.embedding?.values;
+
+    if (!embedding || !Array.isArray(embedding)) {
+      console.error("Invalid embedding response from Gemini");
+      return null;
+    }
+
+    const paddedEmbedding = [
+      ...embedding,
+      ...new Array(1536 - embedding.length).fill(0),
+    ];
+
+    return {
+      embedding: paddedEmbedding,
+      model: "gemini-text-embedding-004",
+    };
+  } catch (error) {
+    console.error("Error generating AI embedding:", error);
+    return null;
+  }
 }

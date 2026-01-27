@@ -32,13 +32,23 @@ async function main() {
     await import("../supabase/functions/process-worker/index.ts");
 
   console.log("Fetching Zwolle and Meppel source IDs...");
-  const { data: sources, error } = await supabase
+  const targetSourceId = Deno.args[0];
+
+  let query = supabase
     .from("scraper_sources")
     .select("id, name")
-    .or(
-      "location_name.ilike.%Zwolle%,location_name.ilike.%Meppel%,name.ilike.%Zwolle%,name.ilike.%Meppel%",
-    )
     .eq("enabled", true);
+
+  if (targetSourceId) {
+    console.log(`Targeting single source: ${targetSourceId}`);
+    query = query.eq("id", targetSourceId);
+  } else {
+    query = query.or(
+      "location_name.ilike.%Zwolle%,location_name.ilike.%Meppel%,name.ilike.%Zwolle%,name.ilike.%Meppel%",
+    );
+  }
+
+  const { data: sources, error } = await query;
 
   if (error) {
     console.error("Error fetching sources:", error);
