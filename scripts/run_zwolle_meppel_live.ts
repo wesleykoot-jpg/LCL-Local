@@ -383,7 +383,7 @@ async function main() {
     .neq("id", "00000000-0000-0000-0000-000000000000");
   if (deleteStagingError)
     console.error(
-      `     ⚠️  Staging delete error: ${deleteStagingError.message}`
+      `     ⚠️  Staging delete error: ${deleteStagingError.message}`,
     );
   else console.log("     ✓ Cleared raw_event_staging table");
 
@@ -394,7 +394,7 @@ async function main() {
     .neq("id", "00000000-0000-0000-0000-000000000000");
   if (deleteInsightsError)
     console.error(
-      `     ⚠️  Insights delete error: ${deleteInsightsError.message}`
+      `     ⚠️  Insights delete error: ${deleteInsightsError.message}`,
     );
   else console.log("     ✓ Cleared scraper_insights table");
 
@@ -420,7 +420,7 @@ async function main() {
       total_events_scraped: 0,
       last_payload_hash: null,
     })
-    .not("id", "is", null);  // Update all rows (id is never null)
+    .not("id", "is", null); // Update all rows (id is never null)
   if (!resetSourcesError)
     console.log("     ✓ Reset all scraper_sources counters");
 
@@ -437,15 +437,15 @@ async function main() {
   const configuredSourceIds: string[] = [];
 
   for (const source of ZWOLLE_MEPPEL_SOURCES) {
-    // Check if source already exists
+    // Check if source already exists by URL (since IDs must be UUIDs)
     const { data: existing } = await supabase
       .from("scraper_sources")
       .select("id")
-      .eq("id", source.id)
-      .single();
+      .eq("url", source.url)
+      .maybeSingle();
 
     const sourceRecord = {
-      id: source.id,
+      // Don't send 'id' as it's not a UUID. DB will generate it for new rows.
       name: source.name,
       url: source.url,
       enabled: true,
@@ -479,37 +479,39 @@ async function main() {
       const { error: updateError } = await supabase
         .from("scraper_sources")
         .update(sourceRecord)
-        .eq("id", source.id);
+        .eq("id", existing.id);
 
       if (updateError) {
         console.log(
-          `  ⚠️  ${source.name}: Update failed - ${updateError.message}`
+          `  ⚠️  ${source.name}: Update failed - ${updateError.message}`,
         );
       } else {
         console.log(`  📝 ${source.name}: Updated (${source.city})`);
         sourcesUpdated++;
-        configuredSourceIds.push(source.id);
+        configuredSourceIds.push(existing.id);
       }
     } else {
       // Insert new source
-      const { error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from("scraper_sources")
-        .insert(sourceRecord);
+        .insert(sourceRecord)
+        .select("id")
+        .single();
 
       if (insertError) {
         console.log(
-          `  ⚠️  ${source.name}: Insert failed - ${insertError.message}`
+          `  ⚠️  ${source.name}: Insert failed - ${insertError.message}`,
         );
-      } else {
+      } else if (inserted) {
         console.log(`  ✅ ${source.name}: Added (${source.city})`);
         sourcesAdded++;
-        configuredSourceIds.push(source.id);
+        configuredSourceIds.push(inserted.id);
       }
     }
   }
 
   console.log(
-    `\n  📊 Summary: ${sourcesAdded} added, ${sourcesUpdated} updated`
+    `\n  📊 Summary: ${sourcesAdded} added, ${sourcesUpdated} updated`,
   );
   console.log(`  Total sources to scrape: ${configuredSourceIds.length}`);
 
@@ -525,13 +527,19 @@ async function main() {
   }
 
   console.log(
-    `\n  🕷️  Triggering scrape-events for ${configuredSourceIds.length} sources...`
+    `\n  🕷️  Triggering scrape-events for ${configuredSourceIds.length} sources...`,
   );
 
   // Scrape each source with rate limiting
   for (const sourceId of configuredSourceIds) {
-    const sourceName =
-      ZWOLLE_MEPPEL_SOURCES.find((s) => s.id === sourceId)?.name || sourceId;
+    // Fetch name for logging
+    const { data: srcInfo } = await supabase
+      .from("scraper_sources")
+      .select("name")
+      .eq("id", sourceId)
+      .single();
+    const sourceName = srcInfo?.name || sourceId;
+
     process.stdout.write(`  → Scraping ${sourceName}... `);
 
     try {
@@ -544,7 +552,7 @@ async function main() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ sourceId }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -553,7 +561,9 @@ async function main() {
         console.log(`✅ ${staged} events staged`);
       } else {
         const errorText = await response.text();
-        console.log(`⚠️  Error: ${response.status} - ${errorText.slice(0, 100)}`);
+        console.log(
+          `⚠️  Error: ${response.status} - ${errorText.slice(0, 100)}`,
+        );
       }
     } catch (e) {
       console.log(`❌ Failed: ${e}`);
@@ -580,13 +590,13 @@ async function main() {
     .eq("status", "pending");
 
   console.log(
-    `  📋 Staged events pending processing: ${stagingToProcess || 0}`
+    `  📋 Staged events pending processing: ${stagingToProcess || 0}`,
   );
 
   // Process in batches
   const PROCESS_ITERATIONS = Math.max(
     10,
-    Math.ceil((stagingToProcess || 0) / 10)
+    Math.ceil((stagingToProcess || 0) / 10),
   );
   console.log(`  🏭 Running ${PROCESS_ITERATIONS} processor iterations...`);
 
@@ -604,7 +614,7 @@ async function main() {
             Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -624,7 +634,7 @@ async function main() {
 
         if ((i + 1) % 5 === 0 || i === PROCESS_ITERATIONS - 1) {
           console.log(
-            `     Iteration ${i + 1}: Processed ${processed} (total: ${totalSucceeded} succeeded, ${totalFailed} failed)`
+            `     Iteration ${i + 1}: Processed ${processed} (total: ${totalSucceeded} succeeded, ${totalFailed} failed)`,
           );
         }
       } else {
@@ -639,7 +649,7 @@ async function main() {
   }
 
   console.log(
-    `\n  ✅ Processing complete: ${totalSucceeded} succeeded, ${totalFailed} failed`
+    `\n  ✅ Processing complete: ${totalSucceeded} succeeded, ${totalFailed} failed`,
   );
 
   // =========================================================================
@@ -775,14 +785,14 @@ async function main() {
           ? ((count / stagingByMethod.length) * 100).toFixed(1)
           : "0";
       console.log(
-        `     ${method.padEnd(22)} │ ${String(count).padStart(5)} │ ${pct.padStart(5)}% │ ${desc}`
+        `     ${method.padEnd(22)} │ ${String(count).padStart(5)} │ ${pct.padStart(5)}% │ ${desc}`,
       );
     });
 
   console.log("\n  🏙️ EVENTS PER SOURCE:");
   console.log("  " + "─".repeat(85));
   console.log(
-    `  ${"Source".padEnd(30)} │ ${"City".padEnd(12)} │ ${"Events".padStart(7)} │ ${"Avg Quality".padStart(11)} │ Top Categories`
+    `  ${"Source".padEnd(30)} │ ${"City".padEnd(12)} │ ${"Events".padStart(7)} │ ${"Avg Quality".padStart(11)} │ Top Categories`,
   );
   console.log("  " + "─".repeat(85));
 
@@ -805,7 +815,7 @@ async function main() {
 
       // Secondary sort by event count
       return b.count - a.count;
-    }
+    },
   );
 
   let zwolleTotal = 0;
@@ -828,7 +838,7 @@ async function main() {
       .join(", ");
 
     console.log(
-      `  ${name.padEnd(30)} │ ${city.padEnd(12)} │ ${String(stats.count).padStart(7)} │ ${stats.avgQuality.toFixed(2).padStart(11)} │ ${topCats}`
+      `  ${name.padEnd(30)} │ ${city.padEnd(12)} │ ${String(stats.count).padStart(7)} │ ${stats.avgQuality.toFixed(2).padStart(11)} │ ${topCats}`,
     );
   });
 
@@ -877,7 +887,7 @@ async function main() {
     .forEach(([cat, count]) => {
       const bar = "█".repeat(Math.min(20, Math.ceil(count / 10)));
       console.log(
-        `     ${cat.padEnd(15)} │ ${String(count).padStart(5)} │ ${bar}`
+        `     ${cat.padEnd(15)} │ ${String(count).padStart(5)} │ ${bar}`,
       );
     });
 
@@ -897,13 +907,13 @@ async function main() {
 
   console.log("\n  ⭐ QUALITY DISTRIBUTION:");
   console.log(
-    `     High (≥0.7):   ${qualityBuckets.high} events (${((qualityBuckets.high / (finalEventCount || 1)) * 100).toFixed(1)}%)`
+    `     High (≥0.7):   ${qualityBuckets.high} events (${((qualityBuckets.high / (finalEventCount || 1)) * 100).toFixed(1)}%)`,
   );
   console.log(
-    `     Medium (0.4-0.7): ${qualityBuckets.medium} events (${((qualityBuckets.medium / (finalEventCount || 1)) * 100).toFixed(1)}%)`
+    `     Medium (0.4-0.7): ${qualityBuckets.medium} events (${((qualityBuckets.medium / (finalEventCount || 1)) * 100).toFixed(1)}%)`,
   );
   console.log(
-    `     Low (<0.4):    ${qualityBuckets.low} events (${((qualityBuckets.low / (finalEventCount || 1)) * 100).toFixed(1)}%)`
+    `     Low (<0.4):    ${qualityBuckets.low} events (${((qualityBuckets.low / (finalEventCount || 1)) * 100).toFixed(1)}%)`,
   );
 
   // Final summary
@@ -920,7 +930,9 @@ async function main() {
   console.log(`  Duration: ${durationMins} minutes`);
   console.log();
   console.log(`  🎯 TARGET: ~2000 events`);
-  console.log(`  📊 ACHIEVED: ${finalEventCount || 0} events (${achievedPercent}%)`);
+  console.log(
+    `  📊 ACHIEVED: ${finalEventCount || 0} events (${achievedPercent}%)`,
+  );
   console.log();
 
   if ((finalEventCount || 0) >= 1800) {
@@ -929,7 +941,7 @@ async function main() {
     console.log("  ✅ GOOD: Substantial event count, close to target");
   } else if ((finalEventCount || 0) >= 500) {
     console.log(
-      "  ⚠️  PARTIAL: Moderate event count, some sources may need attention"
+      "  ⚠️  PARTIAL: Moderate event count, some sources may need attention",
     );
   } else {
     console.log("  ❌ BELOW TARGET: Check source URLs and selectors");
