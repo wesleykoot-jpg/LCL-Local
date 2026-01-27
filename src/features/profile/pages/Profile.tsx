@@ -93,7 +93,7 @@ const Profile = () => {
         className="min-h-screen bg-surface-base"
       >
         {/* Hero Section - Morphing Identity Header */}
-        <div className="px-6 pt-safe-top">
+        <div className="px-6 pt-safe">
           <motion.div
             className="pt-6 pb-4"
             style={{

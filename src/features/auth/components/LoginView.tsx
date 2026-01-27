@@ -53,7 +53,7 @@ export function LoginView({ onSwitchToSignUp }: LoginViewProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 p-6 border-b border-border">
+      <div className="flex-shrink-0 p-6 border-b border-border pt-safe">
         <h1 className="text-[28px] font-bold text-foreground tracking-tight text-center">
           Log in or sign up
         </h1>

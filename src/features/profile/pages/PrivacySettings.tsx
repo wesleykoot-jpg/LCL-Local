@@ -106,7 +106,7 @@ export function PrivacySettings() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans pb-8">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95  border-b border-border">
+      <header className="sticky top-0 z-40 bg-background/95  border-b border-border pt-safe">
         <div className="max-w-lg mx-auto px-5 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
