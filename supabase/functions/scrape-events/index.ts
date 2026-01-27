@@ -7,9 +7,11 @@ import {
 } from "../_shared/strategies.ts";
 import { withAuth } from "../_shared/auth.ts";
 import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
-import { withAuth } from "../_shared/auth.ts";
-import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
-import { isCircuitClosed, recordFailure, getCircuitState } from "../_shared/circuitBreaker.ts";
+import {
+  isCircuitClosed,
+  recordFailure,
+  recordSuccess,
+} from "../_shared/circuitBreaker.ts";
 
 export const handler = withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
@@ -55,8 +57,12 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
     const lastHash = src.last_payload_hash as string | null;
 
     // Check if circuit breaker allows this source
-    const circuitState = await getCircuitState(supabaseUrl, supabaseServiceRoleKey, targetSourceId);
-    if (circuitState?.state === 'OPEN') {
+    const circuitAllowed = await isCircuitClosed(
+      supabaseUrl,
+      supabaseServiceRoleKey,
+      targetSourceId,
+    );
+    if (!circuitAllowed) {
       console.log(`Source ${targetSourceId}: Circuit breaker OPEN, skipping`);
       await supabase
         .from("scraper_sources")
@@ -73,9 +79,6 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
     }
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s
-
       // 1. Fetching
       const fetcher = createFetcherForSource(src as any);
       const { html, statusCode } = await fetcher.fetchPage(currentUrl);
@@ -91,6 +94,7 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
           .from("scraper_sources")
           .update({ last_scraped_at: new Date().toISOString() })
           .eq("id", sourceId);
+        await recordSuccess(supabaseUrl, supabaseServiceRoleKey, sourceId);
         return new Response(
           JSON.stringify({
             message: "Skipped unchanged",
@@ -184,6 +188,7 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
         }).catch((err) => console.error("Pagination recursion failed:", err));
       }
 
+      await recordSuccess(supabaseUrl, supabaseServiceRoleKey, sourceId);
       results.push({
         sourceId,
         status: "completed",
