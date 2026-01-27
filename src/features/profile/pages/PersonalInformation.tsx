@@ -96,7 +96,7 @@ export function PersonalInformation() {
               type="email"
               value={formData.email}
               disabled
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-muted-foreground"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-muted-foreground min-h-[44px]"
               placeholder="your.email@example.com"
             />
             <p className="text-xs text-muted-foreground mt-1">
@@ -115,7 +115,7 @@ export function PersonalInformation() {
               type="tel"
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
-              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
               placeholder="+31 6 12345678"
             />
           </div>
