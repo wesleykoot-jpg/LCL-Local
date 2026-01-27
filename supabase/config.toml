@@ -67,6 +67,7 @@ enable_confirmations = false
 
 # OAuth providers (disabled for local development)
 [auth.external.google]
+client_id = "env(GOOGLE_CLIENT_ID)"
 enabled = true
 
 [auth.external.github]
