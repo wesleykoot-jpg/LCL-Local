@@ -1,5 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  calculateVenueSuggestionAnchors,
+  type UserLocation,
+  type VenueSuggestionAnchors,
+} from './geospatial';
 
 type ProposalRow = Database['public']['Tables']['proposals']['Row'];
 type ProposalInsert = Database['public']['Tables']['proposals']['Insert'];
@@ -12,12 +17,25 @@ export interface Proposal {
   proposed_times: string[]; // ISO datetime strings
   created_at: string;
   updated_at: string;
+  /** IDs of invited participants */
+  participant_ids?: string[];
 }
 
 export interface CreateProposalParams {
   eventId: string;
   creatorId: string;
   proposedTimes: string[]; // Array of ISO datetime strings
+  /** Optional array of participant profile IDs to invite */
+  participantIds?: string[];
+}
+
+/**
+ * Participant location data for centroid calculations
+ */
+export interface ParticipantLocation {
+  profileId: string;
+  lat: number;
+  lng: number;
 }
 
 export interface UpdateProposalParams {
@@ -235,3 +253,125 @@ function mapProposal(row: ProposalRow): Proposal {
     updated_at: row.updated_at,
   };
 }
+
+/**
+ * Fetches participant locations from their profile coordinates
+ * @param participantIds - Array of profile IDs
+ * @returns Array of participant locations with coordinates
+ */
+export async function fetchParticipantLocations(
+  participantIds: string[]
+): Promise<ParticipantLocation[]> {
+  if (participantIds.length === 0) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, location_coordinates')
+      .in('id', participantIds);
+
+    if (error) throw error;
+
+    // Filter out profiles without location coordinates and parse the PostGIS point
+    return (data || [])
+      .filter((profile) => profile.location_coordinates)
+      .map((profile) => {
+        // Parse PostGIS POINT format: "POINT(lng lat)" or geography object
+        const coords = parsePostGISPoint(profile.location_coordinates as string);
+        if (!coords) return null;
+
+        return {
+          profileId: profile.id,
+          lat: coords.lat,
+          lng: coords.lng,
+        };
+      })
+      .filter((loc): loc is ParticipantLocation => loc !== null);
+  } catch (error) {
+    console.error('Error fetching participant locations:', error);
+    return [];
+  }
+}
+
+/**
+ * Parses a PostGIS POINT string into lat/lng coordinates
+ * @param point - PostGIS POINT string like "POINT(lng lat)" or "0101000020E6100000..."
+ * @returns Object with lat/lng or null if invalid
+ */
+function parsePostGISPoint(point: string | unknown): { lat: number; lng: number } | null {
+  if (!point || typeof point !== 'string') {
+    return null;
+  }
+
+  // Match POINT(lng lat) format
+  const match = point.match(/POINT\s*\(\s*(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s*\)/i);
+  if (match) {
+    const lng = parseFloat(match[1]);
+    const lat = parseFloat(match[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Calculates venue suggestion anchors for a group proposal.
+ * 
+ * This is the main entry point for the "Fairness Engine" that determines
+ * optimal meeting points for a group of participants.
+ * 
+ * @param hostId - Profile ID of the host/initiator
+ * @param participantIds - Array of all participant profile IDs (including host)
+ * @returns Venue suggestion anchors or null if insufficient location data
+ * 
+ * @example
+ * const anchors = await calculateProposalAnchors('host-id', ['host-id', 'user2', 'user3']);
+ * if (anchors) {
+ *   // Use anchors.hostLocation, anchors.fairMeetPoint, anchors.hubLocation
+ *   // to fetch nearby venues from Supabase
+ * }
+ */
+export async function calculateProposalAnchors(
+  hostId: string,
+  participantIds: string[]
+): Promise<VenueSuggestionAnchors | null> {
+  try {
+    // Fetch participant locations
+    const locations = await fetchParticipantLocations(participantIds);
+
+    // Need at least the host's location
+    if (locations.length === 0) {
+      console.warn('No participant locations found for centroid calculation');
+      return null;
+    }
+
+    // Convert to UserLocation format
+    const userLocations: UserLocation[] = locations.map((loc) => ({
+      id: loc.profileId,
+      lat: loc.lat,
+      lng: loc.lng,
+    }));
+
+    // Verify host is in the locations
+    const hostInLocations = userLocations.some((u) => u.id === hostId);
+    if (!hostInLocations) {
+      console.warn('Host location not found in participant locations');
+      return null;
+    }
+
+    // Calculate venue suggestion anchors
+    return calculateVenueSuggestionAnchors(hostId, userLocations);
+  } catch (error) {
+    console.error('Error calculating proposal anchors:', error);
+    return null;
+  }
+}
+
+/**
+ * Re-export geospatial types for convenience
+ */
+export type { UserLocation, VenueSuggestionAnchors } from './geospatial';
