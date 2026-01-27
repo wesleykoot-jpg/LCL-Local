@@ -131,7 +131,7 @@ export function PersonalInformation() {
               type="date"
               value={formData.dateOfBirth}
               onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
             />
             <p className="text-xs text-muted-foreground mt-1">
               Used to verify age for events and improve recommendations
@@ -161,7 +161,7 @@ export function PersonalInformation() {
               type="text"
               value={formData.city}
               onChange={(e) => handleInputChange('city', e.target.value)}
-              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
               placeholder="Meppel"
             />
           </div>
@@ -174,7 +174,7 @@ export function PersonalInformation() {
               type="text"
               value={formData.country}
               onChange={(e) => handleInputChange('country', e.target.value)}
-              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
               placeholder="Netherlands"
             />
           </div>
