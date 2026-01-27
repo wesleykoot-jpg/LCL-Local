@@ -39,7 +39,8 @@
     "supabase/functions",
     "src/components",
     "src/hooks",
-    "src/lib"
+    "src/lib",
+    "_legacy_archive"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

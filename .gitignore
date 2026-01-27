@@ -42,3 +42,6 @@ storybook-static
 # IDE
 .antigravity/
 .vercel
+
+# Legacy archive is tracked but excluded from builds
+# See _legacy_archive/README.md for details
