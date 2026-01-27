@@ -16,7 +16,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "scrape:10cities": "deno run --allow-net --allow-env --allow-read scripts/run_10_city_pipeline.ts",
-    "scrape:clear": "node scripts/clear_scraper_tables.cjs"
+    "scrape:clear": "node scripts/clear_scraper_tables.cjs",
+    "scrape:zwolle-meppel": "deno run --allow-net --allow-env --allow-read scripts/run_zwolle_meppel_pipeline.ts",
+    "scrape:zwolle-meppel-live": "npx tsx scripts/run_zwolle_meppel_live.ts"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.0",
