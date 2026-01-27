@@ -24,8 +24,7 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
   }
 
   const { sourceId: targetSourceId, url: overrideUrl, depth = 0 } = payload;
-  const MAX_DEPTH = 3; // Limit recursion depth for safety
-  const MAX_PAGES_PER_SOURCE = 5; // Limit total pages per source to prevent excessive processing
+  const MAX_PAGINATION_DEPTH = 5; // Maximum pagination depth per source to prevent excessive processing
   const startTime = Date.now(); // Track execution time for insights
 
   try {
@@ -165,9 +164,9 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
           .eq("id", sourceId);
       }
 
-      // 6. Pagination Recursion (with page limit enforcement)
-      if (nextPageUrl && depth < MAX_DEPTH && depth < MAX_PAGES_PER_SOURCE - 1) {
-        console.log(`[Pagination] Recursing to depth ${depth + 1} (max: ${MAX_PAGES_PER_SOURCE})...`);
+      // 6. Pagination Recursion (with depth limit enforcement)
+      if (nextPageUrl && depth < MAX_PAGINATION_DEPTH - 1) {
+        console.log(`[Pagination] Recursing to depth ${depth + 1} (max: ${MAX_PAGINATION_DEPTH})...`);
         // Invoke self asynchronously (fire and forget-ish, but better to await if we want serial)
         // But we don't want to block this function too long.
         // Using fetch to trigger separate execution context.
@@ -183,8 +182,8 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
             depth: depth + 1,
           }),
         }).catch((err) => console.error("Pagination recursion failed:", err));
-      } else if (nextPageUrl && depth >= MAX_PAGES_PER_SOURCE - 1) {
-        console.log(`[Pagination] Reached page limit (${MAX_PAGES_PER_SOURCE}), stopping pagination for source ${sourceId}`);
+      } else if (nextPageUrl && depth >= MAX_PAGINATION_DEPTH - 1) {
+        console.log(`[Pagination] Reached page limit (${MAX_PAGINATION_DEPTH}), stopping pagination for source ${sourceId}`);
       }
 
       // Log scraper insights for monitoring

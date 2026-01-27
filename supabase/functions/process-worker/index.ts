@@ -252,7 +252,7 @@ async function failRow(supabase: SupabaseClient, id: string, errorMsg: string, s
   // 1. Get current retry count and source_url
   const { data: row } = await supabase
     .from("raw_event_staging")
-    .select("retry_count, source_id, source_url, raw_html")
+    .select("retry_count, source_id, source_url")
     .eq("id", id)
     .single();
 
@@ -718,11 +718,11 @@ async function processRow(
     
     // Phase 2: Quality-based filtering for event display
     // Events below the threshold are created but hidden from the main feed
-    const isDisplayable = finalQualityScore >= QUALITY_THRESHOLD && hasMinimumQuality(eventPayload);
+    const isDisplayable = (finalQualityScore ?? 0) >= QUALITY_THRESHOLD && hasMinimumQuality(eventPayload);
     eventPayload.is_displayable = isDisplayable;
     
     if (!isDisplayable) {
-      console.log(`[${row.id}] Event quality below threshold (${finalQualityScore.toFixed(2)} < ${QUALITY_THRESHOLD}), marking as not displayable`);
+      console.log(`[${row.id}] Event quality below threshold (${(finalQualityScore ?? 0).toFixed(2)} < ${QUALITY_THRESHOLD}), marking as not displayable`);
     }
 
     // 9. Description Scrubbing (Data Hygiene)
