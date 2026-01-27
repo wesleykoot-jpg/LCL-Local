@@ -249,19 +249,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const redirectUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
-  const fullRedirectUrl = `${redirectUrl}/explore`;
   console.log("[Auth] VITE_SITE_URL:", import.meta.env.VITE_SITE_URL);
   console.log("[Auth] window.location.origin:", window.location.origin);
   console.log("[Auth] Using redirect URL:", redirectUrl);
-  console.log("[Auth] Full redirect URL:", fullRedirectUrl);
 
   const signInWithGoogle = async () => {
     try {
-      console.log("[Auth] Initiating Google OAuth with redirect:", fullRedirectUrl);
+      console.log("[Auth] Initiating Google OAuth with redirect:", redirectUrl);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: fullRedirectUrl,
+          redirectTo: redirectUrl,
         },
       });
       if (error) {
