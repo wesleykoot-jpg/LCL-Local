@@ -164,28 +164,33 @@ serve(withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
       );
 
       // Use Promise.all with a small delay between triggers to prevent sudden CPU spikes
-      // Fetch is asynchronous and non-blocking here as we don't await the body
       const failedSourceIds: string[] = [];
-      eligibleSources.forEach((source, index) => {
-        // Small staggered delay (100ms) between triggers
-        setTimeout(() => {
-          fetch(`${supabaseUrl}/functions/v1/scrape-events`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${supabaseKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ sourceId: source.id }),
-          }).catch((err) =>
-            console.error(
-              `Failed to trigger fetcher for source ${source.id}:`,
-              err,
-            ),
-            // Track failed source for consecutive_errors update
-            failedSourceIds.push(source.id);
-          });
-        }, index * 100);
+      const promises = eligibleSources.map((source, index) => {
+        return new Promise<string | null>((resolve) => {
+          setTimeout(() => {
+            fetch(`${supabaseUrl}/functions/v1/scrape-events`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ sourceId: source.id }),
+            })
+              .then(() => resolve(null)) // Success - no failure
+              .catch((err) => {
+                console.error(
+                  `Failed to trigger fetcher for source ${source.id}:`,
+                  err,
+                );
+                resolve(source.id); // Return source ID for failed fetch
+              });
+          }, index * 100);
+        });
       });
+
+      // Wait for all fetch promises to complete and collect failed source IDs
+      const results = await Promise.all(promises);
+      failedSourceIds.push(...results.filter((id): id is string => id !== null));
 
       console.log(
         "Coordinator: Triggering Data-First Processor (process-worker)...",
@@ -258,7 +263,7 @@ serve(withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       );
-    );
+    });
   }, {
     allowedKeyTypes: ['service', 'admin'], // Only service and admin keys can trigger coordinator
   }, 'scrape-coordinator'); // Apply rate limiting with default config for coordinator

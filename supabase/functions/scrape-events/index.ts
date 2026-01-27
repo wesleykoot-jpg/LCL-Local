@@ -9,6 +9,7 @@ import { withAuth } from "../_shared/auth.ts";
 import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
 import { withAuth } from "../_shared/auth.ts";
 import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
+import { isCircuitClosed, recordFailure, getCircuitState } from "../_shared/circuitBreaker.ts";
 
 export const handler = withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
@@ -52,6 +53,24 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
     const currentUrl =
       targetSourceId && overrideUrl ? overrideUrl : (src.url as string);
     const lastHash = src.last_payload_hash as string | null;
+
+    // Check if circuit breaker allows this source
+    const circuitState = await getCircuitState(supabaseUrl, supabaseServiceRoleKey, targetSourceId);
+    if (circuitState?.state === 'OPEN') {
+      console.log(`Source ${targetSourceId}: Circuit breaker OPEN, skipping`);
+      await supabase
+        .from("scraper_sources")
+        .update({ last_scraped_at: new Date().toISOString() })
+        .eq("id", targetSourceId);
+      
+      return new Response(
+        JSON.stringify({
+          message: "Skipped due to circuit breaker",
+          results: [{ sourceId: targetSourceId, status: "circuit_open" }],
+        }),
+        { status: 200 },
+      );
+    }
 
     try {
       const controller = new AbortController();
@@ -176,6 +195,16 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
     } catch (e: any) {
       const isTimeout = e.name === "AbortError";
       console.warn(`Failed to fetch ${currentUrl}:`, e.message);
+      
+      // Record failure for circuit breaker
+      await recordFailure(
+        supabaseUrl,
+        supabaseServiceRoleKey,
+        sourceId,
+        e.message,
+        5 // failureThreshold
+      );
+      
       results.push({
         sourceId,
         status: isTimeout ? "timeout" : "fetch_error",
