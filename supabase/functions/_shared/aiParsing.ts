@@ -336,19 +336,49 @@ ${cleanedHtml}`;
     let cleaned = response.trim();
     cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
     
-    const recipe = JSON.parse(cleaned) as ExtractionRecipe;
+    const parsed = JSON.parse(cleaned);
     
-    // Validate required fields
-    if (!recipe.mode || !recipe.config || !recipe.config.container || !recipe.config.item) {
-      console.error("Recipe missing required fields:", recipe);
+    // Runtime validation of required fields before type assertion
+    if (!parsed || typeof parsed !== 'object') {
+      console.error("Recipe is not a valid object:", parsed);
       return null;
     }
     
-    // Add metadata
+    if (!parsed.mode || (parsed.mode !== 'CSS_SELECTOR' && parsed.mode !== 'JSON_LD')) {
+      console.error("Recipe has invalid mode:", parsed.mode);
+      return null;
+    }
+    
+    if (!parsed.config || typeof parsed.config !== 'object') {
+      console.error("Recipe missing config object:", parsed);
+      return null;
+    }
+    
+    if (!parsed.config.container || typeof parsed.config.container !== 'string') {
+      console.error("Recipe missing or invalid container selector:", parsed.config.container);
+      return null;
+    }
+    
+    if (!parsed.config.item || typeof parsed.config.item !== 'string') {
+      console.error("Recipe missing or invalid item selector:", parsed.config.item);
+      return null;
+    }
+    
+    if (!parsed.config.mapping || typeof parsed.config.mapping !== 'object') {
+      console.error("Recipe missing mapping object:", parsed.config);
+      return null;
+    }
+    
+    // Validated - safe to cast
+    const recipe = parsed as ExtractionRecipe;
+    
+    // Add metadata with documented default confidence
+    // 0.8 confidence is assigned as a baseline for newly generated recipes
+    // This value can be adjusted based on real-world extraction success rates
     recipe.metadata = {
       generated_at: new Date().toISOString(),
       model: "glm-4",
-      confidence: 0.8, // Default confidence, can be refined
+      confidence: 0.8,
     };
     
     return recipe;

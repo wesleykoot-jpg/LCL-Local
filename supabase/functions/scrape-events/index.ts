@@ -77,16 +77,16 @@ function extractWithRecipe(
     items.each((_, el) => {
       const $item = $(el);
       
-      // Extract fields using mapping
-      const title = $item.find(mapping.title).first().text().trim() ||
-                    $item.find(mapping.title).first().attr('title') || '';
+      // Extract fields using mapping - cache selectors for efficiency
+      const $titleEl = $item.find(mapping.title).first();
+      const title = $titleEl.text().trim() || $titleEl.attr('title') || '';
       
-      const date = $item.find(mapping.date).first().text().trim() ||
-                   $item.find(mapping.date).first().attr('datetime') ||
-                   $item.find(mapping.date).first().attr('content') || '';
+      const $dateEl = $item.find(mapping.date).first();
+      const date = $dateEl.text().trim() || $dateEl.attr('datetime') || $dateEl.attr('content') || '';
       
       // Get link - try href attribute
-      let link = $item.find(mapping.link).first().attr('href') || '';
+      const $linkEl = $item.find(mapping.link).first();
+      let link = $linkEl.attr('href') || '';
       if (link && !link.startsWith('http')) {
         try {
           link = new URL(link, baseUrl).href;
@@ -96,9 +96,8 @@ function extractWithRecipe(
       }
       
       // Get image - try multiple attributes
-      let image = $item.find(mapping.image).first().attr('src') ||
-                  $item.find(mapping.image).first().attr('data-src') ||
-                  $item.find(mapping.image).first().attr('data-lazy-src') || null;
+      const $imageEl = $item.find(mapping.image).first();
+      let image = $imageEl.attr('src') || $imageEl.attr('data-src') || $imageEl.attr('data-lazy-src') || null;
       if (image && !image.startsWith('http')) {
         try {
           image = new URL(image, baseUrl).href;

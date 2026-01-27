@@ -65,10 +65,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- 5. Create function to claim sources for scouting (prevents race conditions)
 CREATE OR REPLACE FUNCTION claim_sources_for_scouting(p_limit int DEFAULT 5)
 RETURNS SETOF scraper_sources AS $$
-DECLARE
-  claimed_sources scraper_sources[];
 BEGIN
-  -- Atomically claim sources by updating their status
+  -- Atomically claim sources by updating their status and return the claimed rows
+  RETURN QUERY
   WITH to_claim AS (
     SELECT id 
     FROM scraper_sources 
@@ -89,13 +88,7 @@ BEGIN
     updated_at = now()
   FROM to_claim
   WHERE s.id = to_claim.id
-  RETURNING s.* INTO claimed_sources;
-
-  RETURN QUERY
-  SELECT * FROM scraper_sources 
-  WHERE scout_status = 'scouting'
-    AND updated_at > now() - interval '5 minutes'
-  LIMIT p_limit;
+  RETURNING s.*;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
