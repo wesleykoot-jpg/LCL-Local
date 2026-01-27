@@ -46,6 +46,7 @@
     "npm:@storybook/addon-docs@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_@types+react@19.2.9_react@19.2.3_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_react-dom@19.2.3__react@19.2.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_@testing-library+dom@10.4.1",
     "npm:@storybook/addon-onboarding@^10.1.11": "10.1.11_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_react@19.2.3_react-dom@19.2.3__react@19.2.3_@testing-library+dom@10.4.1",
     "npm:@storybook/react-vite@^10.1.11": "10.1.11_react@19.2.3_react-dom@19.2.3__react@19.2.3_storybook@10.1.11__react@19.2.3__react-dom@19.2.3___react@19.2.3__@testing-library+dom@10.4.1_vite@7.3.1__@types+node@20.19.30__terser@5.46.0__tsx@4.21.0__picomatch@4.0.3_typescript@5.9.3_@types+node@20.19.30_terser@5.46.0_tsx@4.21.0_@testing-library+dom@10.4.1",
+    "npm:@supabase/supabase-js@2": "2.39.3",
     "npm:@supabase/supabase-js@2.39.3": "2.39.3",
     "npm:@supabase/supabase-js@2.49.1": "2.49.1",
     "npm:@supabase/supabase-js@^2.91.0": "2.91.0",
