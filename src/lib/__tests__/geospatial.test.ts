@@ -213,7 +213,7 @@ describe('geospatial', () => {
     it('should throw error if host not in user list', () => {
       expect(() =>
         calculateVenueSuggestionAnchors('nonexistent', [meppel, zwolle])
-      ).toThrow('Host not found in user list');
+      ).toThrow('Host with ID "nonexistent" not found in user list');
     });
 
     it('should apply host weight to centroid calculation', () => {

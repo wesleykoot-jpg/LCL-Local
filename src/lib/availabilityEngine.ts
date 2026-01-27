@@ -273,16 +273,19 @@ export function getCommonAvailability(
  * - Weekdays: 9:00-17:00 (business hours) and 18:00-22:00 (evening)
  * - Weekends: 10:00-22:00 (flexible)
  *
- * @param daysAhead - Number of days to generate (default: 7)
+ * @param daysAhead - Number of days to generate (default: 7, max: 30)
  * @returns Array of availability blocks
  */
 export function generateDefaultAvailability(
   daysAhead: number = 7
 ): AvailabilityBlock[] {
+  // Validate daysAhead parameter
+  const validDays = Math.min(Math.max(Math.floor(daysAhead), 1), 30);
+  
   const blocks: AvailabilityBlock[] = [];
   const now = new Date();
 
-  for (let i = 0; i < daysAhead; i++) {
+  for (let i = 0; i < validDays; i++) {
     const date = new Date(now);
     date.setDate(date.getDate() + i);
     date.setHours(0, 0, 0, 0);
@@ -387,15 +390,18 @@ function createTimeSlot(
   };
 }
 
-function formatSlotLabel(date: Date): string {
+function formatSlotLabel(date: Date, locale?: string): string {
+  // Use provided locale, or try to detect system locale, fallback to en-US
+  const effectiveLocale = locale || (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+  
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const time = date.toLocaleTimeString('en-US', {
+  const time = date.toLocaleTimeString(effectiveLocale, {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true,
+    hour12: effectiveLocale.startsWith('en'),
   });
 
   if (date.toDateString() === today.toDateString()) {
@@ -404,7 +410,7 @@ function formatSlotLabel(date: Date): string {
     return `Tomorrow ${time}`;
   }
 
-  const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+  const dayName = date.toLocaleDateString(effectiveLocale, { weekday: 'long' });
   return `${dayName} ${time}`;
 }
 

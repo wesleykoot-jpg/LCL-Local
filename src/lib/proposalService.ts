@@ -266,11 +266,20 @@ export async function fetchParticipantLocations(
     return [];
   }
 
+  // Validate participant IDs are valid UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const validIds = participantIds.filter((id) => uuidRegex.test(id));
+  
+  if (validIds.length === 0) {
+    console.warn('No valid UUID participant IDs provided');
+    return [];
+  }
+
   try {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, location_coordinates')
-      .in('id', participantIds);
+      .in('id', validIds);
 
     if (error) throw error;
 
@@ -305,12 +314,16 @@ function parsePostGISPoint(point: string | unknown): { lat: number; lng: number 
     return null;
   }
 
-  // Match POINT(lng lat) format
-  const match = point.match(/POINT\s*\(\s*(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s*\)/i);
+  // Match POINT(lng lat) format with robust numeric pattern
+  // Handles: integers, decimals, negative values, scientific notation
+  const numPattern = '(-?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)';
+  const pointRegex = new RegExp(`POINT\\s*\\(\\s*${numPattern}\\s+${numPattern}\\s*\\)`, 'i');
+  const match = point.match(pointRegex);
+  
   if (match) {
     const lng = parseFloat(match[1]);
     const lat = parseFloat(match[2]);
-    if (!isNaN(lat) && !isNaN(lng)) {
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
       return { lat, lng };
     }
   }

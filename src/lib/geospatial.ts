@@ -379,7 +379,10 @@ export function calculateVenueSuggestionAnchors(
   // Find host location
   const host = users.find((u) => u.id === hostId);
   if (!host) {
-    throw new Error('Host not found in user list');
+    const userIds = users.map((u) => u.id).join(', ');
+    throw new Error(
+      `Host with ID "${hostId}" not found in user list. Available user IDs: [${userIds}]`
+    );
   }
 
   // Apply host weight
