@@ -1,7 +1,7 @@
 {
     "mcpServers": {
         "supabase-db": {
-            "command": "C:\\Program Files\\nodejs\\npx.cmd",
+            "command": "npx",
             "args": [
                 "-y",
                 "@modelcontextprotocol/server-postgres",
