@@ -57,6 +57,7 @@ interface EventSource {
 // Target: ~2000 events total from multiple sources in Zwolle/Meppel region
 const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
   // === ZWOLLE SOURCES (target: ~1200 events) ===
+  /* 504 Timeout
   {
     id: "zwolle-visitzwolle",
     name: "Visit Zwolle Agenda",
@@ -67,6 +68,7 @@ const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
     description: "Official Zwolle tourism agenda",
     selectors: ["article.agendabox", ".event-item", ".agenda-item"],
   },
+  */
   /* INVALID SSL CERTIFICATE prevents scraping
   {
     id: "zwolle-inzwolle",
