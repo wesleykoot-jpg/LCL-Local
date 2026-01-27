@@ -13,12 +13,25 @@ BEGIN;
 -- PHASE 1: Drop Triggers (must come before functions they depend on)
 -- =============================================================================
 
-DROP TRIGGER IF EXISTS scrape_state_updated_at ON scrape_state;
-DROP TRIGGER IF EXISTS set_processing_timestamp_trigger ON raw_event_staging;
-DROP TRIGGER IF EXISTS update_raw_event_timestamp ON raw_event_staging;
-DROP TRIGGER IF EXISTS scraper_sources_updated_at ON scraper_sources;
-DROP TRIGGER IF EXISTS queue_embedding_on_event_insert ON events;
-DROP TRIGGER IF EXISTS queue_embedding_on_event_update ON events;
+DO $$ 
+DECLARE
+    trigger_record RECORD;
+BEGIN
+    -- Dynamically drop scraper-related triggers
+    FOR trigger_record IN 
+        SELECT DISTINCT trigger_name, event_object_table, event_object_schema
+        FROM information_schema.triggers
+        WHERE trigger_name ILIKE '%scrap%' 
+           OR trigger_name ILIKE '%pipeline%'
+           OR trigger_name ILIKE '%embedding%'
+           OR trigger_name ILIKE '%processing%'
+    LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I.%I CASCADE', 
+                      trigger_record.trigger_name,
+                      trigger_record.event_object_schema,
+                      trigger_record.event_object_table);
+    END LOOP;
+END $$;
 
 -- =============================================================================
 -- PHASE 2: Drop Views
