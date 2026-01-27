@@ -15,8 +15,9 @@ import {
   eventToText,
 } from "../_shared/scraperUtils.ts";
 
-import { logError as _logError } from "../_shared/errorLogging.ts";
-import type { RawEventCard, NormalizedEvent } from "../_shared/types.ts";
+import { logError, logInfo } from "../_shared/errorLogging.ts";
+import { addToDLQ } from "../_shared/dlq.ts";
+import type { RawEventCard, NormalizedEvent, DLQStage } from "../_shared/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,8 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 10;
+const QUALITY_THRESHOLD = 0.3; // Minimum quality score for event display (Phase 2)
+const MAX_RETRIES = 3; // Maximum retries before moving to DLQ
 
 interface StagingRow {
   id: string;
@@ -35,6 +38,7 @@ interface StagingRow {
   status: string;
   parsing_method: string | null;
   raw_payload: RawEventCard; // Add raw_payload back as it's added by mapping logic
+  retry_count?: number;
 }
 
 /**
@@ -240,43 +244,83 @@ async function completeRow(
     .eq("id", id);
 }
 
-// Helper: Fail row with retry logic
-async function failRow(supabase: SupabaseClient, id: string, errorMsg: string) {
-  // 1. Get current retry count
+// Helper: Fail row with retry logic and DLQ integration
+async function failRow(supabase: SupabaseClient, id: string, errorMsg: string, sourceId?: string) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  
+  // 1. Get current retry count and source_url
   const { data: row } = await supabase
     .from("raw_event_staging")
-    .select("retry_count")
+    .select("retry_count, source_id, source_url, raw_html")
     .eq("id", id)
     .single();
 
   const currentRetries = row?.retry_count || 0;
   const newRetries = currentRetries + 1;
-  const maxRetries = 3;
+  const rowSourceId = sourceId || row?.source_id;
 
-  // 2. Decide status
-  // If we hit max retries, use 'pending_with_backoff' to allow retry with exponential backoff.
-  // If less, we set back to 'pending' to retry.
-  // This ensures we don't retry indefinitely but still allow recovery.
-  const newStatus = newRetries >= maxRetries ? "pending_with_backoff" : "pending";
-  
-  // Calculate backoff delay for pending_with_backoff status
-  const backoffMinutes = newRetries >= maxRetries ? Math.pow(2, newRetries - maxRetries) * 5 : 0; // 5, 10, 20, 40... minutes
-  const backoffUntil = backoffMinutes > 0 
-    ? new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString()
-    : null;
-
-  await supabase
-    .from("raw_event_staging")
-    .update({
-      status: newStatus,
-      retry_count: newRetries,
-      error_message: errorMsg,
-      updated_at: backoffUntil || new Date().toISOString(),
-    })
-    .eq("id", id);
+  // 2. Decide status and handle DLQ
+  if (newRetries >= MAX_RETRIES) {
+    // Move to DLQ after max retries (Phase 2: Activate DLQ)
+    console.log(`[${id}] Max retries (${MAX_RETRIES}) reached. Moving to DLQ.`);
+    
+    await addToDLQ(supabaseUrl, supabaseKey, {
+      jobId: id,
+      sourceId: rowSourceId,
+      stage: 'parse' as DLQStage,
+      errorType: 'max_retries_exceeded',
+      errorMessage: errorMsg,
+      payload: {
+        source_url: row?.source_url,
+        retry_count: newRetries,
+        last_error: errorMsg,
+      },
+    });
+    
+    // Mark as failed (terminal state)
+    await supabase
+      .from("raw_event_staging")
+      .update({
+        status: "failed",
+        retry_count: newRetries,
+        error_message: `DLQ: ${errorMsg}`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    
+    // Log error with context
+    await logError({
+      level: 'error',
+      source: 'process-worker',
+      function_name: 'failRow',
+      message: `Row ${id} moved to DLQ after ${MAX_RETRIES} retries`,
+      error_type: 'max_retries_exceeded',
+      context: {
+        row_id: id,
+        source_id: rowSourceId,
+        source_url: row?.source_url,
+        retry_count: newRetries,
+        last_error: errorMsg,
+      },
+    });
+  } else {
+    // Set back to 'pending' to retry
+    const newStatus = "pending";
+    
+    await supabase
+      .from("raw_event_staging")
+      .update({
+        status: newStatus,
+        retry_count: newRetries,
+        error_message: errorMsg,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+  }
 
   console.log(
-    `[${id}] Failed. Retry ${newRetries}/${maxRetries}. Status: ${newStatus}. Error: ${errorMsg}`,
+    `[${id}] Failed. Retry ${newRetries}/${MAX_RETRIES}. Error: ${errorMsg}`,
   );
 }
 
@@ -671,6 +715,15 @@ async function processRow(
       event_date: normalizedDate.timestamp,
     });
     eventPayload.quality_score = finalQualityScore;
+    
+    // Phase 2: Quality-based filtering for event display
+    // Events below the threshold are created but hidden from the main feed
+    const isDisplayable = finalQualityScore >= QUALITY_THRESHOLD && hasMinimumQuality(eventPayload);
+    eventPayload.is_displayable = isDisplayable;
+    
+    if (!isDisplayable) {
+      console.log(`[${row.id}] Event quality below threshold (${finalQualityScore.toFixed(2)} < ${QUALITY_THRESHOLD}), marking as not displayable`);
+    }
 
     // 9. Description Scrubbing (Data Hygiene)
     const SCRUB_PATTERNS = [
@@ -796,10 +849,10 @@ async function processRow(
 
     // 6. Complete
     await completeRow(supabase, row.id);
-    return { success: true };
+    return { success: true, parsingMethod };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    await failRow(supabase, row.id, msg);
+    await failRow(supabase, row.id, msg, row.source_id);
     return { success: false, error: msg };
   }
 }

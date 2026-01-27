@@ -7,9 +7,8 @@ import {
 } from "../_shared/strategies.ts";
 import { withAuth } from "../_shared/auth.ts";
 import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
-import { withAuth } from "../_shared/auth.ts";
-import { withRateLimiting } from "../_shared/serverRateLimiting.ts";
 import { isCircuitClosed, recordFailure, getCircuitState } from "../_shared/circuitBreaker.ts";
+import { logError, logInfo } from "../_shared/errorLogging.ts";
 
 export const handler = withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
@@ -26,6 +25,8 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
 
   const { sourceId: targetSourceId, url: overrideUrl, depth = 0 } = payload;
   const MAX_DEPTH = 3; // Limit recursion depth for safety
+  const MAX_PAGES_PER_SOURCE = 5; // Limit total pages per source to prevent excessive processing
+  const startTime = Date.now(); // Track execution time for insights
 
   try {
     if (!targetSourceId) {
@@ -164,9 +165,9 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
           .eq("id", sourceId);
       }
 
-      // 6. Pagination Recursion
-      if (nextPageUrl && depth < MAX_DEPTH) {
-        console.log(`[Pagination] Recursing to depth ${depth + 1}...`);
+      // 6. Pagination Recursion (with page limit enforcement)
+      if (nextPageUrl && depth < MAX_DEPTH && depth < MAX_PAGES_PER_SOURCE - 1) {
+        console.log(`[Pagination] Recursing to depth ${depth + 1} (max: ${MAX_PAGES_PER_SOURCE})...`);
         // Invoke self asynchronously (fire and forget-ish, but better to await if we want serial)
         // But we don't want to block this function too long.
         // Using fetch to trigger separate execution context.
@@ -182,7 +183,23 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
             depth: depth + 1,
           }),
         }).catch((err) => console.error("Pagination recursion failed:", err));
+      } else if (nextPageUrl && depth >= MAX_PAGES_PER_SOURCE - 1) {
+        console.log(`[Pagination] Reached page limit (${MAX_PAGES_PER_SOURCE}), stopping pagination for source ${sourceId}`);
       }
+
+      // Log scraper insights for monitoring
+      const executionTimeMs = Date.now() - startTime;
+      await logInfo('scrape-events', 'handler', `Scrape completed for source ${sourceId}`, {
+        source_id: sourceId,
+        depth,
+        cards_found: cards.length,
+        staged_count: stagedCount,
+        error_count: errorCount,
+        has_next_page: !!nextPageUrl,
+        execution_time_ms: executionTimeMs,
+        html_size_bytes: html.length,
+        url: currentUrl,
+      });
 
       results.push({
         sourceId,
@@ -191,10 +208,31 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
         staged: stagedCount,
         errors: errorCount,
         nextPage: !!nextPageUrl,
+        executionTimeMs,
       });
     } catch (e: any) {
       const isTimeout = e.name === "AbortError";
+      const errorType = isTimeout ? 'timeout' : 'fetch_error';
+      const executionTimeMs = Date.now() - startTime;
+      
       console.warn(`Failed to fetch ${currentUrl}:`, e.message);
+      
+      // Log error with full context for debugging
+      await logError({
+        level: 'error',
+        source: 'scrape-events',
+        function_name: 'handler',
+        message: `Scrape failed for source ${sourceId}: ${e.message}`,
+        error_type: errorType,
+        stack_trace: e.stack,
+        context: {
+          source_id: sourceId,
+          url: currentUrl,
+          depth,
+          execution_time_ms: executionTimeMs,
+          stage: 'fetch',
+        },
+      });
       
       // Record failure for circuit breaker
       await recordFailure(
@@ -207,8 +245,9 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
       
       results.push({
         sourceId,
-        status: isTimeout ? "timeout" : "fetch_error",
+        status: errorType,
         error: String(e),
+        executionTimeMs,
       });
     }
 
@@ -216,7 +255,21 @@ export const handler = withRateLimiting(withAuth(async (req: Request): Promise<R
       JSON.stringify({ message: "Fetcher run complete", results }),
       { status: 200 },
     );
-  } catch (err) {
+  } catch (err: any) {
+    // Log top-level errors with context
+    await logError({
+      level: 'fatal',
+      source: 'scrape-events',
+      function_name: 'handler',
+      message: `Fetcher critical error: ${err.message || String(err)}`,
+      error_type: 'critical_failure',
+      stack_trace: err.stack,
+      context: {
+        source_id: targetSourceId,
+        stage: 'initialization',
+      },
+    });
+    
     console.error("Fetcher error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
