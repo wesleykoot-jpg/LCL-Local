@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wrench, ChevronUp, ChevronDown, RefreshCw, X, Settings } from 'lucide-react';
-import { triggerScraper } from '@/lib/scraperService';
+// LEGACY: Scraper removed - see _legacy_archive/scraping-v1/
+// import { triggerScraper } from '@/lib/scraperService';
 import { toast } from 'sonner';
 
 interface DevPanelProps {
@@ -37,7 +38,9 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
   const handleScrape = async () => {
     setIsScraping(true);
     try {
-      const result = await triggerScraper();
+      // LEGACY: Scraper functionality removed - see _legacy_archive/scraping-v1/
+      toast.error('Scraper has been removed. Rebuilding architecture.');
+      /* const result = await triggerScraper();
       if (result.success) {
         // Support both new and legacy response formats
         const inserted = result.totals?.inserted ?? result.inserted ?? 0;
@@ -47,7 +50,7 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
         onRefetchEvents?.();
       } else {
         toast.error('Scraping failed: ' + (result.error || 'Unknown error'));
-      }
+      } */
     } catch (error) {
       toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {

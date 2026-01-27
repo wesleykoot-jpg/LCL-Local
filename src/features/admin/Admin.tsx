@@ -23,14 +23,20 @@ import { Switch } from "@/shared/components/ui/switch";
 import { Badge } from "@/shared/components/ui/badge";
 import { Input } from "@/shared/components/ui/input";
 import { toast } from "sonner";
-import {
+// LEGACY: Scraper removed - see _legacy_archive/scraping-v1/
+// Admin panel disabled until new scraping architecture is built
+/* import {
   getSources,
   toggleSource,
   triggerCoordinator,
   fetchLogs,
   type ScraperSource,
   type LogEntry,
-} from "./api/scraperService";
+} from "./api/scraperService"; */
+
+// Temporary types until new scraper is built
+type ScraperSource = any;
+type LogEntry = any;
 
 // Constants
 const MAX_RETRY_ATTEMPTS = 3;
