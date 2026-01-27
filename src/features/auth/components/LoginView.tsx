@@ -84,7 +84,7 @@ export function LoginView({ onSwitchToSignUp }: LoginViewProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-card pt-7 pb-3 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
+                className="w-full bg-card pt-4 pb-4 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
                 placeholder="your@email.com"
               />
             </div>
@@ -100,7 +100,7 @@ export function LoginView({ onSwitchToSignUp }: LoginViewProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-card pt-7 pb-3 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
+                className="w-full bg-card pt-4 pb-4 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
                 placeholder="••••••••"
               />
             </div>

@@ -80,7 +80,7 @@ export function PersonalInformation() {
               type="text"
               value={formData.fullName}
               onChange={(e) => handleInputChange('fullName', e.target.value)}
-              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
               placeholder="Enter your full name"
             />
           </div>

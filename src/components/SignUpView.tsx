@@ -102,7 +102,7 @@ export function SignUpView({ onSwitchToLogin }: SignUpViewProps) {
                 onChange={(e) => setFullName(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-card pt-7 pb-3 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
+                className="w-full bg-card pt-4 pb-4 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
                 placeholder="John Doe"
               />
             </div>
@@ -120,7 +120,7 @@ export function SignUpView({ onSwitchToLogin }: SignUpViewProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-card pt-7 pb-3 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
+                className="w-full bg-card pt-4 pb-4 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
                 placeholder="your@email.com"
               />
             </div>
@@ -138,7 +138,7 @@ export function SignUpView({ onSwitchToLogin }: SignUpViewProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-card pt-7 pb-3 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
+                className="w-full bg-card pt-4 pb-4 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
                 placeholder="At least 8 characters"
               />
             </div>
@@ -156,7 +156,7 @@ export function SignUpView({ onSwitchToLogin }: SignUpViewProps) {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full bg-card pt-7 pb-3 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
+                className="w-full bg-card pt-4 pb-4 px-4 text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary disabled:opacity-50"
                 placeholder="••••••••"
               />
             </div>

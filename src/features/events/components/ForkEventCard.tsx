@@ -98,7 +98,7 @@ export const ForkEventCard = memo(function ForkEventCard({
                             }
                         }}
                         disabled={isJoining || hasJoined}
-                        className={`min-h-[36px] px-4 rounded-lg text-[13px] font-semibold transition-all active:scale-[0.95] ${hasJoined
+                        className={`min-h-[44px] px-4 rounded-lg text-[13px] font-semibold transition-all active:scale-[0.95] ${hasJoined
                                 ? 'bg-muted text-muted-foreground'
                                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
                             }`}
