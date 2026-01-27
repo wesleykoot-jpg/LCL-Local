@@ -442,7 +442,7 @@ async function main() {
       total_events_scraped: 0,
       last_payload_hash: null,
     })
-    .neq("id", "");
+    .not("id", "is", null);  // Update all rows (id is never null)
   if (!resetSourcesError)
     console.log("     ✓ Reset all scraper_sources counters");
 
@@ -554,7 +554,7 @@ async function main() {
   for (const sourceId of configuredSourceIds) {
     const sourceName =
       ZWOLLE_MEPPEL_SOURCES.find((s) => s.id === sourceId)?.name || sourceId;
-    process.stdout?.write?.(`  → Scraping ${sourceName}... `);
+    console.log(`  → Scraping ${sourceName}...`);
 
     try {
       const response = await fetch(

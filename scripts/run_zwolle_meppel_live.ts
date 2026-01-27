@@ -129,6 +129,17 @@ const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
     description: "Provincial events portal for Zwolle",
     selectors: [".event-item", ".agenda-item", "[class*='event']"],
   },
+  {
+    id: "zwolle-pathezwolle",
+    name: "Pathé Zwolle",
+    url: "https://www.pathe.nl/bioscoop/zwolle",
+    city: "Zwolle",
+    lat: 52.5062,
+    lng: 6.0899,
+    category: "cinema",
+    description: "Cinema screenings",
+    selectors: [".movie-card", ".film-item", "[class*='movie']"],
+  },
 
   // === MEPPEL SOURCES (target: ~800 events) ===
   {
@@ -163,6 +174,16 @@ const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
     selectors: [".show-item", ".event", "[class*='voorstelling']"],
   },
   {
+    id: "meppel-vvv",
+    name: "VVV Meppel",
+    url: "https://www.vvvmeppel.nl/agenda",
+    city: "Meppel",
+    lat: 52.6957,
+    lng: 6.1944,
+    description: "Tourist information events",
+    selectors: [".event-item", ".agenda-item", "[class*='activiteit']"],
+  },
+  {
     id: "meppel-drentseuitagenda",
     name: "Drentse Uitagenda - Meppel",
     url: "https://www.uitindrenthe.nl/agenda/meppel",
@@ -172,6 +193,30 @@ const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
     description: "Provincial events portal for Meppel",
     selectors: [".event-item", ".agenda-item", "[class*='event']"],
   },
+  {
+    id: "meppel-dehaven",
+    name: "De Haven Meppel",
+    url: "https://www.dehavenmeppel.nl/evenementen",
+    city: "Meppel",
+    lat: 52.6957,
+    lng: 6.1944,
+    category: "outdoor",
+    description: "Harbor events and activities",
+    selectors: [".event", ".evenement", "[class*='event']"],
+  },
+  {
+    id: "meppel-drukwerkmuseum",
+    name: "Drukwerk Museum Meppel",
+    url: "https://www.drukwerkmuseum.nl/agenda",
+    city: "Meppel",
+    lat: 52.6957,
+    lng: 6.1944,
+    category: "culture",
+    description: "Museum exhibitions and workshops",
+    selectors: [".event", ".agenda", "[class*='activiteit']"],
+  },
+
+  // === REGIONAL/NEARBY SOURCES (for event volume) ===
 
   // === REGIONAL/NEARBY SOURCES (for event volume) ===
   {
@@ -232,6 +277,17 @@ const ZWOLLE_MEPPEL_SOURCES: EventSource[] = [
     lat: 52.7883,
     lng: 6.1192,
     description: "Steenwijk area events",
+    selectors: [".event-item", ".agenda-item", "[class*='event']"],
+  },
+  {
+    id: "weerribben-wieden",
+    name: "Weerribben-Wieden Agenda",
+    url: "https://www.weerribben-wieden.com/agenda",
+    city: "Weerribben-Wieden",
+    lat: 52.7783,
+    lng: 5.9892,
+    category: "outdoor",
+    description: "National park events",
     selectors: [".event-item", ".agenda-item", "[class*='event']"],
   },
   {
@@ -364,7 +420,7 @@ async function main() {
       total_events_scraped: 0,
       last_payload_hash: null,
     })
-    .neq("id", "");
+    .not("id", "is", null);  // Update all rows (id is never null)
   if (!resetSourcesError)
     console.log("     ✓ Reset all scraper_sources counters");
 
