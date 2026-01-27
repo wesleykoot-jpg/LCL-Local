@@ -1,2 +1,5 @@
 # Ignore Supabase temporary files
 supabase/.temp/
+
+# Local backups
+.local_backups/
