@@ -476,10 +476,10 @@ export function createFetcherForSource(
 
   const dynamicConfig = {
     apiKey:
-      source.config.scrapingbee_api_key || Deno.env.get("SCRAPINGBEE_API_KEY"),
-    headless: source.config.headless ?? true,
-    waitForSelector: source.config.wait_for_selector,
-    waitForTimeout: source.config.wait_for_timeout,
+      source.config?.scrapingbee_api_key || Deno.env.get("SCRAPINGBEE_API_KEY"),
+    headless: source.config?.headless ?? true,
+    waitForSelector: source.config?.wait_for_selector,
+    waitForTimeout: source.config?.wait_for_timeout,
   };
 
   // If proxy is explicitly requested (e.g. for retries), force usage of ScrapingBee
