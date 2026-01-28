@@ -22,6 +22,7 @@ export const SOCIAL_FIVE_SCHEMA = {
   name: "social_event_extraction",
   strict: true,
   schema: {
+    description: "Structured JSON schema for Social Five event extraction",
     type: "object",
     properties: {
       // ========== Core Event Info ==========
@@ -116,12 +117,23 @@ export const SOCIAL_FIVE_SCHEMA = {
     },
     required: [
       "title",
-      "event_date", 
+      "description",
+      "event_date",
       "start_time",
+      "doors_open_time",
       "venue_name",
+      "street_address",
+      "city",
+      "postal_code",
+      "end_time",
+      "estimated_duration_minutes",
       "language_profile",
       "interaction_mode",
-      "category"
+      "category",
+      "persona_tags",
+      "image_url",
+      "ticket_url",
+      "price_info"
     ],
     additionalProperties: false
   }
