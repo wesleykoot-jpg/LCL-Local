@@ -5,14 +5,10 @@ export interface ScraperSource {
   name: string;
   url: string;
   enabled: boolean | null;
-  config: Record<string, unknown> | null;
   created_at: string | null;
   updated_at: string | null;
   last_scraped_at: string | null;
-  last_success?: boolean | null;
-  total_events_scraped?: number | null;
   consecutive_failures: number | null;
-  last_error: string | null;
   auto_disabled: boolean | null;
   consecutive_successes?: number | null;
   country?: string | null;
@@ -24,7 +20,7 @@ export interface ScraperSource {
   dynamic_rate_limit_ms?: number | null;
   fetcher_config?: unknown | null;
   health_last_updated_at?: string | null;
-  health_score?: number | null;
+  health_score: number;
   language?: string | null;
   last_payload_hash?: string | null;
   last_working_selectors?: unknown | null;
