@@ -665,7 +665,10 @@ async function processRow(
       normalized.event_time === "TBD" ? "12:00" : normalized.event_time,
     );
 
-    // Construct common payload with enhanced fields for improved data quality
+    // Construct event payload - ONLY use columns that exist in events table
+    // Verified columns: title, description, category, event_type, event_date, event_time,
+    // venue_name, location, source_url, source_id, content_hash, image_url, tags, 
+    // end_time, quality_score, event_fingerprint
     const eventPayload: any = {
       // Core fields
       title: normalized.title,
@@ -681,30 +684,15 @@ async function processRow(
       updated_at: new Date().toISOString(),
       image_url: normalized.image_url,
       venue_name: normalized.venue_name || "",
-      venue_address: normalized.venue_address || null,
       source_url: normalized.detail_url || raw.detailUrl || sourceUrl,
       tags: normalized.tags || [],
       
-      // Enhanced pricing fields
-      price: normalized.price || null,
-      price_currency: normalized.price_currency || null,
-      price_min: normalized.price_min || null,
-      price_max: normalized.price_max || null,
-      tickets_url: normalized.tickets_url || null,
-      
-      // Enhanced time fields
+      // end_time exists as TIMESTAMPTZ
       end_time: normalized.end_time || null,
-      end_date: normalized.end_date || null,
       
-      // Organizer and performer fields
-      organizer: normalized.organizer || null,
-      organizer_url: normalized.organizer_url || null,
-      performer: normalized.performer || null,
-      
-      // Event status
-      event_status: normalized.event_status || 'scheduled',
-      
-      // Note: data_source field removed - doesn't exist in events table
+      // Note: The following columns don't exist in events table (migration not applied):
+      // venue_address, price, price_currency, price_min, price_max, tickets_url,
+      // end_date, organizer, organizer_url, performer, event_status, data_source, is_displayable
     };
 
     // Calculate quality score with enhanced fields
@@ -716,12 +704,12 @@ async function processRow(
     eventPayload.quality_score = finalQualityScore;
     
     // Phase 2: Quality-based filtering for event display
-    // Events below the threshold are created but hidden from the main feed
+    // Note: is_displayable column doesn't exist, so we just log for now
     const isDisplayable = (finalQualityScore ?? 0) >= QUALITY_THRESHOLD && hasMinimumQuality(eventPayload);
-    eventPayload.is_displayable = isDisplayable;
+    // eventPayload.is_displayable = isDisplayable;  // Column doesn't exist
     
     if (!isDisplayable) {
-      console.log(`[${row.id}] Event quality below threshold (${(finalQualityScore ?? 0).toFixed(2)} < ${QUALITY_THRESHOLD}), marking as not displayable`);
+      console.log(`[${row.id}] Event quality below threshold (${(finalQualityScore ?? 0).toFixed(2)} < ${QUALITY_THRESHOLD}), would be marked as not displayable`);
     }
 
     // 9. Description Scrubbing (Data Hygiene)
