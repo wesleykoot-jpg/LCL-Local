@@ -88,6 +88,31 @@ interface EventRow {
   embedding: number[] | null;
 }
 
+const CATEGORY_MAP: Record<string, string> = {
+  MUSIC: 'music',
+  CULTURE: 'culture',
+  COMMUNITY: 'community',
+  SOCIAL: 'social',
+  ACTIVE: 'active',
+  FOOD: 'food',
+  NIGHTLIFE: 'nightlife',
+  FAMILY: 'family',
+  OUTDOOR: 'outdoor',
+  OUTDOORS: 'outdoor',
+  SPORTS: 'sports',
+  CINEMA: 'cinema',
+  CRAFTS: 'crafts',
+  GAMING: 'gaming',
+  MARKET: 'market',
+  WELLNESS: 'wellness',
+};
+
+function normalizeCategory(category: string | undefined | null): string {
+  if (!category) return 'community';
+  const upper = category.toUpperCase();
+  return CATEGORY_MAP[upper] || category.toLowerCase();
+}
+
 function mapToEventRow(event: SocialEvent, embedding: number[] | null): EventRow {
   // Create PostGIS POINT - CRITICAL: lng first!
   const lat = event.where?.lat || 52.3676;  // Amsterdam fallback
@@ -102,7 +127,7 @@ function mapToEventRow(event: SocialEvent, embedding: number[] | null): EventRow
   return {
     title: event.what?.title || 'Untitled Event',
     description: event.what?.description || null,
-    category: event.what?.category || 'community',
+    category: normalizeCategory(event.what?.category),
     event_type: 'anchor', // Scraped events are anchors
     location,
     venue_name: event.where?.venue_name || 'TBD',
@@ -239,6 +264,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
             venue_name: eventRow.venue_name,
             event_date: eventRow.event_date,
             event_time: eventRow.event_time,
+            status: 'published',
             image_url: eventRow.image_url,
             tags: eventRow.tags,
             source_url: eventRow.source_url,
