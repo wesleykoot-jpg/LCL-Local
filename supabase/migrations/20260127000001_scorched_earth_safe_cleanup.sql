@@ -67,7 +67,7 @@ DECLARE
     'enqueue_scrape_jobs', 'claim_scrape_jobs', 'cleanup_old_scrape_jobs', 'recover_stuck_scrape_jobs'
   ];
 BEGIN
-  FOR fn IN SELECT oid::regprocedure AS qname FROM pg_proc JOIN pg_namespace n ON pg_proc.pronamespace=n.oid WHERE pg_proc.proname = ANY(names) LOOP
+  FOR fn IN SELECT pg_proc.oid::regprocedure AS qname FROM pg_proc JOIN pg_namespace n ON pg_proc.pronamespace=n.oid WHERE pg_proc.proname = ANY(names) LOOP
     EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', fn.qname::text);
   END LOOP;
 END$$;
