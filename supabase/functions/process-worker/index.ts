@@ -704,8 +704,7 @@ async function processRow(
       // Event status
       event_status: normalized.event_status || 'scheduled',
       
-      // Data quality tracking
-      data_source: normalized.data_source || (row.detail_html ? 'detail' : 'listing'),
+      // Note: data_source field removed - doesn't exist in events table
     };
 
     // Calculate quality score with enhanced fields
