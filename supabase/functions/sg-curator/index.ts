@@ -103,6 +103,33 @@ function resolveUrl(baseUrl: string, maybeUrl: string): string {
   }
 }
 
+function isLikelyTrackingUrl(url: string): boolean {
+  const lowered = url.toLowerCase();
+  return (
+    lowered.includes('facebook.com/tr') ||
+    lowered.includes('doubleclick') ||
+    lowered.includes('googletagmanager') ||
+    lowered.includes('google-analytics') ||
+    lowered.includes('analytics') ||
+    lowered.includes('pixel') ||
+    lowered.includes('adsystem')
+  );
+}
+
+function isLikelyImageUrl(url: string): boolean {
+  const lowered = url.toLowerCase();
+  if (isLikelyTrackingUrl(lowered)) return false;
+  return (
+    lowered.endsWith('.jpg') ||
+    lowered.endsWith('.jpeg') ||
+    lowered.endsWith('.png') ||
+    lowered.endsWith('.webp') ||
+    lowered.endsWith('.gif') ||
+    lowered.includes('image') ||
+    lowered.includes('img')
+  );
+}
+
 function extractImageUrlFromHtml(html: string, sourceUrl: string): string | null {
   const metaMatches = [
     /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
@@ -113,13 +140,17 @@ function extractImageUrlFromHtml(html: string, sourceUrl: string): string | null
   for (const regex of metaMatches) {
     const match = html.match(regex);
     if (match?.[1]) {
-      return resolveUrl(sourceUrl, match[1]);
+      const candidate = resolveUrl(sourceUrl, match[1]);
+      if (isLikelyImageUrl(candidate)) {
+        return candidate;
+      }
     }
   }
 
   const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
   if (imgMatch?.[1]) {
-    return resolveUrl(sourceUrl, imgMatch[1]);
+    const candidate = resolveUrl(sourceUrl, imgMatch[1]);
+    return isLikelyImageUrl(candidate) ? candidate : null;
   }
 
   return null;
@@ -423,10 +454,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         console.log(`[SG Curator] 3c. Extracting: ${item.source_url}`);
         const extracted = await extractWithAI(markdown, item.source_url);
 
-        if (extracted && !extracted.image_url) {
-          const fallbackImage = extractImageUrlFromHtml(html, item.source_url);
-          if (fallbackImage) {
-            extracted.image_url = fallbackImage;
+        if (extracted) {
+          const needsFallback = !extracted.image_url || isLikelyTrackingUrl(extracted.image_url);
+          if (needsFallback) {
+            const fallbackImage = extractImageUrlFromHtml(html, item.source_url);
+            if (fallbackImage) {
+              extracted.image_url = fallbackImage;
+            }
           }
         }
 
