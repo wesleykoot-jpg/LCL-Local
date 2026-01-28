@@ -60,7 +60,7 @@ async function main() {
     source_url: source.url || 'https://example.com/meppel',
     detail_url: source.url || 'https://example.com/meppel',
     detail_html: html,
-    status: 'pending',
+    status: 'awaiting_enrichment',
     title: 'Sample Staged Event',
     created_at: new Date().toISOString()
   };
