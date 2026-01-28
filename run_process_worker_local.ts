@@ -32,8 +32,8 @@ async function main() {
         batchCount++;
         console.log(`\n--- Batch ${batchCount} ---`);
         
-        // Import the handler locally
-        const { default: handler } = await import("./supabase/functions/process-worker/index.ts");
+        // Import the handler locally (named export `handler`)
+        const { handler } = await import("./supabase/functions/process-worker/index.ts");
         
         try {
             const req = new Request("http://localhost/process-worker", { method: "POST" });
