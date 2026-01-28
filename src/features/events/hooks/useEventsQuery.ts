@@ -7,7 +7,7 @@ import {
   parsePersonalizedFeedRows,
   parseUserAttendanceRows,
 } from "@/lib/api/schemas";
-import { debugLog, debugLogIf } from "@/lib/debugLog";
+import { debugLog } from "@/lib/debugLog";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
