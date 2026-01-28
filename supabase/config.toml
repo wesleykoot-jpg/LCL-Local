@@ -67,7 +67,7 @@ enable_confirmations = false
 
 # OAuth providers (disabled for local development)
 [auth.external.google]
-enabled = true
+enabled = false
 
 [auth.external.github]
 enabled = false
