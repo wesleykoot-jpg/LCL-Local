@@ -13,16 +13,22 @@ let pool = null;
  */
 function getPool() {
   if (!pool) {
+    // Prefer direct DB URL if present
+    const dbUrl = process.env.SUPABASE_DB_URL;
+    if (dbUrl) {
+      pool = new Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false },
+        max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 });
+      pool.on('error', (err) => { console.error('Unexpected pool error:', err); });
+      console.log('PostgreSQL connection pool created (SUPABASE_DB_URL)');
+      return pool;
+    }
+    // Fallback to old envs
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
     if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      throw new Error('Missing SUPABASE_DB_URL or VITE_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY');
     }
-
-    // Extract project reference from Supabase URL
     const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
-
     pool = new Pool({
       host: `db.${projectRef}.supabase.co`,
       port: 5432,
@@ -30,20 +36,13 @@ function getPool() {
       user: 'postgres',
       password: serviceRoleKey,
       ssl: { rejectUnauthorized: false },
-      // Connection pool settings
-      max: 5, // Maximum number of connections
-      idleTimeoutMillis: 30000, // Close idle connections after 30s
-      connectionTimeoutMillis: 2000, // Fail fast if can't connect
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
     });
-
-    // Handle pool errors
-    pool.on('error', (err) => {
-      console.error('Unexpected pool error:', err);
-    });
-
-    console.log('PostgreSQL connection pool created');
+    pool.on('error', (err) => { console.error('Unexpected pool error:', err); });
+    console.log('PostgreSQL connection pool created (legacy env)');
   }
-
   return pool;
 }
 
