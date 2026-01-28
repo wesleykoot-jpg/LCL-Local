@@ -92,6 +92,40 @@ async function fetchPage(url: string, strategy: FetchStrategy): Promise<string> 
 }
 
 // ============================================================================
+// IMAGE FALLBACKS
+// ============================================================================
+
+function resolveUrl(baseUrl: string, maybeUrl: string): string {
+  try {
+    return new URL(maybeUrl, baseUrl).toString();
+  } catch {
+    return maybeUrl;
+  }
+}
+
+function extractImageUrlFromHtml(html: string, sourceUrl: string): string | null {
+  const metaMatches = [
+    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+property=["']og:image:url["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+  ];
+
+  for (const regex of metaMatches) {
+    const match = html.match(regex);
+    if (match?.[1]) {
+      return resolveUrl(sourceUrl, match[1]);
+    }
+  }
+
+  const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+  if (imgMatch?.[1]) {
+    return resolveUrl(sourceUrl, imgMatch[1]);
+  }
+
+  return null;
+}
+
+// ============================================================================
 // AI EXTRACTION
 // ============================================================================
 
@@ -388,6 +422,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         // STAGE 3c: EXTRACT - AI extraction
         console.log(`[SG Curator] 3c. Extracting: ${item.source_url}`);
         const extracted = await extractWithAI(markdown, item.source_url);
+
+        if (extracted && !extracted.image_url) {
+          const fallbackImage = extractImageUrlFromHtml(html, item.source_url);
+          if (fallbackImage) {
+            extracted.image_url = fallbackImage;
+          }
+        }
 
         // STAGE 3d: VALIDATE
         console.log(`[SG Curator] 3d. Validating: ${item.source_url}`);
