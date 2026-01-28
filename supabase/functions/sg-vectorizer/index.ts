@@ -79,17 +79,11 @@ interface EventRow {
   category: string;
   event_type: 'anchor' | 'fork' | 'signal';
   location: string; // PostGIS POINT
-  start_datetime: string;
-  end_datetime: string | null;
-  venue_name: string | null;
-  address: string | null;
-  city: string;
-  country_code: string;
+  venue_name: string;
+  event_date: string;
+  event_time: string;
   image_url: string | null;
-  website_url: string | null;
   tags: string[];
-  price_info: string | null;
-  is_free: boolean;
   source_url: string;
   embedding: number[] | null;
 }
@@ -100,23 +94,22 @@ function mapToEventRow(event: SocialEvent, embedding: number[] | null): EventRow
   const lng = event.where?.lng || 4.9041;
   const location = `POINT(${lng} ${lat})`;
 
+  // Parse datetime
+  const startDate = event.when?.start_datetime ? new Date(event.when.start_datetime) : new Date();
+  const eventDate = startDate.toISOString();
+  const eventTime = startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
   return {
     title: event.what?.title || 'Untitled Event',
     description: event.what?.description || null,
     category: event.what?.category || 'community',
     event_type: 'anchor', // Scraped events are anchors
     location,
-    start_datetime: event.when?.start_datetime || new Date().toISOString(),
-    end_datetime: event.when?.end_datetime || null,
-    venue_name: event.where?.venue_name || null,
-    address: event.where?.address || null,
-    city: event.where?.city || 'Unknown',
-    country_code: event.where?.country_code || 'NL',
+    venue_name: event.where?.venue_name || 'TBD',
+    event_date: eventDate,
+    event_time: eventTime,
     image_url: event.image_url || null,
-    website_url: event.source_url || null,
     tags: event.what?.tags || [],
-    price_info: event.price_info || null,
-    is_free: event.is_free || false,
     source_url: event.source_url,
     embedding,
   };
@@ -239,21 +232,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
           .from('events')
           .insert({
             title: eventRow.title,
-            description: eventRow.description,
+            description: eventRow.description || '',
             category: eventRow.category,
             event_type: eventRow.event_type,
             location: eventRow.location,
-            start_datetime: eventRow.start_datetime,
-            end_datetime: eventRow.end_datetime,
             venue_name: eventRow.venue_name,
-            address: eventRow.address,
-            city: eventRow.city,
-            country_code: eventRow.country_code,
+            event_date: eventRow.event_date,
+            event_time: eventRow.event_time,
             image_url: eventRow.image_url,
-            website_url: eventRow.website_url,
             tags: eventRow.tags,
-            is_free: eventRow.is_free,
-            // embedding: embedding, // If you have embedding column on events
+            source_url: eventRow.source_url,
+            embedding: eventRow.embedding,
           })
           .select('id')
           .single();
