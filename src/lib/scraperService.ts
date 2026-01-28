@@ -4,16 +4,36 @@ export interface ScraperSource {
   id: string;
   name: string;
   url: string;
-  enabled: boolean;
-  config: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
+  enabled: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
   last_scraped_at: string | null;
-  last_success: boolean | null;
-  total_events_scraped: number | null;
   consecutive_failures: number | null;
-  last_error: string | null;
   auto_disabled: boolean | null;
+  consecutive_successes?: number | null;
+  country?: string | null;
+  default_coordinates?: unknown | null;
+  detected_cms?: string | null;
+  detected_framework_version?: string | null;
+  detected_render_strategy?: string | null;
+  domain?: string | null;
+  dynamic_rate_limit_ms?: number | null;
+  fetcher_config?: unknown | null;
+  health_last_updated_at?: string | null;
+  health_score: number;
+  language?: string | null;
+  last_payload_hash?: string | null;
+  last_working_selectors?: unknown | null;
+  next_scrape_at?: string | null;
+  nl_tier?: string | null;
+  preferred_method?: string | null;
+  quarantined_at?: string | null;
+  rate_limit_expires_at?: string | null;
+  rate_limit_ms?: number | null;
+  requires_proxy?: boolean | null;
+  scrape_frequency_hours?: number | null;
+  selectors_config?: unknown | null;
+  total_skipped_runs?: number | null;
 }
 
 export interface SourceResult {

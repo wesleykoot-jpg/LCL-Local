@@ -23,20 +23,14 @@ import { Switch } from "@/shared/components/ui/switch";
 import { Badge } from "@/shared/components/ui/badge";
 import { Input } from "@/shared/components/ui/input";
 import { toast } from "sonner";
-// LEGACY: Scraper removed - see _legacy_archive/scraping-v1/
-// Admin panel disabled until new scraping architecture is built
-/* import {
+import {
   getSources,
   toggleSource,
   triggerCoordinator,
   fetchLogs,
   type ScraperSource,
   type LogEntry,
-} from "./api/scraperService"; */
-
-// Temporary types until new scraper is built
-type ScraperSource = any;
-type LogEntry = any;
+} from "./api/scraperService";
 
 // Constants
 const MAX_RETRY_ATTEMPTS = 3;
@@ -57,7 +51,7 @@ type HealthStatus = "healthy" | "warning" | "error";
 
 // Utility functions
 function isSourceEnabled(source: ScraperSource): boolean {
-  return source.enabled && !source.auto_disabled;
+  return source.enabled === true && !source.auto_disabled;
 }
 
 function getHealthStatus(source: ScraperSource): HealthStatus {
@@ -561,7 +555,7 @@ export default function Admin() {
                   )}
                 </div>
                 <Switch
-                  checked={source.enabled && !source.auto_disabled}
+                  checked={source.enabled === true && !source.auto_disabled}
                   onCheckedChange={(checked) =>
                     handleToggleSource(source.id, checked)
                   }

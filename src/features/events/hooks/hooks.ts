@@ -32,7 +32,7 @@ export interface EventWithAttendees extends Event {
   attendees?: EventAttendee[];
   parent_event?: Event | null;
   distance_km?: number | null;
-  match_percentage?: number | null;
+  match_percentage: number | null;
 }
 
 const ATTENDEE_LIMIT = 4;
