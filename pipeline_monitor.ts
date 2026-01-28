@@ -28,18 +28,14 @@ console.log();
 // Get pipeline status summary
 const { data: stagingData } = await supabase
   .from("raw_event_staging")
-  .select("pipeline_status, status");
+  .select("pipeline_status");
 
-// Count by pipeline_status (new column)
+// Count by pipeline_status
 const pipelineCounts: Record<string, number> = {};
-const legacyCounts: Record<string, number> = {};
 
 stagingData?.forEach((row: any) => {
   if (row.pipeline_status) {
     pipelineCounts[row.pipeline_status] = (pipelineCounts[row.pipeline_status] || 0) + 1;
-  }
-  if (row.status) {
-    legacyCounts[String(row.status)] = (legacyCounts[String(row.status)] || 0) + 1;
   }
 });
 
@@ -66,26 +62,15 @@ pipelineStages.forEach(status => {
 });
 
 console.log();
-console.log("📊 LEGACY STATUS (Old Column)");
-console.log("─".repeat(40));
-Object.entries(legacyCounts).forEach(([status, count]) => {
-  console.log(`   ${status.padEnd(20)} ${String(count).padStart(4)}`);
-});
-
 // Get events count
 const { count: eventsCount } = await supabase
   .from("events")
-  .select("*", { count: "exact", head: true });
-
-const { count: queueCount } = await supabase
-  .from("ai_job_queue")
   .select("*", { count: "exact", head: true });
 
 console.log();
 console.log("📊 OUTPUT TABLES");
 console.log("─".repeat(40));
 console.log(`📅 events table:     ${eventsCount || 0} published events`);
-console.log(`🤖 ai_job_queue:     ${queueCount || 0} embedding jobs`);
 
 console.log();
 console.log("═".repeat(60));
@@ -107,10 +92,8 @@ console.log(`
 
 console.log("📝 NEXT STEPS:");
 console.log("─".repeat(40));
-if ((pipelineCounts["awaiting_enrichment"] || 0) > 0 || (pipelineCounts["discovered"] || 0) > 0) {
-  console.log("1. Apply migration: supabase/migrations/20260128001000_waterfall_pipeline_architecture.sql");
-  console.log("2. Run enrichment: deno run --allow-all test_enrichment_worker.ts");
-  console.log("3. Run indexing:   deno run --allow-all test_indexing_worker.ts");
+if ((pipelineCounts["awaiting_enrichment"] || 0) > 0) {
+  console.log("Enrichment is pending. Check the enrichment-worker logs or trigger status.");
 } else if ((pipelineCounts["ready_to_index"] || 0) > 0) {
   console.log("Events ready! Run indexing worker to move them to events table.");
 } else if ((eventsCount || 0) > 0) {

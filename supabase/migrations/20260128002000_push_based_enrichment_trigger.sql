@@ -2,8 +2,8 @@
 -- 
 -- Changes from "Pull" model (Worker polling DB) to "Push" model (DB triggering Worker)
 -- 
--- Current Flow (Legacy): Scraper -> DB (Pending) -> Cron (Every 5m) -> process-worker -> aiParsing.ts -> DB (Processed)
--- Target Flow (Waterfall): Scraper -> DB (Insert) -> Trigger (Immediate) -> enrichment-worker -> waterfallV2.ts -> DB (Processed)
+-- Previous Flow (Cron-based Pull): Scraper -> DB (Pending) -> Cron -> Worker -> DB
+-- Current Flow (Push-based): Scraper -> DB (Insert) -> Trigger (Immediate) -> enrichment-worker -> waterfallV2.ts -> DB (Processed)
 
 -- =============================================================================
 -- PHASE 1: Create HTTP Request Function for Trigger
@@ -105,11 +105,12 @@ COMMENT ON TRIGGER tr_enrichment_webhook ON public.raw_event_staging IS
 -- PHASE 3: Unschedule Legacy Cron Job
 -- =============================================================================
 
--- Remove the process-worker-cron job (if it exists)
+-- Remove the legacy cron job (if it exists)
 -- Using DO block for safety (handles case where job doesn't exist)
 DO $$
 DECLARE
   v_cron_schema TEXT;
+  v_job_id INTEGER;
 BEGIN
   -- Check if pg_cron is installed
   SELECT n.nspname INTO v_cron_schema
@@ -118,15 +119,21 @@ BEGIN
   WHERE e.extname = 'pg_cron';
   
   IF v_cron_schema IS NOT NULL THEN
-    -- Unschedule the legacy process-worker-cron job
+    -- Unschedule the legacy cron job
     BEGIN
-      PERFORM cron.unschedule('process-worker-cron');
-      RAISE NOTICE 'Successfully unscheduled process-worker-cron job';
+      FOR v_job_id IN
+        SELECT jobid
+        FROM cron.job
+        WHERE jobname ILIKE '%worker%'
+      LOOP
+        PERFORM cron.unschedule(v_job_id);
+      END LOOP;
+      RAISE NOTICE 'Successfully unscheduled legacy cron jobs';
     EXCEPTION
       WHEN undefined_function THEN
         RAISE NOTICE 'cron.unschedule not available - skipping';
       WHEN OTHERS THEN
-        RAISE NOTICE 'Could not unschedule process-worker-cron: %', SQLERRM;
+        RAISE NOTICE 'Could not unschedule legacy cron jobs: %', SQLERRM;
     END;
   ELSE
     RAISE NOTICE 'pg_cron extension not installed - skipping cron cleanup';

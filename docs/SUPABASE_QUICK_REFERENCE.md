@@ -223,7 +223,7 @@ SELECT join_event_atomic(
   'going'
 );
 
-SELECT * FROM claim_staging_rows(5);
+SELECT * FROM claim_for_enrichment();
 ```
 
 ### Check Connection Pool

@@ -1,5 +1,5 @@
 -- Migration: Implement Decoupled Waterfall Pipeline Architecture
--- This converts the monolithic process-worker into a 3-stage state machine:
+-- This implements a 3-stage state machine:
 -- 1. DISCOVERED: Scraper found URL, minimal data
 -- 2. AWAITING_ENRICHMENT: Ready for deep dive (detail fetch + AI parsing)
 -- 3. ENRICHED: Social Five extracted, ready for indexing

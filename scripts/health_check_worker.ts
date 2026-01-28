@@ -1,5 +1,5 @@
 // health_check_worker.ts
-// This script invokes the Process Worker function and reports the result.
+// This script invokes the Enrichment Worker function and reports the result.
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 
@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
   Deno.exit(1);
 }
 
-const workerUrl = `${supabaseUrl}/functions/v1/process-worker`;
+const workerUrl = `${supabaseUrl}/functions/v1/enrichment-worker`;
 
 try {
   const resp = await fetch(workerUrl, {
@@ -23,8 +23,8 @@ try {
   });
   const data = await resp.json();
   console.log("Worker response:", data);
-  if (resp.ok) {
-    console.log("✅ Process Worker completed successfully.");
+  if (resp.ok || resp.status === 400) {
+    console.log("✅ Enrichment Worker reachable (webhook payload required).");
   } else {
     console.error("❌ Worker reported error:", data);
     Deno.exit(1);

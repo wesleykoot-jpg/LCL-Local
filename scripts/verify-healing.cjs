@@ -2,7 +2,7 @@
  * Verification Script: Test Event Self-Healing
  *
  * This script inserts a "low quality" event into raw_event_staging
- * and provides instructions on how to trigger the process-worker to test healing.
+ * and provides instructions on how to verify the enrichment webhook.
  */
 
 const { createClient } = require("@supabase/supabase-js");
@@ -38,7 +38,9 @@ async function runVerification() {
       source_id: sourceId,
       source_url: lowQualityCard.detailUrl,
       raw_html: JSON.stringify(lowQualityCard),
-      status: "pending",
+      title: lowQualityCard.title,
+      detail_url: lowQualityCard.detailUrl,
+      pipeline_status: "awaiting_enrichment",
     })
     .select()
     .single();
@@ -50,22 +52,31 @@ async function runVerification() {
 
   console.log("Successfully inserted row ID:", data.id);
   console.log("\n--- NEXT STEPS ---");
-  console.log("1. Run the process-worker Edge Function manually:");
+  console.log("1. If the webhook trigger is enabled, enrichment runs automatically.");
+  console.log("   Check logs and the staging row pipeline status for updates.");
+  console.log("\n2. If you need to trigger manually, call enrichment-worker:");
   console.log(
-    `   curl -X POST "${process.env.VITE_SUPABASE_URL}/functions/v1/process-worker" \\`,
+    `   curl -X POST "${process.env.VITE_SUPABASE_URL}/functions/v1/enrichment-worker" \\\n+`,
   );
   console.log(
-    `   -H "Authorization: Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}" \\`,
+    `   -H "Authorization: Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}" \\\n+`,
   );
-  console.log(`   -H "Content-Type: application/json"`);
-  console.log(
-    '\n2. Check the logs and verify the event in the "events" table:',
-  );
-  console.log(
-    `   SELECT id, title, quality_score, last_healed_at, description, image_url `,
-  );
-  console.log(
-    `   FROM events WHERE title = 'Prison Tour Blokhuispoort' ORDER BY created_at DESC LIMIT 1;`,
+  console.log(`   -H "Content-Type: application/json" \\\n+   -d '{
+     "type": "INSERT",
+     "schema": "public",
+     "table": "raw_event_staging",
+     "record": {
+       "id": "${data.id}",
+       "source_id": "${data.source_id}",
+       "source_url": "${data.source_url}",
+       "detail_url": "${data.detail_url}",
+       "title": "${data.title}",
+       "raw_html": ${JSON.stringify(data.raw_html)},
+       "pipeline_status": "${data.pipeline_status}",
+       "created_at": "${data.created_at}"
+     },
+     "old_record": null
+   }'`,
   );
 }
 

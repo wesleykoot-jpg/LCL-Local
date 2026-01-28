@@ -46,8 +46,14 @@ export const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
     windowSeconds: 60,
     keyType: 'api_key',
   },
-  // Process worker: 60 requests per minute (for batch processing)
-  'process-worker': {
+  // Enrichment worker: 60 requests per minute (webhook-triggered)
+  'enrichment-worker': {
+    maxRequests: 60,
+    windowSeconds: 60,
+    keyType: 'api_key',
+  },
+  // Indexing worker: 60 requests per minute (batch processing)
+  'indexing-worker': {
     maxRequests: 60,
     windowSeconds: 60,
     keyType: 'api_key',

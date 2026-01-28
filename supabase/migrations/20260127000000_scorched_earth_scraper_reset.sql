@@ -183,11 +183,7 @@ DROP TYPE IF EXISTS scraper.event_category_key CASCADE;
 
 DROP SCHEMA IF EXISTS scraper CASCADE;
 
--- =============================================================================
--- PHASE 7: Clean up cron jobs (if pg_cron is installed)
--- =============================================================================
 
--- Attempt to unschedule any scraper-related cron jobs
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
@@ -199,7 +195,6 @@ BEGIN
     DELETE FROM cron.job WHERE jobname LIKE '%worker%';
     DELETE FROM cron.job WHERE jobname LIKE '%reset_stuck%';
     DELETE FROM cron.job WHERE jobname LIKE '%cleanup%';
-    DELETE FROM cron.job WHERE jobname LIKE '%process-worker%';
   END IF;
 EXCEPTION
   WHEN undefined_table THEN

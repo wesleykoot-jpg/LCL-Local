@@ -14,7 +14,7 @@ async function checkStuck() {
     const { data: processing, error } = await supabase
         .from('raw_event_staging')
         .select('id, updated_at, created_at')
-        .eq('status', 'processing')
+        .eq('pipeline_status', 'enriching')
         .order('updated_at', { ascending: true });
         
     if (error) {
@@ -22,7 +22,7 @@ async function checkStuck() {
         return;
     }
 
-    console.log(`Currently processing: ${processing.length}`);
+    console.log(`Currently enriching: ${processing.length}`);
     const now = new Date();
     processing.forEach(r => {
         const updated = new Date(r.updated_at);

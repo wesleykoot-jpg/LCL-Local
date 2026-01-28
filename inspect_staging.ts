@@ -46,16 +46,16 @@ if (error) {
   });
 }
 
-// Check completed rows
-console.log("\n📊 Completed staging rows (for comparison):");
+// Check processed rows
+console.log("\n📊 Processed staging rows (for comparison):");
 const { data: completed } = await supabase
   .from("raw_event_staging")
   .select("*")
-  .eq("status", "completed")
+  .eq("pipeline_status", "processed")
   .limit(2);
 
 completed?.forEach((row, i) => {
-  console.log(`\n--- Completed Row ${i+1} ---`);
+  console.log(`\n--- Processed Row ${i+1} ---`);
   Object.entries(row).forEach(([key, value]) => {
     if (value === null) {
       console.log(`  ${key}: null`);
@@ -72,7 +72,7 @@ completed?.forEach((row, i) => {
 // Check raw HTML lengths
 const { data: htmlLengths } = await supabase
   .from("raw_event_staging")
-  .select("id, title, status, raw_html, detail_html");
+  .select("id, title, pipeline_status, raw_html, detail_html");
 
 console.log("\n📊 raw_html/detail_html stats:");
 let withRawHtml = 0;

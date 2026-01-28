@@ -20,24 +20,25 @@ console.log("🔍 Checking Meppel source status...\n");
 // Check staging status breakdown
 const { data: staging, error: stagingErr } = await supabase
   .from("raw_event_staging")
-  .select("id, title, status, source_url, created_at");
+  .select("id, title, pipeline_status, source_url, created_at");
 
 if (stagingErr) {
   console.log("❌ Staging error:", stagingErr.message);
 } else {
   const statusCounts: Record<string, number> = {};
   staging?.forEach(r => {
-    statusCounts[r.status] = (statusCounts[r.status] || 0) + 1;
+    const status = r.pipeline_status || "null";
+    statusCounts[status] = (statusCounts[status] || 0) + 1;
   });
   console.log("📊 Staging status breakdown:", statusCounts);
   console.log(`   Total in staging: ${staging?.length || 0}`);
   
   // Show pending items
-  const pending = staging?.filter(s => s.status === 'pending' || s.status === 'awaiting_enrichment');
+  const pending = staging?.filter(s => s.pipeline_status === 'discovered' || s.pipeline_status === 'awaiting_enrichment');
   if (pending && pending.length > 0) {
     console.log(`\n⏳ Pending/Awaiting items (${pending.length}):`);
     pending.slice(0, 5).forEach((p, i) => {
-      console.log(`   ${i+1}. ${p.title?.substring(0, 50)}... (status: ${p.status})`);
+      console.log(`   ${i+1}. ${p.title?.substring(0, 50)}... (status: ${p.pipeline_status})`);
     });
   }
   
@@ -89,6 +90,6 @@ if (cronErr) {
 }
 
 console.log("\n💡 Recommendations:");
-console.log("   1. Run process-worker to process pending staging items");
-console.log("   2. Check if cron jobs are configured in Supabase dashboard");
+console.log("   1. Check enrichment-worker logs for pending items");
+console.log("   2. Run indexing-worker if ready_to_index is high");
 console.log("   3. Consider running: deno run --allow-all run_pipeline.ts");

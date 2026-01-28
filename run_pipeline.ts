@@ -1,12 +1,12 @@
 // run_pipeline.ts
-// Simple script to invoke the Data-First fetcher and processor Edge Functions locally
+// Simple script to invoke the Data-First fetcher and enrichment Edge Functions locally
 
 import { createClient } from "@supabase/supabase-js";
 
 // Global variables for handlers and client
 let supabase: any;
 let fetcherHandler: any;
-let processorHandler: any;
+let enrichmentHandler: any;
 
 // 1. Load env internally to avoid hoisting issues
 const loadEnv = async () => {
@@ -41,17 +41,57 @@ async function invokeFetcher(sourceId: string) {
   return txt;
 }
 
-async function invokeProcessor() {
+async function invokeEnrichmentBatch(limit = 5) {
   const { supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
-  const req = new Request("http://localhost/processor", { 
-    method: "POST",
-    headers: { 
-      "Authorization": `Bearer ${supabaseServiceRoleKey}`
-    }
-  });
-  const res = await processorHandler(req);
-  const txt = await res.text();
-  console.log("Processor response:", txt);
+  const { data: rows, error } = await supabase
+    .from("raw_event_staging")
+    .select(
+      "id, source_id, source_url, detail_url, title, raw_html, pipeline_status, created_at",
+    )
+    .eq("pipeline_status", "awaiting_enrichment")
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching rows for enrichment:", error);
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    console.log("No awaiting_enrichment rows found.");
+    return;
+  }
+
+  for (const row of rows) {
+    const payload = {
+      type: "INSERT",
+      table: "raw_event_staging",
+      schema: "public",
+      record: {
+        id: row.id,
+        source_id: row.source_id,
+        source_url: row.source_url,
+        detail_url: row.detail_url,
+        title: row.title,
+        raw_html: row.raw_html,
+        pipeline_status: row.pipeline_status,
+        created_at: row.created_at,
+      },
+      old_record: null,
+    };
+
+    const req = new Request("http://localhost/enrichment-worker", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${supabaseServiceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const res = await enrichmentHandler(req);
+    const txt = await res.text();
+    console.log("Enrichment response:", txt);
+  }
 }
 
 async function reportCounts() {
@@ -74,11 +114,11 @@ async function main() {
   // 2. Dynamically import modules AFTER env is loaded
   const { supabaseUrl, supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
   const { handler: fHandler } = await import("./supabase/functions/scrape-events/index.ts");
-  const { handler: pHandler } = await import("./supabase/functions/process-worker/index.ts");
+  const { handler: eHandler } = await import("./supabase/functions/enrichment-worker/index.ts");
 
   supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   fetcherHandler = fHandler;
-  processorHandler = pHandler;
+  enrichmentHandler = eHandler;
 
   // Get the first enabled source
   const { data: sources } = await supabase
@@ -99,8 +139,8 @@ async function main() {
   console.log("\n--- Running Data-First fetcher ---");
   const fetcherResult = await invokeFetcher(source.id);
   
-  console.log("\n--- Running Process Worker ---");
-  await invokeProcessor();
+  console.log("\n--- Running Enrichment Worker (local webhook payloads) ---");
+  await invokeEnrichmentBatch();
   
   console.log("\n--- Reporting DB counts ---");
   await reportCounts();

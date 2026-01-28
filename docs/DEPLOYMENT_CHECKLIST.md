@@ -24,8 +24,8 @@ supabase db push
 ```
 
 **Expected migrations:**
-- `20260122000000_add_claim_staging_rows.sql` - Atomic row claiming function
-- `20260122000001_add_security_declarations.sql` - Security declarations for RPC functions
+- `20260128001000_waterfall_pipeline_architecture.sql` - Pipeline status + stage RPCs
+- `20260128002000_push_based_enrichment_trigger.sql` - DB trigger for enrichment-worker
 
 **Verify:**
 ```sql
@@ -33,20 +33,22 @@ supabase db push
 SELECT routine_name, routine_type 
 FROM information_schema.routines 
 WHERE routine_schema = 'public' 
-AND routine_name IN ('claim_staging_rows', 'join_event_atomic', 'enqueue_scrape_jobs');
+AND routine_name IN ('claim_for_enrichment', 'complete_enrichment', 'claim_for_indexing', 'complete_indexing');
 ```
 
 ---
 
 ### Step 2: Deploy Updated Edge Functions
 ```bash
-# Deploy the updated process-worker function
-supabase functions deploy process-worker
+# Deploy enrichment + indexing workers
+supabase functions deploy enrichment-worker
+supabase functions deploy indexing-worker
 ```
 
 **Verify:**
 - Check Supabase Dashboard → Edge Functions
-- Ensure `process-worker` shows recent deployment timestamp
+- Ensure `enrichment-worker` shows recent deployment timestamp
+- Ensure `indexing-worker` shows recent deployment timestamp
 - Check logs for any deployment errors
 
 ---
@@ -73,13 +75,13 @@ SELECT join_event_atomic(
 }
 ```
 
-#### Test claim_staging_rows
+#### Test enrichment claim
 ```sql
 -- In Supabase SQL Editor
-SELECT * FROM claim_staging_rows(5);
+SELECT * FROM claim_for_enrichment();
 ```
 
-**Expected:** Returns up to 5 pending rows with status changed to 'processing'
+**Expected:** Returns up to 1 row with pipeline_status changed to 'enriching'
 
 ---
 
@@ -123,20 +125,20 @@ Slowest Query: fetchDiscoveryRails (XXXms)
 
 ### Step 5: Test Worker Processing
 
-#### Trigger Worker Manually
+#### Trigger Indexing Worker Manually
 ```bash
-# Call the process-worker Edge Function
+# Call the indexing-worker Edge Function
 curl -X POST \
-  https://<your-project>.supabase.co/functions/v1/process-worker \
+  https://<your-project>.supabase.co/functions/v1/indexing-worker \
   -H "Authorization: Bearer <service-role-key>"
 ```
 
 **Expected response:**
 ```json
 {
-  "success": true,
+  "message": "Indexing complete",
   "processed": 10,
-  "succeeded": 9,
+  "successful": 9,
   "failed": 1
 }
 ```
@@ -169,7 +171,7 @@ node check_db_direct.cjs
 #### Check Error Logs
 ```bash
 # Supabase Dashboard → Logs → Edge Functions
-# Look for errors from process-worker
+# Look for errors from enrichment-worker or indexing-worker
 ```
 
 #### Check Slow Queries
@@ -206,8 +208,13 @@ AND processing_started_at < NOW() - INTERVAL '10 minutes';
 # Rollback migrations (manual)
 # In Supabase SQL Editor, run:
 
--- Remove new functions
-DROP FUNCTION IF EXISTS public.claim_staging_rows(INTEGER);
+-- Remove enrichment/indexing functions and trigger
+DROP TRIGGER IF EXISTS tr_enrichment_webhook ON public.raw_event_staging;
+DROP FUNCTION IF EXISTS public.trigger_enrichment_worker();
+DROP FUNCTION IF EXISTS public.claim_for_enrichment(UUID);
+DROP FUNCTION IF EXISTS public.claim_for_indexing(INTEGER);
+DROP FUNCTION IF EXISTS public.complete_enrichment(UUID, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.complete_indexing(UUID[]);
 
 -- Revert join_event_atomic to previous version
 -- (You'll need to restore from backup or previous migration)
@@ -218,7 +225,8 @@ DROP FUNCTION IF EXISTS public.claim_staging_rows(INTEGER);
 ```bash
 # Redeploy previous version
 git checkout <previous-commit>
-supabase functions deploy process-worker
+supabase functions deploy enrichment-worker
+supabase functions deploy indexing-worker
 git checkout main
 ```
 

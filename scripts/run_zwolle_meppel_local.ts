@@ -28,8 +28,8 @@ async function main() {
   // Use dynamic imports to load handlers after env is set
   const { handler: fetcherHandler } =
     await import("../supabase/functions/scrape-events/index.ts");
-  const { handler: processorHandler } =
-    await import("../supabase/functions/process-worker/index.ts");
+  const { handler: enrichmentHandler } =
+    await import("../supabase/functions/enrichment-worker/index.ts");
 
   console.log("Fetching Zwolle and Meppel source IDs...");
   const { data: sources, error } = await supabase
@@ -67,38 +67,76 @@ async function main() {
     }
   }
 
-  console.log("\n--- [PROCESS] Starting Process Worker Loop ---");
-  // Run processor in blocks until no more pending rows
+  console.log("\n--- [ENRICH] Starting Enrichment Loop ---");
+  // Run enrichment per row using webhook payloads
   let hasMore = true;
   let blocksProcessed = 0;
   while (hasMore && blocksProcessed < 200) {
-    // Safety limit
-    const req = new Request("http://localhost/processor", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-    });
-    const res = await processorHandler(req);
-    const result = await res.json();
-    console.log(
-      `Block ${blocksProcessed + 1} processed:`,
-      JSON.stringify(result, null, 2),
-    );
+    const { data: rows, error: rowsError } = await supabase
+      .from("raw_event_staging")
+      .select(
+        "id, source_id, source_url, detail_url, title, raw_html, pipeline_status, created_at",
+      )
+      .eq("pipeline_status", "awaiting_enrichment")
+      .order("created_at", { ascending: true })
+      .limit(5);
 
-    // Check staging count
+    if (rowsError) {
+      console.error("Error fetching staging rows:", rowsError);
+      break;
+    }
+
+    if (!rows || rows.length === 0) {
+      console.log("No more awaiting_enrichment rows.");
+      break;
+    }
+
+    for (const row of rows) {
+      const payload = {
+        type: "INSERT",
+        table: "raw_event_staging",
+        schema: "public",
+        record: {
+          id: row.id,
+          source_id: row.source_id,
+          source_url: row.source_url,
+          detail_url: row.detail_url,
+          title: row.title,
+          raw_html: row.raw_html,
+          pipeline_status: row.pipeline_status,
+          created_at: row.created_at,
+        },
+        old_record: null,
+      };
+
+      const req = new Request("http://localhost/enrichment-worker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const res = await enrichmentHandler(req);
+      const result = await res.json();
+      console.log(
+        `Enriched ${row.id}:`,
+        JSON.stringify(result, null, 2),
+      );
+    }
+
     const { count, error: countErr } = await supabase
       .from("raw_event_staging")
       .select("id", { count: "exact", head: true })
-      .eq("status", "pending");
+      .eq("pipeline_status", "awaiting_enrichment");
 
     if (countErr) {
       console.error("Error checking staging count:", countErr);
       break;
     }
 
-    console.log(`Pending rows remaining: ${count || 0}`);
+    console.log(`Awaiting enrichment remaining: ${count || 0}`);
     hasMore = (count || 0) > 0;
     blocksProcessed++;
   }

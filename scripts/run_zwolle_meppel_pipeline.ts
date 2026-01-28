@@ -593,74 +593,56 @@ async function main() {
   await new Promise((r) => setTimeout(r, 15000));
 
   // =========================================================================
-  // PHASE 4: PROCESS STAGED EVENTS
+  // PHASE 4: ENRICH + INDEX STAGED EVENTS
   // =========================================================================
   console.log("\n📊 PHASE 4: PROCESS STAGED EVENTS");
   console.log("─".repeat(70));
 
   // Check staging count
-  const { count: stagingToProcess } = await supabase
+  const { count: awaitingCount } = await supabase
     .from("raw_event_staging")
     .select("*", { count: "exact", head: true })
-    .eq("status", "pending");
+    .eq("pipeline_status", "awaiting_enrichment");
 
-  console.log(`  📋 Staged events pending processing: ${stagingToProcess || 0}`);
+  console.log(`  📋 Awaiting enrichment: ${awaitingCount || 0}`);
+  console.log("  🧪 Monitoring enrichment + indexing...");
 
-  // Process in batches
-  const PROCESS_ITERATIONS = Math.max(10, Math.ceil((stagingToProcess || 0) / 10));
-  console.log(`  🏭 Running ${PROCESS_ITERATIONS} processor iterations...`);
+  for (let i = 0; i < 10; i++) {
+    const { count: readyCount } = await supabase
+      .from("raw_event_staging")
+      .select("*", { count: "exact", head: true })
+      .eq("pipeline_status", "ready_to_index");
 
-  let totalProcessed = 0;
-  let totalSucceeded = 0;
-  let totalFailed = 0;
+    console.log(`     Iteration ${i + 1}: ready_to_index ${readyCount || 0}`);
 
-  for (let i = 0; i < PROCESS_ITERATIONS; i++) {
-    try {
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/process-worker`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    if (readyCount && readyCount > 0) {
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/indexing-worker`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-      if (response.ok) {
-        const result = await response.json();
-        const processed = result.processed || result.batchSize || 0;
-        const succeeded = result.succeeded || 0;
-        const failed = result.failed || 0;
-
-        totalProcessed += processed;
-        totalSucceeded += succeeded;
-        totalFailed += failed;
-
-        if (processed === 0) {
-          console.log(`     Iteration ${i + 1}: No more pending items`);
-          break;
-        }
-
-        if ((i + 1) % 5 === 0 || i === PROCESS_ITERATIONS - 1) {
+        if (response.ok) {
+          const result = await response.json();
           console.log(
-            `     Iteration ${i + 1}: Processed ${processed} (total: ${totalSucceeded} succeeded, ${totalFailed} failed)`
+            `     ✅ Indexed: ${result.successful || 0} (failed: ${result.failed || 0})`
           );
+        } else {
+          console.log(`     Iteration ${i + 1}: Error ${response.status}`);
         }
-      } else {
-        console.log(`     Iteration ${i + 1}: Error ${response.status}`);
+      } catch (e) {
+        console.log(`     Iteration ${i + 1}: Failed - ${e}`);
       }
-    } catch (e) {
-      console.log(`     Iteration ${i + 1}: Failed - ${e}`);
     }
 
-    // Rate limiting between processor calls
     await new Promise((r) => setTimeout(r, 3000));
   }
-
-  console.log(
-    `\n  ✅ Processing complete: ${totalSucceeded} succeeded, ${totalFailed} failed`
-  );
 
   // =========================================================================
   // PHASE 5: GENERATE COMPREHENSIVE SUMMARY
@@ -678,11 +660,12 @@ async function main() {
   // Get staging stats by status
   const { data: stagingByStatus } = await supabase
     .from("raw_event_staging")
-    .select("status");
+    .select("pipeline_status");
 
   const statusCounts: Record<string, number> = {};
   (stagingByStatus || []).forEach((s) => {
-    statusCounts[s.status] = (statusCounts[s.status] || 0) + 1;
+    const status = s.pipeline_status || "null";
+    statusCounts[status] = (statusCounts[status] || 0) + 1;
   });
 
   // Get parsing methods used

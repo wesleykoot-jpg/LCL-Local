@@ -193,19 +193,8 @@ serve(withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
       failedSourceIds.push(...results.filter((id): id is string => id !== null));
 
       console.log(
-        "Coordinator: Triggering Data-First Processor (process-worker)...",
+        "Coordinator: Enrichment is push-based (DB trigger will invoke enrichment-worker).",
       );
-      let processorFailed = false;
-      fetch(`${supabaseUrl}/functions/v1/process-worker`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${supabaseKey}`,
-          "Content-Type": "application/json",
-        },
-      }).catch((err) => {
-        console.error("Failed to trigger processor:", err);
-        processorFailed = true;
-      });
 
       // Update consecutive_errors for sources that failed to trigger
       // Use a small delay to allow fetch errors to be captured

@@ -20,7 +20,7 @@ console.log("Checking staging table...\n");
 // Check staging table status
 const { data, error } = await supabase
   .from("raw_event_staging")
-  .select("id, status, title")
+  .select("id, pipeline_status, title")
   .limit(5);
 
 if (error) {
@@ -28,18 +28,18 @@ if (error) {
 } else {
   console.log("Sample staging rows:");
   data?.forEach((row: any) => {
-    console.log(`  - ${row.title?.substring(0, 40) || "No title"}: status=${row.status}`);
+    console.log(`  - ${row.title?.substring(0, 40) || "No title"}: status=${row.pipeline_status}`);
   });
 }
 
 // Count by status 
 const { data: allRows } = await supabase
   .from("raw_event_staging")
-  .select("status");
+  .select("pipeline_status");
 
 const counts: Record<string, number> = {};
 allRows?.forEach((row: any) => {
-  const status = row.status || "null";
+  const status = row.pipeline_status || "null";
   counts[status] = (counts[status] || 0) + 1;
 });
 
@@ -55,8 +55,8 @@ if (resetArg === "--reset") {
   
   const { data: updated, error: updateErr } = await supabase
     .from("raw_event_staging")
-    .update({ status: "awaiting_enrichment" })
-    .neq("status", "awaiting_enrichment")
+    .update({ pipeline_status: "awaiting_enrichment" })
+    .neq("pipeline_status", "awaiting_enrichment")
     .select("id");
   
   if (updateErr) {

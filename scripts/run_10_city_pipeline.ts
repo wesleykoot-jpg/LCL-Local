@@ -362,36 +362,51 @@ async function main() {
   console.log("\n  ⏳ Waiting for scrapers to complete (30 seconds)...");
   await new Promise((r) => setTimeout(r, 30000));
 
-  // Trigger processor multiple times to drain the queue
-  console.log("  🏭 Triggering process-worker to process staged events...");
+  // Enrichment is push-based (DB trigger) - monitor status and run indexing
+  console.log("  🧪 Monitoring enrichment + indexing...");
 
   for (let i = 0; i < 5; i++) {
-    console.log(`    Processor iteration ${i + 1}/5...`);
-    try {
-      const procResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/process-worker`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
+    const { count: awaitingCount } = await supabase
+      .from("raw_event_staging")
+      .select("*", { count: "exact", head: true })
+      .eq("pipeline_status", "awaiting_enrichment");
 
-      if (procResponse.ok) {
-        const result = await procResponse.json();
-        console.log(
-          `    ✅ Processed: ${result.processed || 0} (success: ${result.succeeded || 0}, failed: ${result.failed || 0})`,
+    const { count: readyCount } = await supabase
+      .from("raw_event_staging")
+      .select("*", { count: "exact", head: true })
+      .eq("pipeline_status", "ready_to_index");
+
+    console.log(
+      `    📋 awaiting_enrichment: ${awaitingCount || 0} | ready_to_index: ${readyCount || 0}`,
+    );
+
+    if (readyCount && readyCount > 0) {
+      try {
+        const idxResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/indexing-worker`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              "Content-Type": "application/json",
+            },
+          },
         );
-      } else {
-        console.log(`    ⚠️  Processor returned ${procResponse.status}`);
+
+        if (idxResponse.ok) {
+          const result = await idxResponse.json();
+          console.log(
+            `    ✅ Indexed: ${result.successful || 0} (failed: ${result.failed || 0})`,
+          );
+        } else {
+          console.log(`    ⚠️  Indexing worker returned ${idxResponse.status}`);
+        }
+      } catch (e) {
+        console.error(`    ❌ Indexing error:`, e);
       }
-    } catch (e) {
-      console.error(`    ❌ Processor error:`, e);
     }
 
-    // Wait between processor calls
+    // Wait between checks
     await new Promise((r) => setTimeout(r, 10000));
   }
 
@@ -410,12 +425,13 @@ async function main() {
   // Get staging stats
   const { data: stagingStats } = await supabase
     .from("raw_event_staging")
-    .select("status, parsing_method");
+    .select("pipeline_status, parsing_method");
 
   const statusCounts: Record<string, number> = {};
   const methodCounts: Record<string, number> = {};
   (stagingStats || []).forEach((s) => {
-    statusCounts[s.status] = (statusCounts[s.status] || 0) + 1;
+    const status = s.pipeline_status || "null";
+    statusCounts[status] = (statusCounts[status] || 0) + 1;
     const method = s.parsing_method || "unknown";
     methodCounts[method] = (methodCounts[method] || 0) + 1;
   });

@@ -15,8 +15,8 @@ async function resetStuck() {
 
     const { error, count } = await supabase
         .from('raw_event_staging')
-        .update({ status: 'awaiting_enrichment', updated_at: new Date().toISOString() })
-        .eq('status', 'processing')
+        .update({ pipeline_status: 'awaiting_enrichment', updated_at: new Date().toISOString() })
+        .eq('pipeline_status', 'enriching')
         .select('id', { count: 'exact' });
         
     if (error) {
@@ -24,7 +24,7 @@ async function resetStuck() {
         return;
     }
 
-    console.log(`Successfully reset ${count} jobs from 'processing' to 'awaiting_enrichment'.`);
+    console.log(`Successfully reset ${count} jobs from 'enriching' to 'awaiting_enrichment'.`);
 }
 
 resetStuck();

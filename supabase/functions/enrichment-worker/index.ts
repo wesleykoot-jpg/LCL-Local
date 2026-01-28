@@ -48,15 +48,6 @@ interface DatabaseWebhookPayload {
   old_record: null | Record<string, unknown>;
 }
 
-/**
- * Legacy payload format (for backwards compatibility)
- */
-interface LegacyEnrichmentPayload {
-  id?: string;           // Direct ID to process
-  batchSize?: number;    // Process a batch instead
-  workerId?: string;     // For tracking
-}
-
 interface StagingRow {
   id: string;
   source_id: string;
@@ -171,14 +162,10 @@ function isDatabaseWebhookPayload(payload: unknown): payload is DatabaseWebhookP
 /**
  * Main handler - processes events one at a time
  * 
- * Supports two modes:
+ * Supports one mode:
  * 1. Database Webhook (Push): Triggered by database trigger on INSERT/UPDATE
  *    - Payload: { type: "INSERT", record: { id, source_id, ... } }
  *    - Returns 200 OK immediately to prevent trigger timeout
- * 
- * 2. Legacy Mode (Pull): Direct call with ID or batch claim
- *    - Payload: { id?: string, batchSize?: number }
- *    - Still supported for backwards compatibility and backfills
  */
 export async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight
@@ -236,67 +223,9 @@ export async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // MODE 2: Legacy Payload (backwards compatibility)
-    const legacyPayload = rawPayload as LegacyEnrichmentPayload;
-
-    // Mode 2a: Process specific ID (direct call)
-    if (legacyPayload.id) {
-      const { data: row, error } = await supabase
-        .from("raw_event_staging")
-        .select("id, source_id, source_url, detail_url, raw_html, title")
-        .eq("id", legacyPayload.id)
-        .single();
-      
-      if (error || !row) {
-        return new Response(
-          JSON.stringify({ error: "Event not found", id: legacyPayload.id }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      const result = await enrichEvent(supabase, row as StagingRow);
-      return new Response(
-        JSON.stringify({ ...result, id: legacyPayload.id, workerId, mode: "legacy-direct" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Mode 2b: Claim and process next available (batch)
-    const batchSize = legacyPayload.batchSize || 1;
-    const results: Array<{ id: string; success: boolean; error?: string }> = [];
-    
-    for (let i = 0; i < batchSize; i++) {
-      // Claim one event atomically
-      const { data: rows, error: claimError } = await supabase.rpc("claim_for_enrichment", {
-        p_worker_id: workerId,
-      });
-      
-      if (claimError) {
-        console.error("[Enrichment] Claim error:", claimError);
-        break;
-      }
-      
-      if (!rows || rows.length === 0) {
-        console.log("[Enrichment] No more events to process");
-        break;
-      }
-      
-      const row = rows[0] as StagingRow;
-      const result = await enrichEvent(supabase, row);
-      results.push({ id: row.id, ...result });
-    }
-
     return new Response(
-      JSON.stringify({
-        message: `Enrichment complete`,
-        processed: results.length,
-        successful: results.filter(r => r.success).length,
-        failed: results.filter(r => !r.success).length,
-        results,
-        workerId,
-        mode: "legacy-batch"
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Invalid payload: expected database webhook" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
