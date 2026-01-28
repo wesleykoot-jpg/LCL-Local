@@ -7,6 +7,18 @@
     "esbenp.prettier-vscode",
     "usernamehw.errorlens",
     "christian-kohler.path-intellisense",
-    "dsznajder.es7-react-js-snippets"
+    "dsznajder.es7-react-js-snippets",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-pg",
+    "humao.rest-client",
+    "rangav.vscode-thunder-client",
+    "johnsoncodehk.volar",
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "yzhang.markdown-all-in-one",
+    "wix.vscode-import-cost",
+    "streetsidesoftware.code-spell-checker",
+    "anseki.vscode-color",
+    "johnpapa.vscode-peacock"
   ]
 }
