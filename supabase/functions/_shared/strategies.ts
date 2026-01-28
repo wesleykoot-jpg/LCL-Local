@@ -376,23 +376,23 @@ export class FailoverPageFetcher implements PageFetcher {
 
     this.staticFetcher = new StaticPageFetcher(
       fetch,
-      source.config.headers,
+      source.config?.headers,
       15000,
       retryConfig,
     );
 
     // Pre-create dynamic fetcher if ScrapingBee key is available
     if (
-      source.config.scrapingbee_api_key ||
+      source.config?.scrapingbee_api_key ||
       Deno.env.get("SCRAPINGBEE_API_KEY")
     ) {
       const dynamicConfig = {
         apiKey:
-          source.config.scrapingbee_api_key ||
+          source.config?.scrapingbee_api_key ||
           Deno.env.get("SCRAPINGBEE_API_KEY"),
-        headless: source.config.headless ?? true,
-        waitForSelector: source.config.wait_for_selector,
-        waitForTimeout: source.config.wait_for_timeout,
+        headless: source.config?.headless ?? true,
+        waitForSelector: source.config?.wait_for_selector,
+        waitForTimeout: source.config?.wait_for_timeout,
       };
 
       this.dynamicFetcher = new DynamicPageFetcher(
