@@ -7,6 +7,7 @@ import {
   parsePersonalizedFeedRows,
   parseUserAttendanceRows,
 } from "@/lib/api/schemas";
+import { debugLog, debugLogIf } from "@/lib/debugLog";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 
@@ -66,15 +67,31 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
   const query = useQuery({
     queryKey,
     queryFn: async (): Promise<EventWithAttendees[]> => {
-      // Fetch blocked user IDs once per query
+      // Get blocked user IDs from cache or fetch once (with very long stale time)
       let blockedUserIds: string[] = [];
       if (currentUserProfileId) {
-        const { data: blockedData } = await supabase
-          .from("user_blocks")
-          .select("blocked_id")
-          .eq("blocker_id", currentUserProfileId);
+        // Check if we have cached blocked users
+        const cachedBlocked = queryClient.getQueryData<string[]>([
+          "user_blocks",
+          currentUserProfileId,
+        ]);
 
-        blockedUserIds = (blockedData || []).map((b) => b.blocked_id);
+        if (cachedBlocked) {
+          blockedUserIds = cachedBlocked;
+        } else {
+          const { data: blockedData } = await supabase
+            .from("user_blocks")
+            .select("blocked_id")
+            .eq("blocker_id", currentUserProfileId);
+
+          blockedUserIds = (blockedData || []).map((b) => b.blocked_id);
+
+          // Cache blocked users for 1 hour
+          queryClient.setQueryData(
+            ["user_blocks", currentUserProfileId],
+            blockedUserIds,
+          );
+        }
       }
 
       // Use personalized feed RPC if enabled and user location is available
@@ -97,30 +114,39 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
 
         // Transform RPC result to EventWithAttendees format
         const rpcEvents = parsePersonalizedFeedRows(data);
-        console.log("[useEventsQuery] RPC Raw Data:", data);
-        console.log("[useEventsQuery] Parsed Events:", rpcEvents);
+        debugLog("useEventsQuery", "RPC Raw Data:", data);
+        debugLog("useEventsQuery", "Parsed Events:", rpcEvents);
 
         if (rpcEvents.length === 0) {
-          console.warn("[useEventsQuery] RPC returned 0 events");
+          debugLog("useEventsQuery", "RPC returned 0 events");
           return [];
         }
 
-        // Fetch attendees for these events separately
+        // OPTIMIZED: Parallelize attendees and event details fetch
         const eventIds = rpcEvents.map((e) => e.event_id);
-        const { data: attendeesData } = await supabase
-          .from("event_attendees")
-          .select(
-            `
-            event_id,
-            profile:profiles(
-              id,
-              avatar_url,
-              full_name
+        const [attendeesResponse, eventDetailsResponse] = await Promise.all([
+          supabase
+            .from("event_attendees")
+            .select(
+              `
+              event_id,
+              profile:profiles(
+                id,
+                avatar_url,
+                full_name
+              )
+            `,
             )
-          `,
-          )
-          .in("event_id", eventIds)
-          .limit(ATTENDEE_LIMIT);
+            .in("event_id", eventIds)
+            .limit(ATTENDEE_LIMIT),
+          supabase
+            .from("events")
+            .select("id, created_by")
+            .in("id", eventIds),
+        ]);
+
+        const attendeesData = attendeesResponse.data;
+        const fullEventsData = eventDetailsResponse.data;
 
         // Group attendees by event
         const attendeesByEvent = new Map<string, EventAttendee[]>();
@@ -133,12 +159,7 @@ export function useEventsQuery(options?: UseEventsQueryOptions) {
           });
         });
 
-        // Fetch event details including created_by to filter blocked users
-        const { data: fullEventsData } = await supabase
-          .from("events")
-          .select("id, created_by")
-          .in("id", eventIds);
-
+        // Map event creators
         const eventCreatorMap = new Map<string, string | null>();
         (fullEventsData || []).forEach((e) => {
           eventCreatorMap.set(e.id, e.created_by);

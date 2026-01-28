@@ -104,7 +104,7 @@ const Discovery = () => {
     userLocation: userLocation || undefined,
     radiusKm: locationPrefs.radiusKm,
     usePersonalizedFeed: !!userLocation && !!profile?.id,
-    limit: mode === "searching" ? LIMIT : 100,
+    limit: mode === "searching" ? LIMIT : 50, // Reduced from 100 - rails max show 10 each
     offset: mode === "searching" ? offset : 0,
   });
 
@@ -130,25 +130,12 @@ const Discovery = () => {
   // Rails are "loading" if the source events are loading
   const railsLoading = loading;
 
-  // Debug logging
+  // Debug logging - disabled by default for performance
   useMemo(() => {
-    if (import.meta.env.DEV) {
-      console.log("[Discovery] Layout Debug:", {
-        allEventsLength: allEvents.length,
-        firstEvent: allEvents[0],
-        railsLoading,
-        sectionsCount: discoveryLayout?.sections?.length,
-        userLocation,
-      });
-
-      if (discoveryLayout?.sections) {
-        discoveryLayout.sections.forEach((s, i) => {
-          console.log(
-            `[Discovery] Rail ${i}: "${s.title}" (${s.items?.length || 0} items)`,
-          );
-        });
-      }
-    }
+    // Disabled - re-enable in debugLog.ts if needed
+    // if (import.meta.env.DEV) {
+    //   console.log("[Discovery] Layout Debug:", {...});
+    // }
   }, [allEvents, discoveryLayout, railsLoading, userLocation]);
 
   const { handleJoinEvent: joinEvent, isJoining } = useJoinEvent(
