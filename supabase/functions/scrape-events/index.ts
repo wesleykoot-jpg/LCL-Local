@@ -135,19 +135,29 @@ export const handler = withRateLimiting(
           let stagedCount = 0;
           let errorCount = 0;
 
-          // 4. Stage Cards
+          // 4. Stage Cards with Waterfall Pipeline Status
           for (const card of cards) {
             const cardUrl =
               card.detailUrl ||
               `${currentUrl}#card-${await sha256Hex(card.title + card.date)}`;
+            
+            // Set initial pipeline status:
+            // - If we have a detail URL, mark as DISCOVERED (needs fetching)
+            // - If we already have full HTML, mark as AWAITING_ENRICHMENT (ready for AI)
+            const hasDetailUrl = card.detailUrl && card.detailUrl !== cardUrl;
+            const pipelineStatus = hasDetailUrl ? "discovered" : "awaiting_enrichment";
+            
             const { error: insErr } = await supabase
               .from("raw_event_staging")
               .upsert(
                 {
                   source_url: cardUrl,
+                  detail_url: card.detailUrl || null,
                   raw_html: card.rawHtml || JSON.stringify(card),
                   source_id: sourceId,
                   parsing_method: card.parsingMethod || null,
+                  title: card.title || null,
+                  pipeline_status: pipelineStatus,
                 },
                 { onConflict: "source_url" },
               );
