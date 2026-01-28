@@ -25,11 +25,16 @@ const loadEnv = async () => {
     }
 };
 
-async function invokeFetcher() {
-  const req = new Request("http://localhost/fetcher", { method: "POST" });
+async function invokeFetcher(sourceId: string) {
+  const req = new Request("http://localhost/fetcher", { 
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sourceId })
+  });
   const res = await fetcherHandler(req);
   const txt = await res.text();
   console.log("Fetcher response:", txt);
+  return txt;
 }
 
 async function invokeProcessor() {
