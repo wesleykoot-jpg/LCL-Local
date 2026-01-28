@@ -17,7 +17,7 @@
 
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import { supabaseUrl, supabaseServiceRoleKey, openAiApiKey } from "../_shared/env.ts";
-import { generateEmbedding } from "../_shared/aiParsing.ts";
+import { generateEmbedding } from "../_shared/embeddings.ts";
 import { createEventFingerprint, eventToText } from "../_shared/scraperUtils.ts";
 import { logError, logInfo } from "../_shared/errorLogging.ts";
 

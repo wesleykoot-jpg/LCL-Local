@@ -143,17 +143,11 @@ SELECT
   COUNT(*) FILTER (WHERE pipeline_status = 'awaiting_enrichment') as pending_enrichment,
   COUNT(*) FILTER (WHERE pipeline_status = 'enriching') as currently_enriching,
   COUNT(*) FILTER (WHERE pipeline_status = 'ready_to_index') as ready_to_index,
-  COUNT(*) FILTER (WHERE pipeline_status = 'failed' AND enrichment_attempts >= 3) as failed_permanently,
-  (
-    SELECT COUNT(*) 
-    FROM extensions.http_request_queue 
-    WHERE url LIKE '%enrichment-worker%' 
-      AND status = 'pending'
-  ) as pending_http_requests
+  COUNT(*) FILTER (WHERE pipeline_status = 'failed' AND enrichment_attempts >= 3) as failed_permanently
 FROM public.raw_event_staging;
 
 COMMENT ON VIEW public.enrichment_trigger_status IS 
-  'Monitor the push-based enrichment pipeline: pending work and HTTP queue status';
+  'Monitor the push-based enrichment pipeline: pending work and processing status';
 
 -- =============================================================================
 -- VERIFICATION: Test the trigger exists
