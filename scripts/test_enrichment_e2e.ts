@@ -4,7 +4,7 @@ import { enrichWithSocialFive } from "../supabase/functions/_shared/enrichmentSe
 import { analyzeSource } from "../supabase/functions/_shared/analyzerAgent.ts";
 import { classifyVibeFromCategory } from "../supabase/functions/_shared/vibeClassifier.ts";
 
-Deno.test("Waterfall v2 - enrichment + analyzer end-to-end (rules-only)", async () => {
+Deno.test("Waterfall v2 - enrichment + analyzer end-to-end", async () => {
   // Load sample HTML (use an existing sample in repo)
   const samplePath = new URL("../meppel_source.html", import.meta.url).pathname;
   const html = await Deno.readTextFile(samplePath);
@@ -14,13 +14,15 @@ Deno.test("Waterfall v2 - enrichment + analyzer end-to-end (rules-only)", async 
   assertExists(analysis);
   console.log("Analyzer recommended fetcher:", analysis.recommended_fetcher, "confidence:", analysis.confidence);
 
-  // Enrichment - use rulesOnly to avoid external AI calls
-  const apiKey = ""; // not needed for rulesOnly
+  // Enrichment - use AI path if OPENAI_API_KEY available, otherwise rules-only fallback
+  const apiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
+  const useAI = Boolean(apiKey);
+  console.log("Using AI path:", useAI ? "yes" : "no");
   const enrichment = await enrichWithSocialFive(apiKey, {
     detailHtml: html,
     baseUrl: "https://example.com/meppel",
     hints: { title: "Sample Event", date: "Unknown", location: "Meppel" },
-    rulesOnly: true
+    rulesOnly: !useAI
   }, fetch);
 
   console.log("Enrichment result:", enrichment);
