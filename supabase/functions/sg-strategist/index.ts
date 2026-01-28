@@ -213,7 +213,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    const { limit = 10, worker_id } = payload;
+    const { limit = 50, worker_id } = payload;
     const workerId = worker_id || crypto.randomUUID();
 
     console.log(`[SG Strategist] Processing up to ${limit} items`);

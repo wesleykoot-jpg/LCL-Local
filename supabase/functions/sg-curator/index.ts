@@ -373,7 +373,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const { 
-      limit = 5, 
+      limit = 20, 
       stage = 'awaiting_fetch',
       worker_id 
     } = payload;
@@ -427,8 +427,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
         const strategy: FetchStrategy = source?.fetch_strategy || { fetcher: 'static' };
 
         // STAGE 3a: RENDER - Fetch the page
-        console.log(`[SG Curator] 3a. Fetching: ${item.source_url}`);
-        const html = await fetchPage(item.source_url, strategy);
+        const fetchUrl = item.detail_url || item.source_url;
+        console.log(`[SG Curator] 3a. Fetching: ${fetchUrl}`);
+        const html = await fetchPage(fetchUrl, strategy);
 
         // Update with raw HTML
         await supabase
@@ -440,7 +441,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           .eq('id', item.id);
 
         // STAGE 3b: CLEAN - Convert to Markdown
-        console.log(`[SG Curator] 3b. Cleaning: ${item.source_url}`);
+        console.log(`[SG Curator] 3b. Cleaning: ${fetchUrl}`);
         const markdown = htmlToMarkdown(html);
 
         await supabase
@@ -451,13 +452,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
           .eq('id', item.id);
 
         // STAGE 3c: EXTRACT - AI extraction
-        console.log(`[SG Curator] 3c. Extracting: ${item.source_url}`);
-        const extracted = await extractWithAI(markdown, item.source_url);
+        console.log(`[SG Curator] 3c. Extracting: ${fetchUrl}`);
+        const extracted = await extractWithAI(markdown, fetchUrl);
 
         if (extracted) {
           const needsFallback = !extracted.image_url || isLikelyTrackingUrl(extracted.image_url);
           if (needsFallback) {
-            const fallbackImage = extractImageUrlFromHtml(html, item.source_url);
+            const fallbackImage = extractImageUrlFromHtml(html, fetchUrl);
             if (fallbackImage) {
               extracted.image_url = fallbackImage;
             }
@@ -465,7 +466,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
 
         // STAGE 3d: VALIDATE
-        console.log(`[SG Curator] 3d. Validating: ${item.source_url}`);
+        console.log(`[SG Curator] 3d. Validating: ${fetchUrl}`);
         const validation = validateExtractedData(extracted);
 
         if (!validation.valid || !extracted) {
@@ -482,7 +483,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
 
         // STAGE 3e: ENRICH - Geocoding
-        console.log(`[SG Curator] 3e. Enriching: ${item.source_url}`);
+        console.log(`[SG Curator] 3e. Enriching: ${fetchUrl}`);
         let lat: number | undefined;
         let lng: number | undefined;
 
@@ -504,7 +505,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
 
         // STAGE 3f: DEDUPLICATE
-        console.log(`[SG Curator] 3f. Deduplicating: ${item.source_url}`);
+        console.log(`[SG Curator] 3f. Deduplicating: ${fetchUrl}`);
         const contentHash = generateContentHash(extracted);
 
         // Check for existing hash
@@ -516,7 +517,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           .single();
 
         if (duplicate) {
-          console.log(`[SG Curator] Duplicate found, marking: ${item.source_url}`);
+          console.log(`[SG Curator] Duplicate found, marking: ${fetchUrl}`);
           
           await supabase
             .from('sg_pipeline_queue')
@@ -568,7 +569,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           .eq('id', item.source_id);
 
         response.items_enriched++;
-        console.log(`[SG Curator] ✓ Completed: ${extracted.what?.title || item.source_url}`);
+        console.log(`[SG Curator] ✓ Completed: ${extracted.what?.title || fetchUrl}`);
 
       } catch (error) {
         console.error(`[SG Curator] Failed processing ${item.source_url}:`, error);

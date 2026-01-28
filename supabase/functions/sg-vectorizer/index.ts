@@ -180,7 +180,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const { 
-      limit = 10, 
+      limit = 50, 
       skip_embedding = false,
       worker_id 
     } = payload;

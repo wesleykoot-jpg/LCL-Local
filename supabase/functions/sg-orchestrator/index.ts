@@ -125,7 +125,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       mode = 'status',
       stage,
       cities,
-      limit = 10,
+      limit = 50,
     } = payload;
 
     console.log(`[SG Orchestrator] Mode: ${mode}`);
