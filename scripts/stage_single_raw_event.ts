@@ -39,12 +39,17 @@ async function main() {
     console.error('Failed to query scraper_sources:', srcErr.message || srcErr);
     Deno.exit(3);
   }
-  if (!sources || sources.length === 0) {
-    console.error('No scraper_sources found in DB; create one first.');
-    Deno.exit(4);
+  let source = sources && sources[0];
+  if (!source) {
+    console.log('No scraper_sources found; creating a local sample source...');
+    const insertPayload = { name: 'local-sample', url: 'https://example.com/meppel', enabled: true, created_at: new Date().toISOString() };
+    const { data: ins, error: insErr } = await supabase.from('scraper_sources').insert(insertPayload).select();
+    if (insErr) {
+      console.error('Failed to create scraper_source:', insErr.message || insErr);
+      Deno.exit(6);
+    }
+    source = ins && ins[0];
   }
-
-  const source = sources[0];
 
   // Load local sample HTML
   const samplePath = new URL('../meppel_source.html', import.meta.url).pathname;
