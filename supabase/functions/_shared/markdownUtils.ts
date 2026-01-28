@@ -178,7 +178,7 @@ const HTML_ENTITIES: Record<string, string> = {
   '&divide;': '\u00F7',
   '&frac12;': '\u00BD',
   '&frac14;': '\u00BC',
-  '&frac34;': '¾'
+  '&frac34;': '\u00BE'
 };
 
 function decodeHtmlEntities(text: string): string {
