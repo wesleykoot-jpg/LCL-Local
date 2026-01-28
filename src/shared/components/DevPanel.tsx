@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wrench, ChevronUp, ChevronDown, RefreshCw, X, Settings } from 'lucide-react';
-import { triggerCoordinator } from '@/features/admin/api/scraperService';
 import { toast } from 'sonner';
 
 interface DevPanelProps {
@@ -37,17 +36,8 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
   const handleScrape = async () => {
     setIsScraping(true);
     try {
-      const result = await triggerCoordinator();
-      if (result.success) {
-        // Support both new and legacy response formats
-        const inserted = result.jobsCreated ?? 0;
-        toast.success(`Queued ${inserted} scrape job(s)`);
-        onRefetchEvents?.();
-      } else {
-        toast.error('Scraping failed: ' + (result.error || 'Unknown error'));
-      }
-    } catch (error) {
-      toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      toast.error('Scraper has been removed. Rebuilding architecture.');
+      onRefetchEvents?.();
     } finally {
       setIsScraping(false);
     }
