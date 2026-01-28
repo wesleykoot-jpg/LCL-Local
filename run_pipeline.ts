@@ -42,7 +42,13 @@ async function invokeFetcher(sourceId: string) {
 }
 
 async function invokeProcessor() {
-  const req = new Request("http://localhost/processor", { method: "POST" });
+  const { supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
+  const req = new Request("http://localhost/processor", { 
+    method: "POST",
+    headers: { 
+      "Authorization": `Bearer ${supabaseServiceRoleKey}`
+    }
+  });
   const res = await processorHandler(req);
   const txt = await res.text();
   console.log("Processor response:", txt);
