@@ -1,14 +1,16 @@
 /**
- * Enrichment Worker - Stage 2 of Waterfall Pipeline
+ * Enrichment Worker - Stage 2 of Waterfall Pipeline (V2)
  * 
  * Responsibility:
- * - Processes ONE event at a time (called via webhook or queue)
+ * - Processes ONE event at a time (called via database trigger webhook)
  * - Fetches detail page HTML if needed
  * - Converts HTML to Markdown
- * - Calls OpenAI for "Social Five" extraction
+ * - Uses Waterfall V2 enrichment for "Social Five" extraction
  * - Updates staging row to READY_TO_INDEX
  * 
- * Trigger: Database webhook on INSERT or scheduled batch
+ * Trigger: Database trigger on INSERT/UPDATE to awaiting_enrichment status
+ * 
+ * Architecture: Push-based (DB triggers worker immediately on insert)
  * 
  * This is DECOUPLED from the indexing step for resilience.
  * If this fails, only 1 event is affected, not the whole batch.
@@ -16,7 +18,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { supabaseUrl, supabaseServiceRoleKey, openAiApiKey } from "../_shared/env.ts";
-import { parseDetailedEventWithAI } from "../_shared/aiParsing.ts";
+import { enrichWithSocialFive, type EnrichmentResult } from "../_shared/waterfallV2.ts";
 import { logError, logInfo } from "../_shared/errorLogging.ts";
 import { createFetcherForSource } from "../_shared/strategies.ts";
 
@@ -25,7 +27,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface EnrichmentPayload {
+/**
+ * Database Webhook Payload from trigger
+ * Sent when a row enters awaiting_enrichment status
+ */
+interface DatabaseWebhookPayload {
+  type: "INSERT" | "UPDATE";
+  table: string;
+  schema: string;
+  record: {
+    id: string;
+    source_id: string;
+    source_url: string;
+    detail_url: string | null;
+    title: string | null;
+    raw_html: string;
+    pipeline_status: string;
+    created_at: string;
+  };
+  old_record: null | Record<string, unknown>;
+}
+
+/**
+ * Legacy payload format (for backwards compatibility)
+ */
+interface LegacyEnrichmentPayload {
   id?: string;           // Direct ID to process
   batchSize?: number;    // Process a batch instead
   workerId?: string;     // For tracking
@@ -41,7 +67,7 @@ interface StagingRow {
 }
 
 /**
- * Extract structured event data from HTML using AI
+ * Extract structured event data from HTML using Waterfall V2 AI
  */
 async function enrichEvent(
   supabase: ReturnType<typeof createClient>,
@@ -74,17 +100,28 @@ async function enrichEvent(
         .eq("id", row.id);
     }
 
-    // Parse with AI to extract the "Social Five" and more
-    console.log(`[Enrichment] Parsing event: ${row.title || row.source_url}`);
+    // Use Waterfall V2 enrichment for Social Five extraction
+    console.log(`[Enrichment] Processing with Waterfall V2: ${row.title || row.source_url}`);
     
-    const parsed = await parseDetailedEventWithAI(htmlContent, {
-      sourceUrl: row.source_url,
-      existingTitle: row.title,
-    });
+    const enrichmentResult: EnrichmentResult = await enrichWithSocialFive(
+      openAiApiKey,
+      {
+        detailHtml: htmlContent,
+        baseUrl: row.source_url,
+        hints: {
+          title: row.title || undefined,
+          location: undefined,
+          date: undefined,
+        },
+      },
+      fetch
+    );
 
-    if (!parsed || !parsed.title) {
-      throw new Error("AI parsing returned empty result");
+    if (!enrichmentResult.success || !enrichmentResult.event) {
+      throw new Error(enrichmentResult.error || "Waterfall V2 enrichment returned empty result");
     }
+
+    const parsed = enrichmentResult.event;
 
     // Update staging row with enriched data
     await supabase.rpc("complete_enrichment", {
@@ -93,14 +130,14 @@ async function enrichEvent(
       p_title: parsed.title,
       p_description: parsed.description,
       p_event_date: parsed.event_date,
-      p_event_time: parsed.event_time,
+      p_event_time: parsed.start_time || parsed.event_time,
       p_venue_name: parsed.venue_name,
       p_category: parsed.category,
       p_image_url: parsed.image_url,
     });
 
     const elapsed = Date.now() - startTime;
-    console.log(`[Enrichment] ✓ Completed in ${elapsed}ms: ${parsed.title}`);
+    console.log(`[Enrichment] ✓ Completed in ${elapsed}ms (score: ${enrichmentResult.socialFiveScore}/5): ${parsed.title}`);
     
     return { success: true };
     
@@ -119,7 +156,29 @@ async function enrichEvent(
 }
 
 /**
+ * Check if payload is a Database Webhook payload (from trigger)
+ */
+function isDatabaseWebhookPayload(payload: unknown): payload is DatabaseWebhookPayload {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "type" in payload &&
+    "record" in payload &&
+    typeof (payload as DatabaseWebhookPayload).record?.id === "string"
+  );
+}
+
+/**
  * Main handler - processes events one at a time
+ * 
+ * Supports two modes:
+ * 1. Database Webhook (Push): Triggered by database trigger on INSERT/UPDATE
+ *    - Payload: { type: "INSERT", record: { id, source_id, ... } }
+ *    - Returns 200 OK immediately to prevent trigger timeout
+ * 
+ * 2. Legacy Mode (Pull): Direct call with ID or batch claim
+ *    - Payload: { id?: string, batchSize?: number }
+ *    - Still supported for backwards compatibility and backfills
  */
 export async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight
@@ -131,40 +190,79 @@ export async function handler(req: Request): Promise<Response> {
   const workerId = crypto.randomUUID();
   
   try {
-    let payload: EnrichmentPayload = {};
+    let rawPayload: unknown = {};
     
     if (req.method === "POST") {
       try {
-        payload = await req.json();
+        rawPayload = await req.json();
       } catch {
         // Empty body is fine - we'll claim next available
       }
     }
 
-    // Mode 1: Process specific ID (webhook trigger)
-    if (payload.id) {
+    // MODE 1: Database Webhook Payload (Push-based from trigger)
+    if (isDatabaseWebhookPayload(rawPayload)) {
+      const eventId = rawPayload.record.id;
+      console.log(`[Enrichment] Received webhook for event: ${eventId}`);
+      
+      // Fetch full row data (trigger payload may be minimal)
       const { data: row, error } = await supabase
         .from("raw_event_staging")
         .select("id, source_id, source_url, detail_url, raw_html, title")
-        .eq("id", payload.id)
+        .eq("id", eventId)
+        .single();
+      
+      if (error || !row) {
+        console.error(`[Enrichment] Event not found: ${eventId}`, error);
+        // Return 200 to prevent trigger retry on missing rows
+        return new Response(
+          JSON.stringify({ error: "Event not found", id: eventId }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Process the event
+      const result = await enrichEvent(supabase, row as StagingRow);
+      
+      // Always return 200 to prevent database trigger from retrying
+      return new Response(
+        JSON.stringify({ 
+          ...result, 
+          id: eventId, 
+          workerId,
+          mode: "webhook"
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // MODE 2: Legacy Payload (backwards compatibility)
+    const legacyPayload = rawPayload as LegacyEnrichmentPayload;
+
+    // Mode 2a: Process specific ID (direct call)
+    if (legacyPayload.id) {
+      const { data: row, error } = await supabase
+        .from("raw_event_staging")
+        .select("id, source_id, source_url, detail_url, raw_html, title")
+        .eq("id", legacyPayload.id)
         .single();
       
       if (error || !row) {
         return new Response(
-          JSON.stringify({ error: "Event not found", id: payload.id }),
+          JSON.stringify({ error: "Event not found", id: legacyPayload.id }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
       const result = await enrichEvent(supabase, row as StagingRow);
       return new Response(
-        JSON.stringify({ ...result, id: payload.id, workerId }),
+        JSON.stringify({ ...result, id: legacyPayload.id, workerId, mode: "legacy-direct" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Mode 2: Claim and process next available (scheduled/batch)
-    const batchSize = payload.batchSize || 1;
+    // Mode 2b: Claim and process next available (batch)
+    const batchSize = legacyPayload.batchSize || 1;
     const results: Array<{ id: string; success: boolean; error?: string }> = [];
     
     for (let i = 0; i < batchSize; i++) {
@@ -196,6 +294,7 @@ export async function handler(req: Request): Promise<Response> {
         failed: results.filter(r => !r.success).length,
         results,
         workerId,
+        mode: "legacy-batch"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
