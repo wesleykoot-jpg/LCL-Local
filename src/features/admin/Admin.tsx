@@ -51,7 +51,7 @@ type HealthStatus = "healthy" | "warning" | "error";
 
 // Utility functions
 function isSourceEnabled(source: ScraperSource): boolean {
-  return source.enabled && !source.auto_disabled;
+  return source.enabled === true && !source.auto_disabled;
 }
 
 function getHealthStatus(source: ScraperSource): HealthStatus {
@@ -555,7 +555,7 @@ export default function Admin() {
                   )}
                 </div>
                 <Switch
-                  checked={source.enabled && !source.auto_disabled}
+                  checked={source.enabled === true && !source.auto_disabled}
                   onCheckedChange={(checked) =>
                     handleToggleSource(source.id, checked)
                   }

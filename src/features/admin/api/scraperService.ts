@@ -1,20 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-export interface ScraperSource {
-  id: string;
-  name: string;
-  url: string;
-  enabled: boolean;
-  config: Record<string, unknown> | null;
-  created_at: string | null;
-  updated_at: string | null;
-  last_scraped_at: string | null;
-  last_success: boolean | null;
-  total_events_scraped: number | null;
-  consecutive_failures: number | null;
-  last_error: string | null;
-  auto_disabled: boolean | null;
-}
+export type ScraperSource = Database["public"]["Tables"]["scraper_sources"]["Row"] & {
+  config?: Record<string, unknown> | null;
+  last_success?: boolean | null;
+  total_events_scraped?: number | null;
+  last_error?: string | null;
+};
 
 export interface LogEntry {
   timestamp: string;
@@ -63,7 +55,7 @@ export async function getSources(): Promise<ScraperSource[]> {
     throw new Error(error.message);
   }
 
-  return (data || []) as ScraperSource[];
+  return (data || []) as unknown as ScraperSource[];
 }
 
 /**
