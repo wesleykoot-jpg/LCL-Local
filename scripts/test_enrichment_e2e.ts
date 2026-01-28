@@ -1,5 +1,4 @@
-import { assert, assertExists, assertGreaterThan } from "https://deno.land/std@0.203.0/testing/asserts.ts";
-import { readFileStr } from "https://deno.land/std@0.203.0/fs/mod.ts";
+import { assert, assertExists } from "https://deno.land/std@0.203.0/testing/asserts.ts";
 
 import { enrichWithSocialFive } from "../supabase/functions/_shared/enrichmentService.ts";
 import { analyzeSource } from "../supabase/functions/_shared/analyzerAgent.ts";
