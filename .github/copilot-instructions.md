@@ -31,10 +31,10 @@ npm run preview  # Preview production build
 npm run build
 npx cap sync ios
 npx cap open ios
-
-## Waterfall Intelligence (SG pipeline)
-Use the `sg-orchestrator` edge function to coordinate pipeline runs and stage-specific workers.
 ```
+
+### Waterfall Intelligence (SG pipeline)
+Use the `sg-orchestrator` edge function to coordinate pipeline runs and stage-specific workers.
 
 ### Environment Setup
 - Copy `.env.example` to `.env` and add Supabase credentials
