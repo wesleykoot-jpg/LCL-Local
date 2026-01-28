@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wrench, ChevronUp, ChevronDown, RefreshCw, X, Settings } from 'lucide-react';
-import { triggerCoordinator } from '@/features/admin';
+import { triggerCoordinator } from '@/features/admin/api/scraperService';
 import { toast } from 'sonner';
 
 interface DevPanelProps {
