@@ -70,13 +70,29 @@ async function main() {
   fetcherHandler = fHandler;
   processorHandler = pHandler;
 
-  console.log("--- Running Data-First fetcher ---");
-  await invokeFetcher();
+  // Get the first enabled source
+  const { data: sources } = await supabase
+    .from("scraper_sources")
+    .select("id, name, url")
+    .eq("enabled", true)
+    .limit(1);
+
+  if (!sources || sources.length === 0) {
+    console.error("No enabled scraper sources found!");
+    return;
+  }
+
+  const source = sources[0];
+  console.log(`Using source: ${source.name} (${source.url})`);
+  console.log(`Source ID: ${source.id}`);
+
+  console.log("\n--- Running Data-First fetcher ---");
+  const fetcherResult = await invokeFetcher(source.id);
   
-  console.log("--- Running Process Worker ---");
+  console.log("\n--- Running Process Worker ---");
   await invokeProcessor();
   
-  console.log("--- Reporting DB counts ---");
+  console.log("\n--- Reporting DB counts ---");
   await reportCounts();
 }
 
