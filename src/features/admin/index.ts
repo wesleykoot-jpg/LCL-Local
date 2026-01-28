@@ -14,5 +14,3 @@ export {
   type CoordinatorResult
 } from './api/scraperService';
 
-// Pages (for route usage)
-export { default as AdminPage } from './Admin';

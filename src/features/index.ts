@@ -7,4 +7,3 @@ export * from './events';
 export * from './profile';
 export * from './location';
 export * from './calendar';
-export * from './admin';

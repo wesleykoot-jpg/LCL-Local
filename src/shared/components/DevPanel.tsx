@@ -1,19 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wrench, ChevronUp, ChevronDown, RefreshCw, X, Settings } from 'lucide-react';
-import { triggerCoordinator } from '@/features/admin/api/scraperService';
-import { toast } from 'sonner';
+import { Wrench, ChevronUp, ChevronDown, X } from 'lucide-react';
 
 interface DevPanelProps {
   onRefetchEvents?: () => void;
 }
 
 export function DevPanel({ onRefetchEvents }: DevPanelProps) {
-  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
-  const [isScraping, setIsScraping] = useState(false);
 
   useEffect(() => {
     // Enable via URL param or localStorage
@@ -34,24 +29,6 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
     setIsEnabled(false);
   };
 
-  const handleScrape = async () => {
-    setIsScraping(true);
-    try {
-      const result = await triggerCoordinator();
-      if (result.success) {
-        // Support both new and legacy response formats
-        const inserted = result.jobsCreated ?? 0;
-        toast.success(`Queued ${inserted} scrape job(s)`);
-        onRefetchEvents?.();
-      } else {
-        toast.error('Scraping failed: ' + (result.error || 'Unknown error'));
-      }
-    } catch (error) {
-      toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsScraping(false);
-    }
-  };
 
   if (!isEnabled) return null;
 
@@ -85,24 +62,14 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
               className="overflow-hidden"
             >
               <div className="px-3 py-2 space-y-2 border-t border-amber-400/30">
-                {/* Admin Dashboard Button */}
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors"
-                >
-                  <Settings size={12} />
-                  Admin Dashboard
-                </button>
-
-                {/* Quick Scrape Button */}
-                <button
-                  onClick={handleScrape}
-                  disabled={isScraping}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw size={12} className={isScraping ? 'animate-spin' : ''} />
-                  {isScraping ? 'Scraping...' : 'Quick Scrape'}
-                </button>
+                {onRefetchEvents && (
+                  <button
+                    onClick={onRefetchEvents}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    Refresh Events
+                  </button>
+                )}
 
                 {/* Disable Dev Mode Button */}
                 <button

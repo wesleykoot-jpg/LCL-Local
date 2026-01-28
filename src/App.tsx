@@ -21,7 +21,6 @@ import {
 } from "@/features/profile";
 import { LoginPage } from "@/features/auth";
 import { GoogleCalendarSettingsPage } from "@/features/calendar";
-import { AdminPage } from "@/features/admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -130,8 +129,6 @@ const App = () => (
                   {/* Admin routes (dev mode only) */}
                   {import.meta.env.DEV && (
                     <>
-                      <Route path="/admin" element={<AdminPage />} />
-                      <Route path="/scraper-admin" element={<AdminPage />} />
                     </>
                   )}
 
@@ -191,8 +188,6 @@ const App = () => (
                   {/* Admin routes (dev mode only) */}
                   {import.meta.env.DEV && (
                     <>
-                      <Route path="/admin" element={<AdminPage />} />
-                      <Route path="/scraper-admin" element={<AdminPage />} />
                     </>
                   )}
 

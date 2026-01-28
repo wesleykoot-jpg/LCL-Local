@@ -1,20 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wrench, ChevronUp, ChevronDown, RefreshCw, X, Settings } from 'lucide-react';
+import { Wrench, ChevronUp, ChevronDown, X } from 'lucide-react';
 // LEGACY: Scraper removed - see _legacy_archive/scraping-v1/
 // import { triggerScraper } from '@/lib/scraperService';
-import { toast } from 'sonner';
 
 interface DevPanelProps {
   onRefetchEvents?: () => void;
 }
 
 export function DevPanel({ onRefetchEvents }: DevPanelProps) {
-  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
-  const [isScraping, setIsScraping] = useState(false);
 
   useEffect(() => {
     // Enable via URL param or localStorage
@@ -35,28 +31,6 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
     setIsEnabled(false);
   };
 
-  const handleScrape = async () => {
-    setIsScraping(true);
-    try {
-      // LEGACY: Scraper functionality removed - see _legacy_archive/scraping-v1/
-      toast.error('Scraper has been removed. Rebuilding architecture.');
-      /* const result = await triggerScraper();
-      if (result.success) {
-        // Support both new and legacy response formats
-        const inserted = result.totals?.inserted ?? result.inserted ?? 0;
-        const skipped = result.totals?.skipped ?? result.skipped ?? 0;
-        const sourceCount = result.sources?.length ?? 1;
-        toast.success(`Scraped ${inserted} new events from ${sourceCount} source(s) (${skipped} duplicates)`);
-        onRefetchEvents?.();
-      } else {
-        toast.error('Scraping failed: ' + (result.error || 'Unknown error'));
-      } */
-    } catch (error) {
-      toast.error('Scraping failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsScraping(false);
-    }
-  };
 
   if (!isEnabled) return null;
 
@@ -90,24 +64,14 @@ export function DevPanel({ onRefetchEvents }: DevPanelProps) {
               className="overflow-hidden"
             >
               <div className="px-3 py-2 space-y-2 border-t border-amber-400/30">
-                {/* Admin Dashboard Button */}
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors"
-                >
-                  <Settings size={12} />
-                  Admin Dashboard
-                </button>
-
-                {/* Quick Scrape Button */}
-                <button
-                  onClick={handleScrape}
-                  disabled={isScraping}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw size={12} className={isScraping ? 'animate-spin' : ''} />
-                  {isScraping ? 'Scraping...' : 'Quick Scrape'}
-                </button>
+                {onRefetchEvents && (
+                  <button
+                    onClick={onRefetchEvents}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-white rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    Refresh Events
+                  </button>
+                )}
 
                 {/* Disable Dev Mode Button */}
                 <button
