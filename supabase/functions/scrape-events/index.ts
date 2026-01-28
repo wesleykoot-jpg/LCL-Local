@@ -147,7 +147,6 @@ export const handler = withRateLimiting(
                   source_url: cardUrl,
                   raw_html: card.rawHtml || JSON.stringify(card),
                   source_id: sourceId,
-                  status: "pending" as any,
                   parsing_method: card.parsingMethod || null,
                 },
                 { onConflict: "source_url" },
