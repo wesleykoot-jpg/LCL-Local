@@ -687,8 +687,8 @@ async function processRow(
       source_url: normalized.detail_url || raw.detailUrl || sourceUrl,
       tags: normalized.tags || [],
       
-      // end_time exists as TIMESTAMPTZ
-      end_time: normalized.end_time || null,
+      // end_time exists as TIMESTAMPTZ - must be a valid timestamp or null, not "TBD"
+      end_time: (normalized.end_time && normalized.end_time !== "TBD") ? normalized.end_time : null,
       
       // Note: The following columns don't exist in events table (migration not applied):
       // venue_address, price, price_currency, price_min, price_max, tickets_url,
