@@ -20,11 +20,11 @@ if (error) {
   console.error("Error:", error);
 } else {
   console.log("=== All Scraper Sources ===");
+  console.log(`Found ${data?.length || 0} sources`);
   data?.forEach(s => {
-    console.log(`${s.enabled ? '✓' : '✗'} ${s.name}`);
+    console.log(`\n${s.enabled ? '✓' : '✗'} ${s.name || s.id}`);
     console.log(`  URL: ${s.url}`);
-    console.log(`  Type: ${s.type}`);
-    console.log(`  Last success: ${s.last_success || 'never'}`);
-    console.log();
+    console.log(`  Enabled: ${s.enabled}`);
+    console.log(`  Config:`, JSON.stringify(s.config || {}, null, 2));
   });
 }
