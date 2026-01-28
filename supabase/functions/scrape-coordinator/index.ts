@@ -84,7 +84,7 @@ serve(withRateLimiting(withAuth(async (req: Request): Promise<Response> => {
       let query = supabase
         .from("scraper_sources")
         .select(
-          "id, name, volatility_score, next_scrape_at, last_scraped_at, consecutive_errors",
+          "id, name, health_score, next_scrape_at, last_scraped_at, consecutive_failures",
         )
         .eq("enabled", true)
         .or("auto_disabled.is.null,auto_disabled.eq.false");
