@@ -26,9 +26,13 @@ const loadEnv = async () => {
 };
 
 async function invokeFetcher(sourceId: string) {
+  const { supabaseServiceRoleKey } = await import("./supabase/functions/_shared/env.ts");
   const req = new Request("http://localhost/fetcher", { 
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${supabaseServiceRoleKey}`
+    },
     body: JSON.stringify({ sourceId })
   });
   const res = await fetcherHandler(req);
