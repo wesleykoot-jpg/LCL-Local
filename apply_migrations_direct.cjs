@@ -39,18 +39,22 @@ async function applyMigration(filePath) {
 
 async function main() {
   console.log('🛠️ Applying Database Migrations Directly\n');
-  
-  const migrations = [
-    'supabase/migrations/20260122000000_add_claim_staging_rows.sql',
-    'supabase/migrations/20260122000001_add_security_declarations.sql'
-  ];
-  
+  let migrations;
+  if (process.argv[2]) {
+    migrations = [process.argv[2]];
+    console.log(`🔹 Running single migration: ${process.argv[2]}`);
+  } else {
+    migrations = [
+      'supabase/migrations/20260122000000_add_claim_staging_rows.sql',
+      'supabase/migrations/20260122000001_add_security_declarations.sql'
+    ];
+  }
   let allSuccess = true;
   for (const m of migrations) {
-    const success = await applyMigration(path.join(__dirname, m));
+    const migrationPath = path.isAbsolute(m) ? m : path.join(__dirname, m);
+    const success = await applyMigration(migrationPath);
     if (!success) allSuccess = false;
   }
-  
   console.log('\n' + '='.repeat(50));
   if (allSuccess) {
     console.log('✅ All migrations applied successfully!');
@@ -58,7 +62,6 @@ async function main() {
     console.log('⚠️  Some migrations failed. Check output above.');
   }
   console.log('='.repeat(50));
-  
   await closePool();
   process.exit(allSuccess ? 0 : 1);
 }
