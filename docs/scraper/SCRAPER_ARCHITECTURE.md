@@ -68,7 +68,7 @@ The current scraper has these failure modes that cause **full pipeline stoppages
 
 ---
 
-## End-to-End Pipeline Overview
+## Current Waterfall Intelligence Pipeline Overview (SG)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
@@ -76,44 +76,32 @@ The current scraper has these failure modes that cause **full pipeline stoppages
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                      │
 │  ┌─────────────┐                                                                    │
-│  │   STAGE 1   │  SOURCE DISCOVERY                                                  │
-│  │  (Weekly)   │  Find new event sources via Serper.dev + LLM validation           │
+│  │   STAGE 1   │  DISCOVERY (sg-scout)                                              │
+│  │  (Daily)    │  Serper.dev discovery + seed list → `sg_sources`                   │
 │  └──────┬──────┘                                                                    │
-│         │ New sources added to `scraper_sources` (enabled=false, needs review)      │
+│         │ URLs queued in `sg_pipeline_queue` (stage=discovered)                     │
 │         ▼                                                                           │
 │  ┌─────────────┐                                                                    │
-│  │   STAGE 2   │  ORCHESTRATION                                                     │
-│  │  (Daily)    │  Select healthy sources, apply circuit breakers, enqueue jobs     │
+│  │   STAGE 2   │  STRATEGIST (sg-strategist)                                        │
+│  │  (Workers)  │  Analyze fetch strategy + anti-bot                                │
 │  └──────┬──────┘                                                                    │
-│         │ Jobs queued in `pipeline_jobs` with priority                              │
+│         │ Queue stage → awaiting_fetch                                             │
 │         ▼                                                                           │
 │  ┌─────────────┐                                                                    │
-│  │   STAGE 3   │  FETCH                                                             │
-│  │  (Workers)  │  Download HTML with retry, failover, rate limiting                │
+│  │   STAGE 3   │  CURATOR (sg-curator)                                              │
+│  │  (Workers)  │  Fetch → clean → extract Social Five → enrich → dedupe           │
 │  └──────┬──────┘                                                                    │
-│         │ Raw HTML saved to `raw_pages` table                                       │
+│         │ Queue stage → ready_to_persist                                           │
 │         ▼                                                                           │
 │  ┌─────────────┐                                                                    │
-│  │   STAGE 4   │  PARSE                                                             │
-│  │  (Workers)  │  Extract event cards using selectors + JSON-LD                    │
+│  │   STAGE 4   │  VECTORIZER (sg-vectorizer)                                       │
+│  │  (Workers)  │  Embeddings + persist to `events`                                 │
 │  └──────┬──────┘                                                                    │
-│         │ Parsed events saved to `raw_events` table                                 │
+│         │ Final events in `events` table                                            │
 │         ▼                                                                           │
 │  ┌─────────────┐                                                                    │
-│  │   STAGE 5   │  NORMALIZE & ENRICH                                                │
-│  │  (Workers)  │  Date parsing, geocoding, categorization, AI enrichment           │
-│  └──────┬──────┘                                                                    │
-│         │ Enriched events saved to `staged_events` table                            │
-│         ▼                                                                           │
-│  ┌─────────────┐                                                                    │
-│  │   STAGE 6   │  PERSIST                                                           │
-│  │  (Workers)  │  Deduplicate, upsert to `events`, update stats                    │
-│  └──────┬──────┘                                                                    │
-│         │ Final events in `events` table with fingerprints                          │
-│         ▼                                                                           │
-│  ┌─────────────┐                                                                    │
-│  │   STAGE 7   │  NOTIFY                                                            │
-│  │  (Batched)  │  Slack summary, circuit breaker alerts, DLQ alerts                │
+│  │   STAGE 5   │  OBSERVABILITY                                                    │
+│  │  (Batched)  │  Metrics + failure logs (sg_pipeline_metrics, sg_failure_log)     │
 │  └──────┬──────┘                                                                    │
 │         │                                                                           │
 │         ▼                                                                           │
@@ -129,19 +117,23 @@ The current scraper has these failure modes that cause **full pipeline stoppages
 ### Data Flow Between Stages
 
 ```
-scraper_sources → pipeline_jobs → raw_pages → raw_events → staged_events → events
-       ↑               ↑              ↑            ↑              ↑           ↑
-       │               │              │            │              │           │
-   DISCOVERY      ORCHESTRATE      FETCH        PARSE       NORMALIZE     PERSIST
+sg_sources → sg_pipeline_queue (stage transitions) → events
+     ↑                    ↑
+     │                    │
+  DISCOVERY           FETCH/EXTRACT/ENRICH/PERSIST
 ```
 
-Each arrow represents a **checkpoint**. If any stage fails:
+Each stage transition is a **checkpoint**. If any stage fails:
 - Previous stage's output is preserved
 - Failed item goes to DLQ
 - Pipeline continues with remaining items
 - Auto-retry happens in next run
 
+> Note: The sections below that reference `pipeline_jobs`, `raw_pages`, `raw_events`, and `staged_events` are legacy (pre-SG) and kept for historical context.
+
 ---
+
+## Legacy Architecture (pre-SG)
 
 ## Stage 1: Source Discovery
 

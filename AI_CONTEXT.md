@@ -25,16 +25,17 @@ workflows, and tooling)_
 | Backend  | Supabase (PostgreSQL + PostGIS, Auth, Storage, Edge Functions) |
 | State    | React Context + TanStack Query                                 |
 
-## Database Schema (7 Core Tables)
+## Database Schema (Core Tables)
 
 ```
-profiles          - User data: reliability_score, verified_resident, current_persona
-events            - PostGIS location, category, event_type (anchor/fork/signal)
-event_attendees   - Join table: status (going/interested/waitlist)
-persona_stats     - Gamification: rallies_hosted, newcomers_welcomed, host_rating
-persona_badges    - Achievement badges per persona type
-scraper_sources   - Web scraping targets with config and status
-geocode_cache     - Nominatim API result caching for coordinates
+profiles           - User data: reliability_score, verified_resident, current_persona
+events             - PostGIS location, category, event_type (anchor/fork/signal)
+event_attendees    - Join table: status (going/interested/waitlist)
+persona_stats      - Gamification: rallies_hosted, newcomers_welcomed, host_rating
+persona_badges     - Achievement badges per persona type
+sg_sources         - Waterfall Intelligence source registry (SG pipeline)
+sg_pipeline_queue  - Stage-based Waterfall Intelligence queue
+sg_geocode_cache   - Geocode caching for SG pipeline
 ```
 
 ## Key Files
@@ -45,7 +46,8 @@ geocode_cache     - Nominatim API result caching for coordinates
 | [`src/lib/eventService.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/lib/eventService.ts)                       | CRUD operations for events                                                                                |
 | [`src/features/events/hooks/hooks.ts`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/features/events/hooks/hooks.ts) | Data fetching hooks: useEvents, useProfile, useEventAttendees, useJoinEvent                               |
 | [`src/features/events/discovery/`](https://github.com/wesleykoot-jpg/LCL-Local/tree/main/src/features/events/discovery)                                              | **Discovery Rails**: Strategy-based 5-pillar system with RailProviderRegistry, TitleFormatter, RitualDetection |
-| [`supabase/functions/scrape-events/`](https://github.com/wesleykoot-jpg/LCL-Local/tree/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/supabase/functions/scrape-events)    | AI-powered event scraper with OpenAI                                                                      |
+| [`supabase/functions/sg-orchestrator/`](https://github.com/wesleykoot-jpg/LCL-Local/tree/main/supabase/functions/sg-orchestrator)                                     | Waterfall Intelligence coordinator (SG pipeline)                                                          |
+| [`supabase/functions/sg-curator/`](https://github.com/wesleykoot-jpg/LCL-Local/tree/main/supabase/functions/sg-curator)                                               | Waterfall Intelligence extraction + enrichment (Social Five)                                               |
 | [`src/contexts/AuthContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/AuthContext.tsx)             | Authentication state management (email + Google OAuth)                                                    |
 | [`src/contexts/LocationContext.tsx`](https://github.com/wesleykoot-jpg/LCL-Local/blob/b12d76c8dc51c1ddb6f9cee26ce100f448fcba69/src/contexts/LocationContext.tsx)     | User geolocation tracking                                                                                 |
 | [`DOCS/DESIGN_SYSTEM_CORE.md`](./DOCS/DESIGN_SYSTEM_CORE.md)                                                                                                         | **Design System v4.0** - Solid surfaces, colors, shadows, spacing, component patterns                     |
@@ -102,7 +104,7 @@ Events stored with PostGIS coordinates.
 
 Discovery Rails: 5 psychological pillars (For You, Rituals, This Weekend, Location, Pulse) with strategy-based registry.
 
-Database: profiles, events, event_attendees, persona_stats, persona_badges, scraper_sources, geocode_cache. 
+Database: profiles, events, event_attendees, persona_stats, persona_badges, sg_sources, sg_pipeline_queue, sg_geocode_cache. 
 All tables have RLS enabled.
 
 Key files:
@@ -110,7 +112,8 @@ Key files:
 - src/lib/eventService.ts: CRUD operations for events
 - src/features/events/hooks/hooks.ts: Data fetching hooks (useEvents, useProfile, etc.)
 - src/features/events/discovery/: Discovery Rails with RailProviderRegistry, TitleFormatter, ritualDetection
-- supabase/functions/scrape-events/: AI-powered event scraper
+- supabase/functions/sg-orchestrator/: Waterfall Intelligence coordinator
+- supabase/functions/sg-curator/: Waterfall Intelligence extraction + enrichment
 
 Stack: React 18, TypeScript, Vite, Tailwind, Capacitor (iOS), Supabase, Framer Motion
 

@@ -19,8 +19,7 @@ community interactions.
 
 ### Data Flow
 
-1. **Scraper Pipeline**: `scraper_sources` → `Edge Function (OpenAI)` →
-   `PostGIS (events)`.
+1. **Waterfall Intelligence Pipeline (SG)**: `sg_sources` → `sg_pipeline_queue` (stage-based) → `events` via `sg-orchestrator` + workers (`sg-scout`, `sg-strategist`, `sg-curator`, `sg-vectorizer`).
 2. **Discovery Pipeline**: `useEvents()` → `feedAlgorithm.ts` → `Ranked Feed`.
 
 ---

@@ -32,9 +32,8 @@ npm run build
 npx cap sync ios
 npx cap open ios
 
-# Scraper commands
-npm run scrape:dry-run  # Test scraper without writes/alerts
-npm run scrape:run      # Run scraper (writes to Supabase)
+## Waterfall Intelligence (SG pipeline)
+Use the `sg-orchestrator` edge function to coordinate pipeline runs and stage-specific workers.
 ```
 
 ### Environment Setup
@@ -96,8 +95,9 @@ src/
 - `event_attendees`: Join table with `status` (going/interested/waitlist)
 - `persona_stats`: Gamification data (`rallies_hosted`, `newcomers_welcomed`, `host_rating`)
 - `persona_badges`: Achievement badges per persona type
-- `scraper_sources`: Web scraping configuration (`url`, `config`, `enabled`, `last_success`)
-- `geocode_cache`: Nominatim API result caching for coordinates
+- `sg_sources`: Waterfall Intelligence source registry
+- `sg_pipeline_queue`: Stage-based Waterfall Intelligence queue
+- `sg_geocode_cache`: Geocode cache for SG pipeline
 
 ### Important Database Patterns
 
@@ -149,23 +149,15 @@ Native iOS feedback via Capacitor:
 - `triggerSelection()`: Selection change feedback
 - Always wrap in try-catch; gracefully degrades on non-iOS platforms
 
-### Event Scraper
-Located in `supabase/functions/scrape-events/`:
-- Strategy-driven discovery with configurable sources
-- Uses OpenAI to extract structured event data from HTML
-- Geocodes venues via Nominatim with caching to `geocode_cache` table
-- Handles Dutch CMS platforms (Ontdek, Beleef, Visit, Uit)
-- URL normalization and deduplication
-- Optional external renderer for JS-heavy sites
+### Waterfall Intelligence Pipeline (SG)
+Located in `supabase/functions/sg-*`:
+- `sg-orchestrator`: Coordinates the pipeline and stage workers
+- `sg-scout`: Discovers sources and queues URLs
+- `sg-strategist`: Determines fetch strategies
+- `sg-curator`: Fetches, extracts Social Five, enriches, deduplicates
+- `sg-vectorizer`: Embeddings + persist to `events`
 
-### Defensive Scheduled Scraper
-Robust, polite web scraper with:
-- Respects robots.txt, rate limits, exponential backoff
-- Full observability: logs all attempts to `scrape_events` table
-- Smart Slack alerts with intelligent error analysis and suppression
-- Conditional GETs with ETag/If-Modified-Since
-- Per-domain rate limiting with Bottleneck
-- Dry-run mode for testing
+Observability tables: `sg_pipeline_metrics`, `sg_failure_log`, `sg_ai_repair_log`.
 
 ## Testing Patterns
 
@@ -226,10 +218,10 @@ npm run test:watch  # Watch mode (if available)
 4. Document platform-specific behavior
 
 ### Scraper Configuration
-1. Add source to `src/config/sources.json` or `scraper_sources` table
-2. Configure rate limits and strategy
-3. Test with dry-run: `npm run scrape:dry-run`
-4. Monitor logs in Supabase and Slack alerts
+1. Add source to `sg_sources` or run `sg-scout` discovery
+2. Configure `fetch_strategy` and `extraction_config`
+3. Run `sg-orchestrator` (mode `run_all` or stage-specific)
+4. Monitor `sg_pipeline_queue` and SG observability tables
 
 ## Security Considerations
 
