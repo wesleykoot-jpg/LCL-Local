@@ -63,7 +63,7 @@ export async function getSources(): Promise<ScraperSource[]> {
     throw new Error(error.message);
   }
 
-  return (data || []) as ScraperSource[];
+  return (data || []) as unknown as ScraperSource[];
 }
 
 /**

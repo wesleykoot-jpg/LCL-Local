@@ -3,7 +3,7 @@
 // Scraping functionality removed during architecture reboot (2026-01-27)
 
 // API / Services
-/* export { 
+export { 
   getSources, 
   toggleSource, 
   triggerCoordinator,
@@ -12,7 +12,7 @@
   type LogEntry,
   type LogsResult,
   type CoordinatorResult
-} from './api/scraperService'; */
+} from './api/scraperService';
 
 // Pages (for route usage)
 export { default as AdminPage } from './Admin';
