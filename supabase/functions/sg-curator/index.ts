@@ -8,12 +8,13 @@
  * - Cleans HTML to Markdown
  * - Extracts "Social Five" using AI
  * - Validates extracted data
- * - Enriches with geocoding
+ * - Enriches with hybrid geocoding (HTML extraction → multi-provider)
  * - Deduplicates
  * 
  * This is the most complex stage - handles substages 3a-3f
  * 
  * @module sg-curator
+ * @version 2.0.0 - Hybrid geocoding with 10x throughput
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
