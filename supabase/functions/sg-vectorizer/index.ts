@@ -82,6 +82,10 @@ interface EventRow {
   venue_name: string;
   event_date: string;
   event_time: string;
+  start_datetime: string | null;    // New: full datetime with timezone
+  end_datetime: string | null;      // New: end datetime for duration
+  is_all_day: boolean;              // New: all-day event flag
+  is_multi_day: boolean;            // New: multi-day festival flag
   image_url: string | null;
   tags: string[];
   source_url: string;
@@ -121,8 +125,21 @@ function mapToEventRow(event: SocialEvent, embedding: number[] | null): EventRow
 
   // Parse datetime
   const startDate = event.when?.start_datetime ? new Date(event.when.start_datetime) : new Date();
+  const endDate = event.when?.end_datetime ? new Date(event.when.end_datetime) : null;
   const eventDate = startDate.toISOString();
   const eventTime = startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  // Determine all-day and multi-day flags
+  const isAllDay = event.when?.is_all_day || (
+    startDate.getHours() === 0 && 
+    startDate.getMinutes() === 0 && 
+    !event.when?.start_datetime?.includes('T')
+  );
+  
+  const isMultiDay = event.when?.is_multi_day || (
+    endDate !== null && 
+    endDate.toDateString() !== startDate.toDateString()
+  );
 
   return {
     title: event.what?.title || 'Untitled Event',
@@ -133,6 +150,10 @@ function mapToEventRow(event: SocialEvent, embedding: number[] | null): EventRow
     venue_name: event.where?.venue_name || 'TBD',
     event_date: eventDate,
     event_time: eventTime,
+    start_datetime: event.when?.start_datetime || null,
+    end_datetime: event.when?.end_datetime || null,
+    is_all_day: isAllDay,
+    is_multi_day: isMultiDay,
     image_url: event.image_url || null,
     tags: event.what?.tags || [],
     source_url: event.source_url,
@@ -264,6 +285,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
             venue_name: eventRow.venue_name,
             event_date: eventRow.event_date,
             event_time: eventRow.event_time,
+            start_datetime: eventRow.start_datetime,
+            end_datetime: eventRow.end_datetime,
+            is_all_day: eventRow.is_all_day,
+            is_multi_day: eventRow.is_multi_day,
             status: 'published',
             image_url: eventRow.image_url,
             tags: eventRow.tags,
