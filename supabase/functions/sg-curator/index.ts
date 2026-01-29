@@ -271,7 +271,86 @@ interface ValidationResult {
   warnings: string[];
 }
 
-function validateExtractedData(data: SocialEvent | null): ValidationResult {
+/**
+ * Check if a URL is a listing/main page rather than an event detail page
+ */
+function isListingPage(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.toLowerCase();
+    
+    // Known listing page patterns
+    const listingPatterns = [
+      /^\/?(en|nl)?\/?(agenda|events|calendar|programma|concerten)?\/?$/,
+      /\/b\/netherlands/,  // Eventbrite listing pages
+      /\/metro-areas\//,   // Songkick metro areas
+      /\/concerten-en-tickets\/?$/,
+      /\/live-music-calendar\/?$/,
+    ];
+    
+    if (listingPatterns.some(p => p.test(path))) {
+      return true;
+    }
+    
+    // If path is very short (just /en, /nl, /agenda/) it's likely a listing page
+    const pathParts = path.split('/').filter(Boolean);
+    if (pathParts.length <= 2 && !path.includes('-20') && !/\d{2}-\d{2}-\d{2,4}/.test(path)) {
+      // Short paths without dates are likely listing pages
+      const eventIndicators = ['event', 'ticket', 'concert', 'show', 'workshop'];
+      if (!eventIndicators.some(i => path.includes(i)) || pathParts.length < 2) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if an image URL is valid (not a tracking pixel or site logo)
+ */
+function isValidEventImage(imageUrl: string | null | undefined): boolean {
+  if (!imageUrl) return false;
+  
+  const lowered = imageUrl.toLowerCase();
+  
+  // Reject tracking pixels and common invalid patterns
+  const invalidPatterns = [
+    'facebook.com/tr',
+    'google-analytics',
+    'googletagmanager',
+    'doubleclick',
+    '/pixel',
+    '/logo',
+    'logo.svg',
+    'logo.png',
+    'og-image',
+    'share-',
+    'favicon',
+    '1x1',
+    'spacer',
+  ];
+  
+  if (invalidPatterns.some(p => lowered.includes(p))) {
+    return false;
+  }
+  
+  // Check for reasonable image extensions or CDN patterns
+  const validPatterns = [
+    /\.(jpg|jpeg|png|webp|gif)/i,
+    /assets\./,
+    /images\//,
+    /media\//,
+    /cdn\./,
+    /cloudfront/,
+  ];
+  
+  return validPatterns.some(p => p.test(imageUrl));
+}
+
+function validateExtractedData(data: SocialEvent | null, sourceUrl: string): ValidationResult {
   const result: ValidationResult = {
     valid: true,
     errors: [],
@@ -284,10 +363,30 @@ function validateExtractedData(data: SocialEvent | null): ValidationResult {
     return result;
   }
 
+  // Check if we extracted from a listing page
+  if (isListingPage(sourceUrl)) {
+    result.valid = false;
+    result.errors.push('Extracted from listing page, not event detail');
+    return result;
+  }
+
   // Required fields
   if (!data.what?.title) {
     result.valid = false;
     result.errors.push('Missing event title');
+  }
+
+  // Check for generic titles that suggest listing page extraction
+  const genericTitlePatterns = [
+    /^concerten in/i,
+    /^events? in/i,
+    /^agenda/i,
+    /^calendar/i,
+    /^upcoming events/i,
+  ];
+  if (data.what?.title && genericTitlePatterns.some(p => p.test(data.what.title))) {
+    result.valid = false;
+    result.errors.push('Generic listing page title detected');
   }
 
   if (!data.where?.city) {
@@ -308,9 +407,28 @@ function validateExtractedData(data: SocialEvent | null): ValidationResult {
     result.warnings.push('No start datetime');
   }
 
+  // Validate description quality
+  const descLength = data.what?.description?.length || 0;
+  if (descLength < 20) {
+    result.warnings.push(`Short description (${descLength} chars)`);
+  }
+  if (descLength === 0) {
+    result.warnings.push('Empty description');
+  }
+
+  // Validate image quality
+  if (!isValidEventImage(data.image_url)) {
+    result.warnings.push('Invalid or missing event image');
+  }
+
   // Check confidence
   if (data.extraction_confidence && data.extraction_confidence < 0.3) {
     result.warnings.push(`Low extraction confidence: ${data.extraction_confidence}`);
+  }
+
+  // Check data completeness
+  if (data.data_completeness && data.data_completeness < 0.4) {
+    result.warnings.push(`Low data completeness: ${data.data_completeness}`);
   }
 
   return result;
@@ -482,7 +600,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
         // STAGE 3d: VALIDATE
         console.log(`[SG Curator] 3d. Validating: ${fetchUrl}`);
-        const validation = validateExtractedData(extracted);
+        const validation = validateExtractedData(extracted, fetchUrl);
 
         if (!validation.valid || !extracted) {
           console.warn(`[SG Curator] Validation failed: ${validation.errors.join(', ')}`);
@@ -495,6 +613,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
           response.items_failed++;
           continue;
+        }
+
+        // Log validation warnings for observability
+        if (validation.warnings.length > 0) {
+          console.log(`[SG Curator] Validation warnings for ${fetchUrl}: ${validation.warnings.join(', ')}`);
         }
 
         // STAGE 3e: ENRICH - Geocoding
