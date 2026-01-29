@@ -86,10 +86,14 @@ async function invokeWorker(
 // ============================================================================
 
 interface OrchestratorPayload {
-  mode?: 'status' | 'run_all' | 'run_stage' | 'discovery_only';
+  mode?: 'status' | 'run_all' | 'run_stage' | 'discovery_only' | 'auto_process';
   stage?: string;
   cities?: string[];
   limit?: number;
+  /** For auto_process: target % of rate limit to use (default 80) */
+  throttle_pct?: number;
+  /** For auto_process: max cycles before stopping (default 10) */
+  max_cycles?: number;
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -126,9 +130,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
       stage,
       cities,
       limit = 50,
+      throttle_pct = 80,
+      max_cycles = 10,
     } = payload;
 
     console.log(`[SG Orchestrator] Mode: ${mode}`);
+    
+    // Rate limit constants (at 80% of max)
+    // Nominatim: 1 req/sec → with geocoding batches of 5, wait ~5s between curator calls
+    // OpenAI: 500 RPM → at 80% = 400 RPM, ~6 req/sec (not bottleneck)
+    const CURATOR_BATCH_SIZE = 5;  // Events per curator call
+    const CURATOR_DELAY_MS = Math.round((CURATOR_BATCH_SIZE * 1000) * (100 / throttle_pct)); // ~6250ms at 80%
+    const STRATEGIST_BATCH_SIZE = 30; // URLs per strategist call (no geocoding)
+    const VECTORIZER_BATCH_SIZE = 20; // Events per vectorizer call (no geocoding)
 
     const response: OrchestratorResponse = {
       success: true,
@@ -261,6 +275,97 @@ Deno.serve(async (req: Request): Promise<Response> => {
           }
         }
 
+        break;
+
+      case 'auto_process':
+        // Automated pipeline processing at controlled rate
+        // Processes all queued items without discovering new sources
+        console.log(`[SG Orchestrator] Auto-processing at ${throttle_pct}% rate, max ${max_cycles} cycles`);
+        
+        let cyclesRun = 0;
+        let totalProcessed = 0;
+        
+        // Helper to sleep
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        // Helper to get fresh stats
+        const getStats = async () => {
+          const { data } = await supabase.rpc('sg_get_pipeline_stats');
+          return data as PipelineStats[] || [];
+        };
+        
+        while (cyclesRun < max_cycles) {
+          const stats = await getStats();
+          
+          const discovered = stats.find(s => s.stage === 'discovered')?.count || 0;
+          const awaiting = stats.find(s => s.stage === 'awaiting_fetch')?.count || 0;
+          const ready = stats.find(s => s.stage === 'ready_to_persist')?.count || 0;
+          
+          // Nothing left to process
+          if (discovered === 0 && awaiting === 0 && ready === 0) {
+            response.actions_taken.push(`Cycle ${cyclesRun + 1}: Pipeline empty, stopping`);
+            break;
+          }
+          
+          cyclesRun++;
+          console.log(`[SG Orchestrator] Cycle ${cyclesRun}: discovered=${discovered}, awaiting=${awaiting}, ready=${ready}`);
+          
+          // Phase 1: Move discovered → awaiting_fetch (fast, no rate limit)
+          if (discovered > 0) {
+            const stratRes = await invokeWorker('sg-strategist', { limit: STRATEGIST_BATCH_SIZE });
+            if (stratRes.success) {
+              const processed = (stratRes.data as any)?.processed || 0;
+              totalProcessed += processed;
+              response.actions_taken.push(`Cycle ${cyclesRun}: Strategist processed ${processed}`);
+            } else {
+              response.errors.push(`Cycle ${cyclesRun} Strategist: ${stratRes.error}`);
+            }
+          }
+          
+          // Phase 2: Extract & enrich (rate limited due to geocoding)
+          if (awaiting > 0) {
+            const curatorRes = await invokeWorker('sg-curator', { limit: CURATOR_BATCH_SIZE });
+            if (curatorRes.success) {
+              const processed = (curatorRes.data as any)?.processed || 0;
+              totalProcessed += processed;
+              response.actions_taken.push(`Cycle ${cyclesRun}: Curator processed ${processed}`);
+            } else {
+              response.errors.push(`Cycle ${cyclesRun} Curator: ${curatorRes.error}`);
+            }
+            
+            // Wait for Nominatim rate limit (1 req/sec * batch size)
+            if (cyclesRun < max_cycles) {
+              console.log(`[SG Orchestrator] Waiting ${CURATOR_DELAY_MS}ms for rate limit`);
+              await sleep(CURATOR_DELAY_MS);
+            }
+          }
+          
+          // Phase 3: Vectorize & persist (no external rate limit)
+          if (ready > 0) {
+            const vecRes = await invokeWorker('sg-vectorizer', { limit: VECTORIZER_BATCH_SIZE });
+            if (vecRes.success) {
+              const indexed = (vecRes.data as any)?.indexed || 0;
+              totalProcessed += indexed;
+              response.actions_taken.push(`Cycle ${cyclesRun}: Vectorizer indexed ${indexed}`);
+            } else {
+              response.errors.push(`Cycle ${cyclesRun} Vectorizer: ${vecRes.error}`);
+            }
+          }
+          
+          // Phase 4: Run healer every 5 cycles to repair broken sources
+          if (cyclesRun % 5 === 0) {
+            console.log(`[SG Orchestrator] Running Healer check`);
+            const healerRes = await invokeWorker('sg-healer', { mode: 'repair', limit: 2 });
+            if (healerRes.success) {
+              const repaired = (healerRes.data as any)?.sources_repaired || 0;
+              if (repaired > 0) {
+                response.actions_taken.push(`Cycle ${cyclesRun}: Healer repaired ${repaired} sources`);
+              }
+            }
+          }
+        }
+        
+        response.actions_taken.push(`Auto-process complete: ${cyclesRun} cycles, ~${totalProcessed} items processed`);
         break;
     }
 

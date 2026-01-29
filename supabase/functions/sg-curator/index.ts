@@ -97,6 +97,63 @@ function isRetryableFetchError(error: unknown): boolean {
 }
 
 // ============================================================================
+// SELF-HEALING TRIGGER
+// ============================================================================
+
+const HEALING_THRESHOLD = 3; // Trigger healing after this many consecutive failures
+
+/**
+ * Check if a source needs healing and trigger it if threshold is met.
+ * Does not block the main flow - just queues the healer.
+ */
+async function maybeQueueHealing(
+  supabase: ReturnType<typeof createClient>,
+  sourceId: string,
+  failureReason: string
+): Promise<void> {
+  try {
+    // Get current failure count
+    const { data: source } = await supabase
+      .from('sg_sources')
+      .select('consecutive_failures, quarantined, name')
+      .eq('id', sourceId)
+      .single();
+
+    if (!source) return;
+
+    const failures = (source.consecutive_failures || 0) + 1;
+
+    // Update failure count
+    await supabase
+      .from('sg_sources')
+      .update({ consecutive_failures: failures })
+      .eq('id', sourceId);
+
+    // Trigger healing if threshold reached and not already quarantined
+    if (failures >= HEALING_THRESHOLD && !source.quarantined) {
+      console.log(`[SG Curator] Source ${source.name} hit ${failures} failures, triggering healer`);
+      
+      // Fire-and-forget healer invocation
+      fetch(`${supabaseUrl}/functions/v1/sg-healer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: 'repair',
+          source_id: sourceId,
+        }),
+      }).catch(err => {
+        console.warn(`[SG Curator] Failed to invoke healer: ${err.message}`);
+      });
+    }
+  } catch (err) {
+    console.warn(`[SG Curator] Error checking healing status: ${err}`);
+  }
+}
+
+// ============================================================================
 // IMAGE FALLBACKS
 // ============================================================================
 
@@ -611,6 +668,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
             p_error_message: `Validation failed: ${validation.errors.join(', ')}`,
           });
 
+          // Trigger self-healing if source has repeated failures
+          await maybeQueueHealing(supabase, item.source_id, validation.errors.join(', '));
+
           response.items_failed++;
           continue;
         }
@@ -717,6 +777,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
           p_failure_level: 'transient',
           p_error_message: error instanceof Error ? error.message : 'Unknown error',
         });
+
+        // Trigger self-healing if source has repeated failures
+        await maybeQueueHealing(
+          supabase, 
+          item.source_id, 
+          error instanceof Error ? error.message : 'Unknown error'
+        );
 
         response.items_failed++;
         response.errors.push(`${item.source_url}: ${error instanceof Error ? error.message : 'Unknown'}`);
