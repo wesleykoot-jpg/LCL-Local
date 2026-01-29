@@ -230,6 +230,9 @@ CRITICAL RULES:
 2. Dates must be in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
 3. Locations must include actual venue names and addresses from the content.
 4. Confidence scores should reflect how clearly the data was stated.
+5. ALWAYS extract both start AND end times when available (e.g., "19:00 - 23:00").
+6. For multi-day events/festivals, set is_multi_day to true.
+7. For all-day events with no specific time, set is_all_day to true.
 
 Return a JSON object matching this schema exactly:
 {
@@ -241,7 +244,9 @@ Return a JSON object matching this schema exactly:
   },
   "when": {
     "start_datetime": "ISO 8601 datetime or null",
-    "end_datetime": "ISO 8601 datetime or null",
+    "end_datetime": "ISO 8601 datetime or null (extract from time ranges like 19:00-23:00)",
+    "is_all_day": boolean (true if no specific time, e.g., "All day" or just a date),
+    "is_multi_day": boolean (true if spans multiple days, e.g., festivals),
     "is_recurring": boolean,
     "timezone": "Europe/Amsterdam"
   },

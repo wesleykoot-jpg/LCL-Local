@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -90,132 +91,6 @@ export type Database = {
         }
         Relationships: []
       }
-      app_secrets: {
-        Row: {
-          created_at: string | null
-          key: string
-          value: string
-        }
-        Insert: {
-          created_at?: string | null
-          key: string
-          value: string
-        }
-        Update: {
-          created_at?: string | null
-          key?: string
-          value?: string
-        }
-        Relationships: []
-      }
-      circuit_breaker_state: {
-        Row: {
-          consecutive_opens: number | null
-          cooldown_until: string | null
-          created_at: string | null
-          failure_count: number | null
-          last_failure_at: string | null
-          last_success_at: string | null
-          opened_at: string | null
-          source_id: string
-          state: Database["public"]["Enums"]["circuit_state_enum"] | null
-          success_count: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          consecutive_opens?: number | null
-          cooldown_until?: string | null
-          created_at?: string | null
-          failure_count?: number | null
-          last_failure_at?: string | null
-          last_success_at?: string | null
-          opened_at?: string | null
-          source_id: string
-          state?: Database["public"]["Enums"]["circuit_state_enum"] | null
-          success_count?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          consecutive_opens?: number | null
-          cooldown_until?: string | null
-          created_at?: string | null
-          failure_count?: number | null
-          last_failure_at?: string | null
-          last_success_at?: string | null
-          opened_at?: string | null
-          source_id?: string
-          state?: Database["public"]["Enums"]["circuit_state_enum"] | null
-          success_count?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "circuit_breaker_state_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: true
-            referencedRelation: "scraper_sources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "circuit_breaker_state_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: true
-            referencedRelation: "source_health_dashboard"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cities: {
-        Row: {
-          admin1_code: string | null
-          continent: string | null
-          country_code: string
-          created_at: string | null
-          discovery_status: string | null
-          geoname_id: number | null
-          id: string
-          last_discovery_at: string | null
-          latitude: number | null
-          longitude: number | null
-          name: string
-          population: number | null
-          priority_tier: number | null
-          timezone: string | null
-        }
-        Insert: {
-          admin1_code?: string | null
-          continent?: string | null
-          country_code: string
-          created_at?: string | null
-          discovery_status?: string | null
-          geoname_id?: number | null
-          id?: string
-          last_discovery_at?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          name: string
-          population?: number | null
-          priority_tier?: number | null
-          timezone?: string | null
-        }
-        Update: {
-          admin1_code?: string | null
-          continent?: string | null
-          country_code?: string
-          created_at?: string | null
-          discovery_status?: string | null
-          geoname_id?: number | null
-          id?: string
-          last_discovery_at?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          name?: string
-          population?: number | null
-          priority_tier?: number | null
-          timezone?: string | null
-        }
-        Relationships: []
-      }
       content_reports: {
         Row: {
           admin_notes: string | null
@@ -287,66 +162,6 @@ export type Database = {
           },
         ]
       }
-      discovery_jobs: {
-        Row: {
-          attempts: number | null
-          batch_id: string | null
-          completed_at: string | null
-          coordinates: Json | null
-          created_at: string | null
-          error_message: string | null
-          id: string
-          max_attempts: number | null
-          municipality: string
-          population: number | null
-          priority: number | null
-          province: string | null
-          sources_added: number | null
-          sources_found: number | null
-          started_at: string | null
-          status: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          attempts?: number | null
-          batch_id?: string | null
-          completed_at?: string | null
-          coordinates?: Json | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          max_attempts?: number | null
-          municipality: string
-          population?: number | null
-          priority?: number | null
-          province?: string | null
-          sources_added?: number | null
-          sources_found?: number | null
-          started_at?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          attempts?: number | null
-          batch_id?: string | null
-          completed_at?: string | null
-          coordinates?: Json | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          max_attempts?: number | null
-          municipality?: string
-          population?: number | null
-          priority?: number | null
-          province?: string | null
-          sources_added?: number | null
-          sources_found?: number | null
-          started_at?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       dutch_municipalities: {
         Row: {
           id: string
@@ -374,101 +189,6 @@ export type Database = {
           nl_tier?: Database["public"]["Enums"]["nl_tier_enum"] | null
           population?: number
           province?: string | null
-        }
-        Relationships: []
-      }
-      enrichment_logs: {
-        Row: {
-          api_calls_used: number | null
-          created_at: string
-          data_enriched: Json | null
-          error_message: string | null
-          event_id: string | null
-          id: string
-          source: string | null
-          status: string
-        }
-        Insert: {
-          api_calls_used?: number | null
-          created_at?: string
-          data_enriched?: Json | null
-          error_message?: string | null
-          event_id?: string | null
-          id?: string
-          source?: string | null
-          status: string
-        }
-        Update: {
-          api_calls_used?: number | null
-          created_at?: string
-          data_enriched?: Json | null
-          error_message?: string | null
-          event_id?: string | null
-          id?: string
-          source?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "enrichment_logs_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      error_logs: {
-        Row: {
-          context: Json | null
-          created_at: string
-          error_code: string | null
-          error_type: string | null
-          function_name: string | null
-          id: string
-          level: string
-          message: string
-          request_id: string | null
-          resolved: boolean | null
-          resolved_at: string | null
-          source: string
-          stack_trace: string | null
-          timestamp: string
-          user_agent: string | null
-        }
-        Insert: {
-          context?: Json | null
-          created_at?: string
-          error_code?: string | null
-          error_type?: string | null
-          function_name?: string | null
-          id?: string
-          level?: string
-          message: string
-          request_id?: string | null
-          resolved?: boolean | null
-          resolved_at?: string | null
-          source: string
-          stack_trace?: string | null
-          timestamp?: string
-          user_agent?: string | null
-        }
-        Update: {
-          context?: Json | null
-          created_at?: string
-          error_code?: string | null
-          error_type?: string | null
-          function_name?: string | null
-          id?: string
-          level?: string
-          message?: string
-          request_id?: string | null
-          resolved?: boolean | null
-          resolved_at?: string | null
-          source?: string
-          stack_trace?: string | null
-          timestamp?: string
-          user_agent?: string | null
         }
         Relationships: []
       }
@@ -622,16 +342,18 @@ export type Database = {
           embedding_generated_at: string | null
           embedding_model: string | null
           embedding_version: number | null
+          end_datetime: string | null
           end_time: string | null
           enrichment_attempted_at: string | null
           event_date: string | null
-          event_fingerprint: string | null
           event_time: string
           event_type: string
           google_place_id: string | null
           id: string
           image_url: string | null
           interaction_mode: string | null
+          is_all_day: boolean | null
+          is_multi_day: boolean | null
           is_private: boolean
           language_profile: string | null
           last_healed_at: string | null
@@ -642,11 +364,10 @@ export type Database = {
           parent_event_id: string | null
           persona_tags: string[] | null
           price_range: string | null
-          quality_score: number | null
           social_five_score: number | null
           social_links: Json | null
-          source_id: string | null
           source_url: string | null
+          start_datetime: string | null
           start_time: string | null
           status: string | null
           structured_address: Json | null
@@ -671,16 +392,18 @@ export type Database = {
           embedding_generated_at?: string | null
           embedding_model?: string | null
           embedding_version?: number | null
+          end_datetime?: string | null
           end_time?: string | null
           enrichment_attempted_at?: string | null
           event_date?: string | null
-          event_fingerprint?: string | null
           event_time: string
           event_type: string
           google_place_id?: string | null
           id?: string
           image_url?: string | null
           interaction_mode?: string | null
+          is_all_day?: boolean | null
+          is_multi_day?: boolean | null
           is_private?: boolean
           language_profile?: string | null
           last_healed_at?: string | null
@@ -691,11 +414,10 @@ export type Database = {
           parent_event_id?: string | null
           persona_tags?: string[] | null
           price_range?: string | null
-          quality_score?: number | null
           social_five_score?: number | null
           social_links?: Json | null
-          source_id?: string | null
           source_url?: string | null
+          start_datetime?: string | null
           start_time?: string | null
           status?: string | null
           structured_address?: Json | null
@@ -720,16 +442,18 @@ export type Database = {
           embedding_generated_at?: string | null
           embedding_model?: string | null
           embedding_version?: number | null
+          end_datetime?: string | null
           end_time?: string | null
           enrichment_attempted_at?: string | null
           event_date?: string | null
-          event_fingerprint?: string | null
           event_time?: string
           event_type?: string
           google_place_id?: string | null
           id?: string
           image_url?: string | null
           interaction_mode?: string | null
+          is_all_day?: boolean | null
+          is_multi_day?: boolean | null
           is_private?: boolean
           language_profile?: string | null
           last_healed_at?: string | null
@@ -740,11 +464,10 @@ export type Database = {
           parent_event_id?: string | null
           persona_tags?: string[] | null
           price_range?: string | null
-          quality_score?: number | null
           social_five_score?: number | null
           social_links?: Json | null
-          source_id?: string | null
           source_url?: string | null
+          start_datetime?: string | null
           start_time?: string | null
           status?: string | null
           structured_address?: Json | null
@@ -772,33 +495,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      geocode_cache: {
-        Row: {
-          created_at: string | null
-          display_name: string | null
-          id: string
-          lat: number
-          lng: number
-          venue_key: string
-        }
-        Insert: {
-          created_at?: string | null
-          display_name?: string | null
-          id?: string
-          lat: number
-          lng: number
-          venue_key: string
-        }
-        Update: {
-          created_at?: string | null
-          display_name?: string | null
-          id?: string
-          lat?: number
-          lng?: number
-          venue_key?: string
-        }
-        Relationships: []
       }
       google_calendar_events: {
         Row: {
@@ -882,48 +578,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      net_http_responses_audit: {
-        Row: {
-          body: Json | null
-          completed_at: string | null
-          created_at: string | null
-          duration_ms: number | null
-          headers: Json | null
-          id: number
-          method: string | null
-          request_id: string | null
-          started_at: string | null
-          status: number | null
-          url: string | null
-        }
-        Insert: {
-          body?: Json | null
-          completed_at?: string | null
-          created_at?: string | null
-          duration_ms?: number | null
-          headers?: Json | null
-          id?: number
-          method?: string | null
-          request_id?: string | null
-          started_at?: string | null
-          status?: number | null
-          url?: string | null
-        }
-        Update: {
-          body?: Json | null
-          completed_at?: string | null
-          created_at?: string | null
-          duration_ms?: number | null
-          headers?: Json | null
-          id?: number
-          method?: string | null
-          request_id?: string | null
-          started_at?: string | null
-          status?: number | null
-          url?: string | null
-        }
-        Relationships: []
       }
       persona_badges: {
         Row: {
@@ -1154,408 +808,6 @@ export type Database = {
           },
         ]
       }
-      raw_event_staging: {
-        Row: {
-          accessibility: string | null
-          age_restriction: string | null
-          category: string | null
-          content_hash: string | null
-          coordinates: Json | null
-          created_at: string | null
-          data_completeness: number | null
-          description: string | null
-          detail_html: string | null
-          detail_url: string | null
-          doors_open_time: string | null
-          end_date: string | null
-          end_time: string | null
-          event_date: string | null
-          event_fingerprint: string | null
-          event_time: string | null
-          id: string
-          image_url: string | null
-          interaction_mode:
-            | Database["public"]["Enums"]["interaction_mode_enum"]
-            | null
-          language_profile:
-            | Database["public"]["Enums"]["language_profile_enum"]
-            | null
-          last_error: string | null
-          organizer: string | null
-          parsing_method: string | null
-          performer: string | null
-          persona_tags: string[] | null
-          price: string | null
-          price_max_cents: number | null
-          price_min_cents: number | null
-          processing_started_at: string | null
-          quality_score: number | null
-          raw_html: string | null
-          retry_count: number | null
-          source_id: string
-          source_url: string
-          status: Database["public"]["Enums"]["pipeline_status_enum"] | null
-          tickets_url: string | null
-          title: string | null
-          updated_at: string | null
-          venue_address: string | null
-          venue_name: string | null
-        }
-        Insert: {
-          accessibility?: string | null
-          age_restriction?: string | null
-          category?: string | null
-          content_hash?: string | null
-          coordinates?: Json | null
-          created_at?: string | null
-          data_completeness?: number | null
-          description?: string | null
-          detail_html?: string | null
-          detail_url?: string | null
-          doors_open_time?: string | null
-          end_date?: string | null
-          end_time?: string | null
-          event_date?: string | null
-          event_fingerprint?: string | null
-          event_time?: string | null
-          id?: string
-          image_url?: string | null
-          interaction_mode?:
-            | Database["public"]["Enums"]["interaction_mode_enum"]
-            | null
-          language_profile?:
-            | Database["public"]["Enums"]["language_profile_enum"]
-            | null
-          last_error?: string | null
-          organizer?: string | null
-          parsing_method?: string | null
-          performer?: string | null
-          persona_tags?: string[] | null
-          price?: string | null
-          price_max_cents?: number | null
-          price_min_cents?: number | null
-          processing_started_at?: string | null
-          quality_score?: number | null
-          raw_html?: string | null
-          retry_count?: number | null
-          source_id: string
-          source_url: string
-          status?: Database["public"]["Enums"]["pipeline_status_enum"] | null
-          tickets_url?: string | null
-          title?: string | null
-          updated_at?: string | null
-          venue_address?: string | null
-          venue_name?: string | null
-        }
-        Update: {
-          accessibility?: string | null
-          age_restriction?: string | null
-          category?: string | null
-          content_hash?: string | null
-          coordinates?: Json | null
-          created_at?: string | null
-          data_completeness?: number | null
-          description?: string | null
-          detail_html?: string | null
-          detail_url?: string | null
-          doors_open_time?: string | null
-          end_date?: string | null
-          end_time?: string | null
-          event_date?: string | null
-          event_fingerprint?: string | null
-          event_time?: string | null
-          id?: string
-          image_url?: string | null
-          interaction_mode?:
-            | Database["public"]["Enums"]["interaction_mode_enum"]
-            | null
-          language_profile?:
-            | Database["public"]["Enums"]["language_profile_enum"]
-            | null
-          last_error?: string | null
-          organizer?: string | null
-          parsing_method?: string | null
-          performer?: string | null
-          persona_tags?: string[] | null
-          price?: string | null
-          price_max_cents?: number | null
-          price_min_cents?: number | null
-          processing_started_at?: string | null
-          quality_score?: number | null
-          raw_html?: string | null
-          retry_count?: number | null
-          source_id?: string
-          source_url?: string
-          status?: Database["public"]["Enums"]["pipeline_status_enum"] | null
-          tickets_url?: string | null
-          title?: string | null
-          updated_at?: string | null
-          venue_address?: string | null
-          venue_name?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "raw_event_staging_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "scraper_sources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "raw_event_staging_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "source_health_dashboard"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      raw_pages: {
-        Row: {
-          content_hash: string | null
-          created_at: string | null
-          fetch_duration_ms: number | null
-          fetcher_used: Database["public"]["Enums"]["fetcher_type_enum"] | null
-          final_url: string | null
-          headers: Json | null
-          html: string | null
-          id: string
-          source_id: string
-          status_code: number | null
-          url: string
-          version: number | null
-        }
-        Insert: {
-          content_hash?: string | null
-          created_at?: string | null
-          fetch_duration_ms?: number | null
-          fetcher_used?: Database["public"]["Enums"]["fetcher_type_enum"] | null
-          final_url?: string | null
-          headers?: Json | null
-          html?: string | null
-          id?: string
-          source_id: string
-          status_code?: number | null
-          url: string
-          version?: number | null
-        }
-        Update: {
-          content_hash?: string | null
-          created_at?: string | null
-          fetch_duration_ms?: number | null
-          fetcher_used?: Database["public"]["Enums"]["fetcher_type_enum"] | null
-          final_url?: string | null
-          headers?: Json | null
-          html?: string | null
-          id?: string
-          source_id?: string
-          status_code?: number | null
-          url?: string
-          version?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "raw_pages_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "scraper_sources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "raw_pages_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "source_health_dashboard"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scraper_insights: {
-        Row: {
-          ai_calls_made: number | null
-          ai_calls_rate_limited: number | null
-          ai_tokens_used: number | null
-          error_types: Json | null
-          events_deduplicated: number | null
-          events_discovered: number | null
-          events_enriched: number | null
-          events_failed: number | null
-          events_persisted: number | null
-          health_delta: number | null
-          id: string
-          metadata: Json | null
-          run_duration_ms: number | null
-          run_timestamp: string | null
-          social_five_complete: number | null
-          source_id: string | null
-        }
-        Insert: {
-          ai_calls_made?: number | null
-          ai_calls_rate_limited?: number | null
-          ai_tokens_used?: number | null
-          error_types?: Json | null
-          events_deduplicated?: number | null
-          events_discovered?: number | null
-          events_enriched?: number | null
-          events_failed?: number | null
-          events_persisted?: number | null
-          health_delta?: number | null
-          id?: string
-          metadata?: Json | null
-          run_duration_ms?: number | null
-          run_timestamp?: string | null
-          social_five_complete?: number | null
-          source_id?: string | null
-        }
-        Update: {
-          ai_calls_made?: number | null
-          ai_calls_rate_limited?: number | null
-          ai_tokens_used?: number | null
-          error_types?: Json | null
-          events_deduplicated?: number | null
-          events_discovered?: number | null
-          events_enriched?: number | null
-          events_failed?: number | null
-          events_persisted?: number | null
-          health_delta?: number | null
-          id?: string
-          metadata?: Json | null
-          run_duration_ms?: number | null
-          run_timestamp?: string | null
-          social_five_complete?: number | null
-          source_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scraper_insights_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "scraper_sources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scraper_insights_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "source_health_dashboard"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scraper_sources: {
-        Row: {
-          auto_disabled: boolean | null
-          consecutive_failures: number | null
-          consecutive_successes: number | null
-          country: string | null
-          created_at: string | null
-          default_coordinates: Json | null
-          detected_cms: string | null
-          detected_framework_version: string | null
-          detected_render_strategy:
-            | Database["public"]["Enums"]["fetcher_type_enum"]
-            | null
-          domain: string | null
-          dynamic_rate_limit_ms: number | null
-          enabled: boolean | null
-          fetcher_config: Json | null
-          health_last_updated_at: string | null
-          health_score: number
-          id: string
-          language: string | null
-          last_payload_hash: string | null
-          last_scraped_at: string | null
-          last_working_selectors: Json | null
-          name: string
-          next_scrape_at: string | null
-          nl_tier: Database["public"]["Enums"]["nl_tier_enum"] | null
-          preferred_method: string | null
-          quarantined_at: string | null
-          rate_limit_expires_at: string | null
-          rate_limit_ms: number | null
-          requires_proxy: boolean | null
-          scrape_frequency_hours: number | null
-          selectors_config: Json | null
-          total_skipped_runs: number | null
-          updated_at: string | null
-          url: string
-        }
-        Insert: {
-          auto_disabled?: boolean | null
-          consecutive_failures?: number | null
-          consecutive_successes?: number | null
-          country?: string | null
-          created_at?: string | null
-          default_coordinates?: Json | null
-          detected_cms?: string | null
-          detected_framework_version?: string | null
-          detected_render_strategy?:
-            | Database["public"]["Enums"]["fetcher_type_enum"]
-            | null
-          domain?: string | null
-          dynamic_rate_limit_ms?: number | null
-          enabled?: boolean | null
-          fetcher_config?: Json | null
-          health_last_updated_at?: string | null
-          health_score?: number
-          id?: string
-          language?: string | null
-          last_payload_hash?: string | null
-          last_scraped_at?: string | null
-          last_working_selectors?: Json | null
-          name: string
-          next_scrape_at?: string | null
-          nl_tier?: Database["public"]["Enums"]["nl_tier_enum"] | null
-          preferred_method?: string | null
-          quarantined_at?: string | null
-          rate_limit_expires_at?: string | null
-          rate_limit_ms?: number | null
-          requires_proxy?: boolean | null
-          scrape_frequency_hours?: number | null
-          selectors_config?: Json | null
-          total_skipped_runs?: number | null
-          updated_at?: string | null
-          url: string
-        }
-        Update: {
-          auto_disabled?: boolean | null
-          consecutive_failures?: number | null
-          consecutive_successes?: number | null
-          country?: string | null
-          created_at?: string | null
-          default_coordinates?: Json | null
-          detected_cms?: string | null
-          detected_framework_version?: string | null
-          detected_render_strategy?:
-            | Database["public"]["Enums"]["fetcher_type_enum"]
-            | null
-          domain?: string | null
-          dynamic_rate_limit_ms?: number | null
-          enabled?: boolean | null
-          fetcher_config?: Json | null
-          health_last_updated_at?: string | null
-          health_score?: number
-          id?: string
-          language?: string | null
-          last_payload_hash?: string | null
-          last_scraped_at?: string | null
-          last_working_selectors?: Json | null
-          name?: string
-          next_scrape_at?: string | null
-          nl_tier?: Database["public"]["Enums"]["nl_tier_enum"] | null
-          preferred_method?: string | null
-          quarantined_at?: string | null
-          rate_limit_expires_at?: string | null
-          rate_limit_ms?: number | null
-          requires_proxy?: boolean | null
-          scrape_frequency_hours?: number | null
-          selectors_config?: Json | null
-          total_skipped_runs?: number | null
-          updated_at?: string | null
-          url?: string
-        }
-        Relationships: []
-      }
       selector_healing_log: {
         Row: {
           ai_reasoning: string | null
@@ -1596,22 +848,523 @@ export type Database = {
           source_id?: string
           test_successful?: boolean | null
         }
+        Relationships: []
+      }
+      sg_ai_repair_log: {
+        Row: {
+          ai_diagnosis: string | null
+          applied: boolean | null
+          applied_at: string | null
+          created_at: string | null
+          id: string
+          new_config: Json | null
+          old_config: Json | null
+          raw_html_sample: string | null
+          rollback_available: boolean | null
+          source_id: string | null
+          trigger_reason: string
+          validation_passed: boolean | null
+          validation_sample_size: number | null
+          validation_success_rate: number | null
+        }
+        Insert: {
+          ai_diagnosis?: string | null
+          applied?: boolean | null
+          applied_at?: string | null
+          created_at?: string | null
+          id?: string
+          new_config?: Json | null
+          old_config?: Json | null
+          raw_html_sample?: string | null
+          rollback_available?: boolean | null
+          source_id?: string | null
+          trigger_reason: string
+          validation_passed?: boolean | null
+          validation_sample_size?: number | null
+          validation_success_rate?: number | null
+        }
+        Update: {
+          ai_diagnosis?: string | null
+          applied?: boolean | null
+          applied_at?: string | null
+          created_at?: string | null
+          id?: string
+          new_config?: Json | null
+          old_config?: Json | null
+          raw_html_sample?: string | null
+          rollback_available?: boolean | null
+          source_id?: string | null
+          trigger_reason?: string
+          validation_passed?: boolean | null
+          validation_sample_size?: number | null
+          validation_success_rate?: number | null
+        }
         Relationships: [
           {
-            foreignKeyName: "selector_healing_log_source_id_fkey"
+            foreignKeyName: "sg_ai_repair_log_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
-            referencedRelation: "scraper_sources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "selector_healing_log_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "source_health_dashboard"
+            referencedRelation: "sg_sources"
             referencedColumns: ["id"]
           },
         ]
+      }
+      sg_failure_log: {
+        Row: {
+          ai_response: string | null
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          failure_level: Database["public"]["Enums"]["failure_level"]
+          http_status: number | null
+          id: string
+          queue_item_id: string | null
+          raw_input: string | null
+          resolution_notes: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          retry_count: number | null
+          source_id: string | null
+          stack_trace: string | null
+          stage: Database["public"]["Enums"]["sg_pipeline_stage"]
+        }
+        Insert: {
+          ai_response?: string | null
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failure_level: Database["public"]["Enums"]["failure_level"]
+          http_status?: number | null
+          id?: string
+          queue_item_id?: string | null
+          raw_input?: string | null
+          resolution_notes?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          source_id?: string | null
+          stack_trace?: string | null
+          stage: Database["public"]["Enums"]["sg_pipeline_stage"]
+        }
+        Update: {
+          ai_response?: string | null
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failure_level?: Database["public"]["Enums"]["failure_level"]
+          http_status?: number | null
+          id?: string
+          queue_item_id?: string | null
+          raw_input?: string | null
+          resolution_notes?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          source_id?: string | null
+          stack_trace?: string | null
+          stage?: Database["public"]["Enums"]["sg_pipeline_stage"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sg_failure_log_queue_item_id_fkey"
+            columns: ["queue_item_id"]
+            isOneToOne: false
+            referencedRelation: "sg_pipeline_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sg_failure_log_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sg_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sg_geocode_cache: {
+        Row: {
+          address_key: string
+          created_at: string | null
+          display_name: string | null
+          expires_at: string | null
+          hit_count: number | null
+          id: string
+          importance: number | null
+          last_hit_at: string | null
+          lat: number
+          lng: number
+          original_query: string
+          place_type: string | null
+          raw_response: Json | null
+        }
+        Insert: {
+          address_key: string
+          created_at?: string | null
+          display_name?: string | null
+          expires_at?: string | null
+          hit_count?: number | null
+          id?: string
+          importance?: number | null
+          last_hit_at?: string | null
+          lat: number
+          lng: number
+          original_query: string
+          place_type?: string | null
+          raw_response?: Json | null
+        }
+        Update: {
+          address_key?: string
+          created_at?: string | null
+          display_name?: string | null
+          expires_at?: string | null
+          hit_count?: number | null
+          id?: string
+          importance?: number | null
+          last_hit_at?: string | null
+          lat?: number
+          lng?: number
+          original_query?: string
+          place_type?: string | null
+          raw_response?: Json | null
+        }
+        Relationships: []
+      }
+      sg_pipeline_metrics: {
+        Row: {
+          avg_duration_ms: number | null
+          bucket_end: string
+          bucket_start: string
+          estimated_cost_usd: number | null
+          id: string
+          items_failed: number | null
+          items_processed: number | null
+          items_skipped: number | null
+          p50_duration_ms: number | null
+          p95_duration_ms: number | null
+          p99_duration_ms: number | null
+          stage: Database["public"]["Enums"]["sg_pipeline_stage"]
+          total_ai_tokens: number | null
+          total_api_calls: number | null
+        }
+        Insert: {
+          avg_duration_ms?: number | null
+          bucket_end: string
+          bucket_start: string
+          estimated_cost_usd?: number | null
+          id?: string
+          items_failed?: number | null
+          items_processed?: number | null
+          items_skipped?: number | null
+          p50_duration_ms?: number | null
+          p95_duration_ms?: number | null
+          p99_duration_ms?: number | null
+          stage: Database["public"]["Enums"]["sg_pipeline_stage"]
+          total_ai_tokens?: number | null
+          total_api_calls?: number | null
+        }
+        Update: {
+          avg_duration_ms?: number | null
+          bucket_end?: string
+          bucket_start?: string
+          estimated_cost_usd?: number | null
+          id?: string
+          items_failed?: number | null
+          items_processed?: number | null
+          items_skipped?: number | null
+          p50_duration_ms?: number | null
+          p95_duration_ms?: number | null
+          p99_duration_ms?: number | null
+          stage?: Database["public"]["Enums"]["sg_pipeline_stage"]
+          total_ai_tokens?: number | null
+          total_api_calls?: number | null
+        }
+        Relationships: []
+      }
+      sg_pipeline_queue: {
+        Row: {
+          analyzed_at: string | null
+          claimed_at: string | null
+          cleaned_markdown: string | null
+          content_hash: string | null
+          created_at: string | null
+          detail_url: string | null
+          discovered_at: string | null
+          discovery_method:
+            | Database["public"]["Enums"]["discovery_method"]
+            | null
+          duplicate_of: string | null
+          embedding: string | null
+          enriched_at: string | null
+          event_id: string | null
+          extracted_at: string | null
+          extracted_data: Json | null
+          failure_count: number | null
+          failure_level: Database["public"]["Enums"]["failure_level"] | null
+          fetched_at: string | null
+          geocode_attempts: number | null
+          geocode_raw_response: Json | null
+          geocode_status: string | null
+          id: string
+          last_failure_at: string | null
+          last_failure_reason: string | null
+          lat: number | null
+          lng: number | null
+          persisted_at: string | null
+          priority: number | null
+          raw_html: string | null
+          source_id: string | null
+          source_url: string
+          stage: Database["public"]["Enums"]["sg_pipeline_stage"] | null
+          updated_at: string | null
+          validated_at: string | null
+          vectorized_at: string | null
+          worker_id: string | null
+        }
+        Insert: {
+          analyzed_at?: string | null
+          claimed_at?: string | null
+          cleaned_markdown?: string | null
+          content_hash?: string | null
+          created_at?: string | null
+          detail_url?: string | null
+          discovered_at?: string | null
+          discovery_method?:
+            | Database["public"]["Enums"]["discovery_method"]
+            | null
+          duplicate_of?: string | null
+          embedding?: string | null
+          enriched_at?: string | null
+          event_id?: string | null
+          extracted_at?: string | null
+          extracted_data?: Json | null
+          failure_count?: number | null
+          failure_level?: Database["public"]["Enums"]["failure_level"] | null
+          fetched_at?: string | null
+          geocode_attempts?: number | null
+          geocode_raw_response?: Json | null
+          geocode_status?: string | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          lat?: number | null
+          lng?: number | null
+          persisted_at?: string | null
+          priority?: number | null
+          raw_html?: string | null
+          source_id?: string | null
+          source_url: string
+          stage?: Database["public"]["Enums"]["sg_pipeline_stage"] | null
+          updated_at?: string | null
+          validated_at?: string | null
+          vectorized_at?: string | null
+          worker_id?: string | null
+        }
+        Update: {
+          analyzed_at?: string | null
+          claimed_at?: string | null
+          cleaned_markdown?: string | null
+          content_hash?: string | null
+          created_at?: string | null
+          detail_url?: string | null
+          discovered_at?: string | null
+          discovery_method?:
+            | Database["public"]["Enums"]["discovery_method"]
+            | null
+          duplicate_of?: string | null
+          embedding?: string | null
+          enriched_at?: string | null
+          event_id?: string | null
+          extracted_at?: string | null
+          extracted_data?: Json | null
+          failure_count?: number | null
+          failure_level?: Database["public"]["Enums"]["failure_level"] | null
+          fetched_at?: string | null
+          geocode_attempts?: number | null
+          geocode_raw_response?: Json | null
+          geocode_status?: string | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          lat?: number | null
+          lng?: number | null
+          persisted_at?: string | null
+          priority?: number | null
+          raw_html?: string | null
+          source_id?: string | null
+          source_url?: string
+          stage?: Database["public"]["Enums"]["sg_pipeline_stage"] | null
+          updated_at?: string | null
+          validated_at?: string | null
+          vectorized_at?: string | null
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sg_pipeline_queue_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "sg_pipeline_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sg_pipeline_queue_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sg_pipeline_queue_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sg_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sg_serper_queries: {
+        Row: {
+          category: string | null
+          city: string | null
+          credits_used: number | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          query_text: string
+          response_time_ms: number | null
+          result_count: number | null
+          sources_created: number | null
+          success: boolean | null
+          template: string | null
+          urls_discovered: string[] | null
+        }
+        Insert: {
+          category?: string | null
+          city?: string | null
+          credits_used?: number | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          query_text: string
+          response_time_ms?: number | null
+          result_count?: number | null
+          sources_created?: number | null
+          success?: boolean | null
+          template?: string | null
+          urls_discovered?: string[] | null
+        }
+        Update: {
+          category?: string | null
+          city?: string | null
+          credits_used?: number | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          query_text?: string
+          response_time_ms?: number | null
+          result_count?: number | null
+          sources_created?: number | null
+          success?: boolean | null
+          template?: string | null
+          urls_discovered?: string[] | null
+        }
+        Relationships: []
+      }
+      sg_sources: {
+        Row: {
+          city: string | null
+          config_version: number | null
+          consecutive_failures: number | null
+          country_code: string | null
+          created_at: string | null
+          created_by: string | null
+          discovery_method: Database["public"]["Enums"]["discovery_method"]
+          domain: string | null
+          enabled: boolean | null
+          extraction_config: Json | null
+          fetch_strategy: Json | null
+          id: string
+          last_failure_at: string | null
+          last_failure_reason: string | null
+          last_successful_scrape: string | null
+          name: string
+          quarantine_reason: string | null
+          quarantined: boolean | null
+          quarantined_at: string | null
+          rate_limit_state: Json | null
+          reliability_score: number | null
+          schema_version: string | null
+          serper_discovered_at: string | null
+          serper_query: string | null
+          tier: Database["public"]["Enums"]["source_tier"]
+          total_events_extracted: number | null
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          city?: string | null
+          config_version?: number | null
+          consecutive_failures?: number | null
+          country_code?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          discovery_method?: Database["public"]["Enums"]["discovery_method"]
+          domain?: string | null
+          enabled?: boolean | null
+          extraction_config?: Json | null
+          fetch_strategy?: Json | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          last_successful_scrape?: string | null
+          name: string
+          quarantine_reason?: string | null
+          quarantined?: boolean | null
+          quarantined_at?: string | null
+          rate_limit_state?: Json | null
+          reliability_score?: number | null
+          schema_version?: string | null
+          serper_discovered_at?: string | null
+          serper_query?: string | null
+          tier?: Database["public"]["Enums"]["source_tier"]
+          total_events_extracted?: number | null
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          city?: string | null
+          config_version?: number | null
+          consecutive_failures?: number | null
+          country_code?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          discovery_method?: Database["public"]["Enums"]["discovery_method"]
+          domain?: string | null
+          enabled?: boolean | null
+          extraction_config?: Json | null
+          fetch_strategy?: Json | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          last_successful_scrape?: string | null
+          name?: string
+          quarantine_reason?: string | null
+          quarantined?: boolean | null
+          quarantined_at?: string | null
+          rate_limit_state?: Json | null
+          reliability_score?: number | null
+          schema_version?: string | null
+          serper_discovered_at?: string | null
+          serper_query?: string | null
+          tier?: Database["public"]["Enums"]["source_tier"]
+          total_events_extracted?: number | null
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
       }
       spatial_ref_sys: {
         Row: {
@@ -1786,32 +1539,6 @@ export type Database = {
           f_table_schema?: unknown
           srid?: number | null
           type?: string | null
-        }
-        Relationships: []
-      }
-      source_health_dashboard: {
-        Row: {
-          circuit_failures: number | null
-          circuit_state:
-            | Database["public"]["Enums"]["circuit_state_enum"]
-            | null
-          consecutive_failures: number | null
-          consecutive_successes: number | null
-          cooldown_until: string | null
-          detected_render_strategy:
-            | Database["public"]["Enums"]["fetcher_type_enum"]
-            | null
-          domain: string | null
-          enabled: boolean | null
-          health_score: number | null
-          id: string | null
-          is_quarantined: boolean | null
-          last_scraped_at: string | null
-          name: string | null
-          next_scrape_at: string | null
-          nl_tier: Database["public"]["Enums"]["nl_tier_enum"] | null
-          status: string | null
-          url: string | null
         }
         Relationships: []
       }
@@ -1992,19 +1719,41 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      claim_scrape_jobs: {
+      claim_for_enrichment: {
+        Args: { p_worker_id?: string }
+        Returns: {
+          detail_url: string
+          id: string
+          raw_html: string
+          source_id: string
+          source_url: string
+          title: string
+        }[]
+      }
+      claim_for_indexing: {
         Args: { p_batch_size?: number }
         Returns: {
-          attempts: number
+          category: string
+          coordinates: unknown
+          description: string
+          event_date: string
+          event_time: string
           id: string
-          max_attempts: number
-          payload: Json
+          image_url: string
+          price: string
           source_id: string
+          source_url: string
+          structured_data: Json
+          tickets_url: string
+          title: string
+          venue_address: string
+          venue_name: string
         }[]
       }
       claim_staging_rows: {
         Args: { p_batch_size?: number }
         Returns: {
+          detail_html: string
           id: string
           parsing_method: string
           raw_html: string
@@ -2019,6 +1768,21 @@ export type Database = {
         Args: { p_job_id: string; p_result: Json }
         Returns: undefined
       }
+      complete_enrichment: {
+        Args: {
+          p_category?: string
+          p_description?: string
+          p_event_date?: string
+          p_event_time?: string
+          p_id: string
+          p_image_url?: string
+          p_structured_data: Json
+          p_title?: string
+          p_venue_name?: string
+        }
+        Returns: undefined
+      }
+      complete_indexing: { Args: { p_ids: string[] }; Returns: undefined }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -2051,16 +1815,13 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
-      enqueue_scrape_jobs: {
-        Args: { p_jobs: Json }
-        Returns: {
-          out_job_id: string
-          out_source_id: string
-        }[]
-      }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       fail_ai_job: {
         Args: { p_error: string; p_is_rate_limited?: boolean; p_job_id: string }
+        Returns: undefined
+      }
+      fail_enrichment: {
+        Args: { p_error: string; p_id: string }
         Returns: undefined
       }
       geometry: { Args: { "": string }; Returns: unknown }
@@ -2270,43 +2031,6 @@ export type Database = {
           venue_name: string
         }[]
       }
-      get_pipeline_health: {
-        Args: never
-        Returns: {
-          avg_processing_seconds: number
-          completed_count: number
-          failed_count: number
-          pending_count: number
-          processing_count: number
-          stuck_count: number
-        }[]
-      }
-      get_recent_scraper_runs: {
-        Args: { p_limit?: number; p_strategy?: string }
-        Returns: {
-          completed_at: string
-          error_message: string
-          events_failed: number
-          events_scraped: number
-          events_skipped: number
-          id: string
-          status: string
-          strategy: string
-        }[]
-      }
-      get_scraper_stats: {
-        Args: { p_days?: number; p_strategy?: string }
-        Returns: {
-          failed_runs: number
-          strategy: string
-          success_rate: number
-          successful_runs: number
-          total_events_failed: number
-          total_events_scraped: number
-          total_events_skipped: number
-          total_runs: number
-        }[]
-      }
       gettransactionid: { Args: never; Returns: unknown }
       increase_source_rate_limit: {
         Args: {
@@ -2342,28 +2066,6 @@ export type Database = {
       join_event_atomic: {
         Args: { p_event_id: string; p_profile_id: string; p_status?: string }
         Returns: Json
-      }
-      log_scraper_insight: {
-        Args: {
-          p_detected_cms?: string
-          p_detected_framework?: string
-          p_error_message?: string
-          p_execution_time_ms?: number
-          p_fetch_time_ms?: number
-          p_has_hydration_data?: boolean
-          p_has_ics_feed?: boolean
-          p_has_json_ld?: boolean
-          p_has_rss_feed?: boolean
-          p_html_size_bytes?: number
-          p_parse_time_ms?: number
-          p_run_id?: string
-          p_source_id: string
-          p_status: string
-          p_strategy_trace: Json
-          p_total_events_found: number
-          p_winning_strategy: string
-        }
-        Returns: string
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
       match_events: {
@@ -2439,7 +2141,88 @@ export type Database = {
         }[]
       }
       reset_stuck_discovery_jobs: { Args: never; Returns: undefined }
-      reset_stuck_scrape_jobs: { Args: never; Returns: undefined }
+      sg_advance_stage: {
+        Args: {
+          p_extracted_data?: Json
+          p_item_id: string
+          p_lat?: number
+          p_lng?: number
+          p_next_stage: Database["public"]["Enums"]["sg_pipeline_stage"]
+        }
+        Returns: undefined
+      }
+      sg_claim_for_stage: {
+        Args: {
+          p_limit?: number
+          p_stage: Database["public"]["Enums"]["sg_pipeline_stage"]
+          p_worker_id?: string
+        }
+        Returns: {
+          detail_url: string
+          extracted_data: Json
+          id: string
+          priority: number
+          raw_html: string
+          source_id: string
+          source_url: string
+        }[]
+      }
+      sg_get_pipeline_stats: {
+        Args: never
+        Returns: {
+          avg_wait_time_minutes: number
+          count: number
+          oldest_item: string
+          stage: string
+        }[]
+      }
+      sg_insert_geocode_cache: {
+        Args: {
+          p_city: string
+          p_country: string
+          p_display_name?: string
+          p_lat: number
+          p_lng: number
+          p_postal: string
+          p_raw_response?: Json
+          p_street: string
+          p_venue: string
+        }
+        Returns: undefined
+      }
+      sg_lookup_geocode_cache: {
+        Args: {
+          p_city: string
+          p_country?: string
+          p_postal: string
+          p_street: string
+          p_venue: string
+        }
+        Returns: {
+          cached: boolean
+          lat: number
+          lng: number
+        }[]
+      }
+      sg_normalize_address_key: {
+        Args: {
+          p_city: string
+          p_country: string
+          p_postal: string
+          p_street: string
+          p_venue: string
+        }
+        Returns: string
+      }
+      sg_record_failure: {
+        Args: {
+          p_error_code?: string
+          p_error_message: string
+          p_failure_level: Database["public"]["Enums"]["failure_level"]
+          p_item_id: string
+        }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       st_3dclosestpoint: {
@@ -3024,26 +2807,7 @@ export type Database = {
         Returns: unknown
       }
       trigger_re_scout: { Args: { p_source_id: string }; Returns: undefined }
-      trigger_scrape_coordinator: { Args: never; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
-      update_scraper_source_stats:
-        | {
-            Args: {
-              p_events_scraped: number
-              p_source_id: string
-              p_success: boolean
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_events_scraped: number
-              p_last_error?: string
-              p_source_id: string
-              p_success: boolean
-            }
-            Returns: undefined
-          }
       update_source_health: {
         Args: { p_delta: number; p_reason?: string; p_source_id: string }
         Returns: number
@@ -3076,10 +2840,29 @@ export type Database = {
         | "heal_selectors"
         | "classify_vibe"
       circuit_state_enum: "CLOSED" | "OPEN" | "HALF_OPEN"
-      fetcher_type_enum: "static" | "puppeteer" | "playwright" | "scrapingbee"
+      discovery_method:
+        | "serper_search"
+        | "api_webhook"
+        | "seed_list"
+        | "internal_link"
+        | "sitemap"
+      failure_level:
+        | "transient"
+        | "source_drift"
+        | "repair_failure"
+        | "systemic"
       interaction_mode_enum: "HIGH" | "MEDIUM" | "LOW" | "PASSIVE"
       language_profile_enum: "NL" | "EN" | "DE" | "MIXED"
       nl_tier_enum: "tier1_g4" | "tier2_centrum" | "tier3_village"
+      pipeline_status:
+        | "discovered"
+        | "awaiting_enrichment"
+        | "enriching"
+        | "enriched"
+        | "ready_to_index"
+        | "indexing"
+        | "processed"
+        | "failed"
       pipeline_status_enum:
         | "awaiting_fetch"
         | "awaiting_enrichment"
@@ -3088,6 +2871,23 @@ export type Database = {
         | "failed"
         | "quarantined"
       raw_event_status: "pending" | "processing" | "completed" | "failed"
+      sg_pipeline_stage:
+        | "discovered"
+        | "analyzing"
+        | "awaiting_fetch"
+        | "fetching"
+        | "cleaning"
+        | "extracting"
+        | "validating"
+        | "enriching"
+        | "deduplicating"
+        | "ready_to_persist"
+        | "vectorizing"
+        | "indexed"
+        | "geo_incomplete"
+        | "quarantined"
+        | "failed"
+      source_tier: "tier_1_metropolis" | "tier_2_regional" | "tier_3_hyperlocal"
       time_mode: "fixed" | "window" | "anytime"
     }
     CompositeTypes: {
@@ -3241,10 +3041,32 @@ export const Constants = {
         "classify_vibe",
       ],
       circuit_state_enum: ["CLOSED", "OPEN", "HALF_OPEN"],
-      fetcher_type_enum: ["static", "puppeteer", "playwright", "scrapingbee"],
+      discovery_method: [
+        "serper_search",
+        "api_webhook",
+        "seed_list",
+        "internal_link",
+        "sitemap",
+      ],
+      failure_level: [
+        "transient",
+        "source_drift",
+        "repair_failure",
+        "systemic",
+      ],
       interaction_mode_enum: ["HIGH", "MEDIUM", "LOW", "PASSIVE"],
       language_profile_enum: ["NL", "EN", "DE", "MIXED"],
       nl_tier_enum: ["tier1_g4", "tier2_centrum", "tier3_village"],
+      pipeline_status: [
+        "discovered",
+        "awaiting_enrichment",
+        "enriching",
+        "enriched",
+        "ready_to_index",
+        "indexing",
+        "processed",
+        "failed",
+      ],
       pipeline_status_enum: [
         "awaiting_fetch",
         "awaiting_enrichment",
@@ -3254,6 +3076,28 @@ export const Constants = {
         "quarantined",
       ],
       raw_event_status: ["pending", "processing", "completed", "failed"],
+      sg_pipeline_stage: [
+        "discovered",
+        "analyzing",
+        "awaiting_fetch",
+        "fetching",
+        "cleaning",
+        "extracting",
+        "validating",
+        "enriching",
+        "deduplicating",
+        "ready_to_persist",
+        "vectorizing",
+        "indexed",
+        "geo_incomplete",
+        "quarantined",
+        "failed",
+      ],
+      source_tier: [
+        "tier_1_metropolis",
+        "tier_2_regional",
+        "tier_3_hyperlocal",
+      ],
       time_mode: ["fixed", "window", "anytime"],
     },
   },
