@@ -91,9 +91,17 @@ function extractCandidateEventUrls(html: string, baseUrl: string, maxUrls: numbe
   ];
 
   const excludeHints = [
+    // Legal & info pages
     'privacy', 'terms', 'voorwaarden', 'contact', 'about', 'over-ons', 'cookies',
     'login', 'register', 'account', 'cart', 'checkout', 'search', 'zoeken',
-    'nieuws', 'news', 'blog', 'vacatures', 'jobs', 'faq', 'help', 'support'
+    'nieuws', 'news', 'blog', 'vacatures', 'jobs', 'faq', 'help', 'support',
+    // Non-event content pages (Paradiso patterns)
+    '/subbrand/', '/archive', '/membership', '/visit', '/lidmaatschap',
+    // Category/theme pages (Muziekgebouw patterns)  
+    '/themes/', '/themas/', 'rondleidingen',
+    // Other non-event patterns
+    '/serie/', '/series/', '/abonnement', '/subscription', '/gift', '/cadeaubon',
+    '/pers/', '/press/', '/zakelijk', '/business', '/verhuur', '/rental'
   ];
 
   // Extensions to skip
@@ -151,12 +159,24 @@ function extractCandidateEventUrls(html: string, baseUrl: string, maxUrls: numbe
       // Check 3: Is it a child path of the base URL (e.g., /nl/agenda/something)?
       const isChildOfBase = basePathPrefix && path.startsWith(basePathPrefix + '/') && path.length > basePathPrefix.length + 2;
       
-      // Check 4: Path has at least 3 segments (likely a detail page, not a category)
+      // Check 4: Path has enough depth and ends with event-like slug
       const segments = path.split('/').filter(Boolean);
+      const lastSegment = segments[segments.length - 1] || '';
       const isDeepPath = segments.length >= 2;
-
-      // Accept if it matches any of these patterns
-      const isEventCandidate = (hasEventSegment && isDeepPath) || hasDateInPath || (isChildOfBase && isDeepPath);
+      
+      // Check 5: Last segment looks like an event detail (has alphanumeric ID or slug with dashes)
+      // Good: "rabe-892d", "concert-name-1234", "2026-01-30-event"
+      // Bad: "agenda", "en", "themes", numeric only like "89"
+      const hasEventSlug = /^[a-z0-9]+-[a-z0-9-]+-[a-z0-9]+$/i.test(lastSegment) || // slug-with-id-123
+                           /^[a-z]+-[a-z0-9]{3,}$/i.test(lastSegment) || // name-abc123
+                           /\d{2,4}[-/]\d{2}/.test(lastSegment); // contains date
+      
+      // Reject short numeric-only paths like /subbrand/89 or /themes/50
+      const isNumericOnly = /^\d+$/.test(lastSegment) && parseInt(lastSegment) < 10000;
+      
+      // Accept if it matches event patterns AND has proper slug
+      const isEventCandidate = ((hasEventSegment && isDeepPath) || hasDateInPath || (isChildOfBase && isDeepPath)) && 
+                               (hasEventSlug || hasDateInPath) && !isNumericOnly;
 
       if (!isEventCandidate) {
         continue;

@@ -330,7 +330,7 @@ interface ValidationResult {
 }
 
 /**
- * Check if a URL is a listing/main page rather than an event detail page
+ * Check if a URL is a listing/main page or non-event page rather than an event detail page
  */
 function isListingPage(url: string): boolean {
   try {
@@ -350,6 +350,26 @@ function isListingPage(url: string): boolean {
       return true;
     }
     
+    // Non-event pages (learned from Paradiso/Muziekgebouw issues)
+    const nonEventPatterns = [
+      /\/subbrand\//,      // Paradiso platform pages
+      /\/archive\/?$/,     // Archive pages
+      /\/membership\/?$/,  // Membership info
+      /\/lidmaatschap/,    // Dutch membership
+      /\/visit\/?$/,       // Visit info
+      /\/themes?\//,       // Theme/category pages
+      /\/themas?\//,       // Dutch themes
+      /\/rondleidingen/,   // Tours
+      /\/serie\//,         // Series pages
+      /\/abonnement/,      // Subscription pages
+      /\/pers\/?$/,        // Press pages
+      /\/zakelijk/,        // Business pages
+    ];
+    
+    if (nonEventPatterns.some(p => p.test(path))) {
+      return true;
+    }
+    
     // If path is very short (just /en, /nl, /agenda/) it's likely a listing page
     const pathParts = path.split('/').filter(Boolean);
     if (pathParts.length <= 2 && !path.includes('-20') && !/\d{2}-\d{2}-\d{2,4}/.test(path)) {
@@ -358,6 +378,12 @@ function isListingPage(url: string): boolean {
       if (!eventIndicators.some(i => path.includes(i)) || pathParts.length < 2) {
         return true;
       }
+    }
+    
+    // Reject paths ending in just a numeric ID (e.g., /subbrand/89, /themas/50)
+    const lastSegment = pathParts[pathParts.length - 1] || '';
+    if (/^\d+$/.test(lastSegment) && parseInt(lastSegment) < 10000) {
+      return true;
     }
     
     return false;
@@ -441,10 +467,23 @@ function validateExtractedData(data: SocialEvent | null, sourceUrl: string): Val
     /^agenda/i,
     /^calendar/i,
     /^upcoming events/i,
+    // Non-event page titles (learned from Paradiso/Muziekgebouw)
+    /^archive of/i,
+    /^membership/i,
+    /^lidmaatschap/i,
+    /^visit /i,
+    /^rondleiding/i,
+    /^festivals en specials/i,
+    /^ticket to the/i,       // Platform description, not event
+    /^indiestad$/i,          // Platform name
+    /^super-sonic jazz$/i,   // Platform name
+    /^tones$/i,              // Platform name
+    /^kosmos$/i,             // Platform name
+    /^sugar mountain/i,      // Platform name
   ];
   if (data.what?.title && genericTitlePatterns.some(p => p.test(data.what.title))) {
     result.valid = false;
-    result.errors.push('Generic listing page title detected');
+    result.errors.push('Generic/non-event page title detected');
   }
 
   if (!data.where?.city) {
