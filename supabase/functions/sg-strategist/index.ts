@@ -39,6 +39,8 @@ const KNOWN_DOMAINS: Record<string, Partial<DomainProfile>> = {
   'eventbrite.com': { fetcher: 'playwright', wait_for: '.event-card', anti_bot: false },
   'meetup.com': { fetcher: 'playwright', wait_for: '[data-event-id]', anti_bot: false },
   'facebook.com': { fetcher: 'browserless', anti_bot: true },
+  'ra.co': { fetcher: 'browserless', wait_for: '.listing', anti_bot: true },
+  'bandsintown.com': { fetcher: 'browserless', wait_for: 'body', anti_bot: true },
   'ticketmaster.nl': { fetcher: 'playwright', wait_for: '.event-listing', anti_bot: true },
   'uitagenda.nl': { fetcher: 'static', anti_bot: false },
   'ontdekeindhoven.nl': { fetcher: 'static', anti_bot: false },

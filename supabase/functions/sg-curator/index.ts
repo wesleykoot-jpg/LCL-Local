@@ -91,6 +91,11 @@ async function fetchPage(url: string, strategy: FetchStrategy): Promise<string> 
   }
 }
 
+function isRetryableFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /HTTP\s+(401|403|429|503)/i.test(error.message) || /forbidden|too many requests|captcha/i.test(error.message);
+}
+
 // ============================================================================
 // IMAGE FALLBACKS
 // ============================================================================
@@ -429,7 +434,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
         // STAGE 3a: RENDER - Fetch the page
         const fetchUrl = item.detail_url || item.source_url;
         console.log(`[SG Curator] 3a. Fetching: ${fetchUrl}`);
-        const html = await fetchPage(fetchUrl, strategy);
+        let html: string;
+        try {
+          html = await fetchPage(fetchUrl, strategy);
+        } catch (error) {
+          if (strategy.fetcher !== 'browserless' && browserlessApiKey && isRetryableFetchError(error)) {
+            console.warn(`[SG Curator] Retry with browserless for: ${fetchUrl}`);
+            html = await fetchWithBrowserless(fetchUrl, strategy.wait_for);
+          } else {
+            throw error;
+          }
+        }
 
         // Update with raw HTML
         await supabase
