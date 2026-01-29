@@ -25,7 +25,7 @@ import {
   browserlessEndpoint,
   validateEnv 
 } from "../_shared/sgEnv.ts";
-import { geocodeAddress } from "../_shared/sgGeocode.ts";
+import { geocodeHybrid, extractCoordsFromHtml } from "../_shared/sgGeocodeHybrid.ts";
 import { htmlToMarkdown } from "../_shared/markdownUtils.ts";
 import type { CuratorResponse, SocialEvent, QueueItem, FetchStrategy } from "../_shared/sgTypes.ts";
 
