@@ -86,8 +86,10 @@ export interface SocialEvent {
     tags: string[];
   };
   when: {
-    start_datetime: string; // ISO 8601
-    end_datetime?: string;
+    start_datetime: string; // ISO 8601 with timezone
+    end_datetime?: string;  // ISO 8601 with timezone
+    is_all_day?: boolean;   // True for all-day events
+    is_multi_day?: boolean; // True for multi-day festivals
     is_recurring: boolean;
     recurrence_pattern?: string;
     timezone: string;
