@@ -19,9 +19,9 @@ ADD COLUMN IF NOT EXISTS is_multi_day boolean DEFAULT false;
 CREATE INDEX IF NOT EXISTS idx_events_start_datetime ON events(start_datetime);
 CREATE INDEX IF NOT EXISTS idx_events_end_datetime ON events(end_datetime);
 
--- Create composite index for filtering active events (not ended)
-CREATE INDEX IF NOT EXISTS idx_events_active ON events(start_datetime, end_datetime) 
-WHERE end_datetime IS NULL OR end_datetime > NOW();
+-- Index for upcoming events (start_datetime in future)
+-- Note: Filtering active/ended events will be done in queries, not partial index
+-- since NOW() is not immutable
 
 -- Backfill start_datetime from existing event_date + start_time
 -- This handles the legacy data with separate date and time fields
