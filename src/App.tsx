@@ -18,6 +18,7 @@ import {
   VerificationSafetyPage,
   NotificationPreferencesPage,
   ShareProfilePage,
+  UatQualityDashboardPage,
 } from "@/features/profile";
 import { LoginPage } from "@/features/auth";
 import { GoogleCalendarSettingsPage } from "@/features/calendar";
@@ -125,6 +126,10 @@ const App = () => (
                     path="/profile/calendar"
                     element={<GoogleCalendarSettingsPage />}
                   />
+                  <Route
+                    path="/profile/quality-dashboard"
+                    element={<UatQualityDashboardPage />}
+                  />
 
                   {/* Admin routes (dev mode only) */}
                   {import.meta.env.DEV && (
@@ -183,6 +188,10 @@ const App = () => (
                   <Route
                     path="/profile/calendar"
                     element={<GoogleCalendarSettingsPage />}
+                  />
+                  <Route
+                    path="/profile/quality-dashboard"
+                    element={<UatQualityDashboardPage />}
                   />
 
                   {/* Admin routes (dev mode only) */}

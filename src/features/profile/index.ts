@@ -22,3 +22,4 @@ export { default as PersonalInformationPage } from "./pages/PersonalInformation"
 export { default as VerificationSafetyPage } from "./pages/VerificationSafety";
 export { default as NotificationPreferencesPage } from "./pages/NotificationPreferences";
 export { default as ShareProfilePage } from "./pages/ShareProfile";
+export { default as UatQualityDashboardPage } from "./pages/UatQualityDashboard";

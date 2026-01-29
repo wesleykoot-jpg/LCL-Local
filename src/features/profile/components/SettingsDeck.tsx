@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, Trash2, Bell, Lock, User, Loader2, ChevronRight } from 'lucide-react';
+import { LogOut, Trash2, Bell, Lock, User, Loader2, ChevronRight, Settings } from 'lucide-react';
 import { hapticImpact } from '@/shared/lib/haptics';
 import { Switch } from '@/components/ui/switch';
 import { useMotionPreset } from '@/hooks/useMotionPreset';
@@ -97,6 +98,7 @@ function SettingsNavRow({ label, description, onClick }: SettingsNavRowProps) {
 
 export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckProps) {
   const motionPreset = useMotionPreset();
+  const navigate = useNavigate();
   // State for toggle switches
   const [pushNotifications, setPushNotifications] = useState(true);
   const [eventReminders, setEventReminders] = useState(true);
@@ -130,6 +132,32 @@ export function SettingsDeck({ onSignOut, isSigningOut = false }: SettingsDeckPr
           <SettingsNavRow 
             label="Preferences"
             description="Customize your experience"
+          />
+        </div>
+      </motion.div>
+
+      {/* UAT Section */}
+      <motion.div
+        className="bg-surface-card rounded-card shadow-card overflow-hidden"
+        {...(motionPreset.prefersReducedMotion ? {} : {
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { delay: 0.35 },
+        })}
+        role="region"
+        aria-label="UAT tools"
+      >
+        <div className="px-5 py-3 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Settings size={16} className="text-text-secondary" />
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wide">UAT</h3>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-100">
+          <SettingsNavRow
+            label="Quality Dashboard"
+            description="Daily source metrics"
+            onClick={() => navigate('/profile/quality-dashboard')}
           />
         </div>
       </motion.div>
