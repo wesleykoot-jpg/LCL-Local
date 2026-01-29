@@ -71,26 +71,40 @@ function extractCandidateEventUrls(html: string, baseUrl: string, maxUrls: numbe
   const seen = new Set<string>();
 
   let baseDomain = '';
+  let basePathPrefix = '';
   try {
-    baseDomain = new URL(baseUrl).hostname.replace(/^www\./, '');
+    const baseUrlObj = new URL(baseUrl);
+    baseDomain = baseUrlObj.hostname.replace(/^www\./, '');
+    // If base URL has a path like /agenda/, use it as prefix for child detection
+    basePathPrefix = baseUrlObj.pathname.replace(/\/$/, '');
   } catch {
     baseDomain = '';
   }
 
-  const keywordHints = [
+  // Keywords that indicate event-related pages (in path segments)
+  const eventPathSegments = [
     'event', 'events', 'agenda', 'calendar', 'programma', 'activiteiten',
-    'ticket', 'tickets', 'concert', 'festival', 'workshop', 'meetup',
-    'theater', 'film', 'cinema', 'uitagenda', 'show', 'wedstrijd', 'sport'
+    'ticket', 'tickets', 'concert', 'concerts', 'festival', 'festivals',
+    'workshop', 'workshops', 'meetup', 'meetups', 'theater', 'film', 'films',
+    'cinema', 'uitagenda', 'show', 'shows', 'wedstrijd', 'sport', 'voorstelling',
+    'voorstellingen', 'optreden', 'optredens', 'uitje', 'uitjes', 'en/agenda', 'nl/agenda'
   ];
 
-  const excludeHints = ['privacy', 'terms', 'voorwaarden', 'contact', 'about', 'over-ons', 'cookies'];
+  const excludeHints = [
+    'privacy', 'terms', 'voorwaarden', 'contact', 'about', 'over-ons', 'cookies',
+    'login', 'register', 'account', 'cart', 'checkout', 'search', 'zoeken',
+    'nieuws', 'news', 'blog', 'vacatures', 'jobs', 'faq', 'help', 'support'
+  ];
+
+  // Extensions to skip
+  const skipExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.woff', '.woff2', '.pdf'];
 
   const linkRegex = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>/gi;
   let match: RegExpExecArray | null;
 
   while ((match = linkRegex.exec(html)) && results.length < maxUrls) {
     const rawHref = match[1];
-    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) {
+    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:') || rawHref.startsWith('javascript:')) {
       continue;
     }
 
@@ -110,15 +124,41 @@ function extractCandidateEventUrls(html: string, baseUrl: string, maxUrls: numbe
         continue;
       }
 
-      const path = `${urlObj.pathname}${urlObj.search}`.toLowerCase();
+      const path = urlObj.pathname.toLowerCase();
+      
+      // Skip static assets
+      if (skipExtensions.some((ext) => path.endsWith(ext))) {
+        continue;
+      }
+
+      // Skip excluded pages
       if (excludeHints.some((h) => path.includes(h))) {
         continue;
       }
 
-      const hasKeyword = keywordHints.some((k) => path.includes(k));
-      const hasDate = /(\b20\d{2}\b|\b\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4}\b)/.test(path);
+      // Skip if it's just the base URL or parent paths
+      if (path === '/' || path === basePathPrefix || path === basePathPrefix + '/') {
+        continue;
+      }
 
-      if (!hasKeyword && !hasDate) {
+      // Check 1: Is it a child of an event-related path segment?
+      const hasEventSegment = eventPathSegments.some((seg) => path.includes('/' + seg + '/') || path.includes('/' + seg));
+      
+      // Check 2: Does it look like a detail page (has slug with date pattern)?
+      // Match patterns like: 30-01-2026, 2026-01-30, 30/01/2026, etc embedded in path
+      const hasDateInPath = /\d{2}[-\/]\d{2}[-\/]\d{2,4}|\d{4}[-\/]\d{2}[-\/]\d{2}/.test(path);
+      
+      // Check 3: Is it a child path of the base URL (e.g., /nl/agenda/something)?
+      const isChildOfBase = basePathPrefix && path.startsWith(basePathPrefix + '/') && path.length > basePathPrefix.length + 2;
+      
+      // Check 4: Path has at least 3 segments (likely a detail page, not a category)
+      const segments = path.split('/').filter(Boolean);
+      const isDeepPath = segments.length >= 2;
+
+      // Accept if it matches any of these patterns
+      const isEventCandidate = (hasEventSegment && isDeepPath) || hasDateInPath || (isChildOfBase && isDeepPath);
+
+      if (!isEventCandidate) {
         continue;
       }
 
