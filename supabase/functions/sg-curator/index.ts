@@ -680,18 +680,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
           console.log(`[SG Curator] Validation warnings for ${fetchUrl}: ${validation.warnings.join(', ')}`);
         }
 
-        // STAGE 3e: ENRICH - Geocoding
-        console.log(`[SG Curator] 3e. Enriching: ${fetchUrl}`);
+        // STAGE 3e: ENRICH - Hybrid Geocoding (extract from HTML first, then multi-provider)
+        console.log(`[SG Curator] 3e. Enriching (hybrid geocoding): ${fetchUrl}`);
         let lat: number | undefined;
         let lng: number | undefined;
 
         if (extracted.where) {
-          const geoResult = await geocodeAddress(
+          // Try hybrid geocoding: HTML extraction → fuzzy cache → multi-provider
+          const geoResult = await geocodeHybrid(
             extracted.where.venue_name,
             extracted.where.address,
             extracted.where.postal_code,
             extracted.where.city,
-            extracted.where.country_code
+            extracted.where.country_code || 'NL',
+            html // Pass raw HTML for coordinate extraction
           );
 
           if (geoResult) {
@@ -699,6 +701,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
             lng = geoResult.lng;
             extracted.where.lat = lat;
             extracted.where.lng = lng;
+            console.log(`[SG Curator] Geocoded: (${lat}, ${lng}) via ${geoResult.cached ? 'cache' : geoResult.place_type}`);
           }
         }
 
