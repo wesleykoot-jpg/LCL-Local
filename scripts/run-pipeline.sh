@@ -19,9 +19,10 @@ export $(grep -E '^SUPABASE_' .env | xargs)
 CYCLES=${1:-10}
 DISCOVERY=${2:-false}
 
-# Rate limit settings (at 80%)
-CURATOR_BATCH=5
-CURATOR_DELAY=6  # seconds between curator calls
+# Rate limit settings (at 80% with hybrid geocoding)
+# With 3 providers doing round-robin, effective rate is ~3x faster
+CURATOR_BATCH=10     # Events per curator call (up from 5)
+CURATOR_DELAY=3      # seconds between curator calls (down from 6)
 STRATEGIST_BATCH=30
 VECTORIZER_BATCH=20
 
